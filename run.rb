@@ -45,6 +45,10 @@ class Line
   def contains_do?
     parts.any? { |x| x == :do }
   end
+
+  def declares_private?
+    parts.any? { |x| x == "private" } && parts.length == 3
+  end
 end
 
 def want_blankline?(line, next_line)
@@ -102,8 +106,14 @@ class ParserState
       line.remove_redundant_indents
     end
 
+    lines.each do |line|
+      if line.declares_private?
+        line.parts << "\n"
+      end
+    end
+
     lines.each_with_index do |line, i|
-      if i == render_queue.length-1
+      if i == lines.length-1
         line.strip_trailing_newlines
       end
 
@@ -205,6 +215,30 @@ class ParserState
     line << "|"
   end
 
+  def emit_string_literal(literal)
+    line << literal.inspect
+  end
+
+  def emit_module_keyword
+    line << "module"
+  end
+
+  def emit_class_keyword
+    line << "class"
+  end
+
+  def emit_const(const)
+    line << const
+  end
+
+  def emit_double_colon
+    line << "::"
+  end
+
+  def emit_symbol(symbol)
+    line << ":#{symbol}"
+  end
+
   private
 
   attr_reader :result, :render_queue
@@ -263,18 +297,6 @@ def format_assign_expression(ps, rest)
   ps.start_of_line.pop
 
   ps.emit_newline
-end
-
-def format_call(ps, rest)
-  raise "didn't get a dot symbol in call" unless rest[1] == :"."
-  raise "didn't get ident in call" unless rest[2][0] == :"@ident"
-
-  ident = rest[2][1]
-  format_expression(ps, rest[0])
-  ps.start_of_line << false
-  ps.emit_dot
-  ps.emit_ident(ident)
-  ps.start_of_line.pop
 end
 
 def format_method_add_block(ps, rest)
@@ -337,22 +359,41 @@ end
 def format_method_add_arg(ps, rest)
   type, call_rest = rest[0], rest[1...rest.length]
 
-  ident = rest[0][1]
+  ps.emit_indent if ps.start_of_line.last
 
-  params = if rest[1][0] == :arg_paren
-             rest[1][1]
-           else
-             rest[1]
-           end
-  build = [ident, params]
+  ps.start_of_line << false
+  format_expression(ps, type)
+  ps.start_of_line.pop
 
-  format_command(ps, build)
+  raise "got call rest longer than one" if call_rest.length > 1
+  args_list = call_rest[0]
+  if args_list[0] == :arg_paren
+    args_list = args_list[1]
+  elsif args_list[0] == :args_add_block
+  else
+    raise "got non call paren args list"
+  end
+  raise "got non args list" if args_list[0] != :args_add_block
+
+  ps.start_of_line << false
+
+  ps.emit_open_paren
+
+  args_list[1].each do |expr|
+    format_expression(ps, expr)
+  end
+
+  ps.emit_close_paren
+
+  ps.start_of_line.pop
+  ps.emit_newline if ps.start_of_line.last
 end
 
 def format_command(ps, rest)
   ident = rest[0]
-  raise "got non ident in the first position" if rest[0][0] != :"@ident"
-  ps.emit_ident(ident[1])
+  {
+    :"@ident" => lambda { ps.emit_ident(ident[1]) },
+  }.fetch(rest[0][0]).call
 
   ps.emit_open_paren
   ps.start_of_line << false
@@ -364,8 +405,10 @@ def format_command(ps, rest)
     format_expression(ps, expr)
   end
 
-  ps.start_of_line.pop
   ps.emit_close_paren
+
+  ps.start_of_line.pop
+  ps.emit_newline if ps.start_of_line.last
 end
 
 def format_vcall(ps, rest)
@@ -373,7 +416,114 @@ def format_vcall(ps, rest)
   raise "didn't get an ident" if rest[0][0] != :"@ident"
 
   ps.emit_ident(rest[0][1])
+  ps.emit_newline if ps.start_of_line.last
+end
+
+def format_string_literal(ps, rest)
+  raise "didn't get exactly one part" if rest.count != 1
+  raise "didn't get string content" if rest[0][0] != :string_content
+  raise "didn't get tstring content" if rest[0][1][0] != :"@tstring_content"
+
+  ps.emit_string_literal(rest[0][1][1])
+end
+
+def format_module(ps, rest)
+  module_name = rest[0]
+  raise "didn't get a const ref" if module_name[0] != :const_ref
+  raise "didn't get a const" if module_name[1][0] != :"@const"
+
+  ps.emit_indent
+  ps.emit_module_keyword
+  ps.start_of_line << false
+  ps.emit_space
+  ps.emit_const(module_name[1][1])
+  ps.start_of_line.pop
   ps.emit_newline
+
+
+  ps.new_block do
+    exprs = rest[1][1]
+    exprs.each do |expr|
+      format_expression(ps, expr)
+    end
+  end
+
+  ps.emit_end
+  ps.emit_newline if ps.start_of_line.last
+end
+
+def format_fcall(ps, rest)
+  raise "omg" if rest.length != 1
+  {
+    :@ident => lambda { ps.emit_ident(rest[0][1]) },
+    :@const => lambda { ps.emit_const(rest[0][1]) },
+  }.fetch(rest[0][0]).call
+end
+
+def format_class(ps, rest)
+  class_name = rest[0]
+  raise "didn't get a const ref" if class_name[0] != :const_ref
+  raise "didn't get a const" if class_name[1][0] != :"@const"
+
+  ps.emit_indent
+  ps.emit_class_keyword
+  ps.start_of_line << false
+  ps.emit_space
+  ps.emit_const(class_name[1][1])
+  ps.start_of_line.pop
+  ps.emit_newline
+
+  if rest[1] != nil
+      raise "got inheritance?"
+  end
+
+  ps.new_block do
+    exprs = rest[2][1]
+    exprs.each do |expr|
+      format_expression(ps, expr)
+    end
+  end
+
+  ps.emit_end
+end
+
+def format_const_path_ref(ps, rest)
+  expr, const = rest
+
+  ps.start_of_line << false
+  format_expression(ps, expr)
+  ps.emit_double_colon
+  raise "cont a non const" if const[0] != :"@const"
+  ps.emit_const(const[1])
+  ps.start_of_line.pop
+  if ps.start_of_line.last
+    ps.emit_newline
+  end
+end
+
+def format_call(ps, rest)
+  raise "got non 3 length rest" if rest.length != 3
+  front = rest[0]
+  dot = rest[1]
+  back = rest[2]
+
+  raise "got non dot middle" if dot != :"."
+
+  ps.start_of_line << false
+  format_expression(ps, front)
+  ps.emit_dot
+  format_expression(ps, back)
+  ps.start_of_line.pop
+  ps.emit_newline if ps.start_of_line.last
+end
+
+def format_ident(ps, ident)
+  ps.emit_ident(ident[0])
+end
+
+def format_symbol_literal(ps, literal)
+  raise "didn't get ident in right position" if literal[0][1][0] != :"@ident"
+  ps.emit_symbol(literal[0][1][1])
 end
 
 def format_expression(ps, expression)
@@ -390,6 +540,14 @@ def format_expression(ps, expression)
     :command => lambda { |ps, rest| format_command(ps, rest) },
     :method_add_arg => lambda { |ps, rest| format_method_add_arg(ps, rest) },
     :vcall => lambda { |ps, rest| format_vcall(ps, rest) },
+    :fcall => lambda { |ps, rest| format_fcall(ps, rest) },
+    :string_literal => lambda { |ps, rest| format_string_literal(ps, rest) },
+    :module => lambda { |ps, rest| format_module(ps, rest) },
+    :class => lambda { |ps, rest| format_class(ps, rest) },
+    :call => lambda { |ps, rest| format_call(ps, rest) },
+    :const_path_ref => lambda { |ps, rest| format_const_path_ref(ps, rest) },
+    :@ident => lambda { |ps, rest| format_ident(ps, rest) },
+    :symbol_literal => lambda { |ps, rest| format_symbol_literal(ps, rest) },
   }.fetch(type).call(ps, rest)
 end
 
