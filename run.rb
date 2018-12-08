@@ -301,11 +301,12 @@ end
 
 def format_method_add_block(ps, rest)
   raise "got something other than call in method_add_block" unless rest[0][0] == :call
+  ps.emit_indent
   call_rest = rest[0][1...rest[0].length]
+  ps.start_of_line << false
   format_call(ps, call_rest)
   ps.emit_space
 
-  ps.start_of_line << false
   # rest[1] is a do_block or a curly block, which are both expressions
   format_expression(ps, rest[1])
   ps.start_of_line.pop
