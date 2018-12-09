@@ -463,6 +463,8 @@ def format_string_literal(ps, rest)
   raise "didn't get string content" if rest[0][0] != :string_content
   raise "didn't get tstring content" if rest[0][1][0] != :"@tstring_content"
 
+  ps.emit_indent if ps.start_of_line.last
+
   ps.emit_string_literal(rest[0][1][1])
 end
 
@@ -681,12 +683,51 @@ def format_return(ps, rest)
   ps.emit_newline if ps.start_of_line.last
 end
 
+def format_conditional_parts(ps, further_conditionals)
+  type = further_conditionals[0]
+  case type
+  when :else
+    _, body = further_conditionals
+    ps.emit_ident("else")
+    ps.emit_newline
+    ps.start_of_line << true
+
+    ps.new_block do
+      body.each do |expr|
+        format_expression(ps, expr)
+      end
+    end
+    ps.start_of_line.pop
+  when :elsif
+    _, cond, body, further_conditionals = further_conditionals
+
+    ps.emit_ident("elsif")
+    ps.emit_space
+
+    ps.start_of_line << false
+    format_expression(ps, cond)
+    ps.start_of_line.pop
+
+    ps.emit_newline
+    ps.start_of_line << true
+
+    ps.new_block do
+      body.each do |expr|
+        format_expression(ps, expr)
+      end
+    end
+    ps.start_of_line.pop
+    ps.emit_newline
+
+    format_conditional_parts(ps, further_conditionals)
+  else
+    raise "didn't get a known type in format conditional parts"
+  end
+end
+
 def format_if(ps, expression)
   ps.push_conditional_indent
   if_conditional, body, further_conditionals = expression[0], expression[1], expression[2]
-  pp if_conditional
-  pp body
-  pp further_conditionals
 
   ps.emit_indent if ps.start_of_line.last
   ps.start_of_line << false
@@ -703,13 +744,14 @@ def format_if(ps, expression)
   end
 
   ps.start_of_line << true
+  ps.emit_newline
+  format_conditional_parts(ps, further_conditionals)
+
   ps.emit_end
   ps.start_of_line.pop
 
   ps.pop_conditional_indent
   ps.emit_newline
-
-  raise "really omg" if further_conditionals != nil
 end
 
 def format_expression(ps, expression)
