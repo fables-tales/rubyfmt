@@ -49,47 +49,76 @@ class Line
   def declares_private?
     parts.any? { |x| x == "private" } && parts.length == 3
   end
+
+  def declares_require?
+    parts.any? { |x| x == "require" }
+  end
 end
 
 def want_blankline?(line, next_line)
   return unless next_line
   return true if line.contains_end? && !next_line.contains_end?
   return true if next_line.contains_do? && !line.contains_def?
+  return true if line.declares_private?
+  return true if line.declares_require? && !next_line.declares_require?
 end
 
 class ParserState
   attr_accessor :depth, :start_of_line, :line
 
-  def initialize(result)
+  def initialize(result, comments_hash)
     @result = result
     @depth = 0
     @start_of_line = [true]
     @render_queue = []
     @line = []
+    @current_orig_line_number = 0
+    @comments_hash = comments_hash
+  end
+
+  def on_line(line_number)
+    while !comments_hash.empty? && comments_hash.keys.sort.first < line_number
+      key = comments_hash.keys.sort.first
+      @render_queue << [comments_hash.delete(key), "\n"]
+    end
+
+    @current_orig_line_number = line_number
   end
 
   def write
-    while render_queue.last == []
-      render_queue.pop
-    end
-
-    while render_queue.last == ["\n"]
-      render_queue.pop
-    end
+    clear_empty_trailing_lines
 
     lines = render_queue.map { |item| Line.new(item) }
 
-    line = lines.first
-    next_index = 1
-    while next_index < lines.length
-      if line.ends_with_newline? && lines[next_index] && lines[next_index].is_only_a_newline?
-        lines.delete_at(next_index)
-      end
+    clear_double_spaces(lines)
+    add_valid_blanklines(lines)
 
-      line = lines[next_index]
-      next_index += 1
+    lines.each do |line|
+      line.remove_redundant_indents
     end
 
+    ensure_file_ends_with_exactly_one_newline(lines)
+
+    result.write("\n")
+    result.flush
+  end
+
+  def emit_comma_space
+    line << ", "
+  end
+
+
+  def ensure_file_ends_with_exactly_one_newline(lines)
+    lines.each_with_index do |line, i|
+      if i == lines.length-1
+        line.strip_trailing_newlines
+      end
+
+      result.write(line)
+    end
+  end
+
+  def add_valid_blanklines(lines)
     line = lines.first
     next_index = 1
     while next_index < lines.length
@@ -101,27 +130,29 @@ class ParserState
       line = lines[next_index]
       next_index += 1
     end
+  end
 
-    lines.each do |line|
-      line.remove_redundant_indents
-    end
-
-    lines.each do |line|
-      if line.declares_private?
-        line.parts << "\n"
-      end
-    end
-
-    lines.each_with_index do |line, i|
-      if i == lines.length-1
-        line.strip_trailing_newlines
+  def clear_double_spaces(lines)
+    line = lines.first
+    next_index = 1
+    while next_index < lines.length
+      if line.ends_with_newline? && lines[next_index] && lines[next_index].is_only_a_newline?
+        lines.delete_at(next_index)
       end
 
-      result.write(line)
+      line = lines[next_index]
+      next_index += 1
+    end
+  end
+
+  def clear_empty_trailing_lines
+    while render_queue.last == []
+      render_queue.pop
     end
 
-    result.write("\n")
-    result.flush
+    while render_queue.last == ["\n"]
+      render_queue.pop
+    end
   end
 
   def emit_indent
@@ -241,7 +272,9 @@ class ParserState
 
   private
 
-  attr_reader :result, :render_queue
+  attr_reader :result
+  attr_reader :render_queue
+  attr_reader :comments_hash
 end
 
 def format_params_list(ps, params_list)
@@ -258,6 +291,8 @@ end
 
 def format_def(ps, rest)
   def_name = rest[0][1]
+  line_number = rest[0][2][0]
+  ps.on_line(line_number)
   params = rest[1]
 
   body_expressions = rest[2][1]
@@ -321,6 +356,8 @@ end
 
 def format_var_ref(ps, rest)
   ref = rest[0][1]
+  line_number = rest[0][2][0]
+  ps.on_line(line_number)
   ps.emit_var_ref(ref)
 end
 
@@ -376,17 +413,7 @@ def format_method_add_arg(ps, rest)
   end
   raise "got non args list" if args_list[0] != :args_add_block
 
-  ps.start_of_line << false
-
-  ps.emit_open_paren
-
-  args_list[1].each do |expr|
-    format_expression(ps, expr)
-  end
-
-  ps.emit_close_paren
-
-  ps.start_of_line.pop
+  format_args_add_block(ps, args_list)
   ps.emit_newline if ps.start_of_line.last
 end
 
@@ -396,19 +423,8 @@ def format_command(ps, rest)
     :"@ident" => lambda { ps.emit_ident(ident[1]) },
   }.fetch(rest[0][0]).call
 
-  ps.emit_open_paren
-  ps.start_of_line << false
-
   args_list = rest[1]
-  raise "got non args list" if args_list[0] != :args_add_block
-
-  args_list[1].each do |expr|
-    format_expression(ps, expr)
-  end
-
-  ps.emit_close_paren
-
-  ps.start_of_line.pop
+  format_args_add_block(ps, args_list)
   ps.emit_newline if ps.start_of_line.last
 end
 
@@ -430,14 +446,15 @@ end
 
 def format_module(ps, rest)
   module_name = rest[0]
-  raise "didn't get a const ref" if module_name[0] != :const_ref
-  raise "didn't get a const" if module_name[1][0] != :"@const"
 
   ps.emit_indent
   ps.emit_module_keyword
+
   ps.start_of_line << false
+
   ps.emit_space
-  ps.emit_const(module_name[1][1])
+  format_expression(ps, module_name)
+
   ps.start_of_line.pop
   ps.emit_newline
 
@@ -508,6 +525,9 @@ def format_call(ps, rest)
   dot = rest[1]
   back = rest[2]
 
+  line_number = back.last.first
+  ps.on_line(line_number)
+
   raise "got non dot middle" if dot != :"."
 
   ps.start_of_line << false
@@ -525,6 +545,47 @@ end
 def format_symbol_literal(ps, literal)
   raise "didn't get ident in right position" if literal[0][1][0] != :"@ident"
   ps.emit_symbol(literal[0][1][1])
+end
+
+def format_command_call(ps, expression)
+  left, dot, right, args = expression
+  ps.start_of_line << false
+
+  format_expression(ps, left)
+  raise "got something other than a dot" if dot != :"."
+  ps.emit_dot
+  format_expression(ps, right)
+  format_args_add_block(ps, args)
+
+  ps.start_of_line.pop
+  ps.emit_newline if ps.start_of_line.last
+end
+
+def format_args_add_block(ps, args_list)
+  raise "got non args list" if args_list[0] != :args_add_block
+  ps.emit_open_paren
+  ps.start_of_line << false
+
+  args_list[1].each do |expr|
+    format_expression(ps, expr)
+    ps.emit_comma_space unless expr == args_list[1].last
+  end
+
+  ps.emit_close_paren
+
+  ps.start_of_line.pop
+end
+
+def format_const_ref(ps, expression)
+  raise "got more tahn one thing in const ref" if expression.length != 1
+  format_expression(ps, expression[0])
+end
+
+def format_const(ps, expression)
+  line_number = expression.last.first
+  ps.on_line(line_number)
+  raise "didn't get exactly a const" if expression.length != 2
+  ps.emit_const(expression[0])
 end
 
 def format_expression(ps, expression)
@@ -549,12 +610,15 @@ def format_expression(ps, expression)
     :const_path_ref => lambda { |ps, rest| format_const_path_ref(ps, rest) },
     :@ident => lambda { |ps, rest| format_ident(ps, rest) },
     :symbol_literal => lambda { |ps, rest| format_symbol_literal(ps, rest) },
+    :command_call => lambda { |ps, rest| format_command_call(ps, rest) },
+    :const_ref => lambda { |ps, rest| format_const_ref(ps, rest) },
+    :"@const" => lambda { |ps, rest| format_const(ps, rest) },
   }.fetch(type).call(ps, rest)
 end
 
-def format_program(sexp, result)
+def format_program(comments_hash, sexp, result)
   program, expressions = sexp
-  ps = ParserState.new(result)
+  ps = ParserState.new(result, comments_hash)
   expressions.each do |expression|
     format_expression(ps, expression)
   end
@@ -562,9 +626,24 @@ ensure
   ps.write
 end
 
+def build_comments_hash(file_data)
+  comment_blocks = {}
+  file_data.split("\n").each_with_index do |line, index|
+    if /^ *#/ === line
+      comment_blocks[index] = line
+    end
+  end
+
+  comment_blocks
+end
+
 def main
-  sexp = Ripper.sexp(File.read(FILE))
-  format_program(sexp, $stdout)
+  file_data = File.read(FILE)
+  file_data = file_data.gsub("\r\n", "\n")
+
+  comments_hash = build_comments_hash(file_data)
+  sexp = Ripper.sexp(file_data)
+  format_program(comments_hash, sexp, $stdout)
 end
 
 main
