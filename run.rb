@@ -290,12 +290,15 @@ def format_block_params_list(ps, params_list)
 end
 
 def format_def(ps, rest)
-  def_name = rest[0][1]
-  line_number = rest[0][2][0]
-  ps.on_line(line_number)
-  params = rest[1]
+  def_expression, params, body = rest
 
-  body_expressions = rest[2][1]
+  def_name = def_expression[1]
+
+  line_number = def_expression.last.first
+  ps.on_line(line_number)
+
+  params = rest[1]
+  body = rest[2]
 
   ps.emit_indent
   ps.emit_def(def_name)
@@ -307,9 +310,7 @@ def format_def(ps, rest)
 
   ps.emit_newline
   ps.new_block do
-    body_expressions.each do |expression|
-      format_expression(ps, expression)
-    end
+    format_expression(ps, body)
   end
 
   ps.emit_end
@@ -588,6 +589,43 @@ def format_const(ps, expression)
   ps.emit_const(expression[0])
 end
 
+def format_defs(ps, rest)
+  head, period, tail, params, body = rest
+  ps.emit_ident("def")
+  ps.emit_space
+  ps.start_of_line << false
+  format_expression(ps, head)
+  ps.emit_dot
+  format_expression(ps, tail)
+
+  if params[1] != nil
+    params_list = params[1][1]
+    format_params_list(ps, params_list)
+  end
+  ps.emit_newline
+  ps.start_of_line.pop
+  ps.new_block do
+    format_expression(ps, body)
+  end
+  ps.emit_newline if ps.start_of_line.last
+  raise "omg"
+end
+
+def format_kw(ps, rest)
+  ps.emit_ident(rest[0])
+  ps.on_line(rest.last.first)
+end
+
+def format_bodystmt(ps, rest)
+  expressions = rest[0]
+  if rest[1...-1].any? {|x| x != nil }
+    raise "got something other than a nil in a format body statement"
+  end
+  expressions.each do |line|
+    format_expression(ps, line)
+  end
+end
+
 def format_expression(ps, expression)
   type, rest = expression[0],expression[1...expression.length]
   {
@@ -613,6 +651,9 @@ def format_expression(ps, expression)
     :command_call => lambda { |ps, rest| format_command_call(ps, rest) },
     :const_ref => lambda { |ps, rest| format_const_ref(ps, rest) },
     :"@const" => lambda { |ps, rest| format_const(ps, rest) },
+    :defs => lambda { |ps, rest| format_defs(ps, rest) },
+    :@kw => lambda { |ps, rest| format_kw(ps, rest) },
+    :bodystmt => lambda { |ps, rest| format_bodystmt(ps, rest) },
   }.fetch(type).call(ps, rest)
 end
 
