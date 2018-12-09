@@ -68,12 +68,13 @@ class ParserState
 
   def initialize(result, comments_hash)
     @result = result
-    @depth = 0
+    @depth_stack = [0]
     @start_of_line = [true]
     @render_queue = []
     @line = []
     @current_orig_line_number = 0
     @comments_hash = comments_hash
+    @conditional_indent = [0]
   end
 
   def on_line(line_number)
@@ -89,7 +90,6 @@ class ParserState
     clear_empty_trailing_lines
 
     lines = render_queue.map { |item| Line.new(item) }
-
     clear_double_spaces(lines)
     add_valid_blanklines(lines)
 
@@ -103,8 +103,32 @@ class ParserState
     result.flush
   end
 
+  def emit_indent
+    spaces = (@conditional_indent.last) + (2 * @depth_stack.last)
+    line << " " * spaces
+  end
+
+  def push_conditional_indent
+    if self.line.empty?
+      @conditional_indent << 2*@depth_stack.last
+    else
+      @conditional_indent << line.join("").length
+    end
+
+    @depth_stack << 0
+  end
+
+  def pop_conditional_indent
+    @conditional_indent.pop
+    @depth_stack.pop
+  end
+
   def emit_comma_space
     line << ", "
+  end
+
+  def emit_return
+    line << :return
   end
 
 
@@ -136,7 +160,7 @@ class ParserState
     line = lines.first
     next_index = 1
     while next_index < lines.length
-      if line.ends_with_newline? && lines[next_index] && lines[next_index].is_only_a_newline?
+      while line.ends_with_newline? && lines[next_index] && lines[next_index].is_only_a_newline?
         lines.delete_at(next_index)
       end
 
@@ -153,10 +177,6 @@ class ParserState
     while render_queue.last == ["\n"]
       render_queue.pop
     end
-  end
-
-  def emit_indent
-    line << " " * (2 * depth)
   end
 
   def emit_def(def_name)
@@ -229,13 +249,13 @@ class ParserState
   end
 
   def new_block(&blk)
-    self.depth += 1
-    self.start_of_line << true
+    depth_stack[-1] += 1
+    start_of_line << true
 
     blk.call
 
-    self.start_of_line.pop
-    self.depth -= 1
+    start_of_line.pop
+    depth_stack[-1] -= 1
   end
 
   def emit_open_block_arg_list
@@ -275,6 +295,7 @@ class ParserState
   attr_reader :result
   attr_reader :render_queue
   attr_reader :comments_hash
+  attr_reader :depth_stack
 end
 
 def format_params_list(ps, params_list)
@@ -626,9 +647,75 @@ def format_bodystmt(ps, rest)
   end
 end
 
+def format_if_mod(ps, rest)
+  format_conditional_mod(ps, rest, "if")
+end
+
+def format_unless_mod(ps, rest)
+  format_conditional_mod(ps, rest, "unless")
+end
+
+def format_conditional_mod(ps, rest, conditional_type)
+  conditional, guarded_expression = rest
+  ps.emit_indent if ps.start_of_line.last
+  ps.start_of_line << false
+
+  format_expression(ps, guarded_expression)
+  ps.emit_space
+  ps.emit_ident(conditional_type)
+  ps.emit_space
+  format_expression(ps, conditional)
+  ps.start_of_line.pop
+  ps.emit_newline if ps.start_of_line.last
+end
+
+def format_return(ps, rest)
+  raise "got wrong size return args" if rest.length != 1
+  raise "didn't get args add block to return" if rest.first.first != :args_add_block
+  ps.emit_indent if ps.start_of_line.last
+  ps.start_of_line << false
+  ps.emit_return
+  ps.emit_space
+  format_expression(ps, rest.first[1].first)
+  ps.start_of_line.pop
+  ps.emit_newline if ps.start_of_line.last
+end
+
+def format_if(ps, expression)
+  ps.push_conditional_indent
+  if_conditional, body, further_conditionals = expression[0], expression[1], expression[2]
+  pp if_conditional
+  pp body
+  pp further_conditionals
+
+  ps.emit_indent if ps.start_of_line.last
+  ps.start_of_line << false
+  ps.emit_ident("if")
+  ps.emit_space
+  format_expression(ps, if_conditional)
+  ps.start_of_line.pop
+
+  ps.emit_newline
+  ps.new_block do
+    body.each do |expr|
+      format_expression(ps, expr)
+    end
+  end
+
+  ps.start_of_line << true
+  ps.emit_end
+  ps.start_of_line.pop
+
+  ps.pop_conditional_indent
+  ps.emit_newline
+
+  raise "really omg" if further_conditionals != nil
+end
+
 def format_expression(ps, expression)
   type, rest = expression[0],expression[1...expression.length]
   {
+    :return => lambda { |ps, rest| format_return(ps, rest) },
     :def => lambda { |ps, rest| format_def(ps, rest) },
     :void_stmt => lambda { |ps, rest| format_void_expression(ps, rest) },
     :assign => lambda { |ps, rest| format_assign_expression(ps, rest) },
@@ -654,6 +741,9 @@ def format_expression(ps, expression)
     :defs => lambda { |ps, rest| format_defs(ps, rest) },
     :@kw => lambda { |ps, rest| format_kw(ps, rest) },
     :bodystmt => lambda { |ps, rest| format_bodystmt(ps, rest) },
+    :if_mod => lambda { |ps, rest| format_if_mod(ps, rest) },
+    :unless_mod => lambda { |ps, rest| format_unless_mod(ps, rest) },
+    :if => lambda { |ps, rest| format_if(ps, rest) },
   }.fetch(type).call(ps, rest)
 end
 
