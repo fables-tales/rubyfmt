@@ -193,11 +193,6 @@ class ParserState
   end
 
   def emit_params_list(params_list)
-    build = params_list.map { |x|
-      raise "got a non ident param" if x[0] != :"@ident"
-      x[1]
-    }.join(", ")
-    line << build
   end
 
   def emit_binary(symbol)
@@ -327,7 +322,7 @@ def format_def(ps, rest)
   ps.emit_indent
   ps.emit_def(def_name)
 
-  format_params(ps, params)
+  format_params(ps, params, "(", ")")
 
   ps.emit_newline
   ps.new_block do
@@ -339,25 +334,35 @@ def format_def(ps, rest)
   ps.emit_newline
 end
 
-def format_params(ps, params)
-  if params[0] == :paren
+def format_required_params(ps, required_params)
+  build = required_params.map { |x|
+    raise "got a non ident param #{x}" if x[0] != :"@ident"
+    x[1]
+  }.join(", ")
+  ps.emit_ident(build)
+end
+
+def format_params(ps, params, open_delim, close_delim)
+  return if params.nil?
+  if params[0] == :paren || params[0] == :block_var
     params = params[1]
   end
 
   have_any_params = params[1...-1].any? { |x| !x.nil? }
 
   if have_any_params
-    ps.emit_open_paren
+    ps.emit_ident(open_delim)
   end
 
   raise "dont know how to deal with aprams list" if params[2...-1].any? { |x| !x.nil? }
 
-  params_list = params[1] || []
+  required_params = params[1] || []
+  optional_params = params[2] || []
 
-  ps.emit_params_list(params_list)
+  format_required_params(ps, required_params)
 
   if have_any_params
-    ps.emit_close_paren
+    ps.emit_ident(close_delim)
   end
 end
 
@@ -432,19 +437,19 @@ def format_binary(ps, rest)
 end
 
 def format_do_block(ps, rest)
+  raise "got bad block #{rest.inspect}" if rest.length != 2
+  params, body = rest
+
   ps.start_of_line
 
   ps.emit_do
 
-  if rest[0] != nil
-    ps.emit_space
-    format_block_params_list(ps, rest[0][1][1])
-  end
+  format_params(ps, params, " |", "|")
 
   ps.emit_newline
 
   ps.new_block do
-    rest[1].each do |expr|
+    body.each do |expr|
       format_expression(ps, expr)
     end
   end
@@ -678,7 +683,7 @@ def format_defs(ps, rest)
   ps.emit_dot
   format_expression(ps, tail)
 
-  format_params(ps, params)
+  format_params(ps, params, "(", ")")
   ps.emit_newline
   ps.start_of_line.pop
   ps.new_block do
