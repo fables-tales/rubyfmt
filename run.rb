@@ -342,6 +342,22 @@ def format_required_params(ps, required_params)
   ps.emit_ident(build)
 end
 
+def format_optional_params(ps, optional_params)
+  ps.start_of_line << false
+
+  optional_params.each_with_index do |param, i|
+    left,right = param
+    format_expression(ps, left)
+    ps.emit_ident("=")
+    format_expression(ps, right)
+    if i != optional_params.length - 1
+      ps.emit_ident(", ")
+    end
+  end
+
+  ps.start_of_line.pop
+end
+
 def format_params(ps, params, open_delim, close_delim)
   return if params.nil?
   if params[0] == :paren || params[0] == :block_var
@@ -354,12 +370,13 @@ def format_params(ps, params, open_delim, close_delim)
     ps.emit_ident(open_delim)
   end
 
-  raise "dont know how to deal with aprams list" if params[2...-1].any? { |x| !x.nil? }
+  raise "dont know how to deal with aprams list" if params[3...-1].any? { |x| !x.nil? }
 
   required_params = params[1] || []
   optional_params = params[2] || []
 
   format_required_params(ps, required_params)
+  format_optional_params(ps, optional_params)
 
   if have_any_params
     ps.emit_ident(close_delim)
@@ -427,7 +444,7 @@ def format_var_ref(ps, rest)
 end
 
 def format_binary(ps, rest)
-  ps.indent if ps.start_of_line.last
+  ps.emit_indent if ps.start_of_line.last
 
   ps.start_of_line << false
   format_expression(ps, rest[0])
@@ -569,11 +586,15 @@ def format_class(ps, rest)
   ps.emit_const(class_name[1][1])
   ps.on_line(class_name[1][2].first)
   ps.start_of_line.pop
-  ps.emit_newline
 
   if rest[1] != nil
-      raise "got inheritance?"
+    ps.emit_ident(" < ")
+    ps.start_of_line << false
+    format_expression(ps, rest[1])
+    ps.start_of_line.pop
   end
+
+  ps.emit_newline
 
   ps.new_block do
     exprs = rest[2][1]
@@ -827,6 +848,31 @@ def format_ivar(ps, rest)
   ps.emit_ident(rest[0])
 end
 
+def format_top_const_ref(ps, rest)
+  raise "got bad top const ref" if rest.length != 1
+  ps.emit_indent if ps.start_of_line.last
+  ps.emit_double_colon
+  ps.emit_ident(rest[0][1])
+end
+
+def format_super(ps, rest)
+  return if rest.nil?
+  raise "got bad super" if rest.length != 1
+  args = rest[0]
+  if rest[0][0] == :arg_paren
+    args = rest[0][1]
+  end
+
+  raise "nope args" if args[0] != :args_add_block
+
+  ps.emit_indent if ps.start_of_line.last
+  ps.emit_ident("super")
+
+  ps.start_of_line << false
+  format_args_add_block(ps, args)
+  ps.start_of_line.pop
+end
+
 def format_expression(ps, expression)
   type, rest = expression[0],expression[1...expression.length]
   {
@@ -862,6 +908,8 @@ def format_expression(ps, expression)
     :opassign => lambda { |ps, rest| format_opassign(ps, rest) },
     :var_field => lambda { |ps, rest| format_var_field(ps, rest) },
     :@ivar => lambda { |ps, rest| format_ivar(ps, rest) },
+    :top_const_ref => lambda { |ps, rest| format_top_const_ref(ps, rest) },
+    :super => lambda { |ps, rest| format_super(ps, rest) },
   }.fetch(type).call(ps, rest)
 end
 
