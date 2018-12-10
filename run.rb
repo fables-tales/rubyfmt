@@ -108,6 +108,14 @@ class ParserState
     line << " " * spaces
   end
 
+  def emit_else
+    line << "else"
+  end
+
+  def emit_elsif
+    line << "elsif"
+  end
+
   def push_conditional_indent
     if self.line.empty?
       @conditional_indent << 2*@depth_stack.last
@@ -226,8 +234,11 @@ class ParserState
   end
 
   def emit_ident(ident)
-    emit_indent if start_of_line.last
     line << ident
+  end
+
+  def emit_equals
+    line << "="
   end
 
   def emit_int(int)
@@ -342,15 +353,26 @@ end
 def format_void_expression(ps, rest)
 end
 
+def format_opassign(ps, rest)
+  head, op, tail = rest
+  format_expression(ps, head)
+  ps.emit_space
+
+  pp op
+
+  raise "omg"
+end
+
 def format_assign_expression(ps, rest)
   raise "got something other than var field in assignment" unless rest[0][0] == :var_field
-  variable = rest[0][1][1]
-  expression = rest[1]
-
-  ps.emit_assignment(variable)
+  head, tail = rest
+  format_expression(ps, head)
+  ps.emit_space
+  ps.emit_equals
+  ps.emit_space
 
   ps.start_of_line << false
-  format_expression(ps, expression)
+  format_expression(ps, tail)
   ps.start_of_line.pop
 
   ps.emit_newline
@@ -440,9 +462,13 @@ def format_method_add_arg(ps, rest)
 end
 
 def format_command(ps, rest)
+  # this is definitely wrong
   ident = rest[0]
   {
-    :"@ident" => lambda { ps.emit_ident(ident[1]) },
+    :"@ident" => lambda {
+      ps.emit_indent if ps.start_of_line.last
+      ps.emit_ident(ident[1])
+    },
   }.fetch(rest[0][0]).call
 
   args_list = rest[1]
@@ -454,6 +480,7 @@ def format_vcall(ps, rest)
   raise "didn't get exactly one part" if rest.count != 1
   raise "didn't get an ident" if rest[0][0] != :"@ident"
 
+  ps.emit_indent if ps.start_of_line.last
   ps.emit_ident(rest[0][1])
   ps.emit_newline if ps.start_of_line.last
 end
@@ -495,10 +522,17 @@ def format_module(ps, rest)
 end
 
 def format_fcall(ps, rest)
+  # this is definitely wrong
   raise "omg" if rest.length != 1
   {
-    :@ident => lambda { ps.emit_ident(rest[0][1]) },
-    :@const => lambda { ps.emit_const(rest[0][1]) },
+    :@ident => lambda {
+      ps.emit_indent if ps.start_of_line.last
+      ps.emit_ident(rest[0][1])
+    },
+    :@const => lambda {
+      ps.emit_indent if ps.start_of_line.last
+      ps.emit_const(rest[0][1])
+    },
   }.fetch(rest[0][0]).call
 end
 
@@ -512,6 +546,7 @@ def format_class(ps, rest)
   ps.start_of_line << false
   ps.emit_space
   ps.emit_const(class_name[1][1])
+  ps.on_line(class_name[1][2].first)
   ps.start_of_line.pop
   ps.emit_newline
 
@@ -527,6 +562,7 @@ def format_class(ps, rest)
   end
 
   ps.emit_end
+  ps.emit_newline if ps.start_of_line.last
 end
 
 def format_const_path_ref(ps, rest)
@@ -549,6 +585,8 @@ def format_call(ps, rest)
   dot = rest[1]
   back = rest[2]
 
+  ps.emit_indent if ps.start_of_line.last
+
   line_number = back.last.first
   ps.on_line(line_number)
 
@@ -563,6 +601,7 @@ def format_call(ps, rest)
 end
 
 def format_ident(ps, ident)
+  ps.emit_indent if ps.start_of_line.last
   ps.emit_ident(ident[0])
 end
 
@@ -630,8 +669,10 @@ def format_defs(ps, rest)
   ps.new_block do
     format_expression(ps, body)
   end
+
+  ps.emit_end
+
   ps.emit_newline if ps.start_of_line.last
-  raise "omg"
 end
 
 def format_kw(ps, rest)
@@ -688,7 +729,8 @@ def format_conditional_parts(ps, further_conditionals)
   case type
   when :else
     _, body = further_conditionals
-    ps.emit_ident("else")
+    ps.emit_indent
+    ps.emit_else
     ps.emit_newline
     ps.start_of_line << true
 
@@ -701,7 +743,8 @@ def format_conditional_parts(ps, further_conditionals)
   when :elsif
     _, cond, body, further_conditionals = further_conditionals
 
-    ps.emit_ident("elsif")
+    ps.emit_indent
+    ps.emit_elsif
     ps.emit_space
 
     ps.start_of_line << false
@@ -754,6 +797,16 @@ def format_if(ps, expression)
   ps.emit_newline
 end
 
+def format_var_field(ps, rest)
+  raise "didn't get exactly one thing" if rest.length != 1
+  format_expression(ps, rest[0])
+end
+
+def format_ivar(ps, rest)
+  ps.emit_indent if ps.start_of_line.last
+  ps.emit_ident(rest[0])
+end
+
 def format_expression(ps, expression)
   type, rest = expression[0],expression[1...expression.length]
   {
@@ -786,6 +839,9 @@ def format_expression(ps, expression)
     :if_mod => lambda { |ps, rest| format_if_mod(ps, rest) },
     :unless_mod => lambda { |ps, rest| format_unless_mod(ps, rest) },
     :if => lambda { |ps, rest| format_if(ps, rest) },
+    :opassign => lambda { |ps, rest| format_opassign(ps, rest) },
+    :var_field => lambda { |ps, rest| format_var_field(ps, rest) },
+    :@ivar => lambda { |ps, rest| format_ivar(ps, rest) },
   }.fetch(type).call(ps, rest)
 end
 
