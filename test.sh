@@ -1,5 +1,5 @@
 #!/bin/bash
-set -ex
+set -e
 
 for file in `ls fixtures/*_expected.rb`
 do
