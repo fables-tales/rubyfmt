@@ -218,11 +218,6 @@ class ParserState
     line << :do
   end
 
-  def emit_assignment(variable)
-    emit_indent if start_of_line.last
-    line << "#{variable} = "
-  end
-
   def emit_newline
     line << "\n"
     render_queue << line
@@ -237,8 +232,8 @@ class ParserState
     line << ident
   end
 
-  def emit_equals
-    line << "="
+  def emit_op(op)
+    line << op
   end
 
   def emit_int(int)
@@ -310,9 +305,6 @@ class ParserState
 end
 
 def format_params_list(ps, params_list)
-  ps.emit_open_paren
-  ps.emit_params_list(params_list)
-  ps.emit_close_paren
 end
 
 def format_block_params_list(ps, params_list)
@@ -335,10 +327,7 @@ def format_def(ps, rest)
   ps.emit_indent
   ps.emit_def(def_name)
 
-  if params[1] != nil
-    params_list = params[1][1]
-    format_params_list(ps, params_list)
-  end
+  format_params(ps, params)
 
   ps.emit_newline
   ps.new_block do
@@ -350,17 +339,44 @@ def format_def(ps, rest)
   ps.emit_newline
 end
 
+def format_params(ps, params)
+  if params[0] == :paren
+    params = params[1]
+  end
+
+  have_any_params = params[1...-1].any? { |x| !x.nil? }
+
+  if have_any_params
+    ps.emit_open_paren
+  end
+
+  raise "dont know how to deal with aprams list" if params[2...-1].any? { |x| !x.nil? }
+
+  params_list = params[1] || []
+
+  ps.emit_params_list(params_list)
+
+  if have_any_params
+    ps.emit_close_paren
+  end
+end
+
 def format_void_expression(ps, rest)
 end
 
 def format_opassign(ps, rest)
   head, op, tail = rest
+
   format_expression(ps, head)
   ps.emit_space
+  ps.emit_op(op[1])
+  ps.emit_space
 
-  pp op
+  ps.start_of_line << false
+  format_expression(ps, tail)
+  ps.start_of_line.pop
 
-  raise "omg"
+  ps.emit_newline if ps.start_of_line.last
 end
 
 def format_assign_expression(ps, rest)
@@ -368,7 +384,7 @@ def format_assign_expression(ps, rest)
   head, tail = rest
   format_expression(ps, head)
   ps.emit_space
-  ps.emit_equals
+  ps.emit_op("=")
   ps.emit_space
 
   ps.start_of_line << false
@@ -648,11 +664,13 @@ def format_const(ps, expression)
   line_number = expression.last.first
   ps.on_line(line_number)
   raise "didn't get exactly a const" if expression.length != 2
+  ps.emit_indent if ps.start_of_line.last
   ps.emit_const(expression[0])
 end
 
 def format_defs(ps, rest)
   head, period, tail, params, body = rest
+  ps.emit_indent if ps.start_of_line.last
   ps.emit_ident("def")
   ps.emit_space
   ps.start_of_line << false
@@ -660,10 +678,7 @@ def format_defs(ps, rest)
   ps.emit_dot
   format_expression(ps, tail)
 
-  if params[1] != nil
-    params_list = params[1][1]
-    format_params_list(ps, params_list)
-  end
+  format_params(ps, params)
   ps.emit_newline
   ps.start_of_line.pop
   ps.new_block do
