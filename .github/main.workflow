@@ -4,5 +4,5 @@ workflow "New workflow" {
 }
 
 action "./ci/Dockerfile" {
-  uses = "./ci/Dockerfile"
+  uses = "./ci"
 }
