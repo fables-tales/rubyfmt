@@ -274,6 +274,10 @@ class ParserState
     line << "."
   end
 
+  def emit_lonely_operator
+    line << "&."
+  end
+
   def emit_ident(ident)
     line << ident
   end
@@ -699,11 +703,16 @@ def format_call(ps, rest)
   line_number = back.last.first
   ps.on_line(line_number)
 
-  raise "got non dot middle" if dot != :"."
-
   ps.start_of_line << false
   format_expression(ps, front)
-  ps.emit_dot
+  case dot
+  when :"."
+    ps.emit_dot
+  when :"&."
+    ps.emit_lonely_operator
+  else
+    raise "got unrecognised dot"
+  end
   format_expression(ps, back)
   ps.start_of_line.pop
   ps.emit_newline if ps.start_of_line.last
@@ -1084,6 +1093,31 @@ def format_ifop(ps, expression)
   ps.emit_newline if ps.start_of_line.last
 end
 
+def format_assocs(ps, assocs)
+  assocs.each do |assoc|
+    ps.emit_indent
+    ps.with_start_of_line(false) do
+      if assoc[0] == :assoc_new
+        if assoc[1][0] == :@label
+          ps.emit_ident(assoc[1][1])
+          ps.emit_space
+        else
+          format_expression(ps, assoc[1])
+          ps.emit_space
+          ps.emit_ident("=>")
+          ps.emit_space
+        end
+
+        format_expression(ps, assoc[2])
+        ps.emit_ident(",")
+        ps.emit_newline
+      else
+        raise "got non assoc_new in hash literal"
+      end
+    end
+  end
+end
+
 def format_hash(ps, expression)
   ps.emit_indent if ps.start_of_line.last
   if expression == [nil]
@@ -1093,28 +1127,7 @@ def format_hash(ps, expression)
     ps.emit_ident("{")
     ps.emit_newline
     ps.new_block do
-      assocs.each do |assoc|
-        ps.emit_indent
-        if assoc[0] == :assoc_new
-          if assoc[1][0] == :@label
-            ps.emit_ident(assoc[1][1])
-            ps.emit_space
-          else
-            format_expression(ps, assoc[1])
-            ps.with_start_of_line(false) do
-              ps.emit_space
-              ps.emit_ident("=>")
-              ps.emit_space
-            end
-          end
-
-          format_expression(ps, assoc[2])
-          ps.emit_ident(",")
-          ps.emit_newline
-        else
-          raise "got non assoc_new in hash literal"
-        end
-      end
+      format_assocs(ps, assocs)
     end
     ps.emit_indent
     ps.emit_ident("}")
@@ -1148,6 +1161,13 @@ def format_aref(ps, expression)
     ps.emit_ident("]")
   end
   ps.emit_newline if ps.start_of_line.last
+end
+
+def format_bare_assoc_hash(ps, expression)
+  ps.emit_newline
+  ps.new_block do
+    format_assocs(ps, expression[0])
+  end
 end
 
 def format_expression(ps, expression)
@@ -1200,6 +1220,7 @@ def format_expression(ps, expression)
     :aref_field => lambda { |ps, rest| format_aref_field(ps, rest) },
     :aref => lambda { |ps, rest| format_aref(ps, rest) },
     :args_add_block => lambda { |ps, rest| format_args_add_block(ps, rest) },
+    :bare_assoc_hash => lambda { |ps, rest| format_bare_assoc_hash(ps, rest) },
   }.fetch(type).call(ps, rest)
 end
 
