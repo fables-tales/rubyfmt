@@ -117,7 +117,7 @@ class ParserState
   def on_line(line_number)
     while !comments_hash.empty? && comments_hash.keys.sort.first < line_number
       key = comments_hash.keys.sort.first
-      @render_queue << Line.new([comments_hash.delete(key), "\n"])
+      @line.push_comment(comments_hash.delete(key))
     end
 
     @current_orig_line_number = line_number
