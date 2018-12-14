@@ -1,9 +1,14 @@
-workflow "New workflow" {
+workflow "Rubyfmt CI" {
   on = "push"
-  resolves = ["Rubyfmt CI"]
+  resolves = ["CI 2.3", "CI 2.5"]
 }
 
-action "Rubyfmt CI" {
-  uses = "./"
+action "CI 2.3" {
+  uses = "./dockerfiles/2.3"
+  secrets = ["GITHUB_TOKEN"]
+}
+
+action "CI 2.5" {
+  uses = "./dockerfiles/2.5"
   secrets = ["GITHUB_TOKEN"]
 }
