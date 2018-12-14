@@ -6,52 +6,62 @@ FILE = ARGV[0]
 MODE = :inline
 
 class Line
-  attr_reader :parts
-
   def initialize(parts)
     @parts = parts
   end
 
+  def <<(item)
+    @parts << item
+  end
+
+  def string_length
+    @parts.join("").length
+  end
+
+  def empty?
+    @parts.empty?
+  end
+
   def to_s
-    parts.map { |x| x.to_s }.join("")
+    @parts.map { |x| x.to_s }.join("")
   end
 
   def strip_trailing_newlines
-    while parts.last == "\n"
-      parts.pop
+    while @parts.last == "\n"
+      @parts.pop
     end
   end
 
   def remove_redundant_indents
-    parts.shift if parts[0] == ""
+    @parts.shift if @parts[0] == ""
   end
 
   def ends_with_newline?
-    parts.last == "\n"
+    @parts.last == "\n"
   end
 
   def is_only_a_newline?
-    parts == ["\n"]
+    @parts == ["\n"]
   end
 
   def contains_end?
-    parts.any? { |x| x == "end" }
+    @parts.any? { |x| x == "end" }
   end
 
   def contains_def?
-    parts.any? { |x| x == :def }
+    @parts.any? { |x| x == :def }
   end
 
   def contains_do?
-    parts.any? { |x| x == :do }
+    @parts.any? { |x| x == :do }
   end
 
   def declares_private?
-    parts.any? { |x| x == "private" } && parts.length == 3
+    @parts.any? { |x| x == "private" } && @parts.length == 3
   end
 
   def declares_require?
-    parts.any? { |x| x == "require" }
+    @parts.any? { |x| x == "require" }
   end
 end
 
@@ -77,7 +87,7 @@ class ParserState
     @depth_stack = [0]
     @start_of_line = [true]
     @render_queue = []
-    @line = []
+    @line = Line.new([])
     @current_orig_line_number = 0
     @comments_hash = comments_hash
     @conditional_indent = [0]
@@ -97,7 +107,7 @@ class ParserState
   def on_line(line_number)
     while !comments_hash.empty? && comments_hash.keys.sort.first < line_number
       key = comments_hash.keys.sort.first
-      @render_queue << [comments_hash.delete(key), "\n"]
+      @render_queue << Line.new([comments_hash.delete(key), "\n"])
     end
 
     @current_orig_line_number = line_number
@@ -106,7 +116,7 @@ class ParserState
   def write
     clear_empty_trailing_lines
 
-    lines = render_queue.map { |item| Line.new(item) }
+    lines = render_queue
     clear_double_spaces(lines)
     add_valid_blanklines(lines)
 
@@ -138,10 +148,10 @@ class ParserState
   end
 
   def push_conditional_indent
-    if self.line.empty?
+    if line.empty?
       @conditional_indent << 2*@depth_stack.last
     else
-      @conditional_indent << line.join("").length
+      @conditional_indent << line.string_length
     end
 
     @depth_stack << 0
@@ -237,7 +247,7 @@ class ParserState
   def emit_newline
     line << "\n"
     render_queue << line
-    self.line = []
+    self.line = Line.new([])
   end
 
   def emit_dot
