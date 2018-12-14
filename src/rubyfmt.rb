@@ -506,8 +506,20 @@ def format_do_block(ps, rest)
   ps.emit_newline
 
   ps.new_block do
-    body.each do |expr|
-      format_expression(ps, expr)
+    # in ruby 2.5 blocks are bodystmts because blocks support
+    # ```
+    # foo do
+    # rescue
+    # end
+    # ```
+    #
+    # style rescues now
+    if body[0] == :bodystmt
+      format_expression(ps, body)
+    else
+      body.each do |expr|
+        format_expression(ps, expr)
+      end
     end
   end
 
