@@ -1,0 +1,10 @@
+FROM ruby:2.5
+
+ADD Gemfile /app/Gemfile
+ADD Gemfile.lock /app/Gemfile.lock
+
+WORKDIR /app
+
+RUN bundle install
+
+CMD cd /github/workspace && ./ci/run.sh
