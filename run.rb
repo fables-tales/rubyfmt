@@ -7,7 +7,12 @@ MODE = :inline
 
 class Line
   def initialize(parts)
+    @comments = []
     @parts = parts
+  end
+
+  def push_comment(comment)
+    @comments << comment
   end
 
   def <<(item)
@@ -23,7 +28,12 @@ class Line
   end
 
   def to_s
-    @parts.map { |x| x.to_s }.join("")
+    build = @parts.join("")
+    unless @comments.empty?
+      build = "#{@comments.join("\n")}\n#{build}"
+    end
+
+    build
   end
 
   def strip_trailing_newlines
