@@ -2,6 +2,7 @@ RSpec::Support.require_rspec_core("formatters/console_codes")
 RSpec::Support.require_rspec_core("formatters/exception_presenter")
 RSpec::Support.require_rspec_core("formatters/helpers")
 RSpec::Support.require_rspec_core("shell_escape")
+
 module RSpec::Core
   # Notifications are value objects passed to formatters to provide them
   # with information about a particular event of interest.
@@ -22,6 +23,7 @@ module RSpec::Core
     # @attr load_time [Float] the number of seconds taken to boot RSpec
     #                         and load the spec files
     StartNotification = Struct.new(:count, :load_time)
+
     # The `ExampleNotification` represents notifications sent by the reporter
     # which contain information about the current (or soon to be) example.
     # It is used by formatters to access information about that example.
@@ -33,6 +35,7 @@ module RSpec::Core
     #
     # @attr example [RSpec::Core::Example] the current example
     ExampleNotification = Struct.new(:example)
+
     class ExampleNotification
       # @private
       def self.for(example)
@@ -248,17 +251,20 @@ module RSpec::Core
     #   end
     # @attr group [RSpec::Core::ExampleGroup] the current group
     GroupNotification = Struct.new(:group)
+
     # The `MessageNotification` encapsulates generic messages that the reporter
     # sends to formatters.
     #
     # @attr message [String] the message
     MessageNotification = Struct.new(:message)
+
     # The `SeedNotification` holds the seed used to randomize examples and
     # whether that seed has been used or not.
     #
     # @attr seed [Fixnum] the seed used to randomize ordering
     # @attr used [Boolean] whether the seed has been used or not
     SeedNotification = Struct.new(:seed, :used)
+
     class SeedNotification
       # @api
       # @return [Boolean] has the seed been used?
@@ -267,6 +273,7 @@ module RSpec::Core
       end
 
       private(:used)
+
       # @return [String] The seed information fully formatted in the way that
       #   RSpec's built-in formatters emit.
       def fully_formatted
@@ -288,6 +295,7 @@ module RSpec::Core
     #                                                  have occurred processing
     #                                                  the spec suite
     SummaryNotification = Struct.new(:duration, :examples, :failed_examples, :pending_examples, :load_time, :errors_outside_of_examples_count)
+
     class SummaryNotification
       # @api
       # @return [Fixnum] the number of examples run
@@ -418,6 +426,7 @@ module RSpec::Core
       end
 
       attr_reader(:duration, :examples, :number_of_examples)
+
       # @return [Array<RSpec::Core::Example>] the slowest examples
       def slowest_examples
         @slowest_examples ||= examples.sort_by do |example|
@@ -448,6 +457,7 @@ module RSpec::Core
       private
 
       def calculate_slowest_groups
+
         # stop if we've only one example group
         return {} if @example_groups.keys.length <= 1
 
@@ -478,6 +488,7 @@ module RSpec::Core
     # @attr call_site [String] An optional call site from which the deprecation
     #   was issued
     DeprecationNotification = Struct.new(:deprecated, :message, :replacement, :call_site)
+
     class DeprecationNotification
       private_class_method(:new)
       # @api
