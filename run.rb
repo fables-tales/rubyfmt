@@ -15,6 +15,10 @@ class Line
     @comments << comment
   end
 
+  def has_comment?
+    !@comments.empty?
+  end
+
   def <<(item)
     @parts << item
   end
@@ -73,6 +77,10 @@ class Line
   def declares_require?
     @parts.any? { |x| x == "require" }
   end
+
+  def declares_class_or_module?
+    @parts.any? { |x| /(class|module)/ === x }
+  end
 end
 
 def want_blankline?(line, next_line)
@@ -81,6 +89,8 @@ def want_blankline?(line, next_line)
   return true if next_line.contains_do? && !line.contains_def?
   return true if line.declares_private?
   return true if line.declares_require? && !next_line.declares_require?
+  return true if !line.declares_class_or_module? && next_line.has_comment?
+  return true if !line.declares_class_or_module? && next_line.declares_class_or_module?
 end
 
 class ParserState
