@@ -506,8 +506,12 @@ def format_do_block(ps, rest)
   ps.emit_newline
 
   ps.new_block do
-    body.each do |expr|
-      format_expression(ps, expr)
+    if body[0] == :bodystmt
+      format_expression(ps, body)
+    else
+      body.each do |expr|
+        format_expression(ps, expr)
+      end
     end
   end
 
