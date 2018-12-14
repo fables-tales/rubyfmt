@@ -1,8 +1,8 @@
 workflow "New workflow" {
   on = "push"
-  resolves = ["./ci/Dockerfile"]
+  resolves = ["Rubyfmt CI"]
 }
 
-action "./ci/Dockerfile" {
-  uses = "./ci"
+action "Rubyfmt CI" {
+  uses = "./"
 }
