@@ -5,4 +5,5 @@ workflow "New workflow" {
 
 action "Rubyfmt CI" {
   uses = "./"
+  secrets = ["GITHUB_TOKEN"]
 }
