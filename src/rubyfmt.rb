@@ -1318,6 +1318,17 @@ def format_bare_assoc_hash(ps, expression)
   end
 end
 
+def format_defined(ps, rest)
+  ps.emit_indent if ps.start_of_line.last
+
+  ps.emit_ident("defined?")
+  ps.emit_open_paren
+  format_expression(ps, rest[0])
+  ps.emit_close_paren
+
+  ps.emit_newline if ps.start_of_line.last
+end
+
 def format_expression(ps, expression)
   type, rest = expression[0],expression[1...expression.length]
   {
@@ -1369,6 +1380,7 @@ def format_expression(ps, expression)
     :aref => lambda { |ps, rest| format_aref(ps, rest) },
     :args_add_block => lambda { |ps, rest| format_args_add_block(ps, rest) },
     :bare_assoc_hash => lambda { |ps, rest| format_bare_assoc_hash(ps, rest) },
+    :defined => lambda { |ps, rest| format_defined(ps, rest) },
   }.fetch(type).call(ps, rest)
 end
 
