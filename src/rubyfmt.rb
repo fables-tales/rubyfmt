@@ -310,6 +310,12 @@ class ParserState
     depth_stack[-1] -= 1
   end
 
+  def dedent(&blk)
+    depth_stack[-1] -= 1
+    with_start_of_line(true, &blk)
+    depth_stack[-1] += 1
+  end
+
   def emit_open_block_arg_list
     line << "|"
   end
@@ -865,14 +871,77 @@ def format_kw(ps, rest)
   ps.on_line(rest.last.first)
 end
 
-def format_bodystmt(ps, rest)
+def format_rescue(ps, rescue_part, inside_begin)
+  return if rescue_part.nil?
+  _, rescue_class, rescue_capture, rescue_expressions = rescue_part
+  ps.dedent do
+    ps.emit_indent if inside_begin
+    ps.emit_ident("rescue")
+    ps.with_start_of_line(false) do
+      if !rescue_class.nil? || !rescue_capture.nil?
+        ps.emit_space
+      end
+
+      if !rescue_class.nil?
+        format_expression(ps, rescue_class[0])
+      end
+
+      if !rescue_class.nil? && !rescue_capture.nil?
+        ps.emit_space
+      end
+
+      if !rescue_capture.nil?
+        ps.emit_ident("=> ")
+        format_expression(ps, rescue_capture)
+      end
+    end
+  end
+
+  if !rescue_expressions.nil?
+    ps.emit_newline
+    ps.with_start_of_line(true) do
+      rescue_expressions.each do |expr|
+        format_expression(ps, expr)
+      end
+    end
+  end
+end
+
+def format_ensure(ps, ensure_part, inside_begin)
+  return if ensure_part.nil?
+
+  _, ensure_expressions = ensure_part
+  ps.dedent do
+    ps.emit_indent if inside_begin
+    ps.emit_ident("ensure")
+  end
+
+  if !ensure_expressions.nil?
+    ps.emit_newline
+    ps.with_start_of_line(true) do
+      ensure_expressions.each do |expr|
+        format_expression(ps, expr)
+      end
+    end
+  end
+end
+
+def format_bodystmt(ps, rest, inside_begin=false)
   expressions = rest[0]
-  if rest[1..-1].any? {|x| x != nil }
+  rescue_part = rest[1]
+  ensure_part = rest[3]
+  if rest[2] != nil || rest[4..-1].any? {|x| x != nil }
+    require 'pry'; binding.pry
     raise "got something other than a nil in a format body statement"
   end
+
   expressions.each do |line|
     format_expression(ps, line)
   end
+
+  format_rescue(ps, rescue_part, inside_begin)
+  format_ensure(ps, ensure_part, inside_begin)
+
 end
 
 def format_if_mod(ps, rest)
@@ -1028,21 +1097,35 @@ end
 
 def format_array(ps, rest)
   ps.emit_indent if ps.start_of_line.last
-  ps.emit_ident("[")
-  ps.emit_newline
 
-  ps.new_block do
-    rest.first.each do |expr|
-      ps.emit_indent
-      ps.start_of_line << false
-      format_expression(ps, expr)
-      ps.start_of_line.pop
-      ps.emit_ident(",")
-      ps.emit_newline
+  is_w_array = rest.first.first[0] == :@tstring_content
+
+  if !is_w_array
+    ps.emit_ident("[")
+    ps.emit_newline
+
+    ps.new_block do
+      rest.first.each do |expr|
+        ps.emit_indent
+        ps.with_start_of_line(false) do
+          format_expression(ps, expr)
+        end
+        ps.emit_ident(",")
+        ps.emit_newline
+      end
+    end
+
+    ps.emit_indent
+  else
+    ps.emit_ident("%w[")
+    ps.with_start_of_line(false) do
+      rest.first.each do |expr|
+        raise "got non tstring content in w array" if expr[0] != :@tstring_content
+        ps.emit_space
+        ps.emit_ident(expr[1])
+      end
     end
   end
-
-  ps.emit_indent
   ps.emit_ident("]")
   ps.emit_newline if ps.start_of_line.last
 end
@@ -1086,11 +1169,18 @@ end
 
 def format_begin(ps, expression)
   begin_body, rc, rb, eb = expression
+
+  # I originally named these variables thinking they were 'rescue class'
+  # 'rescue block' and 'ensure block' but they are not, those positions
+  # are attached to the :bodystmt inside the begin
   raise "get better at begins" if rc != nil || rb != nil || eb != nil
+  raise "begin body was not a bodystmt" if begin_body[0] != :bodystmt
+
+  ps.emit_indent if ps.start_of_line.last
   ps.emit_ident("begin")
   ps.emit_newline
   ps.new_block do
-    format_expression(ps, begin_body)
+    format_bodystmt(ps, begin_body[1..-1], inside_begin=true)
   end
   ps.start_of_line << true
   ps.emit_end
@@ -1105,8 +1195,8 @@ def format_brace_block(ps, expression)
   raise "got something other than block var" if bv != :block_var && bv != nil
   raise "got something other than false" if f != false && f != nil
   ps.emit_ident("{")
-  ps.emit_space
   unless bv.nil?
+    ps.emit_space
     format_params(ps, params, "|", "|")
   end
   ps.emit_newline
@@ -1135,11 +1225,11 @@ def format_ifop(ps, expression)
     format_expression(ps, left)
 
     if right != nil
-        ps.emit_space
-        ps.emit_ident(":")
-        ps.emit_space
+      ps.emit_space
+      ps.emit_ident(":")
+      ps.emit_space
 
-        format_expression(ps, right)
+      format_expression(ps, right)
     end
   end
 
