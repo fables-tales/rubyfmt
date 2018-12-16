@@ -310,6 +310,12 @@ class ParserState
     depth_stack[-1] -= 1
   end
 
+  def dedent(&blk)
+    depth_stack[-1] -= 1
+    with_start_of_line(true, &blk)
+    depth_stack[-1] += 1
+  end
+
   def emit_open_block_arg_list
     line << "|"
   end
@@ -354,6 +360,29 @@ def format_block_params_list(ps, params_list)
   ps.emit_open_block_arg_list
   ps.emit_params_list(params_list)
   ps.emit_close_block_arg_list
+end
+
+def format_until(ps, rest)
+  conditional, expressions = rest
+
+  ps.emit_indent if ps.start_of_line.last
+
+  ps.emit_ident("until")
+  ps.emit_space
+  ps.with_start_of_line(false) do
+    format_expression(ps, conditional)
+  end
+
+  ps.emit_newline
+
+  (expressions || []).each do |expr|
+    ps.new_block do
+      format_expression(ps, expr)
+    end
+  end
+
+  ps.emit_end
+  ps.emit_newline
 end
 
 def format_def(ps, rest)
@@ -423,6 +452,18 @@ def format_kwargs(ps, kwargs)
   end
 end
 
+def format_rest_params(ps, rest_params)
+  return if rest_params.empty?
+
+  rest_param, expr = rest_params
+  raise "got bad rest_params" if rest_param != :rest_param
+  ps.emit_ident("*")
+
+  ps.with_start_of_line(false) do
+    format_expression(ps, expr)
+  end
+end
+
 def format_params(ps, params, open_delim, close_delim)
   return if params.nil?
   if params[0] == :paren || params[0] == :block_var
@@ -435,17 +476,24 @@ def format_params(ps, params, open_delim, close_delim)
     ps.emit_ident(open_delim)
   end
 
-  bad_params = params[3..-1].any? { |x| !x.nil? }
+  bad_params = params[4..-1].any? { |x| !x.nil? }
   bad_params = false if params[5]
 
-  raise "dont know how to deal with aprams list" if bad_params
+  raise "dont know how to deal with a params list" if bad_params
   required_params = params[1] || []
   optional_params = params[2] || []
+  rest_params = params[3] || []
   kwargs = params[5] || []
 
   format_required_params(ps, required_params)
 
   did_emit = !required_params.empty?
+  have_more = !optional_params.empty? || !rest_params.empty? || !kwargs.empty?
+  ps.emit_ident(", ") if did_emit && have_more
+
+  format_rest_params(ps, rest_params)
+
+  did_emit = !rest_params.empty?
   have_more = !optional_params.empty? || !kwargs.empty?
   ps.emit_ident(", ") if did_emit && have_more
 
@@ -578,12 +626,12 @@ def format_method_add_arg(ps, rest)
   if args_list[0] == :arg_paren
     args_list = args_list[1]
   elsif args_list[0] == :args_add_block
+  elsif args_list.empty?
   else
     raise "got non call paren args list"
   end
 
-  raise "got non args list" if args_list[0] != :args_add_block
-  format_expression(ps, args_list)
+  format_expression(ps, args_list) unless args_list.empty?
   ps.emit_newline if ps.start_of_line.last
 end
 
@@ -846,14 +894,77 @@ def format_kw(ps, rest)
   ps.on_line(rest.last.first)
 end
 
-def format_bodystmt(ps, rest)
+def format_rescue(ps, rescue_part)
+  return if rescue_part.nil?
+  _, rescue_class, rescue_capture, rescue_expressions = rescue_part
+  ps.dedent do
+    ps.emit_indent
+    ps.emit_ident("rescue")
+    ps.with_start_of_line(false) do
+      if !rescue_class.nil? || !rescue_capture.nil?
+        ps.emit_space
+      end
+
+      if !rescue_class.nil?
+        format_expression(ps, rescue_class[0])
+      end
+
+      if !rescue_class.nil? && !rescue_capture.nil?
+        ps.emit_space
+      end
+
+      if !rescue_capture.nil?
+        ps.emit_ident("=> ")
+        format_expression(ps, rescue_capture)
+      end
+    end
+  end
+
+  if !rescue_expressions.nil?
+    ps.emit_newline
+    ps.with_start_of_line(true) do
+      rescue_expressions.each do |expr|
+        format_expression(ps, expr)
+      end
+    end
+  end
+end
+
+def format_ensure(ps, ensure_part)
+  return if ensure_part.nil?
+
+  _, ensure_expressions = ensure_part
+  ps.dedent do
+    ps.emit_indent
+    ps.emit_ident("ensure")
+  end
+
+  if !ensure_expressions.nil?
+    ps.emit_newline
+    ps.with_start_of_line(true) do
+      ensure_expressions.each do |expr|
+        format_expression(ps, expr)
+      end
+    end
+  end
+end
+
+def format_bodystmt(ps, rest, inside_begin=false)
   expressions = rest[0]
-  if rest[1..-1].any? {|x| x != nil }
+  rescue_part = rest[1]
+  ensure_part = rest[3]
+  if rest[2] != nil || rest[4..-1].any? {|x| x != nil }
+    require 'pry'; binding.pry
     raise "got something other than a nil in a format body statement"
   end
+
   expressions.each do |line|
     format_expression(ps, line)
   end
+
+  format_rescue(ps, rescue_part)
+  format_ensure(ps, ensure_part)
+
 end
 
 def format_if_mod(ps, rest)
@@ -1007,23 +1118,45 @@ def format_super(ps, rest)
   ps.start_of_line.pop
 end
 
+def format_zsuper(ps, rest)
+  ps.emit_indent if ps.start_of_line.last
+
+  ps.emit_ident("super")
+
+  ps.emit_newline if ps.start_of_line.last
+end
+
 def format_array(ps, rest)
   ps.emit_indent if ps.start_of_line.last
-  ps.emit_ident("[")
-  ps.emit_newline
 
-  ps.new_block do
-    rest.first.each do |expr|
-      ps.emit_indent
-      ps.start_of_line << false
-      format_expression(ps, expr)
-      ps.start_of_line.pop
-      ps.emit_ident(",")
-      ps.emit_newline
+  is_w_array = rest.first.first[0] == :@tstring_content
+
+  if !is_w_array
+    ps.emit_ident("[")
+    ps.emit_newline
+
+    ps.new_block do
+      rest.first.each do |expr|
+        ps.emit_indent
+        ps.with_start_of_line(false) do
+          format_expression(ps, expr)
+        end
+        ps.emit_ident(",")
+        ps.emit_newline
+      end
+    end
+
+    ps.emit_indent
+  else
+    ps.emit_ident("%w[")
+    ps.with_start_of_line(false) do
+      rest.first.each do |expr|
+        raise "got non tstring content in w array" if expr[0] != :@tstring_content
+        ps.emit_space
+        ps.emit_ident(expr[1])
+      end
     end
   end
-
-  ps.emit_indent
   ps.emit_ident("]")
   ps.emit_newline if ps.start_of_line.last
 end
@@ -1067,11 +1200,18 @@ end
 
 def format_begin(ps, expression)
   begin_body, rc, rb, eb = expression
+
+  # I originally named these variables thinking they were 'rescue class'
+  # 'rescue block' and 'ensure block' but they are not, those positions
+  # are attached to the :bodystmt inside the begin
   raise "get better at begins" if rc != nil || rb != nil || eb != nil
+  raise "begin body was not a bodystmt" if begin_body[0] != :bodystmt
+
+  ps.emit_indent if ps.start_of_line.last
   ps.emit_ident("begin")
   ps.emit_newline
   ps.new_block do
-    format_expression(ps, begin_body)
+    format_bodystmt(ps, begin_body[1..-1], inside_begin=true)
   end
   ps.start_of_line << true
   ps.emit_end
@@ -1083,11 +1223,13 @@ def format_brace_block(ps, expression)
   params, body = expression
 
   bv, params, f = params
-  raise "got something other than block var" if bv != :block_var
-  raise "got something other than false" if f != false
+  raise "got something other than block var" if bv != :block_var && bv != nil
+  raise "got something other than false" if f != false && f != nil
   ps.emit_ident("{")
-  ps.emit_space
-  format_params(ps, params, "|", "|")
+  unless bv.nil?
+    ps.emit_space
+    format_params(ps, params, "|", "|")
+  end
   ps.emit_newline
   ps.new_block do
     body.each do |expr|
@@ -1114,11 +1256,11 @@ def format_ifop(ps, expression)
     format_expression(ps, left)
 
     if right != nil
-        ps.emit_space
-        ps.emit_ident(":")
-        ps.emit_space
+      ps.emit_space
+      ps.emit_ident(":")
+      ps.emit_space
 
-        format_expression(ps, right)
+      format_expression(ps, right)
     end
   end
 
@@ -1207,6 +1349,17 @@ def format_bare_assoc_hash(ps, expression)
   end
 end
 
+def format_defined(ps, rest)
+  ps.emit_indent if ps.start_of_line.last
+
+  ps.emit_ident("defined?")
+  ps.emit_open_paren
+  format_expression(ps, rest[0])
+  ps.emit_close_paren
+
+  ps.emit_newline if ps.start_of_line.last
+end
+
 def format_expression(ps, expression)
   type, rest = expression[0],expression[1...expression.length]
   {
@@ -1244,6 +1397,7 @@ def format_expression(ps, expression)
     :@ivar => lambda { |ps, rest| format_ivar(ps, rest) },
     :top_const_ref => lambda { |ps, rest| format_top_const_ref(ps, rest) },
     :super => lambda { |ps, rest| format_super(ps, rest) },
+    :zsuper => lambda { |ps, rest| format_zsuper(ps, rest) },
     :array => lambda { |ps, rest| format_array(ps, rest) },
     :unary => lambda { |ps, rest| format_unary(ps, rest) },
     :paren => lambda { |ps, rest| format_paren(ps, rest) },
@@ -1258,6 +1412,8 @@ def format_expression(ps, expression)
     :aref => lambda { |ps, rest| format_aref(ps, rest) },
     :args_add_block => lambda { |ps, rest| format_args_add_block(ps, rest) },
     :bare_assoc_hash => lambda { |ps, rest| format_bare_assoc_hash(ps, rest) },
+    :defined => lambda { |ps, rest| format_defined(ps, rest) },
+    :until => lambda { |ps, rest| format_until(ps, rest) },
   }.fetch(type).call(ps, rest)
 end
 
