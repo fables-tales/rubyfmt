@@ -423,6 +423,18 @@ def format_kwargs(ps, kwargs)
   end
 end
 
+def format_rest_params(ps, rest_params)
+  return if rest_params.empty?
+
+  rest_param, expr = rest_params
+  raise "got bad rest_params" if rest_param != :rest_param
+  ps.emit_ident("*")
+
+  ps.with_start_of_line(false) do
+    format_expression(ps, expr)
+  end
+end
+
 def format_params(ps, params, open_delim, close_delim)
   return if params.nil?
   if params[0] == :paren || params[0] == :block_var
@@ -435,17 +447,24 @@ def format_params(ps, params, open_delim, close_delim)
     ps.emit_ident(open_delim)
   end
 
-  bad_params = params[3..-1].any? { |x| !x.nil? }
+  bad_params = params[4..-1].any? { |x| !x.nil? }
   bad_params = false if params[5]
 
-  raise "dont know how to deal with aprams list" if bad_params
+  raise "dont know how to deal with a params list" if bad_params
   required_params = params[1] || []
   optional_params = params[2] || []
+  rest_params = params[3] || []
   kwargs = params[5] || []
 
   format_required_params(ps, required_params)
 
   did_emit = !required_params.empty?
+  have_more = !optional_params.empty? || !rest_params.empty? || !kwargs.empty?
+  ps.emit_ident(", ") if did_emit && have_more
+
+  format_rest_params(ps, rest_params)
+
+  did_emit = !rest_params.empty?
   have_more = !optional_params.empty? || !kwargs.empty?
   ps.emit_ident(", ") if did_emit && have_more
 
