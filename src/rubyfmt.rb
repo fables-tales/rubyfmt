@@ -597,12 +597,12 @@ def format_method_add_arg(ps, rest)
   if args_list[0] == :arg_paren
     args_list = args_list[1]
   elsif args_list[0] == :args_add_block
+  elsif args_list.empty?
   else
     raise "got non call paren args list"
   end
 
-  raise "got non args list" if args_list[0] != :args_add_block
-  format_expression(ps, args_list)
+  format_expression(ps, args_list) unless args_list.empty?
   ps.emit_newline if ps.start_of_line.last
 end
 
@@ -1102,11 +1102,13 @@ def format_brace_block(ps, expression)
   params, body = expression
 
   bv, params, f = params
-  raise "got something other than block var" if bv != :block_var
-  raise "got something other than false" if f != false
+  raise "got something other than block var" if bv != :block_var && bv != nil
+  raise "got something other than false" if f != false && f != nil
   ps.emit_ident("{")
   ps.emit_space
-  format_params(ps, params, "|", "|")
+  unless bv.nil?
+    format_params(ps, params, "|", "|")
+  end
   ps.emit_newline
   ps.new_block do
     body.each do |expr|
