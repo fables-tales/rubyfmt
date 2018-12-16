@@ -894,11 +894,11 @@ def format_kw(ps, rest)
   ps.on_line(rest.last.first)
 end
 
-def format_rescue(ps, rescue_part, inside_begin)
+def format_rescue(ps, rescue_part)
   return if rescue_part.nil?
   _, rescue_class, rescue_capture, rescue_expressions = rescue_part
   ps.dedent do
-    ps.emit_indent if inside_begin
+    ps.emit_indent
     ps.emit_ident("rescue")
     ps.with_start_of_line(false) do
       if !rescue_class.nil? || !rescue_capture.nil?
@@ -930,12 +930,12 @@ def format_rescue(ps, rescue_part, inside_begin)
   end
 end
 
-def format_ensure(ps, ensure_part, inside_begin)
+def format_ensure(ps, ensure_part)
   return if ensure_part.nil?
 
   _, ensure_expressions = ensure_part
   ps.dedent do
-    ps.emit_indent if inside_begin
+    ps.emit_indent
     ps.emit_ident("ensure")
   end
 
@@ -962,8 +962,8 @@ def format_bodystmt(ps, rest, inside_begin=false)
     format_expression(ps, line)
   end
 
-  format_rescue(ps, rescue_part, inside_begin)
-  format_ensure(ps, ensure_part, inside_begin)
+  format_rescue(ps, rescue_part)
+  format_ensure(ps, ensure_part)
 
 end
 
