@@ -404,6 +404,25 @@ def format_optional_params(ps, optional_params)
   end
 end
 
+def format_kwargs(ps, kwargs)
+  return if kwargs.empty?
+
+  kwargs.each_with_index do |kwarg, index|
+    label, false_or_expr = kwarg
+    raise "got non label in kwarg" if label[0] != :@label
+
+    ps.emit_ident(label[1])
+    ps.with_start_of_line(false) do
+      if false_or_expr
+        ps.emit_space
+      end
+      format_expression(ps, false_or_expr) if false_or_expr
+    end
+
+    ps.emit_ident(", ") if index != kwargs.length-1
+  end
+end
+
 def format_params(ps, params, open_delim, close_delim)
   return if params.nil?
   if params[0] == :paren || params[0] == :block_var
@@ -416,14 +435,27 @@ def format_params(ps, params, open_delim, close_delim)
     ps.emit_ident(open_delim)
   end
 
-  raise "dont know how to deal with aprams list" if params[3..-1].any? { |x| !x.nil? }
+  bad_params = params[3..-1].any? { |x| !x.nil? }
+  bad_params = false if params[5]
 
+  raise "dont know how to deal with aprams list" if bad_params
   required_params = params[1] || []
   optional_params = params[2] || []
+  kwargs = params[5] || []
 
   format_required_params(ps, required_params)
-  ps.emit_ident(", ") unless required_params.empty? || optional_params.empty?
+
+  did_emit = !required_params.empty?
+  have_more = !optional_params.empty? || !kwargs.empty?
+  ps.emit_ident(", ") if did_emit && have_more
+
   format_optional_params(ps, optional_params)
+
+  did_emit = !optional_params.empty?
+  have_more = !kwargs.empty?
+  ps.emit_ident(", ") if did_emit && have_more
+
+  format_kwargs(ps, kwargs)
 
   if have_any_params
     ps.emit_ident(close_delim)
@@ -1093,9 +1125,10 @@ def format_ifop(ps, expression)
   ps.emit_newline if ps.start_of_line.last
 end
 
-def format_assocs(ps, assocs)
-  assocs.each do |assoc|
-    ps.emit_indent
+def format_assocs(ps, assocs, newlines=true)
+  assocs.each_with_index do |assoc, idx|
+    ps.emit_indent if newlines
+
     ps.with_start_of_line(false) do
       if assoc[0] == :assoc_new
         if assoc[1][0] == :@label
@@ -1109,8 +1142,13 @@ def format_assocs(ps, assocs)
         end
 
         format_expression(ps, assoc[2])
-        ps.emit_ident(",")
-        ps.emit_newline
+        if newlines
+          ps.emit_ident(",")
+          ps.emit_newline
+        elsif idx != assocs.length - 1
+          ps.emit_ident(",")
+          ps.emit_space
+        end
       else
         raise "got non assoc_new in hash literal"
       end
@@ -1164,9 +1202,8 @@ def format_aref(ps, expression)
 end
 
 def format_bare_assoc_hash(ps, expression)
-  ps.emit_newline
   ps.new_block do
-    format_assocs(ps, expression[0])
+    format_assocs(ps, expression[0], newlines = false)
   end
 end
 
