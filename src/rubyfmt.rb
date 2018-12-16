@@ -362,6 +362,29 @@ def format_block_params_list(ps, params_list)
   ps.emit_close_block_arg_list
 end
 
+def format_until(ps, rest)
+  conditional, expressions = rest
+
+  ps.emit_indent if ps.start_of_line.last
+
+  ps.emit_ident("until")
+  ps.emit_space
+  ps.with_start_of_line(false) do
+    format_expression(ps, conditional)
+  end
+
+  ps.emit_newline
+
+  (expressions || []).each do |expr|
+    ps.new_block do
+      format_expression(ps, expr)
+    end
+  end
+
+  ps.emit_end
+  ps.emit_newline
+end
+
 def format_def(ps, rest)
   def_expression, params, body = rest
 
@@ -1381,6 +1404,7 @@ def format_expression(ps, expression)
     :args_add_block => lambda { |ps, rest| format_args_add_block(ps, rest) },
     :bare_assoc_hash => lambda { |ps, rest| format_bare_assoc_hash(ps, rest) },
     :defined => lambda { |ps, rest| format_defined(ps, rest) },
+    :until => lambda { |ps, rest| format_until(ps, rest) },
   }.fetch(type).call(ps, rest)
 end
 
