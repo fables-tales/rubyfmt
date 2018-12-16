@@ -1118,6 +1118,14 @@ def format_super(ps, rest)
   ps.start_of_line.pop
 end
 
+def format_zsuper(ps, rest)
+  ps.emit_indent if ps.start_of_line.last
+
+  ps.emit_ident("super")
+
+  ps.emit_newline if ps.start_of_line.last
+end
+
 def format_array(ps, rest)
   ps.emit_indent if ps.start_of_line.last
 
@@ -1389,6 +1397,7 @@ def format_expression(ps, expression)
     :@ivar => lambda { |ps, rest| format_ivar(ps, rest) },
     :top_const_ref => lambda { |ps, rest| format_top_const_ref(ps, rest) },
     :super => lambda { |ps, rest| format_super(ps, rest) },
+    :zsuper => lambda { |ps, rest| format_zsuper(ps, rest) },
     :array => lambda { |ps, rest| format_array(ps, rest) },
     :unary => lambda { |ps, rest| format_unary(ps, rest) },
     :paren => lambda { |ps, rest| format_paren(ps, rest) },
