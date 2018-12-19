@@ -95,6 +95,62 @@ end
 
 class ParserState
   attr_accessor :depth, :start_of_line, :line, :string_concat_position
+  def initialize(result, line_metadata)
+    @result = result
+    @depth_stack = [0]
+    @start_of_line = [true]
+    @render_queue = []
+    @line = Line.new([])
+    @current_orig_line_number = 0
+    @w_lines = line_metadata.w_lines
+    @comments_hash = line_metadata.comment_blocks
+    @conditional_indent = [0]
+    @string_concat_position = []
+    @arrays_on_line = -1
+  end
+
+  def current_line_contains_w_arrays?
+    !@w_lines[@current_orig_line_number].nil?
+  end
+
+  def current_array_is_w?
+    line_w_arrays[@arrays_on_line]
+  end
+
+  def increment_array_counter
+    @arrays_on_line += 1
+  end
+
+  def line_w_arrays
+    build = []
+    lex = lexed_current_line
+    if lex[0][1] == :on_qwords_beg
+      build << true
+    elsif lex[0][1] == :on_lbracket
+      build << false
+    end
+
+    lex.each_cons(2).map { |a,b| [a[1],b[1]] }.each { |a,b|
+      if b == :on_qwords_beg
+        build << true
+      elsif b == :on_lbracket && (
+          a != :on_const &&
+          a != :on_rbracket &&
+          a != :on_rparen &&
+          a != :on_rbrace &&
+          a != :on_ident
+      )
+        build << false
+      end
+
+    }
+
+    build
+  end
+
+  def lexed_current_line
+    Ripper.lex(@w_lines[@current_orig_line_number])
+  end
 
   def with_start_of_line(value, &blk)
     start_of_line << value
@@ -102,17 +158,6 @@ class ParserState
     start_of_line.pop
   end
 
-  def initialize(result, comments_hash)
-    @result = result
-    @depth_stack = [0]
-    @start_of_line = [true]
-    @render_queue = []
-    @line = Line.new([])
-    @current_orig_line_number = 0
-    @comments_hash = comments_hash
-    @conditional_indent = [0]
-    @string_concat_position = []
-  end
 
   def start_string_concat
     push_conditional_indent if @string_concat_position.empty?
@@ -125,6 +170,10 @@ class ParserState
   end
 
   def on_line(line_number)
+    if line_number != @current_orig_line_number
+      @arrays_on_line = -1
+    end
+
     while !comments_hash.empty? && comments_hash.keys.sort.first < line_number
       key = comments_hash.keys.sort.first
       @line.push_comment(comments_hash.delete(key))
@@ -659,6 +708,11 @@ def format_vcall(ps, rest)
   ps.emit_newline if ps.start_of_line.last
 end
 
+def format_tstring_content(ps, rest)
+  ps.emit_ident(rest[1])
+  ps.on_line(rest[2][0])
+end
+
 def format_string_literal(ps, rest)
   items = rest[0]
   string_content, parts = items[0], items[1..-1]
@@ -827,7 +881,6 @@ def format_args_add_block(ps, args_list)
   ps.start_of_line << false
 
   emitted_args = false
-
 
   if args_list[0][0] != :args_add_star
     args_list[0].each_with_index do |expr, idx|
@@ -1126,38 +1179,53 @@ def format_zsuper(ps, rest)
   ps.emit_newline if ps.start_of_line.last
 end
 
-def format_array(ps, rest)
-  ps.emit_indent if ps.start_of_line.last
-
-  is_w_array = rest.first.first[0] == :@tstring_content
-
-  if !is_w_array
-    ps.emit_ident("[")
-    ps.emit_newline
-
-    ps.new_block do
-      rest.first.each do |expr|
-        ps.emit_indent
-        ps.with_start_of_line(false) do
-          format_expression(ps, expr)
-        end
-        ps.emit_ident(",")
-        ps.emit_newline
-      end
-    end
-
-    ps.emit_indent
+def format_array_slow_path(ps, rest)
+  if !ps.current_array_is_w?
+    format_array_fast_path(ps, rest)
   else
     ps.emit_ident("%w[")
     ps.with_start_of_line(false) do
-      rest.first.each do |expr|
+      (rest.first || []).each.with_index do |expr, index|
         raise "got non tstring content in w array" if expr[0] != :@tstring_content
-        ps.emit_space
+        ps.emit_space unless index == 0
         ps.emit_ident(expr[1])
       end
     end
+    ps.emit_ident("]")
   end
+
+end
+
+def format_array_fast_path(ps, rest)
+  ps.emit_ident("[")
+  ps.emit_newline unless rest.first.nil?
+
+  ps.new_block do
+    (rest.first || []).each do |expr|
+      ps.emit_indent
+      ps.with_start_of_line(false) do
+        raise "this is bad" if expr[0] == :tstring_content
+        format_expression(ps, expr)
+      end
+      ps.emit_ident(",")
+      ps.emit_newline
+    end
+  end
+
+  ps.emit_indent unless rest.first.nil?
   ps.emit_ident("]")
+end
+
+def format_array(ps, rest)
+  ps.increment_array_counter
+  ps.emit_indent if ps.start_of_line.last
+
+  if !ps.current_line_contains_w_arrays?
+    format_array_fast_path(ps, rest)
+  else
+    format_array_slow_path(ps, rest)
+  end
+
   ps.emit_newline if ps.start_of_line.last
 end
 
@@ -1362,6 +1430,14 @@ end
 
 def format_expression(ps, expression)
   type, rest = expression[0],expression[1...expression.length]
+
+  line_re = /(\[\d+, \d+\])/
+  line_number = line_re.match(rest.inspect)
+  if line_number != nil
+    line_number = line_number.to_s.split(",")[0].gsub("[", "").to_i
+    ps.on_line(line_number)
+  end
+
   {
     :return => lambda { |ps, rest| format_return(ps, rest) },
     :def => lambda { |ps, rest| format_def(ps, rest) },
@@ -1417,34 +1493,37 @@ def format_expression(ps, expression)
   }.fetch(type).call(ps, rest)
 end
 
-def format_program(comments_hash, sexp, result)
+def format_program(line_metadata, sexp, result)
   program, expressions = sexp
-  ps = ParserState.new(result, comments_hash)
+  ps = ParserState.new(result, line_metadata)
   expressions.each do |expression|
     format_expression(ps, expression)
   end
-ensure
   ps.write
 end
 
-def build_comments_hash(file_data)
+def extract_line_metadata(file_data)
+  metadata = Struct.new(:comment_blocks, :w_lines)
   comment_blocks = {}
+  w_lines = {}
   file_data.split("\n").each_with_index do |line, index|
     if /^ *#/ === line
       comment_blocks[index] = line
+    elsif /%w/ === line
+      w_lines[index+1] = line
     end
   end
 
-  comment_blocks
+  metadata.new(comment_blocks, w_lines)
 end
 
 def main
   file_data = File.read(FILE)
   file_data = file_data.gsub("\r\n", "\n")
 
-  comments_hash = build_comments_hash(file_data)
+  line_metadata = extract_line_metadata(file_data)
   sexp = Ripper.sexp(file_data)
-  format_program(comments_hash, sexp, $stdout)
+  format_program(line_metadata, sexp, $stdout)
 end
 
 main
