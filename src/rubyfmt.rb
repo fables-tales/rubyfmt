@@ -414,6 +414,7 @@ end
 def format_until(ps, rest)
   conditional, expressions = rest
 
+
   ps.emit_indent if ps.start_of_line.last
 
   ps.emit_ident("until")
@@ -1436,6 +1437,23 @@ def format_return0(ps, rest)
   ps.emit_newline if ps.start_of_line.last
 end
 
+def format_massign(ps, expression)
+  ps.emit_indent if ps.start_of_line.last
+
+  ps.with_start_of_line(false) do
+    assigns, rhs = expression
+    assigns.each_with_index do |assign, index|
+      format_expression(ps, assign)
+      ps.emit_ident(", ") if index != assigns.length - 1
+    end
+
+    ps.emit_ident(" = ")
+    format_expression(ps, rhs)
+  end
+
+  ps.emit_newline if ps.start_of_line.last
+end
+
 def format_expression(ps, expression)
   type, rest = expression[0],expression[1...expression.length]
 
@@ -1499,6 +1517,7 @@ def format_expression(ps, expression)
     :defined => lambda { |ps, rest| format_defined(ps, rest) },
     :until => lambda { |ps, rest| format_until(ps, rest) },
     :return0 => lambda { |ps, rest| format_return0(ps, rest) },
+    :massign => lambda { |ps, rest| format_massign(ps, rest) },
   }.fetch(type).call(ps, rest)
 end
 
