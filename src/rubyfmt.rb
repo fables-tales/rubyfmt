@@ -1428,6 +1428,14 @@ def format_defined(ps, rest)
   ps.emit_newline if ps.start_of_line.last
 end
 
+def format_return0(ps, rest)
+  ps.emit_indent if ps.start_of_line.last
+
+  ps.emit_ident("return")
+
+  ps.emit_newline if ps.start_of_line.last
+end
+
 def format_expression(ps, expression)
   type, rest = expression[0],expression[1...expression.length]
 
@@ -1490,6 +1498,7 @@ def format_expression(ps, expression)
     :bare_assoc_hash => lambda { |ps, rest| format_bare_assoc_hash(ps, rest) },
     :defined => lambda { |ps, rest| format_defined(ps, rest) },
     :until => lambda { |ps, rest| format_until(ps, rest) },
+    :return0 => lambda { |ps, rest| format_return0(ps, rest) },
   }.fetch(type).call(ps, rest)
 end
 
