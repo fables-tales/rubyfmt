@@ -94,8 +94,9 @@ def want_blankline?(line, next_line)
 end
 
 class ParserState
-  attr_accessor :depth, :start_of_line, :line, :string_concat_position
+  attr_accessor :depth, :start_of_line, :line, :string_concat_position, :surpress_one_paren
   def initialize(result, line_metadata)
+    @surpress_one_paren = false
     @result = result
     @depth_stack = [0]
     @start_of_line = [true]
@@ -878,7 +879,9 @@ def format_command_call(ps, expression)
 end
 
 def format_args_add_block(ps, args_list)
-  ps.emit_open_paren
+  surpress_paren = ps.surpress_one_paren
+  ps.surpress_one_paren = false
+  ps.emit_open_paren unless surpress_paren
   ps.start_of_line << false
 
   emitted_args = false
@@ -903,7 +906,7 @@ def format_args_add_block(ps, args_list)
     format_expression(ps, args_list[1])
   end
 
-  ps.emit_close_paren
+  ps.emit_close_paren unless surpress_paren
 
   ps.start_of_line.pop
 end
@@ -1454,6 +1457,19 @@ def format_massign(ps, expression)
   ps.emit_newline if ps.start_of_line.last
 end
 
+def format_yield(ps, expression)
+  ps.emit_indent if ps.start_of_line.last
+
+  ps.emit_ident("yield ")
+
+  ps.with_start_of_line(false) do
+    ps.surpress_one_paren = true
+    format_expression(ps, expression.first)
+  end
+
+  ps.emit_newline if ps.start_of_line.last
+end
+
 def format_expression(ps, expression)
   type, rest = expression[0],expression[1...expression.length]
 
@@ -1518,6 +1534,7 @@ def format_expression(ps, expression)
     :until => lambda { |ps, rest| format_until(ps, rest) },
     :return0 => lambda { |ps, rest| format_return0(ps, rest) },
     :massign => lambda { |ps, rest| format_massign(ps, rest) },
+    :yield => lambda { |ps, rest| format_yield(ps, rest) },
   }.fetch(type).call(ps, rest)
 end
 
