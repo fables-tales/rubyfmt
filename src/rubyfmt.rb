@@ -505,12 +505,22 @@ end
 
 def format_rest_params(ps, rest_params)
   return if rest_params.empty?
+  return if rest_params[1].nil?
 
   rest_param, expr = rest_params
   raise "got bad rest_params" if rest_param != :rest_param
   ps.emit_ident("*")
 
   ps.with_start_of_line(false) do
+    format_expression(ps, expr)
+  end
+end
+
+def format_blockarg(ps, blockarg)
+  return if blockarg.empty?
+  _, expr = blockarg
+  ps.with_start_of_line(false) do
+    ps.emit_ident("&")
     format_expression(ps, expr)
   end
 end
@@ -529,32 +539,40 @@ def format_params(ps, params, open_delim, close_delim)
 
   bad_params = params[4..-1].any? { |x| !x.nil? }
   bad_params = false if params[5]
+  bad_params = false if params[7]
 
   raise "dont know how to deal with a params list" if bad_params
   required_params = params[1] || []
   optional_params = params[2] || []
   rest_params = params[3] || []
   kwargs = params[5] || []
+  block_arg = params[7] || []
 
   format_required_params(ps, required_params)
 
   did_emit = !required_params.empty?
-  have_more = !optional_params.empty? || !rest_params.empty? || !kwargs.empty?
+  have_more = !optional_params.empty? || !rest_params.empty? || !kwargs.empty? || !block_arg.empty?
   ps.emit_ident(", ") if did_emit && have_more
 
   format_rest_params(ps, rest_params)
 
   did_emit = !rest_params.empty?
-  have_more = !optional_params.empty? || !kwargs.empty?
+  have_more = !optional_params.empty? || !kwargs.empty? || !block_arg.empty?
   ps.emit_ident(", ") if did_emit && have_more
 
   format_optional_params(ps, optional_params)
 
   did_emit = !optional_params.empty?
-  have_more = !kwargs.empty?
+  have_more = !kwargs.empty? || !block_arg.empty?
   ps.emit_ident(", ") if did_emit && have_more
 
   format_kwargs(ps, kwargs)
+
+  did_emit = !kwargs.empty?
+  have_more = !block_arg.empty?
+  ps.emit_ident(", ") if did_emit && have_more
+
+  format_blockarg(ps, block_arg)
 
   if have_any_params
     ps.emit_ident(close_delim)
@@ -1028,7 +1046,6 @@ def format_bodystmt(ps, rest, inside_begin=false)
   rescue_part = rest[1]
   ensure_part = rest[3]
   if rest[2] != nil || rest[4..-1].any? {|x| x != nil }
-    require 'pry'; binding.pry
     raise "got something other than a nil in a format body statement"
   end
 
@@ -1571,6 +1588,14 @@ def format_dot2(ps, expression)
   ps.emit_newline if ps.start_of_line.last
 end
 
+def format_yield0(ps, expression)
+  ps.emit_indent if ps.start_of_line.last
+
+  ps.emit_ident("yield")
+
+  ps.emit_newline if ps.start_of_line.last
+end
+
 def format_expression(ps, expression)
   type, rest = expression[0],expression[1...expression.length]
 
@@ -1641,6 +1666,7 @@ def format_expression(ps, expression)
     :field => lambda { |ps, rest| format_field(ps, rest) },
     :mrhs_new_from_args => lambda { |ps, rest| format_mrhs_new_from_args(ps, rest) },
     :dot2 => lambda { |ps, rest| format_dot2(ps, rest) },
+    :yield0 => lambda { |ps, rest| format_yield0(ps, rest) },
   }.fetch(type).call(ps, rest)
 end
 
