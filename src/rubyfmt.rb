@@ -968,7 +968,10 @@ def format_rescue(ps, rescue_part)
       end
 
       if !rescue_class.nil?
-        format_expression(ps, rescue_class[0])
+        if rescue_class.count == 1
+          rescue_class = rescue_class[0]
+        end
+        format_expression(ps, rescue_class)
       end
 
       if !rescue_class.nil? && !rescue_capture.nil?
@@ -1614,7 +1617,7 @@ def format_expression(ps, expression)
     :regexp_literal => lambda { |ps, rest| format_regexp_literal(ps, rest) },
     :alias => lambda { |ps, rest| format_alias(ps, rest) },
     :field => lambda { |ps, rest| format_field(ps, rest) },
-    :mrhs_new_from_args => lambda { |ps, rest| format_mrhs_new_from_args(ps, rest) }
+    :mrhs_new_from_args => lambda { |ps, rest| format_mrhs_new_from_args(ps, rest) },
   }.fetch(type).call(ps, rest)
 end
 
