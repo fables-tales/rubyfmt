@@ -1064,6 +1064,7 @@ def format_return(ps, rest)
 end
 
 def format_conditional_parts(ps, further_conditionals)
+  return if further_conditionals.nil?
   type = further_conditionals[0]
   case type
   when :else
@@ -1524,6 +1525,27 @@ def format_alias(ps, expression)
   ps.emit_newline if ps.start_of_line.last
 end
 
+def format_field(ps, rest)
+  format_call(ps, rest)
+end
+
+def format_mrhs_new_from_args(ps, expression)
+  ps.emit_indent if ps.start_of_line.last
+
+  parts,tail = expression
+
+  ps.with_start_of_line(false) do
+    parts.each do |expr|
+      format_expression(ps, expr)
+      ps.emit_ident(", ")
+    end
+
+    format_expression(ps, tail)
+  end
+
+  ps.emit_newline if ps.start_of_line.last
+end
+
 def format_expression(ps, expression)
   type, rest = expression[0],expression[1...expression.length]
 
@@ -1591,6 +1613,8 @@ def format_expression(ps, expression)
     :yield => lambda { |ps, rest| format_yield(ps, rest) },
     :regexp_literal => lambda { |ps, rest| format_regexp_literal(ps, rest) },
     :alias => lambda { |ps, rest| format_alias(ps, rest) },
+    :field => lambda { |ps, rest| format_field(ps, rest) },
+    :mrhs_new_from_args => lambda { |ps, rest| format_mrhs_new_from_args(ps, rest) }
   }.fetch(type).call(ps, rest)
 end
 
