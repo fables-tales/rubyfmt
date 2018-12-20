@@ -865,8 +865,17 @@ def format_ident(ps, ident)
 end
 
 def format_symbol_literal(ps, literal)
-  raise "didn't get ident in right position" if literal[0][1][0] != :"@ident"
-  ps.emit_symbol(literal[0][1][1])
+  ps.emit_indent if ps.start_of_line.last
+  ps.with_start_of_line(false) do
+    if literal[0][0] == :@ident
+      format_expression(ps, literal[0])
+    else
+      raise "didn't get ident in right position" if literal[0][1][0] != :"@ident"
+      ps.emit_symbol(literal[0][1][1])
+    end
+  end
+
+  ps.emit_newline if ps.start_of_line.last
 end
 
 def format_command_call(ps, expression)
