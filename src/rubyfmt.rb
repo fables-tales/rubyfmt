@@ -1549,6 +1549,19 @@ def format_mrhs_new_from_args(ps, expression)
   ps.emit_newline if ps.start_of_line.last
 end
 
+def format_dot2(ps, expression)
+  left, right = expression
+  ps.emit_indent if ps.start_of_line.last
+
+  ps.with_start_of_line(false) do
+    format_expression(ps, left)
+    ps.emit_ident("..")
+    format_expression(ps, right)
+  end
+
+  ps.emit_newline if ps.start_of_line.last
+end
+
 def format_expression(ps, expression)
   type, rest = expression[0],expression[1...expression.length]
 
@@ -1618,6 +1631,7 @@ def format_expression(ps, expression)
     :alias => lambda { |ps, rest| format_alias(ps, rest) },
     :field => lambda { |ps, rest| format_field(ps, rest) },
     :mrhs_new_from_args => lambda { |ps, rest| format_mrhs_new_from_args(ps, rest) },
+    :dot2 => lambda { |ps, rest| format_dot2(ps, rest) },
   }.fetch(type).call(ps, rest)
 end
 
