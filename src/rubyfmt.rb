@@ -505,11 +505,11 @@ end
 
 def format_rest_params(ps, rest_params)
   return if rest_params.empty?
+  ps.emit_ident("*")
   return if rest_params[1].nil?
 
   rest_param, expr = rest_params
   raise "got bad rest_params" if rest_param != :rest_param
-  ps.emit_ident("*")
 
   ps.with_start_of_line(false) do
     format_expression(ps, expr)
@@ -887,6 +887,9 @@ def format_symbol_literal(ps, literal)
   ps.with_start_of_line(false) do
     if literal[0][0] == :@ident
       format_expression(ps, literal[0])
+    elsif literal[0][0] == :symbol
+      ps.emit_ident(":")
+      format_expression(ps, literal[0][1])
     else
       raise "didn't get ident in right position" if literal[0][1][0] != :"@ident"
       ps.emit_symbol(literal[0][1][1])
@@ -897,16 +900,17 @@ def format_symbol_literal(ps, literal)
 end
 
 def format_command_call(ps, expression)
+  ps.emit_indent if ps.start_of_line.last
+
   left, dot, right, args = expression
-  ps.start_of_line << false
 
-  format_expression(ps, left)
-  raise "got something other than a dot" if dot != :"."
-  ps.emit_dot
-  format_expression(ps, right)
-  format_expression(ps, args)
-
-  ps.start_of_line.pop
+  ps.with_start_of_line(false) do
+    format_expression(ps, left)
+    raise "got something other than a dot" if dot != :"."
+    ps.emit_dot
+    format_expression(ps, right)
+    format_expression(ps, args)
+  end
   ps.emit_newline if ps.start_of_line.last
 end
 
@@ -925,8 +929,13 @@ def format_args_add_block(ps, args_list)
       emitted_args = true
     end
   else
-    _, something, call = args_list[0]
-    raise "got non empty something" if something != []
+    _, other_args, call = args_list[0]
+    other_args.each_with_index do |expr, idx|
+      format_expression(ps, expr)
+      ps.emit_comma_space unless idx == other_args.count-1
+      emitted_args = true
+    end
+    ps.emit_comma_space if emitted_args
     ps.emit_ident("*")
     emitted_args = true
     format_expression(ps, call)
@@ -1596,6 +1605,10 @@ def format_yield0(ps, expression)
   ps.emit_newline if ps.start_of_line.last
 end
 
+def format_op(ps, expression)
+  ps.emit_ident(expression[0])
+end
+
 def format_expression(ps, expression)
   type, rest = expression[0],expression[1...expression.length]
 
@@ -1667,6 +1680,7 @@ def format_expression(ps, expression)
     :mrhs_new_from_args => lambda { |ps, rest| format_mrhs_new_from_args(ps, rest) },
     :dot2 => lambda { |ps, rest| format_dot2(ps, rest) },
     :yield0 => lambda { |ps, rest| format_yield0(ps, rest) },
+    :@op => lambda { |ps, rest| format_op(ps, rest) },
   }.fetch(type).call(ps, rest)
 end
 
