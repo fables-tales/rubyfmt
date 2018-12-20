@@ -462,11 +462,11 @@ module RSpec::Core
         return {} if @example_groups.keys.length <= 1
 
         @example_groups.each_value do |hash|
-          hash[(:average)] = hash[(:total_time)].to_f / hash[(:count)]
+          hash[:average] = hash[:total_time].to_f / hash[:count]
         end
 
         groups = @example_groups.sort_by { |_, hash|
-          -hash[(:average)]
+          -hash[:average]
         }.first(number_of_examples)
         groups.map { |group, data|
           [
@@ -494,7 +494,7 @@ module RSpec::Core
       # @api
       # Convenience way to initialize the notification
       def self.from_hash(data)
-        new(data[(:deprecated)], data[(:message)], data[(:replacement)], data[(:call_site)])
+        new(data[:deprecated], data[:message], data[:replacement], data[:call_site])
       end
     end
 
