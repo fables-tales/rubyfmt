@@ -1397,6 +1397,7 @@ def format_aref_field(ps, expression)
     ps.emit_indent
     format_expression(ps, expression)
     ps.emit_ident("[")
+    ps.surpress_one_paren = true
     format_expression(ps, sqb_args)
     ps.emit_ident("]")
   end
@@ -1409,6 +1410,7 @@ def format_aref(ps, expression)
   ps.with_start_of_line(false) do
     format_expression(ps, expression)
     ps.emit_ident("[")
+    ps.surpress_one_paren = true
     format_expression(ps, sqb_args)
     ps.emit_ident("]")
   end
