@@ -1064,6 +1064,7 @@ def format_return(ps, rest)
 end
 
 def format_conditional_parts(ps, further_conditionals)
+  return if further_conditionals.nil?
   type = further_conditionals[0]
   case type
   when :else
