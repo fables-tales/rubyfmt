@@ -715,11 +715,7 @@ def format_tstring_content(ps, rest)
   ps.on_line(rest[2][0])
 end
 
-def format_string_literal(ps, rest)
-  items = rest[0]
-  string_content, parts = items[0], items[1..-1]
-  ps.emit_indent if ps.start_of_line.last
-  ps.emit_double_quote
+def format_inner_string(ps, parts)
   parts.each do |part|
     case part[0]
     when :@tstring_content
@@ -735,6 +731,15 @@ def format_string_literal(ps, rest)
       raise "dont't know how to do this"
     end
   end
+end
+
+def format_string_literal(ps, rest)
+  items = rest[0]
+  string_content, parts = items[0], items[1..-1]
+  ps.emit_indent if ps.start_of_line.last
+  ps.emit_double_quote
+
+  format_inner_string(ps, parts)
 
   ps.emit_double_quote
   ps.emit_newline if ps.start_of_line.last && ps.string_concat_position.empty?
@@ -1472,6 +1477,38 @@ def format_yield(ps, expression)
   ps.emit_newline if ps.start_of_line.last
 end
 
+def format_regexp_literal(ps, expression)
+  parts,re_end = expression
+  re_type = case re_end[1][0]
+            when "}"
+              :curly
+            when "/"
+              :slashy
+            else
+              raise "got unknown regular expression"
+            end
+
+  re_delimiters = {
+    :curly => ["%r{", "}"],
+    :slashy => ["/", "/"],
+  }.fetch(re_type)
+
+  ps.emit_indent if ps.start_of_line.last
+
+  ps.emit_ident(re_delimiters[0])
+
+  format_inner_string(ps, parts)
+
+  ps.emit_ident(re_delimiters[1])
+
+  if re_end[1].length > 1
+    extra_chars = re_end[1][1..-1]
+    ps.emit_ident(extra_chars)
+  end
+
+  ps.emit_newline if ps.start_of_line.last
+end
+
 def format_expression(ps, expression)
   type, rest = expression[0],expression[1...expression.length]
 
@@ -1537,6 +1574,7 @@ def format_expression(ps, expression)
     :return0 => lambda { |ps, rest| format_return0(ps, rest) },
     :massign => lambda { |ps, rest| format_massign(ps, rest) },
     :yield => lambda { |ps, rest| format_yield(ps, rest) },
+    :regexp_literal => lambda { |ps, rest| format_regexp_literal(ps, rest) },
   }.fetch(type).call(ps, rest)
 end
 
