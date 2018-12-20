@@ -682,7 +682,7 @@ def format_do_block(ps, rest)
 end
 
 def format_method_add_arg(ps, rest)
-  type, call_rest = rest[0], rest[1...rest.length]
+  type, call_rest = rest.first, rest.drop(1)
 
   ps.emit_indent if ps.start_of_line.last
 
