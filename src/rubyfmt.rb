@@ -1509,6 +1509,21 @@ def format_regexp_literal(ps, expression)
   ps.emit_newline if ps.start_of_line.last
 end
 
+def format_alias(ps, expression)
+  ps.emit_indent if ps.start_of_line.last
+
+  first, last = expression
+
+  ps.emit_ident("alias ")
+  ps.with_start_of_line(false) do
+    format_expression(ps, first)
+    ps.emit_space
+    format_expression(ps, last)
+  end
+
+  ps.emit_newline if ps.start_of_line.last
+end
+
 def format_expression(ps, expression)
   type, rest = expression[0],expression[1...expression.length]
 
@@ -1575,6 +1590,7 @@ def format_expression(ps, expression)
     :massign => lambda { |ps, rest| format_massign(ps, rest) },
     :yield => lambda { |ps, rest| format_yield(ps, rest) },
     :regexp_literal => lambda { |ps, rest| format_regexp_literal(ps, rest) },
+    :alias => lambda { |ps, rest| format_alias(ps, rest) },
   }.fetch(type).call(ps, rest)
 end
 
