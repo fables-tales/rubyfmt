@@ -715,7 +715,16 @@ def format_command(ps, rest)
   }.fetch(rest[0][0]).call
 
   args_list = rest[1]
-  format_expression(ps, args_list)
+  if args_list.count == 1
+    args_list = args_list[0]
+  end
+
+  ps.with_start_of_line(false) do
+    if !args_list.nil? && args_list[0] == :command_call
+      ps.emit_space
+    end
+    format_expression(ps, args_list)
+  end
   ps.emit_newline if ps.start_of_line.last
 end
 
