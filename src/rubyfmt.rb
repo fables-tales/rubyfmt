@@ -1110,14 +1110,13 @@ def format_conditional_parts(ps, further_conditionals)
     ps.emit_indent
     ps.emit_else
     ps.emit_newline
-    ps.start_of_line << true
-
-    ps.new_block do
-      body.each do |expr|
-        format_expression(ps, expr)
+    ps.with_start_of_line(true) do
+      ps.new_block do
+        body.each do |expr|
+          format_expression(ps, expr)
+        end
       end
     end
-    ps.start_of_line.pop
   when :elsif
     _, cond, body, further_conditionals = further_conditionals
 
@@ -1609,6 +1608,61 @@ def format_op(ps, expression)
   ps.emit_ident(expression[0])
 end
 
+def format_case_parts(ps, case_parts)
+  return if case_parts.nil?
+
+  type = case_parts[0]
+  if type == :when
+    _, conditional, body, case_parts = case_parts
+    ps.emit_indent
+    ps.emit_ident("when ")
+    ps.with_start_of_line(false) do
+      format_expression(ps, conditional.first)
+    end
+
+    ps.emit_newline
+    ps.new_block do
+      body.each do |expr|
+        format_expression(ps, expr)
+      end
+    end
+
+    format_case_parts(ps, case_parts)
+  elsif type == :else
+    _, body = case_parts
+    ps.emit_indent
+    ps.emit_ident("else")
+    ps.emit_newline
+
+    ps.new_block do
+      body.each do |expr|
+        format_expression(ps, expr)
+      end
+    end
+  else
+    raise "got got bad case"
+  end
+end
+
+def format_case(ps, rest)
+  case_expr, case_parts = rest
+  ps.emit_indent if ps.start_of_line.last
+
+  ps.emit_ident("case")
+  if !case_expr.nil?
+    ps.with_start_of_line(false) do
+      ps.emit_space
+      format_expression(ps, case_expr)
+    end
+  end
+  ps.emit_newline
+
+  format_case_parts(ps, case_parts)
+
+  ps.emit_end
+  ps.emit_newline
+end
+
 def format_expression(ps, expression)
   type, rest = expression[0],expression[1...expression.length]
 
@@ -1681,6 +1735,7 @@ def format_expression(ps, expression)
     :dot2 => lambda { |ps, rest| format_dot2(ps, rest) },
     :yield0 => lambda { |ps, rest| format_yield0(ps, rest) },
     :@op => lambda { |ps, rest| format_op(ps, rest) },
+    :case => lambda { |ps, rest| format_case(ps, rest) },
   }.fetch(type).call(ps, rest)
 end
 
