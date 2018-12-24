@@ -1704,6 +1704,13 @@ def format_sclass(ps, rest)
   ps.emit_newline if ps.start_of_line.last
 end
 
+def format_retry(ps, expression)
+  raise "omg" if !expression.empty?
+  ps.emit_indent if ps.start_of_line.last
+  ps.emit_ident("retry")
+  ps.emit_newline if ps.start_of_line.last
+end
+
 def format_expression(ps, expression)
   type, rest = expression[0],expression[1...expression.length]
 
@@ -1779,6 +1786,7 @@ def format_expression(ps, expression)
     :case => lambda { |ps, rest| format_case(ps, rest) },
     :@gvar => lambda { |ps, rest| format_gvar(ps, rest) },
     :sclass => lambda { |ps, rest| format_sclass(ps, rest) },
+    :retry => lambda { |ps, rest| format_retry(ps, rest) },
   }.fetch(type).call(ps, rest)
 end
 
