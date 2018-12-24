@@ -114,7 +114,7 @@ class ParserState
     !@w_lines[@current_orig_line_number].nil?
   end
 
-  def current_array_is_w?
+  def current_array
     line_w_arrays[@arrays_on_line]
   end
 
@@ -133,7 +133,9 @@ class ParserState
 
     lex.each_cons(2).map { |a,b| [a[1],b[1]] }.each { |a,b|
       if b == :on_qwords_beg
-        build << true
+        build << {w_array: true, capital_w: false}
+      elsif b == :on_words_beg
+        build << {w_array: true, capital_w: true}
       elsif b == :on_lbracket && (
           a != :on_const &&
           a != :on_rbracket &&
@@ -1236,15 +1238,22 @@ def format_zsuper(ps, rest)
 end
 
 def format_array_slow_path(ps, rest)
-  if !ps.current_array_is_w?
+  current_array = ps.current_array
+  if current_array == false
     format_array_fast_path(ps, rest)
   else
-    ps.emit_ident("%w[")
+    if current_array.fetch(:capital_w)
+      ps.emit_ident("%W[")
+    else
+      ps.emit_ident("%w[")
+    end
     ps.with_start_of_line(false) do
       (rest.first || []).each.with_index do |expr, index|
-        raise "got non tstring content in w array" if expr[0] != :@tstring_content
-        ps.emit_space unless index == 0
-        ps.emit_ident(expr[1])
+        if expr[0] == :@tstring_content
+          expr = [expr]
+        end
+        format_inner_string(ps, expr)
+        ps.emit_space if index != rest.first.length - 1
       end
     end
     ps.emit_ident("]")
@@ -1664,12 +1673,20 @@ def format_case(ps, rest)
       format_expression(ps, case_expr)
     end
   end
+
   ps.emit_newline
 
   format_case_parts(ps, case_parts)
-
-  ps.emit_end
+  ps.with_start_of_line(true) do
+    ps.emit_end
+  end
   ps.emit_newline
+end
+
+def format_gvar(ps, rest)
+  ps.emit_indent if ps.start_of_line.last
+
+  ps.emit_ident(rest[0])
 end
 
 def format_expression(ps, expression)
@@ -1745,6 +1762,7 @@ def format_expression(ps, expression)
     :yield0 => lambda { |ps, rest| format_yield0(ps, rest) },
     :@op => lambda { |ps, rest| format_op(ps, rest) },
     :case => lambda { |ps, rest| format_case(ps, rest) },
+    :@gvar => lambda { |ps, rest| format_gvar(ps, rest) },
   }.fetch(type).call(ps, rest)
 end
 
@@ -1764,7 +1782,7 @@ def extract_line_metadata(file_data)
   file_data.split("\n").each_with_index do |line, index|
     if /^ *#/ === line
       comment_blocks[index] = line
-    elsif /%w/ === line
+    elsif /%w/i === line
       w_lines[index+1] = line
     end
   end
