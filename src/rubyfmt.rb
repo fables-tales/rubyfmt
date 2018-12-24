@@ -465,11 +465,16 @@ def format_def(ps, rest)
 end
 
 def format_required_params(ps, required_params)
-  build = required_params.map { |x|
-    raise "got a non ident param #{x}" if x[0] != :"@ident"
-    x[1]
-  }.join(", ")
-  ps.emit_ident(build)
+  return if required_params.empty?
+
+  ps.with_start_of_line(false) do
+    required_params.each_with_index do |expr, index|
+      format_expression(ps, expr)
+      if index != required_params.length - 1
+        ps.emit_comma_space
+      end
+    end
+  end
 end
 
 def format_optional_params(ps, optional_params)
@@ -601,16 +606,18 @@ end
 
 def format_assign_expression(ps, rest)
   head, tail = rest
-  format_expression(ps, head)
-  ps.emit_space
-  ps.emit_op("=")
-  ps.emit_space
+  ps.emit_indent if ps.start_of_line.last
 
   ps.with_start_of_line(false) do
+    format_expression(ps, head)
+    ps.emit_space
+    ps.emit_op("=")
+    ps.emit_space
+
     format_expression(ps, tail)
   end
 
-  ps.emit_newline
+  ps.emit_newline if ps.start_of_line.last
 end
 
 def format_method_add_block(ps, rest)
@@ -1478,8 +1485,8 @@ end
 def format_aref_field(ps, expression)
   raise "got bad aref field" if expression.length != 2
   expression, sqb_args = expression
+  ps.emit_indent if ps.start_of_line.last
   ps.with_start_of_line(false) do
-    ps.emit_indent
     format_expression(ps, expression)
     ps.emit_ident("[")
     ps.surpress_one_paren = true
@@ -1749,6 +1756,28 @@ def format_while_mod(ps, rest)
   ps.emit_newline if ps.start_of_line.last
 end
 
+def format_mlhs(ps, expression)
+  ps.emit_open_paren
+  ps.with_start_of_line(false) do
+    expression.each_with_index do |expr, index|
+      format_expression(ps, expr)
+      if index != expression.length - 1
+        ps.emit_comma_space
+      end
+    end
+  end
+  ps.emit_close_paren
+end
+
+def format_dyna_symbol(ps, rest)
+  ps.emit_indent if ps.start_of_line.last
+  ps.emit_ident(":")
+  ps.with_start_of_line(false) do
+    format_string_literal(ps, rest)
+  end
+  ps.emit_newline if ps.start_of_line.last
+end
+
 def format_expression(ps, expression)
   type, rest = expression[0],expression[1...expression.length]
 
@@ -1826,7 +1855,10 @@ def format_expression(ps, expression)
     :sclass => lambda { |ps, rest| format_sclass(ps, rest) },
     :retry => lambda { |ps, rest| format_empty_kwd(ps, rest, "retry") },
     :break => lambda { |ps, rest| format_empty_kwd(ps, rest, "break") },
+    :next => lambda { |ps, rest| format_empty_kwd(ps, rest, "next") },
     :while_mod => lambda { |ps, rest| format_while_mod(ps, rest) },
+    :mlhs => lambda { |ps, rest| format_mlhs(ps, rest) },
+    :dyna_symbol => lambda { |ps, rest| format_dyna_symbol(ps, rest) },
   }.fetch(type).call(ps, rest)
 end
 
@@ -1860,6 +1892,7 @@ def main
 
   line_metadata = extract_line_metadata(file_data)
   sexp = Ripper.sexp(file_data)
+  pp sexp
   format_program(line_metadata, sexp, $stdout)
 end
 
