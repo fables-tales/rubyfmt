@@ -696,6 +696,9 @@ def format_method_add_arg(ps, rest)
   args_list = call_rest[0]
   if args_list[0] == :arg_paren
     args_list = args_list[1]
+    if args_list.count == 1
+      args_list = args_list.first
+    end
   elsif args_list[0] == :args_add_block
   elsif args_list.empty?
   else
@@ -1061,11 +1064,31 @@ def format_ensure(ps, ensure_part)
   end
 end
 
+def format_else(ps, else_part)
+  return if else_part.nil?
+
+  _, exprs = else_part
+  ps.dedent do
+    ps.emit_indent
+    ps.emit_ident("else")
+  end
+
+  if !exprs.nil?
+    ps.emit_newline
+    ps.with_start_of_line(true) do
+      exprs.each do |expr|
+        format_expression(ps, expr)
+      end
+    end
+  end
+end
+
 def format_bodystmt(ps, rest, inside_begin=false)
   expressions = rest[0]
   rescue_part = rest[1]
+  else_part = rest[2]
   ensure_part = rest[3]
-  if rest[2] != nil || rest[4..-1].any? {|x| x != nil }
+  if rest[4..-1].any? {|x| x != nil }
     raise "got something other than a nil in a format body statement"
   end
 
@@ -1074,6 +1097,7 @@ def format_bodystmt(ps, rest, inside_begin=false)
   end
 
   format_rescue(ps, rescue_part)
+  format_else(ps, else_part)
   format_ensure(ps, ensure_part)
 
 end
