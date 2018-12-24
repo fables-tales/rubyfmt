@@ -1728,10 +1728,24 @@ def format_sclass(ps, rest)
   ps.emit_newline if ps.start_of_line.last
 end
 
-def format_retry(ps, expression)
-  raise "omg" if !expression.empty?
+def format_empty_kwd(ps, expression, keyword)
+  raise "omg #{expression}" if !expression.flatten.empty?
   ps.emit_indent if ps.start_of_line.last
-  ps.emit_ident("retry")
+  ps.emit_ident(keyword)
+  ps.emit_newline if ps.start_of_line.last
+end
+
+def format_while_mod(ps, rest)
+  while_conditional, while_expr = rest
+
+  ps.emit_indent if ps.start_of_line.last
+
+  ps.with_start_of_line(false) do
+    format_expression(ps, while_expr)
+    ps.emit_ident(" while ")
+    format_expression(ps, while_conditional)
+  end
+
   ps.emit_newline if ps.start_of_line.last
 end
 
@@ -1810,7 +1824,9 @@ def format_expression(ps, expression)
     :case => lambda { |ps, rest| format_case(ps, rest) },
     :@gvar => lambda { |ps, rest| format_gvar(ps, rest) },
     :sclass => lambda { |ps, rest| format_sclass(ps, rest) },
-    :retry => lambda { |ps, rest| format_retry(ps, rest) },
+    :retry => lambda { |ps, rest| format_empty_kwd(ps, rest, "retry") },
+    :break => lambda { |ps, rest| format_empty_kwd(ps, rest, "break") },
+    :while_mod => lambda { |ps, rest| format_while_mod(ps, rest) },
   }.fetch(type).call(ps, rest)
 end
 
