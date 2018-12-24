@@ -1689,6 +1689,21 @@ def format_gvar(ps, rest)
   ps.emit_ident(rest[0])
 end
 
+def format_sclass(ps, rest)
+  arrow_expr, statements = rest
+  ps.emit_indent if ps.start_of_line.last
+  ps.emit_ident("class << ")
+  ps.with_start_of_line(false) do
+    format_expression(ps, arrow_expr)
+  end
+  ps.emit_newline
+  ps.new_block do
+    format_expression(ps, statements)
+  end
+  ps.emit_end
+  ps.emit_newline if ps.start_of_line.last
+end
+
 def format_expression(ps, expression)
   type, rest = expression[0],expression[1...expression.length]
 
@@ -1763,6 +1778,7 @@ def format_expression(ps, expression)
     :@op => lambda { |ps, rest| format_op(ps, rest) },
     :case => lambda { |ps, rest| format_case(ps, rest) },
     :@gvar => lambda { |ps, rest| format_gvar(ps, rest) },
+    :sclass => lambda { |ps, rest| format_sclass(ps, rest) },
   }.fetch(type).call(ps, rest)
 end
 
