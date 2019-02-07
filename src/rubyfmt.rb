@@ -1717,10 +1717,6 @@ def format_dyna_symbol(ps, rest)
   ps.emit_newline if ps.start_of_line.last
 end
 
-def format_words(ps, expression)
-  require 'pry'; binding.pry
-end
-
 def format_expression(ps, expression)
   type, rest = expression[0],expression[1...expression.length]
 
