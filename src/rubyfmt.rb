@@ -1204,10 +1204,12 @@ def format_super(ps, rest)
     args = rest[0][1]
   end
 
-  raise "nope args" if args[0] != :args_add_block
+  raise "nope args" if args != nil && args[0] != :args_add_block
 
   ps.emit_indent if ps.start_of_line.last
   ps.emit_ident("super")
+
+  return if args.nil?
 
   ps.start_of_line << false
   format_expression(ps, args)
