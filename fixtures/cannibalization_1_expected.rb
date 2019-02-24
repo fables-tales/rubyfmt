@@ -1,0 +1,2 @@
+@example << bees
+foo
