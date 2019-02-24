@@ -1368,9 +1368,11 @@ def format_begin(ps, expression)
   ps.new_block do
     format_bodystmt(ps, begin_body[1..-1], inside_begin=true)
   end
-  ps.start_of_line << true
-  ps.emit_end
-  ps.start_of_line.pop
+
+  ps.with_start_of_line(true) do
+    ps.emit_end
+    ps.emit_newline
+  end
 end
 
 def format_brace_block(ps, expression)
