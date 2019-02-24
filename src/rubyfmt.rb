@@ -1798,6 +1798,31 @@ def format_undef(ps, rest)
   ps.emit_newline if ps.start_of_line.last
 end
 
+# mlhs_paren occurs when a block arg has parenthesisation for array unpacking
+# e.g. do |a, (b, c, (d, e))|. it is illegal to call this function with
+# start_of_line.last == true
+def format_mlhs_paren(ps, rest)
+  raise if ps.start_of_line.last
+  ps.emit_ident("(")
+
+  ps.with_start_of_line(false) do
+    rest[0].each_with_index do |item, idx|
+      case item[1][0]
+      when Array
+        format_mlhs_paren(ps, [item[1]])
+      when :@ident
+        ps.emit_ident(item[1][1])
+      else
+        raise "got a bad mlhs paren"
+      end
+
+      ps.emit_comma_space unless idx == rest[0].count - 1
+    end
+  end
+
+  ps.emit_ident(")")
+end
+
 def format_expression(ps, expression)
   type, rest = expression[0],expression[1...expression.length]
 
@@ -1882,6 +1907,7 @@ def format_expression(ps, expression)
     :rest_param => lambda { |ps, rest| format_rest_param(ps, rest) },
     :undef => lambda { |ps, rest| format_undef(ps, rest) },
     :@cvar => lambda { |ps, rest| format_cvar(ps, rest) },
+    :mlhs_paren => lambda { |ps, rest| format_mlhs_paren(ps, rest) },
   }.fetch(type).call(ps, rest)
 end
 
