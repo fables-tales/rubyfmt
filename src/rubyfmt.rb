@@ -889,32 +889,75 @@ def format_command_call(ps, expression)
   ps.emit_newline if ps.start_of_line.last
 end
 
+def format_list_like_thing_items(ps, args_list, single_line)
+  emitted_args = false
+  args_list[0].each_with_index do |expr, idx|
+    raise "this is bad" if expr[0] == :tstring_content
+    if !single_line
+      ps.emit_indent
+      ps.start_of_line << false
+    end
+    format_expression(ps, expr)
+
+    if single_line
+      ps.emit_comma_space unless idx == args_list[0].count-1
+    else
+      ps.emit_ident(",")
+      ps.emit_newline
+      ps.start_of_line.pop
+    end
+
+    emitted_args = true
+  end
+
+  emitted_args
+end
+
+# format_list_like_thing takes any inner construct (like array items, or an
+# args list, and formats them).
+def format_list_like_thing(ps, args_list, single_line=true)
+  emitted_args = false
+  if args_list[0][0] != :args_add_star
+    emitted_args = format_list_like_thing_items(ps, args_list, single_line)
+  else
+    _, args_list, call = args_list[0]
+    args_list = [args_list]
+    emitted_args = format_list_like_thing_items(ps, args_list, single_line)
+
+    emit_extra_separator(ps, single_line, emitted_args)
+
+    ps.emit_ident("*")
+    emitted_args = true
+    ps.with_start_of_line(false) do
+      format_expression(ps, call)
+    end
+
+    if !single_line
+      ps.emit_ident(",")
+      ps.emit_newline
+    end
+  end
+
+  emitted_args
+end
+
+def emit_extra_separator(ps, single_line, emitted_args)
+  return unless emitted_args
+
+  if single_line
+    ps.emit_comma_space
+  else
+    ps.emit_indent
+  end
+end
+
 def format_args_add_block(ps, args_list)
   surpress_paren = ps.surpress_one_paren
   ps.surpress_one_paren = false
   ps.emit_open_paren unless surpress_paren
   ps.start_of_line << false
 
-  emitted_args = false
-
-  if args_list[0][0] != :args_add_star
-    args_list[0].each_with_index do |expr, idx|
-      format_expression(ps, expr)
-      ps.emit_comma_space unless idx == args_list[0].count-1
-      emitted_args = true
-    end
-  else
-    _, other_args, call = args_list[0]
-    other_args.each_with_index do |expr, idx|
-      format_expression(ps, expr)
-      ps.emit_comma_space unless idx == other_args.count-1
-      emitted_args = true
-    end
-    ps.emit_comma_space if emitted_args
-    ps.emit_ident("*")
-    emitted_args = true
-    format_expression(ps, call)
-  end
+  emitted_args = format_list_like_thing(ps, args_list)
 
   if args_list[1]
     ps.emit_ident(", ") if emitted_args
@@ -1229,15 +1272,7 @@ def format_array_fast_path(ps, rest)
   ps.emit_newline unless rest.first.nil?
 
   ps.new_block do
-    (rest.first || []).each do |expr|
-      ps.emit_indent
-      ps.with_start_of_line(false) do
-        raise "this is bad" if expr[0] == :tstring_content
-        format_expression(ps, expr)
-      end
-      ps.emit_ident(",")
-      ps.emit_newline
-    end
+    format_list_like_thing(ps, rest, false)
   end
 
   ps.emit_indent unless rest.first.nil?
