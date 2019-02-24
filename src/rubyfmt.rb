@@ -1793,7 +1793,6 @@ def format_expression(ps, expression)
     :@gvar => lambda { |ps, rest| format_gvar(ps, rest) },
     :sclass => lambda { |ps, rest| format_sclass(ps, rest) },
     :retry => lambda { |ps, rest| format_empty_kwd(ps, rest, "retry") },
-    :words => lambda { |ps, rest| format_words(ps, rest) },
     :break => lambda { |ps, rest| format_empty_kwd(ps, rest, "break") },
     :next => lambda { |ps, rest| format_empty_kwd(ps, rest, "next") },
     :while_mod => lambda { |ps, rest| format_while_mod(ps, rest) },
@@ -1836,7 +1835,7 @@ class Parser < Ripper::SexpBuilderPP
     define_method(:"on_#{event}_new") do
       [event, [], [lineno, column]]
     end
- 
+
     define_method(:"on_#{event}_add") do |parts, part|
       parts.tap do |node|
         node[1] << part
