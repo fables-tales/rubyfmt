@@ -1892,7 +1892,6 @@ def main
 
   line_metadata = extract_line_metadata(file_data)
   sexp = Ripper.sexp(file_data)
-  pp sexp
   format_program(line_metadata, sexp, $stdout)
 end
 
