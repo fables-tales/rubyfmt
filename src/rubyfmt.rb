@@ -890,6 +890,7 @@ def format_command_call(ps, expression)
 end
 
 def format_list_like_thing_items(ps, args_list, single_line)
+  return false if args_list.nil?
   emitted_args = false
   args_list[0].each_with_index do |expr, idx|
     raise "this is bad" if expr[0] == :tstring_content
@@ -917,6 +918,7 @@ end
 # args list, and formats them).
 def format_list_like_thing(ps, args_list, single_line=true)
   emitted_args = false
+  return false if args_list.nil? || args_list[0].nil?
   if args_list[0][0] != :args_add_star
     emitted_args = format_list_like_thing_items(ps, args_list, single_line)
   else
