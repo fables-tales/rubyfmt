@@ -6,12 +6,14 @@ GEM
     pry (0.12.2)
       coderay (~> 1.1.0)
       method_source (~> 0.9.0)
+    rb-readline (0.5.5)
 
 PLATFORMS
   ruby
 
 DEPENDENCIES
   pry
+  rb-readline
 
 BUNDLED WITH
-   1.16.3
+   1.16.6
