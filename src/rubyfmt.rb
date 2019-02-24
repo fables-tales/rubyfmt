@@ -1316,6 +1316,12 @@ def format_unary(ps, rest)
   ps.emit_newline if ps.start_of_line.last
 end
 
+def format_cvar(ps, rest)
+  ps.emit_indent if ps.start_of_line.last
+  ps.emit_ident(rest[0])
+  ps.emit_newline if ps.start_of_line.last
+end
+
 def format_string_concat(ps, rest)
   ps.start_string_concat
 
@@ -1867,6 +1873,7 @@ def format_expression(ps, expression)
     :dyna_symbol => lambda { |ps, rest| format_dyna_symbol(ps, rest) },
     :rest_param => lambda { |ps, rest| format_rest_param(ps, rest) },
     :undef => lambda { |ps, rest| format_undef(ps, rest) },
+    :@cvar => lambda { |ps, rest| format_cvar(ps, rest) },
   }.fetch(type).call(ps, rest)
 end
 
