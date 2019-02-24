@@ -607,6 +607,7 @@ def format_binary(ps, rest)
     ps.emit_binary("#{rest[1].to_s}")
     format_expression(ps, rest[2])
   end
+  ps.emit_newline if ps.start_of_line.last
 end
 
 def format_do_block(ps, rest)
