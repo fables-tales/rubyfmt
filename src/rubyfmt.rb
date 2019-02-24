@@ -1245,8 +1245,10 @@ end
 def format_array(ps, rest)
   ps.emit_indent if ps.start_of_line.last
 
-  if Parser::ARRAY_SYMBOLS.key?(rest[0][0])
-    ps.emit_ident("#{Parser::ARRAY_SYMBOLS[rest[0][0]]}[")
+  if Parser.is_percent_array?(rest)
+    ps.emit_ident(Parser.percent_symbol_for(rest))
+
+    ps.emit_ident("[")
     ps.with_start_of_line(false) do
       parts = rest[0][1]
 
@@ -1828,6 +1830,14 @@ class Parser < Ripper::SexpBuilderPP
     symbols: '%I',
     words: '%W'
   }.freeze
+
+  def self.is_percent_array?(rest)
+    ARRAY_SYMBOLS.include?(rest[0][0])
+  end
+
+  def self.percent_symbol_for(rest)
+    ARRAY_SYMBOLS[rest[0][0]]
+  end
 
   private
 
