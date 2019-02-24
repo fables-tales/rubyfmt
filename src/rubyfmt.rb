@@ -1529,6 +1529,13 @@ def format_massign(ps, expression)
 
   ps.with_start_of_line(false) do
     assigns, rhs = expression
+
+    if assigns[0] == :mlhs_add_star
+      assigns, last = [assigns[1],assigns[2]]
+      item = last
+      assigns << [:rest_param, item]
+    end
+
     assigns.each_with_index do |assign, index|
       format_expression(ps, assign)
       ps.emit_ident(", ") if index != assigns.length - 1
