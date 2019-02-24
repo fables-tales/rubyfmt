@@ -103,56 +103,9 @@ class ParserState
     @render_queue = []
     @line = Line.new([])
     @current_orig_line_number = 0
-    @w_lines = line_metadata.w_lines
     @comments_hash = line_metadata.comment_blocks
     @conditional_indent = [0]
     @string_concat_position = []
-    @arrays_on_line = -1
-  end
-
-  def current_line_contains_w_arrays?
-    !@w_lines[@current_orig_line_number].nil?
-  end
-
-  def current_array
-    line_w_arrays[@arrays_on_line]
-  end
-
-  def increment_array_counter
-    @arrays_on_line += 1
-  end
-
-  def line_w_arrays
-    build = []
-    lex = lexed_current_line
-    if lex[0][1] == :on_qwords_beg
-      build << true
-    elsif lex[0][1] == :on_lbracket
-      build << false
-    end
-
-    lex.each_cons(2).map { |a,b| [a[1],b[1]] }.each { |a,b|
-      if b == :on_qwords_beg
-        build << {w_array: true, capital_w: false}
-      elsif b == :on_words_beg
-        build << {w_array: true, capital_w: true}
-      elsif b == :on_lbracket && (
-          a != :on_const &&
-          a != :on_rbracket &&
-          a != :on_rparen &&
-          a != :on_rbrace &&
-          a != :on_ident
-      )
-        build << false
-      end
-
-    }
-
-    build
-  end
-
-  def lexed_current_line
-    Ripper.lex(@w_lines[@current_orig_line_number])
   end
 
   def with_start_of_line(value, &blk)
@@ -160,7 +113,6 @@ class ParserState
     blk.call
     start_of_line.pop
   end
-
 
   def start_string_concat
     push_conditional_indent if @string_concat_position.empty?
@@ -465,11 +417,16 @@ def format_def(ps, rest)
 end
 
 def format_required_params(ps, required_params)
-  build = required_params.map { |x|
-    raise "got a non ident param #{x}" if x[0] != :"@ident"
-    x[1]
-  }.join(", ")
-  ps.emit_ident(build)
+  return if required_params.empty?
+
+  ps.with_start_of_line(false) do
+    required_params.each_with_index do |expr, index|
+      format_expression(ps, expr)
+      if index != required_params.length - 1
+        ps.emit_comma_space
+      end
+    end
+  end
 end
 
 def format_optional_params(ps, optional_params)
@@ -601,16 +558,18 @@ end
 
 def format_assign_expression(ps, rest)
   head, tail = rest
-  format_expression(ps, head)
-  ps.emit_space
-  ps.emit_op("=")
-  ps.emit_space
+  ps.emit_indent if ps.start_of_line.last
 
   ps.with_start_of_line(false) do
+    format_expression(ps, head)
+    ps.emit_space
+    ps.emit_op("=")
+    ps.emit_space
+
     format_expression(ps, tail)
   end
 
-  ps.emit_newline
+  ps.emit_newline if ps.start_of_line.last
 end
 
 def format_method_add_block(ps, rest)
@@ -878,14 +837,16 @@ def format_call(ps, rest)
 
   ps.start_of_line << false
   format_expression(ps, front)
-  case dot
-  when :"."
+
+  case
+  when dot == :"." || dot == :"::" || (dot.is_a?(Array) && dot[0] == :@period)
     ps.emit_dot
-  when :"&."
+  when dot == :"&."
     ps.emit_lonely_operator
   else
     raise "got unrecognised dot"
   end
+
   format_expression(ps, back)
   ps.start_of_line.pop
   ps.emit_newline if ps.start_of_line.last
@@ -1261,30 +1222,6 @@ def format_zsuper(ps, rest)
   ps.emit_newline if ps.start_of_line.last
 end
 
-def format_array_slow_path(ps, rest)
-  current_array = ps.current_array
-  if current_array == false
-    format_array_fast_path(ps, rest)
-  else
-    if current_array.fetch(:capital_w)
-      ps.emit_ident("%W[")
-    else
-      ps.emit_ident("%w[")
-    end
-    ps.with_start_of_line(false) do
-      (rest.first || []).each.with_index do |expr, index|
-        if expr[0] == :@tstring_content
-          expr = [expr]
-        end
-        format_inner_string(ps, expr)
-        ps.emit_space if index != rest.first.length - 1
-      end
-    end
-    ps.emit_ident("]")
-  end
-
-end
-
 def format_array_fast_path(ps, rest)
   ps.emit_ident("[")
   ps.emit_newline unless rest.first.nil?
@@ -1306,13 +1243,24 @@ def format_array_fast_path(ps, rest)
 end
 
 def format_array(ps, rest)
-  ps.increment_array_counter
   ps.emit_indent if ps.start_of_line.last
 
-  if !ps.current_line_contains_w_arrays?
-    format_array_fast_path(ps, rest)
+  if Parser.is_percent_array?(rest)
+    ps.emit_ident(Parser.percent_symbol_for(rest))
+
+    ps.emit_ident("[")
+    ps.with_start_of_line(false) do
+      parts = rest[0][1]
+
+      parts.each.with_index do |expr, index|
+        expr = [expr] if expr[0] == :@tstring_content
+        format_inner_string(ps, expr)
+        ps.emit_space if index != parts.length - 1
+      end
+    end
+    ps.emit_ident("]")
   else
-    format_array_slow_path(ps, rest)
+    format_array_fast_path(ps, rest)
   end
 
   ps.emit_newline if ps.start_of_line.last
@@ -1478,8 +1426,8 @@ end
 def format_aref_field(ps, expression)
   raise "got bad aref field" if expression.length != 2
   expression, sqb_args = expression
+  ps.emit_indent if ps.start_of_line.last
   ps.with_start_of_line(false) do
-    ps.emit_indent
     format_expression(ps, expression)
     ps.emit_ident("[")
     ps.surpress_one_paren = true
@@ -1728,10 +1676,46 @@ def format_sclass(ps, rest)
   ps.emit_newline if ps.start_of_line.last
 end
 
-def format_retry(ps, expression)
-  raise "omg" if !expression.empty?
+def format_empty_kwd(ps, expression, keyword)
+  raise "omg #{expression}" if !expression.flatten.empty?
   ps.emit_indent if ps.start_of_line.last
-  ps.emit_ident("retry")
+  ps.emit_ident(keyword)
+  ps.emit_newline if ps.start_of_line.last
+end
+
+def format_while_mod(ps, rest)
+  while_conditional, while_expr = rest
+
+  ps.emit_indent if ps.start_of_line.last
+
+  ps.with_start_of_line(false) do
+    format_expression(ps, while_expr)
+    ps.emit_ident(" while ")
+    format_expression(ps, while_conditional)
+  end
+
+  ps.emit_newline if ps.start_of_line.last
+end
+
+def format_mlhs(ps, expression)
+  ps.emit_open_paren
+  ps.with_start_of_line(false) do
+    expression.each_with_index do |expr, index|
+      format_expression(ps, expr)
+      if index != expression.length - 1
+        ps.emit_comma_space
+      end
+    end
+  end
+  ps.emit_close_paren
+end
+
+def format_dyna_symbol(ps, rest)
+  ps.emit_indent if ps.start_of_line.last
+  ps.emit_ident(":")
+  ps.with_start_of_line(false) do
+    format_string_literal(ps, rest)
+  end
   ps.emit_newline if ps.start_of_line.last
 end
 
@@ -1810,7 +1794,12 @@ def format_expression(ps, expression)
     :case => lambda { |ps, rest| format_case(ps, rest) },
     :@gvar => lambda { |ps, rest| format_gvar(ps, rest) },
     :sclass => lambda { |ps, rest| format_sclass(ps, rest) },
-    :retry => lambda { |ps, rest| format_retry(ps, rest) },
+    :retry => lambda { |ps, rest| format_empty_kwd(ps, rest, "retry") },
+    :break => lambda { |ps, rest| format_empty_kwd(ps, rest, "break") },
+    :next => lambda { |ps, rest| format_empty_kwd(ps, rest, "next") },
+    :while_mod => lambda { |ps, rest| format_while_mod(ps, rest) },
+    :mlhs => lambda { |ps, rest| format_mlhs(ps, rest) },
+    :dyna_symbol => lambda { |ps, rest| format_dyna_symbol(ps, rest) },
   }.fetch(type).call(ps, rest)
 end
 
@@ -1824,18 +1813,45 @@ def format_program(line_metadata, sexp, result)
 end
 
 def extract_line_metadata(file_data)
-  metadata = Struct.new(:comment_blocks, :w_lines)
+  metadata = Struct.new(:comment_blocks)
   comment_blocks = {}
-  w_lines = {}
+
   file_data.split("\n").each_with_index do |line, index|
-    if /^ *#/ === line
-      comment_blocks[index] = line
-    elsif /%w/i === line
-      w_lines[index+1] = line
-    end
+    comment_blocks[index] = line if /^ *#/ === line
   end
 
-  metadata.new(comment_blocks, w_lines)
+  metadata.new(comment_blocks)
+end
+
+class Parser < Ripper::SexpBuilderPP
+  ARRAY_SYMBOLS = {
+    qsymbols: '%i',
+    qwords: '%w',
+    symbols: '%I',
+    words: '%W'
+  }.freeze
+
+  def self.is_percent_array?(rest)
+    ARRAY_SYMBOLS.include?(rest[0][0])
+  end
+
+  def self.percent_symbol_for(rest)
+    ARRAY_SYMBOLS[rest[0][0]]
+  end
+
+  private
+
+  ARRAY_SYMBOLS.each do |event, symbol|
+    define_method(:"on_#{event}_new") do
+      [event, [], [lineno, column]]
+    end
+
+    define_method(:"on_#{event}_add") do |parts, part|
+      parts.tap do |node|
+        node[1] << part
+      end
+    end
+  end
 end
 
 def main
@@ -1843,7 +1859,7 @@ def main
   file_data = file_data.gsub("\r\n", "\n")
 
   line_metadata = extract_line_metadata(file_data)
-  sexp = Ripper.sexp(file_data)
+  sexp = Parser.new(file_data).parse
   format_program(line_metadata, sexp, $stdout)
 end
 
