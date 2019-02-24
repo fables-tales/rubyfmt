@@ -11,15 +11,15 @@ b
 ]
 
 c = %i[
-  a
-  b
-  c
+a
+b
+c
 ]
 
 d = %I[
-  a
-  b
-  c
+a
+b
+c
 ]
 
 p a
