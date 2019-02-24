@@ -1295,10 +1295,14 @@ def format_string_concat(ps, rest)
 end
 
 def format_paren(ps, rest)
-  raise "didn't get len 1 paren" if rest.length != 1 && rest[0].length != 1
+  raise "didn't get len 1 paren" if rest.length != 1
   ps.emit_indent if ps.start_of_line.last
   ps.emit_ident("(")
-  format_expression(ps, rest[0][0])
+  if rest[0].length == 1
+    format_expression(ps, rest[0][0])
+  else
+    format_expression(ps, rest[0])
+  end
   ps.emit_ident(")")
   ps.emit_newline if ps.start_of_line.last
 end
@@ -1495,7 +1499,11 @@ end
 def format_yield(ps, expression)
   ps.emit_indent if ps.start_of_line.last
 
-  ps.emit_ident("yield ")
+  ps.emit_ident("yield")
+
+  if expression.first.first != :paren
+    ps.emit_space
+  end
 
   ps.with_start_of_line(false) do
     ps.surpress_one_paren = true
@@ -1833,6 +1841,7 @@ class Parser < Ripper::SexpBuilderPP
 
   def self.is_percent_array?(rest)
     return false if rest.nil?
+    return false if rest[0].nil?
     ARRAY_SYMBOLS.include?(rest[0][0])
   end
 
