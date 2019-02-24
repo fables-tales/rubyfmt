@@ -1832,6 +1832,7 @@ class Parser < Ripper::SexpBuilderPP
   }.freeze
 
   def self.is_percent_array?(rest)
+    return false if rest.nil?
     ARRAY_SYMBOLS.include?(rest[0][0])
   end
 
