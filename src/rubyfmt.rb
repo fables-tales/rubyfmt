@@ -1766,6 +1766,15 @@ def format_dyna_symbol(ps, rest)
   ps.emit_newline if ps.start_of_line.last
 end
 
+def format_rest_param(ps, rest)
+  ps.emit_indent if ps.start_of_line.last
+  ps.emit_ident("*")
+  ps.with_start_of_line(false) do
+    format_expression(ps, rest[0])
+  end
+  ps.emit_newline if ps.start_of_line.last
+end
+
 def format_expression(ps, expression)
   type, rest = expression[0],expression[1...expression.length]
 
@@ -1847,6 +1856,7 @@ def format_expression(ps, expression)
     :while_mod => lambda { |ps, rest| format_while_mod(ps, rest) },
     :mlhs => lambda { |ps, rest| format_mlhs(ps, rest) },
     :dyna_symbol => lambda { |ps, rest| format_dyna_symbol(ps, rest) },
+    :rest_param => lambda { |ps, rest| format_rest_param(ps, rest) },
   }.fetch(type).call(ps, rest)
 end
 
