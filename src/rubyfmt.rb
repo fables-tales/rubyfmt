@@ -1257,9 +1257,11 @@ def format_super(ps, rest)
 
   return if args.nil?
 
-  ps.start_of_line << false
-  format_expression(ps, args)
-  ps.start_of_line.pop
+  ps.with_start_of_line(false) do
+    format_expression(ps, args)
+  end
+
+  ps.emit_newline if ps.start_of_line.last
 end
 
 def format_zsuper(ps, rest)
