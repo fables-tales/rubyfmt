@@ -1407,8 +1407,9 @@ end
 def format_ifop(ps, expression)
   raise "got a non 3 item ternary" if expression.length != 3
   conditional, left, right = expression
-  format_expression(ps, conditional)
+  ps.emit_indent if ps.start_of_line.last
   ps.with_start_of_line(false) do
+    format_expression(ps, conditional)
     ps.emit_space
     ps.emit_ident("?")
     ps.emit_space
