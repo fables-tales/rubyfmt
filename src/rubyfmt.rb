@@ -1,3 +1,4 @@
+#!/usr/bin/env ruby
 require 'ripper'
 require 'stringio'
 require 'pp'
@@ -708,6 +709,7 @@ def format_tstring_content(ps, rest)
 end
 
 def format_inner_string(ps, parts)
+
   parts.each do |part|
     case part[0]
     when :@tstring_content
@@ -720,12 +722,39 @@ def format_inner_string(ps, parts)
       ps.emit_ident("}")
       ps.start_of_line.pop
     else
+      require 'pry'; binding.pry
       raise "dont't know how to do this"
     end
   end
 end
 
+def format_heredoc_string_literal(ps, rest)
+  p rest[0]
+  ps.emit_indent if ps.start_of_line.last
+  heredoc_type = rest[0][1][0]
+  heredoc_symbol = rest[0][1][1]
+
+  ps.emit_ident(heredoc_type)
+  ps.emit_ident(heredoc_symbol)
+  ps.emit_newline
+
+
+  string_parts = rest[1]
+  #the 1 that we drop here is the literal symbol :string_content
+  inner_string_components = string_parts.drop(1)
+  ps.with_start_of_line(false) do
+    format_inner_string(ps, inner_string_components)
+  end
+
+  if rest[0][1].include?("~")
+    ps.emit_indent
+  end
+  ps.emit_ident(heredoc_symbol)
+  ps.emit_newline
+end
+
 def format_string_literal(ps, rest)
+  return format_heredoc_string_literal(ps, rest) if rest[0][0] == :heredoc_string_literal
   items = rest[0]
   string_content, parts = items[0], items[1..-1]
   ps.emit_indent if ps.start_of_line.last
@@ -1954,6 +1983,17 @@ class Parser < Ripper::SexpBuilderPP
     ARRAY_SYMBOLS[rest[0][0]]
   end
 
+  def initialize(*args, &blk)
+    super(*args, &blk)
+    # heredoc stack is the stack of identified heredocs
+    @heredoc_stack = []
+
+    # next_heredoc_stack is the type identifiers of the next heredocs, that
+    # we haven't emitted yet
+    @next_heredoc_stack = []
+    @heredoc_regex = /(<<[-~]?)(.*$)/
+  end
+
   private
 
   ARRAY_SYMBOLS.each do |event, symbol|
@@ -1967,6 +2007,26 @@ class Parser < Ripper::SexpBuilderPP
       end
     end
   end
+
+  def on_heredoc_beg(*args, &blk)
+    heredoc_parts = @heredoc_regex.match(args[0]).captures
+    raise "bad heredoc" unless heredoc_parts.select { |x| x != nil }.count == 2
+    @next_heredoc_stack.push(heredoc_parts)
+    super
+  end
+
+  def on_heredoc_end(*args, &blk)
+    @heredoc_stack.push(@next_heredoc_stack.pop)
+    super
+  end
+
+  def on_string_literal(*args, &blk)
+    if @heredoc_stack.last
+      heredoc_parts = @heredoc_stack.pop
+      args.insert(0, [:heredoc_string_literal, heredoc_parts])
+    end
+    super
+  end
 end
 
 def main
@@ -1977,5 +2037,6 @@ def main
   sexp = Parser.new(file_data).parse
   format_program(line_metadata, sexp, $stdout)
 end
+
 
 main
