@@ -708,11 +708,27 @@ def format_tstring_content(ps, rest)
   ps.on_line(rest[2][0])
 end
 
-def format_inner_string(ps, parts)
+def format_inner_string(ps, parts, type)
+  parts = parts.dup
 
   parts.each do |part|
     case part[0]
     when :@tstring_content
+      if type == :quoted
+        chars = part[1].each_char.to_a
+        build = []
+        if chars[0] == "\""
+          build << "\\"
+        end
+        build << chars[0]
+        chars.each_cons(2) do |(first, last)|
+          if last == "\"" && first != "\\"
+            build << "\\"
+          end
+          build << last
+        end
+        part[1] = build
+      end
       ps.emit_ident(part[1])
       ps.on_line(part[2][0])
     when :string_embexpr
@@ -743,7 +759,7 @@ def format_heredoc_string_literal(ps, rest)
   #the 1 that we drop here is the literal symbol :string_content
   inner_string_components = string_parts.drop(1)
   ps.with_start_of_line(false) do
-    format_inner_string(ps, inner_string_components)
+    format_inner_string(ps, inner_string_components, :heredoc)
   end
 
   if rest[0][1].include?("~")
@@ -760,7 +776,7 @@ def format_string_literal(ps, rest)
   ps.emit_indent if ps.start_of_line.last
   ps.emit_double_quote
 
-  format_inner_string(ps, parts)
+  format_inner_string(ps, parts, :quoted)
 
   ps.emit_double_quote
   ps.emit_newline if ps.start_of_line.last && ps.string_concat_position.empty?
@@ -1325,7 +1341,7 @@ def format_array(ps, rest)
 
       parts.each.with_index do |expr, index|
         expr = [expr] if expr[0] == :@tstring_content
-        format_inner_string(ps, expr)
+        format_inner_string(ps, expr, :array)
         ps.emit_space if index != parts.length - 1
       end
     end
@@ -1620,7 +1636,7 @@ def format_regexp_literal(ps, expression)
 
   ps.emit_ident(re_delimiters[0])
 
-  format_inner_string(ps, parts)
+  format_inner_string(ps, parts, :regexp)
 
   ps.emit_ident(re_delimiters[1])
 
@@ -2034,7 +2050,12 @@ def main
   file_data = file_data.gsub("\r\n", "\n")
 
   line_metadata = extract_line_metadata(file_data)
-  sexp = Parser.new(file_data).parse
+  parser = Parser.new(file_data)
+  sexp = parser.parse
+  if parser.error?
+    require 'pry'; binding.pry
+    raise parser.error
+  end
   format_program(line_metadata, sexp, $stdout)
 end
 
