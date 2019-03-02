@@ -655,10 +655,17 @@ def format_method_add_arg(ps, rest)
 
   raise "got call rest longer than one" if call_rest.length > 1
   args_list = call_rest[0]
+  emitted_paren = false
   if args_list[0] == :arg_paren
     args_list = args_list[1]
     if args_list.count == 1
       args_list = args_list.first
+    end
+
+    if !args_list.empty?
+      emitted_paren = true
+      ps.emit_open_paren
+      ps.surpress_one_paren = true
     end
   elsif args_list[0] == :args_add_block
   elsif args_list.empty?
@@ -666,7 +673,12 @@ def format_method_add_arg(ps, rest)
     raise "got non call paren args list"
   end
 
-  format_expression(ps, args_list) unless args_list.empty?
+  ps.with_start_of_line(!emitted_paren) do
+    format_expression(ps, args_list) unless args_list.empty?
+  end
+  if emitted_paren
+    ps.emit_close_paren
+  end
   ps.emit_newline if ps.start_of_line.last
 end
 
@@ -930,7 +942,10 @@ def format_command_call(ps, expression)
     raise "got something other than a dot" if dot != :"."
     ps.emit_dot
     format_expression(ps, right)
+    ps.emit_open_paren
+    ps.surpress_one_paren = true
     format_expression(ps, args)
+    ps.emit_close_paren
   end
   ps.emit_newline if ps.start_of_line.last
 end
