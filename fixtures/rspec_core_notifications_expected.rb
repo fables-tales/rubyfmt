@@ -151,6 +151,7 @@ module RSpec::Core
     # @see ExampleNotification
     class FailedExampleNotification < ExampleNotification
       public_class_method(:new)
+
       # @return [Exception] The example failure
       def exception
         @exception_presenter.exception
@@ -226,6 +227,7 @@ module RSpec::Core
     # @see ExampleNotification
     class SkippedExampleNotification < ExampleNotification
       public_class_method(:new)
+
       # @return [String] The pending detail fully formatted in the way that
       #   RSpec's built-in formatters emit.
       def fully_formatted(pending_number, colorizer=::RSpec::Core::Formatters::ConsoleCodes)
@@ -491,6 +493,7 @@ module RSpec::Core
 
     class DeprecationNotification
       private_class_method(:new)
+
       # @api
       # Convenience way to initialize the notification
       def self.from_hash(data)
