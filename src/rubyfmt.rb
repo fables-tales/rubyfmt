@@ -80,7 +80,7 @@ class Line
   end
 
   def declares_class_or_module?
-    @parts.any? { |x| /(class|module)/ === x }
+     /((^| )(class|module) )/ === to_s
   end
 end
 
@@ -755,10 +755,10 @@ def format_inner_string(ps, parts, type)
       ps.on_line(part[2][0])
     when :string_embexpr
       ps.emit_ident("\#{")
-      ps.start_of_line << false
-      format_expression(ps, part[1][0])
+      ps.with_start_of_line(false) do
+        format_expression(ps, part[1][0])
+      end
       ps.emit_ident("}")
-      ps.start_of_line.pop
     else
       raise "dont't know how to do this"
     end
@@ -1408,9 +1408,9 @@ def format_string_concat(ps, rest)
   ps.emit_space
   ps.emit_slash
   ps.emit_newline
-  ps.start_of_line << true
-  format_expression(ps, string)
-  ps.start_of_line.pop
+  ps.with_start_of_line(true) do
+    format_expression(ps, string)
+  end
   ps.emit_newline if ps.start_of_line.last
 
   ps.end_string_concat
