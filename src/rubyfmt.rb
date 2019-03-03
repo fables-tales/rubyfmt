@@ -545,12 +545,14 @@ end
 def format_opassign(ps, rest)
   head, op, tail = rest
 
-  format_expression(ps, head)
-  ps.emit_space
-  ps.emit_op(op[1])
-  ps.emit_space
+  ps.emit_indent if ps.start_of_line.last
 
   ps.with_start_of_line(false) do
+    format_expression(ps, head)
+    ps.emit_space
+    ps.emit_op(op[1])
+    ps.emit_space
+
     format_expression(ps, tail)
   end
 
@@ -1198,7 +1200,7 @@ def format_return(ps, rest)
   ps.start_of_line << false
   ps.emit_return
   ps.emit_space
-  format_expression(ps, rest.first[1].first)
+  format_list_like_thing(ps, rest.first[1...-1], true)
   ps.start_of_line.pop
   ps.emit_newline if ps.start_of_line.last
 end
@@ -2014,8 +2016,9 @@ class Parser < Ripper::SexpBuilderPP
     ARRAY_SYMBOLS[rest[0][0]]
   end
 
-  def initialize(*args, &blk)
-    super(*args, &blk)
+  def initialize(file_data)
+    super(file_data)
+    @file_lines = file_data.split("\n")
     # heredoc stack is the stack of identified heredocs
     @heredoc_stack = []
 
@@ -2055,6 +2058,18 @@ class Parser < Ripper::SexpBuilderPP
     if @heredoc_stack.last
       heredoc_parts = @heredoc_stack.pop
       args.insert(0, [:heredoc_string_literal, heredoc_parts])
+    else
+      quote = @file_lines[lineno-1][column-1]
+      if quote == "'"
+        args.each do |part|
+          case part[1][0]
+          when :@tstring_content
+            part[1][1].gsub!("\\", "\\\\\\\\")
+          else
+            raise "got non tstring content in single string"
+          end
+        end
+      end
     end
     super
   end
