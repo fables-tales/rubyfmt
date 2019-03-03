@@ -97,6 +97,7 @@ end
 class ParserState
   attr_accessor :depth, :start_of_line, :line, :string_concat_position, :surpress_one_paren
   def initialize(result, line_metadata)
+    @surpress_comments_stack = [false]
     @surpress_one_paren = false
     @result = result
     @depth_stack = [0]
@@ -107,6 +108,12 @@ class ParserState
     @comments_hash = line_metadata.comment_blocks
     @conditional_indent = [0]
     @string_concat_position = []
+  end
+
+  def with_surpress_comments(value, &blk)
+    @surpress_comments_stack << value
+    blk.call
+    @surpress_comments_stack.pop
   end
 
   def with_start_of_line(value, &blk)
@@ -132,7 +139,8 @@ class ParserState
 
     while !comments_hash.empty? && comments_hash.keys.sort.first < line_number
       key = comments_hash.keys.sort.first
-      @line.push_comment(comments_hash.delete(key))
+      comment = comments_hash.delete(key)
+      @line.push_comment(comment) unless @surpress_comments_stack.last
     end
 
     @current_orig_line_number = line_number
@@ -752,35 +760,35 @@ def format_inner_string(ps, parts, type)
       ps.emit_ident("}")
       ps.start_of_line.pop
     else
-      require 'pry'; binding.pry
       raise "dont't know how to do this"
     end
   end
 end
 
 def format_heredoc_string_literal(ps, rest)
-  p rest[0]
   ps.emit_indent if ps.start_of_line.last
-  heredoc_type = rest[0][1][0]
-  heredoc_symbol = rest[0][1][1]
+  ps.with_surpress_comments(true) do
+    heredoc_type = rest[0][1][0]
+    heredoc_symbol = rest[0][1][1]
 
-  ps.emit_ident(heredoc_type)
-  ps.emit_ident(heredoc_symbol)
-  ps.emit_newline
+    ps.emit_ident(heredoc_type)
+    ps.emit_ident(heredoc_symbol)
+    ps.emit_newline
 
 
-  string_parts = rest[1]
-  #the 1 that we drop here is the literal symbol :string_content
-  inner_string_components = string_parts.drop(1)
-  ps.with_start_of_line(false) do
-    format_inner_string(ps, inner_string_components, :heredoc)
+    string_parts = rest[1]
+    #the 1 that we drop here is the literal symbol :string_content
+    inner_string_components = string_parts.drop(1)
+    ps.with_start_of_line(false) do
+      format_inner_string(ps, inner_string_components, :heredoc)
+    end
+
+    if rest[0][1].include?("~")
+      ps.emit_indent
+    end
+    ps.emit_ident(heredoc_symbol)
+    ps.emit_newline
   end
-
-  if rest[0][1].include?("~")
-    ps.emit_indent
-  end
-  ps.emit_ident(heredoc_symbol)
-  ps.emit_newline
 end
 
 def format_string_literal(ps, rest)
@@ -2061,7 +2069,8 @@ class Parser < Ripper::SexpBuilderPP
     else
       quote = @file_lines[lineno-1][column-1]
       if quote == "'"
-        args.each do |part|
+        (args || []).each do |part|
+          next if part[1].nil?
           case part[1][0]
           when :@tstring_content
             part[1][1].gsub!("\\", "\\\\\\\\")
