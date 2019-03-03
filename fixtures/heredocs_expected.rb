@@ -1,6 +1,3 @@
-[:heredoc_string_literal, ["<<", "EOD"]]
-[:heredoc_string_literal, ["<<-", "EOD"]]
-[:heredoc_string_literal, ["<<~", "EOD"]]
 a = <<EOD
 part 1 of heredoc
 part 2 of heredoc
