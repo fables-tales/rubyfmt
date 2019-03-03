@@ -773,12 +773,14 @@ def format_heredoc_string_literal(ps, rest)
 
     ps.emit_ident(heredoc_type)
     ps.emit_ident(heredoc_symbol)
-    ps.emit_newline
 
 
     string_parts = rest[1]
     #the 1 that we drop here is the literal symbol :string_content
     inner_string_components = string_parts.drop(1)
+
+    check_comp = inner_string_components[0]
+    ps.emit_newline unless check_comp[0] == :@tstring_content && check_comp[1].start_with?("\n")
     ps.with_start_of_line(false) do
       format_inner_string(ps, inner_string_components, :heredoc)
     end
@@ -1085,7 +1087,7 @@ end
 
 def format_rescue(ps, rescue_part)
   return if rescue_part.nil?
-  _, rescue_class, rescue_capture, rescue_expressions = rescue_part
+  _, rescue_class, rescue_capture, rescue_expressions, next_rescue = rescue_part
   ps.dedent do
     ps.emit_indent
     ps.emit_ident("rescue")
@@ -1120,6 +1122,8 @@ def format_rescue(ps, rescue_part)
       end
     end
   end
+
+  format_rescue(ps, next_rescue) unless next_rescue.nil?
 end
 
 def format_ensure(ps, ensure_part)
@@ -2034,7 +2038,11 @@ class Parser < Ripper::SexpBuilderPP
     # we haven't emitted yet
     @next_heredoc_stack = []
     @heredoc_regex = /(<<[-~]?)(.*$)/
+    @next_comment_delete = []
+    @comments_delete = []
   end
+
+  attr_reader :comments_delete
 
   private
 
@@ -2054,11 +2062,15 @@ class Parser < Ripper::SexpBuilderPP
     heredoc_parts = @heredoc_regex.match(args[0]).captures
     raise "bad heredoc" unless heredoc_parts.select { |x| x != nil }.count == 2
     @next_heredoc_stack.push(heredoc_parts)
+    @next_comment_delete.push(lineno)
     super
   end
 
   def on_heredoc_end(*args, &blk)
     @heredoc_stack.push(@next_heredoc_stack.pop)
+    start_com = @next_comment_delete.pop
+    end_com = lineno
+    @comments_delete.push([start_com, end_com])
     super
   end
 
@@ -2089,14 +2101,18 @@ def main
   file_data = file_data.gsub("\r\n", "\n")
 
   line_metadata = extract_line_metadata(file_data)
+
   parser = Parser.new(file_data)
   sexp = parser.parse
   if parser.error?
     require 'pry'; binding.pry
     raise parser.error
   end
+
+  parser.comments_delete.each do |(start, last)|
+    line_metadata.comment_blocks.reject! { |k, v| k >= start && k <= last }
+  end
   format_program(line_metadata, sexp, $stdout)
 end
-
 
 main
