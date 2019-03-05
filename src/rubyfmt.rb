@@ -80,7 +80,7 @@ class Line
   end
 
   def declares_class_or_module?
-     /((^| )(class|module) )/ === to_s
+    @parts.any? { |x| x == :class || x == :module }
   end
 end
 
@@ -342,11 +342,11 @@ class ParserState
   end
 
   def emit_module_keyword
-    line << "module"
+    line << :module
   end
 
   def emit_class_keyword
-    line << "class"
+    line << :class
   end
 
   def emit_const(const)
@@ -711,6 +711,7 @@ def format_command(ps, rest)
     if !args_list.nil? && args_list[0] == :command_call
       ps.emit_space
     end
+    ps.surpress_one_paren = false
     format_expression(ps, args_list)
   end
   ps.emit_newline if ps.start_of_line.last
@@ -736,21 +737,6 @@ def format_inner_string(ps, parts, type)
   parts.each do |part|
     case part[0]
     when :@tstring_content
-      if type == :quoted
-        chars = part[1].each_char.to_a
-        build = []
-        if chars[0] == "\""
-          build << "\\"
-        end
-        build << chars[0]
-        chars.each_cons(2) do |(first, last)|
-          if last == "\"" && first != "\\"
-            build << "\\"
-          end
-          build << last
-        end
-        part[1] = build
-      end
       ps.emit_ident(part[1])
       ps.on_line(part[2][0])
     when :string_embexpr
@@ -780,7 +766,7 @@ def format_heredoc_string_literal(ps, rest)
     inner_string_components = string_parts.drop(1)
 
     check_comp = inner_string_components[0]
-    ps.emit_newline unless check_comp[0] == :@tstring_content && check_comp[1].start_with?("\n")
+    ps.emit_newline
     ps.with_start_of_line(false) do
       format_inner_string(ps, inner_string_components, :heredoc)
     end
@@ -796,7 +782,12 @@ end
 def format_string_literal(ps, rest)
   return format_heredoc_string_literal(ps, rest) if rest[0][0] == :heredoc_string_literal
   items = rest[0]
-  string_content, parts = items[0], items[1..-1]
+  parts = nil
+  if items[0] == :string_content
+    _, parts = items[0], items[1..-1]
+  else
+    parts = items
+  end
   ps.emit_indent if ps.start_of_line.last
   ps.emit_double_quote
 
@@ -1747,7 +1738,7 @@ def format_case_parts(ps, case_parts)
     ps.emit_indent
     ps.emit_ident("when ")
     ps.with_start_of_line(false) do
-      format_expression(ps, conditional.first)
+      format_list_like_thing_items(ps, [conditional], true)
     end
 
     ps.emit_newline
@@ -2086,6 +2077,7 @@ class Parser < Ripper::SexpBuilderPP
           case part[1][0]
           when :@tstring_content
             part[1][1].gsub!("\\", "\\\\\\\\")
+            part[1][1].gsub!("\"", "\\\"")
           else
             raise "got non tstring content in single string"
           end
