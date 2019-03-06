@@ -2065,6 +2065,11 @@ class Parser < Ripper::SexpBuilderPP
     super
   end
 
+  def fixup_tstring_content_for_double_quotes(string)
+    string.gsub!("\\", "\\\\\\\\")
+    string.gsub!("\"", "\\\"")
+  end
+
   def on_string_literal(*args, &blk)
     if @heredoc_stack.last
       heredoc_parts = @heredoc_stack.pop
@@ -2076,12 +2081,26 @@ class Parser < Ripper::SexpBuilderPP
           next if part[1].nil?
           case part[1][0]
           when :@tstring_content
-            part[1][1].gsub!("\\", "\\\\\\\\")
-            part[1][1].gsub!("\"", "\\\"")
+            fixup_tstring_content_for_double_quotes(part[1][1])
           else
             raise "got non tstring content in single string"
           end
         end
+      elsif quote == ")"
+        (args[0][1..-1] || []).each do |part|
+          next if part.nil?
+          case part[0]
+          when :@tstring_content
+            fixup_tstring_content_for_double_quotes(part[1])
+          when :string_embexpr
+            # this is fine
+          else
+            raise "got something bad in %q string"
+          end
+        end
+      elsif quote == "\""
+      else
+        raise "what even is this string type"
       end
     end
     super
