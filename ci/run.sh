@@ -6,4 +6,3 @@ then
     exit 1
 fi
 ./scripts/test.sh
-./scripts/rspec_stress_test.sh
