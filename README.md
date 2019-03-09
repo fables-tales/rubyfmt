@@ -1,65 +1,38 @@
-# Rubyfmt
+# Rubyfmt - 0.1, the one where it doesn't break RSpec
 
-```
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+Rubyfmt is a Ruby autoformatter in the style of
+[gofmt](https://golang.org/cmd/gofmt/).  Unlike rubocop, it is intended to
+*only* be a formatter, and not any kind of deeper analysis tool.
 
-           Please only submit pull requests if they make %w arrays
-           or heredocs work, I'm work in progress on nearly everything
-           else
-           
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-````
+Rubyfmt is currently "functional" in the sense that it can execute over the
+entirety of [rspec/rspec-core](https://github.com/rspec/rspec-core) and not
+break any of the tests.
 
-** VERY MUCH STILL A WORK IN PROGRESS **
+**Rubyfmt implements basically no style opinions at the moment, and as such
+isn't really fit for day to day usage. If you'd like to try it out though,
+you can check out the section below**
 
-Rubyfmt is an autoformatter for Ruby that deals with all the layout of your
-ruby code for you. It's inspired by [gofmt](https://golang.org/cmd/gofmt/) in
-that it wants to be in your editor's after save hook, and just run every time
-you save your file. This means that it should be *fast*. Currently it seems to
-run in close to 50ms on even large ruby files. It's also inspired by
-[standard](https://github.com/testdouble/standard). Rubyfmt has no configuration
-options as to how it actually formats your files. Rather, we're aiming to achieve
-an output format that follows well established Ruby community norms.
+## Installation
 
-## Install
-Rubyfmt isn't a gem, but rather designed to be run as a single, standalone, ruby
-script. Right now, you can clone this repo and then copy `src/rubyfmt.rb` in to your
-path.
+Rubyfmt is a standalone script that only loads the standard library of Ruby,
+as such it is not packaged as a gem. It is intended to be in your editor's save
+hook and run really fast.
 
-## Usage
+I suggest:
 
-`rubyfmt file.rb` will produce a formatted version of the file on stdout.
+* Download `src/rubyfmt.rb` to `~/bin`
+* Add `~/bin` to your PATH (e.g. `echo "$HOME/bin:$PATH" >> ~/.bash_profile`)
+* Set your editor to run `rubyfmt file_name > file_name` on save.
 
-## Examples
 
-### Straw man example
-``` ruby
-require("net/http")
-require("pp")
+## Contributing
 
-module Cat
-  module Dog
-    class HTTPClient
-      def initialize(target_url)
-        @target_url = target_url
-      end
+Rubyfmt considers any file going through the formatter, and coming out the other
+side with changed semantics to be a bug. Please
+[file an issue](issue_template.md) or [open a pull request](pull_request_template.md)
 
-      # @public
-      def call
-        uri = URI(target_url)
-        Net::HTTP.get(uri)
-      end
+At this stage things are too early for us to accept PRs that affect output
+styling.
 
-      private
-
-      attr_reader(:target_url)
-    end
-  end
-end
-
-p(Cat::Dog::HTTPClient.new("http://example.com/").call)
-```
+I will happily accept plugins that make Rubyfmt work with your favourite editor,
+or improve the CLI usability.
