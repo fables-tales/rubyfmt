@@ -1969,6 +1969,37 @@ def format_while(ps, rest)
   ps.emit_newline if ps.start_of_line.last
 end
 
+def format_lambda(ps, rest)
+  ps.emit_indent if ps.start_of_line.last
+  params, body = rest
+  ps.emit_ident("-> ")
+  format_params(ps, params, "(", ")")
+
+  # lambdas typically are a single statement, so line breaking them would
+  # be masochistic
+  if body.length == 1
+    ps.emit_ident(" { ")
+    ps.with_start_of_line(false) do
+      format_expression(ps, body[0])
+    end
+
+    ps.emit_ident(" }")
+  else
+    ps.emit_ident(" {")
+    ps.emit_newline
+    ps.new_block do
+      body.each do |expr|
+        format_expression(ps, expr)
+        ps.emit_newline
+      end
+    end
+    ps.emit_ident("}")
+
+  end
+
+  ps.emit_newline if ps.start_of_line.last
+end
+
 def format_expression(ps, expression)
   type, rest = expression[0],expression[1...expression.length]
 
@@ -2056,6 +2087,7 @@ def format_expression(ps, expression)
     :mlhs_paren => lambda { |ps, rest| format_mlhs_paren(ps, rest) },
     :mrhs_add_star => lambda { |ps, rest| format_mrhs_add_star(ps, rest) },
     :while => lambda { |ps, rest| format_while(ps, rest) },
+    :lambda => lambda { |ps, rest| format_lambda(ps, rest) },
   }.fetch(type).call(ps, rest)
 end
 
