@@ -2,6 +2,12 @@
 set -ex
 
 mkdir -p tmp
+if [ -z ${GITHUB_REF+x} ]
+then
+echo "not on github"
+else
+    rm -rf tmp/rspec-core
+fi
 ls tmp/rspec-core/lib || git clone --depth=1 https://github.com/rspec/rspec-core tmp/rspec-core
 
 cd tmp/rspec-core
