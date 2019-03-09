@@ -6,6 +6,8 @@ require 'pp'
 FILE = ARGV[0]
 MODE = :inline
 
+LineMetadata = Struct.new(:comment_blocks)
+
 class Line
   def initialize(parts)
     @comments = []
@@ -95,7 +97,8 @@ def want_blankline?(line, next_line)
 end
 
 class ParserState
-  attr_accessor :depth, :start_of_line, :line, :string_concat_position, :surpress_one_paren
+  attr_accessor :depth_stack, :start_of_line, :line, :string_concat_position, :surpress_one_paren
+  attr_reader :heredoc_strings
   def initialize(result, line_metadata)
     @surpress_comments_stack = [false]
     @surpress_one_paren = false
@@ -107,6 +110,7 @@ class ParserState
     @current_orig_line_number = 0
     @comments_hash = line_metadata.comment_blocks
     @conditional_indent = [0]
+    @heredoc_strings = []
     @string_concat_position = []
   end
 
@@ -114,6 +118,23 @@ class ParserState
     @surpress_comments_stack << value
     blk.call
     @surpress_comments_stack.pop
+  end
+
+  def push_heredoc_content(symbol, indent, inner_string_components)
+    buf = StringIO.new
+    next_ps = ParserState.new(buf, LineMetadata.new({}))
+    next_ps.depth_stack = depth_stack.dup
+    format_inner_string(next_ps, inner_string_components, :heredoc)
+
+    next_ps.emit_newline
+    next_ps.write
+    buf.rewind
+
+    # buf gets an extra newline on the end, trim it
+    @heredoc_strings << [symbol, indent, buf.read[0...-1]]
+    next_ps.heredoc_strings.each do |s|
+      @heredoc_strings << s
+    end
   end
 
   def with_start_of_line(value, &blk)
@@ -132,7 +153,7 @@ class ParserState
     pop_conditional_indent if @string_concat_position.empty?
   end
 
-  def on_line(line_number)
+  def on_line(line_number, skip=false)
     if line_number != @current_orig_line_number
       @arrays_on_line = -1
     end
@@ -147,6 +168,7 @@ class ParserState
   end
 
   def write
+    on_line(100000000000000)
     clear_empty_trailing_lines
 
     lines = render_queue
@@ -281,6 +303,7 @@ class ParserState
     line << "\n"
     render_queue << line
     self.line = Line.new([])
+    render_heredocs
   end
 
   def emit_dot
@@ -360,6 +383,30 @@ class ParserState
   def emit_symbol(symbol)
     line << ":#{symbol}"
   end
+
+  def render_heredocs(skip=false)
+    while !heredoc_strings.empty?
+      symbol, indent, string = heredoc_strings.pop
+      unless render_queue[-1] && render_queue[-1].ends_with_newline?
+        line << "\n"
+      end
+
+      if string.end_with?("\n")
+        string = string[0...-1]
+      end
+
+      line << string
+      emit_newline
+      if indent
+        emit_indent
+      end
+      emit_ident(symbol)
+      if !skip
+        emit_newline
+      end
+    end
+  end
+
 
   private
 
@@ -516,28 +563,31 @@ def format_params(ps, params, open_delim, close_delim)
   kwargs = params[5] || []
   block_arg = params[7] || []
 
+  emission_order = [required_params, optional_params, rest_params, kwargs, block_arg]
+
+
   format_required_params(ps, required_params)
 
-  did_emit = !required_params.empty?
-  have_more = !optional_params.empty? || !rest_params.empty? || !kwargs.empty? || !block_arg.empty?
-  ps.emit_ident(", ") if did_emit && have_more
-
-  format_rest_params(ps, rest_params)
-
-  did_emit = !rest_params.empty?
-  have_more = !optional_params.empty? || !kwargs.empty? || !block_arg.empty?
+  did_emit = !emission_order.shift.empty?
+  have_more = emission_order.map { |x| !x.empty? }.any?
   ps.emit_ident(", ") if did_emit && have_more
 
   format_optional_params(ps, optional_params)
 
-  did_emit = !optional_params.empty?
-  have_more = !kwargs.empty? || !block_arg.empty?
+  did_emit = !emission_order.shift.empty?
+  have_more = emission_order.map { |x| !x.empty? }.any?
+  ps.emit_ident(", ") if did_emit && have_more
+
+  format_rest_params(ps, rest_params)
+
+  did_emit = !emission_order.shift.empty?
+  have_more = emission_order.map { |x| !x.empty? }.any?
   ps.emit_ident(", ") if did_emit && have_more
 
   format_kwargs(ps, kwargs)
 
-  did_emit = !kwargs.empty?
-  have_more = !block_arg.empty?
+  did_emit = !emission_order.shift.empty?
+  have_more = emission_order.map { |x| !x.empty? }.any?
   ps.emit_ident(", ") if did_emit && have_more
 
   format_blockarg(ps, block_arg)
@@ -734,7 +784,7 @@ end
 def format_inner_string(ps, parts, type)
   parts = parts.dup
 
-  parts.each do |part|
+  parts.each_with_index do |part, idx|
     case part[0]
     when :@tstring_content
       ps.emit_ident(part[1])
@@ -745,8 +795,12 @@ def format_inner_string(ps, parts, type)
         format_expression(ps, part[1][0])
       end
       ps.emit_ident("}")
+      on_line_skip = type == :heredoc && parts[idx+1] && parts[idx+1][0] == :@tstring_content && parts[idx+1][1].start_with?("\n")
+      if on_line_skip
+        ps.render_heredocs(true)
+      end
     else
-      raise "dont't know how to do this"
+      raise "dont't know how to do this #{part[0].inspect}"
     end
   end
 end
@@ -760,22 +814,11 @@ def format_heredoc_string_literal(ps, rest)
     ps.emit_ident(heredoc_type)
     ps.emit_ident(heredoc_symbol)
 
-
     string_parts = rest[1]
     #the 1 that we drop here is the literal symbol :string_content
     inner_string_components = string_parts.drop(1)
-
-    check_comp = inner_string_components[0]
-    ps.emit_newline
-    ps.with_start_of_line(false) do
-      format_inner_string(ps, inner_string_components, :heredoc)
-    end
-
-    if rest[0][1].include?("~")
-      ps.emit_indent
-    end
-    ps.emit_ident(heredoc_symbol)
-    ps.emit_newline
+    components = inner_string_components
+    ps.push_heredoc_content(heredoc_symbol, heredoc_type.include?("~"), components)
   end
 end
 
@@ -1320,10 +1363,13 @@ def format_super(ps, rest)
   ps.emit_indent if ps.start_of_line.last
   ps.emit_ident("super")
 
-  return if args.nil?
-
-  ps.with_start_of_line(false) do
-    format_expression(ps, args)
+  if args.nil?
+    ps.emit_open_paren
+    ps.emit_close_paren
+  else
+    ps.with_start_of_line(false) do
+      format_expression(ps, args)
+    end
   end
 
   ps.emit_newline if ps.start_of_line.last
@@ -1893,6 +1939,15 @@ def format_mlhs_paren(ps, rest)
   ps.emit_ident(")")
 end
 
+def format_mrhs_add_star(ps, expression)
+  ps.emit_indent if ps.start_of_line.last
+  ps.with_start_of_line(false) do
+    ps.emit_ident("*")
+    format_expression(ps, expression.last)
+  end
+  ps.emit_newline if ps.start_of_line.last
+end
+
 def format_expression(ps, expression)
   type, rest = expression[0],expression[1...expression.length]
 
@@ -1978,6 +2033,7 @@ def format_expression(ps, expression)
     :undef => lambda { |ps, rest| format_undef(ps, rest) },
     :@cvar => lambda { |ps, rest| format_cvar(ps, rest) },
     :mlhs_paren => lambda { |ps, rest| format_mlhs_paren(ps, rest) },
+    :mrhs_add_star => lambda { |ps, rest| format_mrhs_add_star(ps, rest) },
   }.fetch(type).call(ps, rest)
 end
 
@@ -1991,14 +2047,13 @@ def format_program(line_metadata, sexp, result)
 end
 
 def extract_line_metadata(file_data)
-  metadata = Struct.new(:comment_blocks)
   comment_blocks = {}
 
   file_data.split("\n").each_with_index do |line, index|
     comment_blocks[index] = line if /^ *#/ === line
   end
 
-  metadata.new(comment_blocks)
+  LineMetadata.new(comment_blocks)
 end
 
 class Parser < Ripper::SexpBuilderPP
@@ -2066,8 +2121,10 @@ class Parser < Ripper::SexpBuilderPP
   end
 
   def fixup_tstring_content_for_double_quotes(string)
+    string.gsub!("\\\\", "__RUBYFMT_SAFE_QUAD")
     string.gsub!("\\", "\\\\\\\\")
     string.gsub!("\"", "\\\"")
+    string.gsub!("__RUBYFMT_SAFE_QUAD", "\\\\\\\\")
   end
 
   def on_string_literal(*args, &blk)
