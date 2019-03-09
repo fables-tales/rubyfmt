@@ -1762,6 +1762,19 @@ def format_dot2(ps, expression)
   ps.emit_newline if ps.start_of_line.last
 end
 
+def format_dot3(ps, expression)
+  left, right = expression
+  ps.emit_indent if ps.start_of_line.last
+
+  ps.with_start_of_line(false) do
+    format_expression(ps, left)
+    ps.emit_ident("...")
+    format_expression(ps, right)
+  end
+
+  ps.emit_newline if ps.start_of_line.last
+end
+
 def format_yield0(ps, expression)
   ps.emit_indent if ps.start_of_line.last
 
@@ -2070,6 +2083,7 @@ def format_expression(ps, expression)
     :field => lambda { |ps, rest| format_field(ps, rest) },
     :mrhs_new_from_args => lambda { |ps, rest| format_mrhs_new_from_args(ps, rest) },
     :dot2 => lambda { |ps, rest| format_dot2(ps, rest) },
+    :dot3 => lambda { |ps, rest| format_dot3(ps, rest) },
     :yield0 => lambda { |ps, rest| format_yield0(ps, rest) },
     :@op => lambda { |ps, rest| format_op(ps, rest) },
     :case => lambda { |ps, rest| format_case(ps, rest) },
