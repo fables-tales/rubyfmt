@@ -1947,6 +1947,28 @@ def format_mrhs_add_star(ps, expression)
   ps.emit_newline if ps.start_of_line.last
 end
 
+def format_while(ps, rest)
+  condition, expressions = rest
+
+  ps.emit_indent if ps.start_of_line.last
+
+  ps.emit_ident("while ")
+  ps.with_start_of_line(false) do
+    format_expression(ps, condition)
+  end
+  ps.emit_newline
+  ps.new_block do
+    expressions.each do |expression|
+      ps.with_start_of_line(true) do
+        format_expression(ps, expression)
+      end
+      ps.emit_newline
+    end
+  end
+  ps.emit_end
+  ps.emit_newline if ps.start_of_line.last
+end
+
 def format_expression(ps, expression)
   type, rest = expression[0],expression[1...expression.length]
 
@@ -2033,6 +2055,7 @@ def format_expression(ps, expression)
     :@cvar => lambda { |ps, rest| format_cvar(ps, rest) },
     :mlhs_paren => lambda { |ps, rest| format_mlhs_paren(ps, rest) },
     :mrhs_add_star => lambda { |ps, rest| format_mrhs_add_star(ps, rest) },
+    :while => lambda { |ps, rest| format_while(ps, rest) },
   }.fetch(type).call(ps, rest)
 end
 
