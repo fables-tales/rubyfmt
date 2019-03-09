@@ -37,3 +37,7 @@ styling.
 
 I will happily accept plugins that make Rubyfmt work with your favourite editor,
 or improve the CLI usability.
+
+## What's coming?
+
+The next thing I'm gonna do is make Rubyfmt self hosting, which will naturally involve me updating how it formats things in a way that I don't hate.
