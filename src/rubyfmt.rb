@@ -839,6 +839,23 @@ def format_string_literal(ps, rest)
   ps.emit_newline if ps.start_of_line.last && ps.string_concat_position.empty?
 end
 
+def format_xstring_literal(ps, rest)
+  items = rest[0]
+  parts = nil
+  if items[0] == :string_content
+    _, parts = items[0], items[1..-1]
+  else
+    parts = items
+  end
+  ps.emit_indent if ps.start_of_line.last
+  ps.emit_ident("`")
+
+  format_inner_string(ps, parts, :quoted)
+
+  ps.emit_ident("`")
+  ps.emit_newline if ps.start_of_line.last && ps.string_concat_position.empty?
+end
+
 def format_module(ps, rest)
   module_name = rest[0]
 
@@ -2115,6 +2132,7 @@ def format_expression(ps, expression)
     :while => lambda { |ps, rest| format_while(ps, rest) },
     :lambda => lambda { |ps, rest| format_lambda(ps, rest) },
     :rescue_mod => lambda { |ps, rest| format_rescue_mod(ps, rest) },
+    :xstring_literal => lambda { |ps, rest| format_xstring_literal(ps, rest) },
   }.fetch(type).call(ps, rest)
 end
 
