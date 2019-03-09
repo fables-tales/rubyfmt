@@ -2231,7 +2231,7 @@ class Parser < Ripper::SexpBuilderPP
       heredoc_parts = @heredoc_stack.pop
       args.insert(0, [:heredoc_string_literal, heredoc_parts])
     else
-      quote = @file_lines[lineno-1][column-1]
+      quote = [@file_lines[lineno-1].bytes[column-1]].pack("c*")
       if quote == "'"
         (args || []).each do |part|
           next if part[1].nil?
@@ -2256,7 +2256,7 @@ class Parser < Ripper::SexpBuilderPP
         end
       elsif quote == "\""
       else
-        raise "what even is this string type"
+        raise "what even is this string type #{quote}"
       end
     end
     super
