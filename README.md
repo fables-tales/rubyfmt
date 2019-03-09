@@ -10,7 +10,7 @@ break any of the tests.
 
 **Rubyfmt currently just outputs valid ruby, and I haven't done much in the way
 of making it style things in any way that remotely mirrors what makes sense for
-ruby. As such isn't really fit for day to day usage. If you'd like to try it out
+ruby. As such isn't yet really fit for day to day usage. If you'd like to try it out
 though, you can check out the section below**
 
 ## Installation
