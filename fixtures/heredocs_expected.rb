@@ -8,7 +8,7 @@ EOD
 def foo
   c = <<~EOD
 part 1 of heredoc
-EOD
+  EOD
   puts(c)
 end
 

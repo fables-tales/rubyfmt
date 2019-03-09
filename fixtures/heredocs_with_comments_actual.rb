@@ -1,4 +1,4 @@
-        HTML_HEADER = <<-EOF
+HTML_HEADER = <<-EOF
 <!DOCTYPE html>
 <html lang='en'>
 <head>

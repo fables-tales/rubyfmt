@@ -1,0 +1,3 @@
+def bees
+  super()
+end

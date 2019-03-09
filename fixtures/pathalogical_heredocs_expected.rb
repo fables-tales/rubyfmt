@@ -1,8 +1,7 @@
 a = <<EOD
-part 1 of heredoc #{"not a heredoc" + <<EOM
+part 1 of heredoc #{"not a heredoc" + <<EOM}
 eom part
 EOM
-}
 part 2 of heredoc
 EOD
 b = <<-EOD
@@ -11,7 +10,7 @@ EOD
 def foo
   c = <<~EOD
 oqweijfoqwiejf
-EOD
+  EOD
   puts(c)
 end
 
