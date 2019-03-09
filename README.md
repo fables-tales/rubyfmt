@@ -29,7 +29,7 @@ I suggest:
 
 Rubyfmt considers any file going through the formatter, and coming out the other
 side with changed semantics to be a bug. Please
-[file an issue](issues/new) or [open a pull request](compare)
+[file an issue](https://github.com/samphippen/rubyfmt/issues/new) or [open a pull request](https://github.com/samphippen/rubyfmt/compare)
 
 At this stage things are too early for us to accept PRs that affect output
 styling.
