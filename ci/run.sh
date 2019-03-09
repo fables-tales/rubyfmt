@@ -1,3 +1,4 @@
 #!/bin/bash
 set -ex
-./test.sh
+./scripts/test.sh
+./scripts/rspec_stress_test.sh

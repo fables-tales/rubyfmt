@@ -8,9 +8,10 @@ Rubyfmt is currently "functional" in the sense that it can execute over the
 entirety of [rspec/rspec-core](https://github.com/rspec/rspec-core) and not
 break any of the tests.
 
-**Rubyfmt implements basically no style opinions at the moment, and as such
-isn't really fit for day to day usage. If you'd like to try it out though,
-you can check out the section below**
+**Rubyfmt currently just outputs valid ruby, and I haven't done much in the way
+of making it style things in any way that remotely mirrors what makes sense for
+ruby. As such isn't really fit for day to day usage. If you'd like to try it out
+though, you can check out the section below**
 
 ## Installation
 
