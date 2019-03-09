@@ -3,7 +3,6 @@ require 'ripper'
 require 'stringio'
 require 'pp'
 
-FILE = ARGV[0]
 MODE = :inline
 
 LineMetadata = Struct.new(:comment_blocks)
@@ -2165,7 +2164,7 @@ class Parser < Ripper::SexpBuilderPP
 end
 
 def main
-  file_data = File.read(FILE)
+  file_data = ARGF.read
   file_data = file_data.gsub("\r\n", "\n")
 
   line_metadata = extract_line_metadata(file_data)
