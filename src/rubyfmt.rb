@@ -899,16 +899,13 @@ end
 
 def format_class(ps, rest)
   class_name = rest[0]
-  raise "didn't get a const ref" if class_name[0] != :const_ref
-  raise "didn't get a const" if class_name[1][0] != :"@const"
 
   ps.emit_indent
   ps.emit_class_keyword
-  ps.start_of_line << false
-  ps.emit_space
-  ps.emit_const(class_name[1][1])
-  ps.on_line(class_name[1][2].first)
-  ps.start_of_line.pop
+  ps.with_start_of_line(false) do
+    ps.emit_space
+    format_expression(ps, class_name)
+  end
 
   if rest[1] != nil
     ps.emit_ident(" < ")
