@@ -733,7 +733,13 @@ def format_method_add_arg(ps, rest)
   end
 
   ps.with_start_of_line(!emitted_paren) do
-    format_expression(ps, args_list) unless args_list.empty?
+    next if args_list.empty?
+    case args_list[0]
+    when :args_add_block, :command_call, :command
+      format_expression(ps, args_list) unless args_list.empty?
+    else
+      format_list_like_thing(ps, [args_list],single_line=true)
+    end
   end
   if emitted_paren
     ps.emit_close_paren
