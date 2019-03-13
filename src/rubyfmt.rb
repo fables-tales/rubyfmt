@@ -750,10 +750,11 @@ end
 def format_command(ps, rest)
   # this is definitely wrong
   ident = rest[0]
-  {
+  have_require = {
     :"@ident" => lambda {
       ps.emit_indent if ps.start_of_line.last
       ps.emit_ident(ident[1])
+      ident[1] == "require"
     },
   }.fetch(rest[0][0]).call
 
@@ -766,7 +767,11 @@ def format_command(ps, rest)
     if !args_list.nil? && args_list[0] == :command_call
       ps.emit_space
     end
-    ps.surpress_one_paren = false
+
+    if have_require
+      ps.emit_ident(" ")
+    end
+    ps.surpress_one_paren = have_require
     format_expression(ps, args_list)
   end
   ps.emit_newline if ps.start_of_line.last

@@ -1,5 +1,5 @@
-require("net/http")
-require("pp")
+require "net/http"
+require "pp"
 
 module Cat
   module Dog
