@@ -1711,19 +1711,14 @@ end
 
 def format_regexp_literal(ps, expression)
   parts,re_end = expression
-  re_type = case re_end[1][0]
-            when "}"
-              :curly
+  re_delimiters = case re_end[3][0]
+            when "%"
+              ["%r#{re_end[3][2]}", re_end[1]]
             when "/"
-              :slashy
+              ["/", "/"]
             else
               raise "got unknown regular expression"
             end
-
-  re_delimiters = {
-    :curly => ["%r{", "}"],
-    :slashy => ["/", "/"],
-  }.fetch(re_type)
 
   ps.emit_indent if ps.start_of_line.last
 
@@ -2196,6 +2191,7 @@ class Parser < Ripper::SexpBuilderPP
     @heredoc_regex = /(<<[-~]?)(.*$)/
     @next_comment_delete = []
     @comments_delete = []
+    @regexp_stack = []
   end
 
   attr_reader :comments_delete
@@ -2271,6 +2267,15 @@ class Parser < Ripper::SexpBuilderPP
       end
     end
     super
+  end
+
+  def on_regexp_beg(re_part)
+    @regexp_stack << re_part
+  end
+
+  def on_regexp_literal(*args)
+    args[1] << @regexp_stack.pop
+    super(*args)
   end
 end
 

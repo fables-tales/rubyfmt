@@ -7,5 +7,6 @@ class Foo
     /_c.*(ol)(or)\z/i
     /_c.*([ol])(or)\z/i
     /_c.*(\[ol])(or)\z/i
+    %r({})
   end
 end
