@@ -61,7 +61,7 @@ class Line
   end
 
   def contains_end?
-    @parts.any? { |x| x == "end" }
+    @parts.any? { |x| x == :end }
   end
 
   def contains_def?
@@ -287,7 +287,7 @@ class ParserState
   def emit_end
     emit_newline
     emit_indent if start_of_line.last
-    line << "end"
+    line << :end
   end
 
   def emit_space
