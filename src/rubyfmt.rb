@@ -998,7 +998,7 @@ def format_symbol_literal(ps, literal)
 end
 
 def is_normal_dot(candidate)
-  candidate == :"." || (candidate.is_a?(Array) && dot[0] == :@period)
+  candidate == :"." || (candidate.is_a?(Array) && candidate[0] == :@period)
 end
 
 def format_command_call(ps, expression)
