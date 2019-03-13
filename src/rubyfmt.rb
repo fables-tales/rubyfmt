@@ -2057,6 +2057,20 @@ def format_backref(ps, expression)
   ps.emit_newline if ps.start_of_line.last
 end
 
+def format_break(ps, expression)
+  ps.emit_indent if ps.start_of_line.last
+
+  ps.emit_ident("break")
+  if expression[0] && expression[0][1]
+    ps.emit_ident(" ")
+    ps.with_start_of_line(false) do
+      format_expression(ps, expression[0][1][0])
+    end
+  end
+
+  ps.emit_newline if ps.start_of_line.last
+end
+
 def format_expression(ps, expression)
   type, rest = expression[0],expression[1...expression.length]
 
@@ -2134,7 +2148,7 @@ def format_expression(ps, expression)
     :@gvar => lambda { |ps, rest| format_gvar(ps, rest) },
     :sclass => lambda { |ps, rest| format_sclass(ps, rest) },
     :retry => lambda { |ps, rest| format_empty_kwd(ps, rest, "retry") },
-    :break => lambda { |ps, rest| format_empty_kwd(ps, rest, "break") },
+    :break => lambda { |ps, rest| format_break(ps, rest) },
     :next => lambda { |ps, rest| format_empty_kwd(ps, rest, "next") },
     :while_mod => lambda { |ps, rest| format_while_mod(ps, rest) },
     :mlhs => lambda { |ps, rest| format_mlhs(ps, rest) },
