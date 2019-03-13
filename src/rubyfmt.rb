@@ -773,6 +773,8 @@ def format_method_add_arg(ps, rest)
 end
 
 def format_command(ps, rest)
+  ps.on_line(rest[0][2][0])
+
   # this is definitely wrong
   ident = rest[0]
   have_require = {
@@ -1006,6 +1008,7 @@ def format_call(ps, rest)
 end
 
 def format_ident(ps, ident)
+  ps.on_line(ident[1][0])
   ps.emit_indent if ps.start_of_line.last
   ps.emit_ident(ident[0])
 end
