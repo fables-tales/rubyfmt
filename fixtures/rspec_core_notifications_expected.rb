@@ -44,12 +44,12 @@ module RSpec::Core
         return new(example) unless execution_result.status == :pending || execution_result.status == :failed
 
         klass = if execution_result.pending_fixed?
-                  PendingExampleFixedNotification
-                elsif execution_result.status == :pending
-                  PendingExampleFailedAsExpectedNotification
-                else
-                  FailedExampleNotification
-                end
+          PendingExampleFixedNotification
+        elsif execution_result.status == :pending
+          PendingExampleFailedAsExpectedNotification
+        else
+          FailedExampleNotification
+        end
 
         klass.new(example)
       end
