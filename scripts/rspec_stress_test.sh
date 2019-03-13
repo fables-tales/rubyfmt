@@ -26,3 +26,18 @@ cd tmp/rspec-core
 bundle exec rspec
 git reset --hard
 cd ../../
+
+# refmt.rb replaces rubyfmt.rb
+ruby --disable=gems src/rubyfmt.rb src/rubyfmt.rb > tmp/refmt.rb
+
+FILES=`find tmp/rspec-core/lib -type f | grep -i '\.rb$'`
+for FN in $FILES
+do
+    echo "running rubyfmt on $FN"
+    ruby --disable=gems tmp/refmt.rb $FN > /tmp/this_one.rb
+    ruby --disable=gems tmp/refmt.rb /tmp/this_one.rb > $FN
+done
+cd tmp/rspec-core
+bundle exec rspec
+git reset --hard
+cd ../../
