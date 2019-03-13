@@ -2267,7 +2267,7 @@ class Parser < Ripper::SexpBuilderPP
 end
 
 def main
-  file_data = ARGF.read
+  file_data = $stdin.tty? ? ARGF.read : $stdin.read
   file_data = file_data.gsub("\r\n", "\n")
 
   line_metadata = extract_line_metadata(file_data)
