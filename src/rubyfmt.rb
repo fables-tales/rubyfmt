@@ -1636,8 +1636,16 @@ def format_aref(ps, expression)
 end
 
 def format_bare_assoc_hash(ps, expression)
-  ps.new_block do
-    format_assocs(ps, expression[0], newlines = false)
+  if expression[0][0][0] == :assoc_splat
+    ps.emit_ident("**")
+    assoc_expr = expression[0][0][1]
+    ps.with_start_of_line(false) do
+      format_expression(ps, assoc_expr)
+    end
+  else
+    ps.new_block do
+      format_assocs(ps, expression[0], newlines = false)
+    end
   end
 end
 
