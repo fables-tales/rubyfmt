@@ -2048,6 +2048,15 @@ def format_rescue_mod(ps, expression)
   ps.emit_newline if ps.start_of_line.last
 end
 
+def format_backref(ps, expression)
+  ps.emit_indent if ps.start_of_line.last
+
+  ps.emit_ident(expression[0])
+  ps.on_line(expression[1][0])
+
+  ps.emit_newline if ps.start_of_line.last
+end
+
 def format_expression(ps, expression)
   type, rest = expression[0],expression[1...expression.length]
 
@@ -2139,6 +2148,7 @@ def format_expression(ps, expression)
     :lambda => lambda { |ps, rest| format_lambda(ps, rest) },
     :rescue_mod => lambda { |ps, rest| format_rescue_mod(ps, rest) },
     :xstring_literal => lambda { |ps, rest| format_xstring_literal(ps, rest) },
+    :@backref => lambda { |ps, rest| format_backref(ps, rest) },
   }.fetch(type).call(ps, rest)
 end
 
