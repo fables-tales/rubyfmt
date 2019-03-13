@@ -988,7 +988,7 @@ def format_call(ps, rest)
   format_expression(ps, front)
 
   case
-  when dot == :"." || dot == :"::" || (dot.is_a?(Array) && dot[0] == :@period)
+  when is_normal_dot(dot)
     ps.emit_dot
   when dot == :"&."
     ps.emit_lonely_operator
@@ -1023,6 +1023,10 @@ def format_symbol_literal(ps, literal)
   ps.emit_newline if ps.start_of_line.last
 end
 
+def is_normal_dot(candidate)
+  candidate == :"." || (candidate.is_a?(Array) && candidate[0] == :@period)
+end
+
 def format_command_call(ps, expression)
   ps.emit_indent if ps.start_of_line.last
 
@@ -1030,7 +1034,7 @@ def format_command_call(ps, expression)
 
   ps.with_start_of_line(false) do
     format_expression(ps, left)
-    raise "got something other than a dot" if dot != :"."
+    raise "got something other than a dot" if !is_normal_dot(dot)
     ps.emit_dot
     format_expression(ps, right)
     ps.emit_open_paren
