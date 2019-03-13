@@ -72,6 +72,14 @@ class Line
     @parts.any? { |x| x == :do }
   end
 
+  def contains_if?
+    @parts.any? { |x| x == :if }
+  end
+
+  def contains_unless?
+    @parts.any? { |x| x == :unless }
+  end
+
   def declares_private?
     @parts.any? { |x| x == "private" } && @parts.length == 3
   end
@@ -83,12 +91,21 @@ class Line
   def declares_class_or_module?
     @parts.any? { |x| x == :class || x == :module }
   end
+
+  def contains_while?
+    @parts.any? { |x| x == :while }
+  end
+
+  def surpresses_blankline?
+    contains_def? || contains_do? || contains_while?
+  end
 end
 
 def want_blankline?(line, next_line)
   return unless next_line
   return true if line.contains_end? && !next_line.contains_end?
-  return true if next_line.contains_do? && !line.contains_def?
+  return true if next_line.contains_do? && !line.surpresses_blankline?
+  return true if (next_line.contains_if? || next_line.contains_unless?) && !line.surpresses_blankline?
   return true if line.declares_private?
   return true if line.declares_require? && !next_line.declares_require?
   return true if !line.declares_class_or_module? && next_line.has_comment?
@@ -182,6 +199,10 @@ class ParserState
 
     result.write("\n")
     result.flush
+  end
+
+  def emit_while
+    line << :while
   end
 
   def emit_indent
@@ -1322,11 +1343,11 @@ def format_conditional_parts(ps, further_conditionals)
 end
 
 def format_unless(ps, expression)
-  format_conditional(ps, expression, "unless")
+  format_conditional(ps, expression, :unless)
 end
 
 def format_if(ps, expression)
-  format_conditional(ps, expression, "if")
+  format_conditional(ps, expression, :if)
 end
 
 def format_conditional(ps, expression, kind)
@@ -1993,7 +2014,8 @@ def format_while(ps, rest)
 
   ps.emit_indent if ps.start_of_line.last
 
-  ps.emit_ident("while ")
+  ps.emit_while
+  ps.emit_ident(" ")
   ps.with_start_of_line(false) do
     format_expression(ps, condition)
   end

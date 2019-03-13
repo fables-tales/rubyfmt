@@ -42,6 +42,7 @@ module RSpec::Core
         execution_result = example.execution_result
         return SkippedExampleNotification.new(example) if execution_result.example_skipped?
         return new(example) unless execution_result.status == :pending || execution_result.status == :failed
+
         klass = if execution_result.pending_fixed?
                   PendingExampleFixedNotification
                 elsif execution_result.status == :pending
@@ -322,6 +323,7 @@ module RSpec::Core
       def totals_line
         summary = Formatters::Helpers.pluralize(example_count, "example") + ", " + Formatters::Helpers.pluralize(failure_count, "failure")
         summary += ", #{pending_count} pending" if pending_count > 0
+
         if errors_outside_of_examples_count > 0
           summary += (", " + Formatters::Helpers.pluralize(errors_outside_of_examples_count, "error") + " occurred outside of examples")
         end
@@ -379,6 +381,7 @@ module RSpec::Core
         formatted = "\nFinished in #{formatted_duration} " \
                     "(files took #{formatted_load_time} to load)\n" \
                     "#{colorized_totals_line(colorizer)}\n"
+
         unless failed_examples.empty?
           formatted += (colorized_rerun_commands(colorizer) + "\n")
         end
