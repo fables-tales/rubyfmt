@@ -160,7 +160,7 @@ class ParserState
   end
 
   def start_string_concat
-    push_conditional_indent if @string_concat_position.empty?
+    push_conditional_indent(:string) if @string_concat_position.empty?
     @string_concat_position << Object.new
   end
 
@@ -222,11 +222,15 @@ class ParserState
     line << "elsif"
   end
 
-  def push_conditional_indent
+  def push_conditional_indent(type)
     if line.empty?
       @conditional_indent << 2*@depth_stack.last
     else
-      @conditional_indent << line.string_length
+      if type == :conditional
+        @conditional_indent << 2*@depth_stack.last
+      elsif type == :string
+        @conditional_indent << line.string_length
+      end
     end
 
     @depth_stack << 0
@@ -1355,7 +1359,7 @@ def format_if(ps, expression)
 end
 
 def format_conditional(ps, expression, kind)
-  ps.push_conditional_indent
+  ps.push_conditional_indent(:conditional)
   if_conditional, body, further_conditionals = expression[0], expression[1], expression[2]
 
   ps.emit_indent if ps.start_of_line.last
