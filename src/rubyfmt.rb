@@ -1447,15 +1447,24 @@ def format_zsuper(ps, rest)
 end
 
 def format_array_fast_path(ps, rest)
-  ps.emit_ident("[")
-  ps.emit_newline unless rest.first.nil?
+  single_statement = rest[0] && rest[0].length == 1
+  if single_statement
+    ps.emit_ident("[")
+    ps.with_start_of_line(false) do
+      format_list_like_thing(ps, rest, true)
+    end
+    ps.emit_ident("]")
+  else
+    ps.emit_ident("[")
+    ps.emit_newline unless rest.first.nil?
 
-  ps.new_block do
-    format_list_like_thing(ps, rest, false)
+    ps.new_block do
+      format_list_like_thing(ps, rest, false)
+    end
+
+    ps.emit_indent unless rest.first.nil?
+    ps.emit_ident("]")
   end
-
-  ps.emit_indent unless rest.first.nil?
-  ps.emit_ident("]")
 end
 
 def format_array(ps, rest)
