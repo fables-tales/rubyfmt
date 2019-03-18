@@ -1235,7 +1235,13 @@ end
 def format_else(ps, else_part)
   return if else_part.nil?
 
-  _, exprs = else_part
+  exprs = if RUBY_VERSION.to_f > 2.5
+    else_part
+  else
+    _, a = else_part
+    a
+  end
+
   ps.dedent do
     ps.emit_indent
     ps.emit_ident("else")
@@ -2043,12 +2049,22 @@ end
 def format_lambda(ps, rest)
   ps.emit_indent if ps.start_of_line.last
   params, body = rest
-  ps.emit_ident("-> ")
+  ps.emit_ident("->")
+  if params[0] == :paren
+    params = params[1]
+  end
+  ps.emit_space if params.drop(1).any?
   format_params(ps, params, "(", ")")
+
+  delim = if body[0] == :bodystmt
+    ["do", "end"]
+  else
+    ["{", "}"]
+  end
 
   # lambdas typically are a single statement, so line breaking them would
   # be masochistic
-  if body.length == 1
+  if delim[0] == "{" && body.length == 1
     ps.emit_ident(" { ")
     ps.with_start_of_line(false) do
       format_expression(ps, body[0])
@@ -2056,15 +2072,19 @@ def format_lambda(ps, rest)
 
     ps.emit_ident(" }")
   else
-    ps.emit_ident(" {")
+    ps.emit_ident(" #{delim[0]}")
     ps.emit_newline
     ps.new_block do
-      body.each do |expr|
-        format_expression(ps, expr)
-        ps.emit_newline
+      if body[0] != :bodystmt
+        body.each do |expr|
+          format_expression(ps, expr)
+          ps.emit_newline
+        end
+      else
+        format_bodystmt(ps, body.drop(1))
       end
     end
-    ps.emit_ident("}")
+    ps.emit_ident(delim[1])
 
   end
 
@@ -2346,8 +2366,13 @@ def main
 
   parser = Parser.new(file_data)
   sexp = parser.parse
-  if parser.error?
+  if ENV["RUBYFMT_DEBUG"] == "2"
     require 'pry'; binding.pry
+  end
+  if parser.error?
+    if ENV["RUBYFMT_DEBUG"] == "2"
+      require 'pry'; binding.pry
+    end
     raise parser.error
   end
 
