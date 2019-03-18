@@ -7,3 +7,5 @@ lambda { |x|
   arg
   arg
 }
+-> (arg) {  }
+-> {  }
