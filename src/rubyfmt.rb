@@ -1,10 +1,9 @@
 #!/usr/bin/env ruby
-require 'ripper'
-require 'stringio'
-require 'pp'
+require "ripper"
+require "stringio"
+require "pp"
 
 MODE = :inline
-
 LineMetadata = Struct.new(:comment_blocks)
 
 class Line
@@ -35,6 +34,7 @@ class Line
 
   def to_s
     build = @parts.join("")
+
     unless @comments.empty?
       build = "#{@comments.join("\n")}\n#{build}"
     end
@@ -76,6 +76,10 @@ class Line
     @parts.any? { |x| x == :if }
   end
 
+  def contains_else?
+    @parts.any? { |x| x == :else }
+  end
+
   def contains_unless?
     @parts.any? { |x| x == :unless }
   end
@@ -85,7 +89,7 @@ class Line
   end
 
   def declares_require?
-    @parts.any? { |x| x == "require" }
+    @parts.any? { |x| x == "require" } && @parts.none? { |x| x == "}" }
   end
 
   def declares_class_or_module?
@@ -97,7 +101,7 @@ class Line
   end
 
   def surpresses_blankline?
-    contains_def? || contains_do? || contains_while?
+    contains_def? || contains_do? || contains_while? || contains_if? || contains_else?
   end
 end
 
