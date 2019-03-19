@@ -1567,7 +1567,7 @@ def format_brace_block(ps, expression)
   output = StringIO.new
 
   next_ps = ParserState.with_depth_stack(output, from: ps)
-  next_ps.with_start_of_line(false) do
+  ps.new_block do
     body.each do |expr|
       format_expression(next_ps, expr)
     end
