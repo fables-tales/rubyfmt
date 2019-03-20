@@ -549,7 +549,7 @@ def format_kwargs(ps, kwargs)
 end
 
 def format_rest_params(ps, rest_params)
-  return if rest_params.empty?
+  return if rest_params == 0 || rest_params.empty? || rest_params == [:excessed_comma]
   ps.emit_ident("*")
   return if rest_params[1].nil?
 
@@ -572,11 +572,16 @@ end
 
 def format_params(ps, params, open_delim, close_delim)
   return if params.nil?
+  f_params = []
   if params[0] == :paren || params[0] == :block_var
+    if params[0] == :block_var && params[-1] != nil
+      f_params = params[-1]
+    end
+
     params = params[1]
   end
 
-  have_any_params = params[1..-1].any? { |x| !x.nil? }
+  have_any_params = params[1..-1].any? { |x| !x.nil? } || !f_params.empty?
 
   if have_any_params
     ps.emit_ident(open_delim)
@@ -606,10 +611,18 @@ def format_params(ps, params, open_delim, close_delim)
   did_emit = false
   have_more = false
   emission_order.each_with_index do |(values, callable), idx|
+    if values == 0
+      values = []
+    end
     callable.call(ps, values)
     did_emit = !values.empty?
-    have_more = emission_order[idx+1..-1].map { |x| !x[0].empty? }.any?
+    have_more = emission_order[idx+1..-1].map { |x| x[0] != 0 && !x[0].empty? && x[0] != [:excessed_comma] }.any?
     ps.emit_ident(", ") if did_emit && have_more && idx != emission_order.length - 1
+  end
+
+  if f_params && !f_params.empty?
+    ps.emit_ident(" ;")
+    format_list_like_thing_items(ps, [f_params], single_line = true)
   end
 
   if have_any_params
@@ -1564,14 +1577,15 @@ def format_brace_block(ps, expression)
   end
 
   multiline = next_ps.render_queue.length > 1
+  orig_params = params
 
-  bv, params, f = params
+  bv, params, _ = params
   raise "got something other than block var" if bv != :block_var && bv != nil
-  raise "got something other than false" if f != false && f != nil
+
   ps.emit_ident("{")
   unless bv.nil?
     ps.emit_space
-    format_params(ps, params, "|", "|")
+    format_params(ps, orig_params, "|", "|")
   end
 
   if multiline
