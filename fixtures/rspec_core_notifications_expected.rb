@@ -403,10 +403,7 @@ module RSpec::Core
           locations = RSpec.world.all_examples.map(&:location_rerun_argument)
 
           Set.new.tap do |s|
-            locations.group_by { |l|
-              l
-
-            }.each do |l, ls|
+            locations.group_by { |l| l }.each do |l, ls|
               s << l if ls.count > 1
             end
           end
@@ -470,9 +467,7 @@ module RSpec::Core
           hash[:average] = hash[:total_time].to_f / hash[:count]
         end
 
-        groups = @example_groups.sort_by { |_, hash|
-          -hash[:average]
-        }.first(number_of_examples)
+        groups = @example_groups.sort_by { |_, hash| -hash[:average] }.first(number_of_examples)
         groups.map { |group, data|
           [
             group.location,

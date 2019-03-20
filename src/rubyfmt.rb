@@ -1,13 +1,12 @@
 #!/usr/bin/env ruby
-require 'ripper'
-require 'stringio'
-require 'pp'
-
-MODE = :inline
+require "ripper"
+require "stringio"
+require "pp"
 
 LineMetadata = Struct.new(:comment_blocks)
 
 class Line
+  attr_accessor :parts
   def initialize(parts)
     @comments = []
     @parts = parts
@@ -35,6 +34,7 @@ class Line
 
   def to_s
     build = @parts.join("")
+
     unless @comments.empty?
       build = "#{@comments.join("\n")}\n#{build}"
     end
@@ -76,6 +76,10 @@ class Line
     @parts.any? { |x| x == :if }
   end
 
+  def contains_else?
+    @parts.any? { |x| x == :else }
+  end
+
   def contains_unless?
     @parts.any? { |x| x == :unless }
   end
@@ -85,7 +89,7 @@ class Line
   end
 
   def declares_require?
-    @parts.any? { |x| x == "require" }
+    @parts.any? { |x| x == "require" } && @parts.none? { |x| x == "}" }
   end
 
   def declares_class_or_module?
@@ -97,7 +101,7 @@ class Line
   end
 
   def surpresses_blankline?
-    contains_def? || contains_do? || contains_while?
+    contains_def? || contains_do? || contains_while? || contains_if? || contains_else?
   end
 end
 
@@ -115,6 +119,10 @@ end
 class ParserState
   attr_accessor :depth_stack, :start_of_line, :line, :string_concat_position, :surpress_one_paren
   attr_reader :heredoc_strings
+  attr_reader :result
+  attr_accessor :render_queue
+  attr_reader :comments_hash
+  attr_reader :depth_stack
   def initialize(result, line_metadata)
     @surpress_comments_stack = [false]
     @surpress_one_paren = false
@@ -128,6 +136,12 @@ class ParserState
     @conditional_indent = [0]
     @heredoc_strings = []
     @string_concat_position = []
+  end
+
+  def self.with_depth_stack(output, from:)
+    i = new(output, LineMetadata.new({}))
+    i.depth_stack = from.depth_stack.dup
+    i
   end
 
   def with_surpress_comments(value, &blk)
@@ -215,7 +229,7 @@ class ParserState
   end
 
   def emit_else
-    line << "else"
+    line << :else
   end
 
   def emit_elsif
@@ -430,14 +444,6 @@ class ParserState
       end
     end
   end
-
-
-  private
-
-  attr_reader :result
-  attr_reader :render_queue
-  attr_reader :comments_hash
-  attr_reader :depth_stack
 end
 
 def format_block_params_list(ps, params_list)
@@ -1244,7 +1250,7 @@ def format_else(ps, else_part)
 
   ps.dedent do
     ps.emit_indent
-    ps.emit_ident("else")
+    ps.emit_else
   end
 
   if !exprs.nil?
@@ -1365,15 +1371,14 @@ def format_if(ps, expression)
 end
 
 def format_conditional(ps, expression, kind)
-  ps.push_conditional_indent(:conditional)
   if_conditional, body, further_conditionals = expression[0], expression[1], expression[2]
 
   ps.emit_indent if ps.start_of_line.last
-  ps.start_of_line << false
-  ps.emit_ident(kind)
-  ps.emit_space
-  format_expression(ps, if_conditional)
-  ps.start_of_line.pop
+  ps.with_start_of_line(false) do
+    ps.emit_ident(kind)
+    ps.emit_space
+    format_expression(ps, if_conditional)
+  end
 
   ps.emit_newline
   ps.new_block do
@@ -1382,13 +1387,12 @@ def format_conditional(ps, expression, kind)
     end
   end
 
-  ps.start_of_line << true
-  ps.emit_newline
-  format_conditional_parts(ps, further_conditionals || [])
+  ps.with_start_of_line(true) do
+    ps.emit_newline
+    format_conditional_parts(ps, further_conditionals || [])
 
-  ps.emit_end
-  ps.start_of_line.pop
-  ps.pop_conditional_indent
+    ps.emit_end
+  end
   ps.emit_newline if ps.start_of_line.last
 end
 
@@ -1443,15 +1447,24 @@ def format_zsuper(ps, rest)
 end
 
 def format_array_fast_path(ps, rest)
-  ps.emit_ident("[")
-  ps.emit_newline unless rest.first.nil?
+  single_statement = rest[0] && rest[0].length == 1
+  if single_statement
+    ps.emit_ident("[")
+    ps.with_start_of_line(false) do
+      format_list_like_thing(ps, rest, true)
+    end
+    ps.emit_ident("]")
+  else
+    ps.emit_ident("[")
+    ps.emit_newline unless rest.first.nil?
 
-  ps.new_block do
-    format_list_like_thing(ps, rest, false)
+    ps.new_block do
+      format_list_like_thing(ps, rest, false)
+    end
+
+    ps.emit_indent unless rest.first.nil?
+    ps.emit_ident("]")
   end
-
-  ps.emit_indent unless rest.first.nil?
-  ps.emit_ident("]")
 end
 
 def format_array(ps, rest)
@@ -1551,6 +1564,17 @@ def format_brace_block(ps, expression)
   raise "didn't get right array in brace block" if expression.length != 2
   params, body = expression
 
+  output = StringIO.new
+
+  next_ps = ParserState.with_depth_stack(output, from: ps)
+  ps.new_block do
+    body.each do |expr|
+      format_expression(next_ps, expr)
+    end
+  end
+
+  multiline = next_ps.render_queue.length > 1
+
   bv, params, f = params
   raise "got something other than block var" if bv != :block_var && bv != nil
   raise "got something other than false" if f != false && f != nil
@@ -1559,13 +1583,26 @@ def format_brace_block(ps, expression)
     ps.emit_space
     format_params(ps, params, "|", "|")
   end
-  ps.emit_newline
+
+  if multiline
+    ps.emit_newline
+  else
+    ps.emit_space
+  end
+
   ps.new_block do
-    body.each do |expr|
-      format_expression(ps, expr)
+    ps.with_start_of_line(multiline) do
+      body.each do |expr|
+        format_expression(ps, expr)
+      end
     end
   end
-  ps.emit_indent
+
+  if multiline
+    ps.emit_indent
+  else
+    ps.emit_space
+  end
   ps.emit_ident("}")
   ps.emit_newline if ps.start_of_line.last
 end
@@ -1873,7 +1910,7 @@ def format_case_parts(ps, case_parts)
   elsif type == :else
     _, body = case_parts
     ps.emit_indent
-    ps.emit_ident("else")
+    ps.emit_else
     ps.emit_newline
 
     ps.new_block do
