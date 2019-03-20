@@ -1978,14 +1978,14 @@ def format_empty_kwd(ps, expression, keyword)
   ps.emit_newline if ps.start_of_line.last
 end
 
-def format_while_mod(ps, rest)
+def format_while_mod(ps, rest, type)
   while_conditional, while_expr = rest
 
   ps.emit_indent if ps.start_of_line.last
 
   ps.with_start_of_line(false) do
     format_expression(ps, while_expr)
-    ps.emit_ident(" while ")
+    ps.emit_ident(" #{type} ")
     format_expression(ps, while_conditional)
   end
 
@@ -2248,7 +2248,8 @@ def format_expression(ps, expression)
     :retry => lambda { |ps, rest| format_empty_kwd(ps, rest, "retry") },
     :break => lambda { |ps, rest| format_break(ps, rest) },
     :next => lambda { |ps, rest| format_empty_kwd(ps, rest, "next") },
-    :while_mod => lambda { |ps, rest| format_while_mod(ps, rest) },
+    :while_mod => lambda { |ps, rest| format_while_mod(ps, rest, "while") },
+    :until_mod => lambda { |ps, rest| format_while_mod(ps, rest, "until") },
     :mlhs => lambda { |ps, rest| format_mlhs(ps, rest) },
     :dyna_symbol => lambda { |ps, rest| format_dyna_symbol(ps, rest) },
     :rest_param => lambda { |ps, rest| format_rest_param(ps, rest) },
