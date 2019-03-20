@@ -582,7 +582,7 @@ def format_params(ps, params, open_delim, close_delim)
     ps.emit_ident(open_delim)
   end
 
-  bad_params = params[4..-1].any? { |x| !x.nil? }
+  bad_params = params[6..-1].any? { |x| !x.nil? }
   bad_params = false if params[5]
   bad_params = false if params[7]
 
@@ -590,37 +590,27 @@ def format_params(ps, params, open_delim, close_delim)
   required_params = params[1] || []
   optional_params = params[2] || []
   rest_params = params[3] || []
+  more_required_params = params[4] || []
   kwargs = params[5] || []
   block_arg = params[7] || []
 
-  emission_order = [required_params, optional_params, rest_params, kwargs, block_arg]
+  emission_order = [
+    [required_params, method(:format_required_params)],
+    [optional_params, method(:format_optional_params)],
+    [rest_params, method(:format_rest_params)],
+    [more_required_params, method(:format_required_params)],
+    [kwargs, method(:format_kwargs)],
+    [block_arg, method(:format_blockarg)],
+  ]
 
-
-  format_required_params(ps, required_params)
-
-  did_emit = !emission_order.shift.empty?
-  have_more = emission_order.map { |x| !x.empty? }.any?
-  ps.emit_ident(", ") if did_emit && have_more
-
-  format_optional_params(ps, optional_params)
-
-  did_emit = !emission_order.shift.empty?
-  have_more = emission_order.map { |x| !x.empty? }.any?
-  ps.emit_ident(", ") if did_emit && have_more
-
-  format_rest_params(ps, rest_params)
-
-  did_emit = !emission_order.shift.empty?
-  have_more = emission_order.map { |x| !x.empty? }.any?
-  ps.emit_ident(", ") if did_emit && have_more
-
-  format_kwargs(ps, kwargs)
-
-  did_emit = !emission_order.shift.empty?
-  have_more = emission_order.map { |x| !x.empty? }.any?
-  ps.emit_ident(", ") if did_emit && have_more
-
-  format_blockarg(ps, block_arg)
+  did_emit = false
+  have_more = false
+  emission_order.each_with_index do |(values, callable), idx|
+    callable.call(ps, values)
+    did_emit = !values.empty?
+    have_more = emission_order[idx+1..-1].map { |x| !x[0].empty? }.any?
+    ps.emit_ident(", ") if did_emit && have_more && idx != emission_order.length - 1
+  end
 
   if have_any_params
     ps.emit_ident(close_delim)
