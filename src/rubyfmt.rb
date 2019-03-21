@@ -1314,13 +1314,22 @@ end
 
 def format_return(ps, rest)
   raise "got wrong size return args" if rest.length != 1
-  raise "didn't get args add block to return" if rest.first.first != :args_add_block
   ps.emit_indent if ps.start_of_line.last
-  ps.start_of_line << false
-  ps.emit_return
-  ps.emit_space
-  format_list_like_thing(ps, rest.first[1...-1], true)
-  ps.start_of_line.pop
+  ps.with_start_of_line(false) do
+    ps.emit_return
+    ps.emit_space
+
+    # unpack the nested hell sexps until we get something we can format
+    while !(Symbol === rest.first)
+      rest = rest.first
+    end
+
+    # args add block gets parens by default unless we surpress, so e.g.
+    # return head(:ok) would become return (head(:ok)) if we don't do this
+    ps.surpress_one_paren = true if rest.first == :args_add_block
+
+    format_expression(ps, rest)
+  end
   ps.emit_newline if ps.start_of_line.last
 end
 
