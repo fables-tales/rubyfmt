@@ -1005,7 +1005,7 @@ def format_call(ps, rest)
   case
   when is_normal_dot(dot)
     ps.emit_dot
-  when :"::"
+  when dot == :"::"
     ps.emit_ident("::")
   when dot == :"&."
     ps.emit_lonely_operator
