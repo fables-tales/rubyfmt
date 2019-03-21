@@ -1504,6 +1504,9 @@ def format_unary(ps, rest)
   op, tail = rest
   ps.emit_indent if ps.start_of_line.last
   ps.emit_ident(op.to_s.gsub("@", ""))
+  if op.to_s == "not"
+    ps.emit_space
+  end
   ps.start_of_line << false
   format_expression(ps, tail)
   ps.start_of_line.pop
