@@ -1,13 +1,12 @@
 #!/usr/bin/env ruby
-require 'ripper'
-require 'stringio'
-require 'pp'
-
-MODE = :inline
+require "ripper"
+require "stringio"
+require "pp"
 
 LineMetadata = Struct.new(:comment_blocks)
 
 class Line
+  attr_accessor :parts
   def initialize(parts)
     @comments = []
     @parts = parts
@@ -35,6 +34,7 @@ class Line
 
   def to_s
     build = @parts.join("")
+
     unless @comments.empty?
       build = "#{@comments.join("\n")}\n#{build}"
     end
@@ -76,6 +76,10 @@ class Line
     @parts.any? { |x| x == :if }
   end
 
+  def contains_else?
+    @parts.any? { |x| x == :else }
+  end
+
   def contains_unless?
     @parts.any? { |x| x == :unless }
   end
@@ -85,7 +89,7 @@ class Line
   end
 
   def declares_require?
-    @parts.any? { |x| x == "require" }
+    @parts.any? { |x| x == "require" } && @parts.none? { |x| x == "}" }
   end
 
   def declares_class_or_module?
@@ -97,7 +101,7 @@ class Line
   end
 
   def surpresses_blankline?
-    contains_def? || contains_do? || contains_while?
+    contains_def? || contains_do? || contains_while? || contains_if? || contains_else?
   end
 end
 
@@ -115,6 +119,10 @@ end
 class ParserState
   attr_accessor :depth_stack, :start_of_line, :line, :string_concat_position, :surpress_one_paren
   attr_reader :heredoc_strings
+  attr_reader :result
+  attr_accessor :render_queue
+  attr_reader :comments_hash
+  attr_reader :depth_stack
   def initialize(result, line_metadata)
     @surpress_comments_stack = [false]
     @surpress_one_paren = false
@@ -128,6 +136,12 @@ class ParserState
     @conditional_indent = [0]
     @heredoc_strings = []
     @string_concat_position = []
+  end
+
+  def self.with_depth_stack(output, from:)
+    i = new(output, LineMetadata.new({}))
+    i.depth_stack = from.depth_stack.dup
+    i
   end
 
   def with_surpress_comments(value, &blk)
@@ -215,7 +229,7 @@ class ParserState
   end
 
   def emit_else
-    line << "else"
+    line << :else
   end
 
   def emit_elsif
@@ -430,14 +444,6 @@ class ParserState
       end
     end
   end
-
-
-  private
-
-  attr_reader :result
-  attr_reader :render_queue
-  attr_reader :comments_hash
-  attr_reader :depth_stack
 end
 
 def format_block_params_list(ps, params_list)
@@ -543,7 +549,7 @@ def format_kwargs(ps, kwargs)
 end
 
 def format_rest_params(ps, rest_params)
-  return if rest_params.empty?
+  return if rest_params == 0 || rest_params.empty? || rest_params == [:excessed_comma]
   ps.emit_ident("*")
   return if rest_params[1].nil?
 
@@ -566,17 +572,22 @@ end
 
 def format_params(ps, params, open_delim, close_delim)
   return if params.nil?
+  f_params = []
   if params[0] == :paren || params[0] == :block_var
+    if params[0] == :block_var && params[-1] != nil
+      f_params = params[-1]
+    end
+
     params = params[1]
   end
 
-  have_any_params = params[1..-1].any? { |x| !x.nil? }
+  have_any_params = params[1..-1].any? { |x| !x.nil? } || !f_params.empty?
 
   if have_any_params
     ps.emit_ident(open_delim)
   end
 
-  bad_params = params[4..-1].any? { |x| !x.nil? }
+  bad_params = params[6..-1].any? { |x| !x.nil? }
   bad_params = false if params[5]
   bad_params = false if params[7]
 
@@ -584,37 +595,35 @@ def format_params(ps, params, open_delim, close_delim)
   required_params = params[1] || []
   optional_params = params[2] || []
   rest_params = params[3] || []
+  more_required_params = params[4] || []
   kwargs = params[5] || []
   block_arg = params[7] || []
 
-  emission_order = [required_params, optional_params, rest_params, kwargs, block_arg]
+  emission_order = [
+    [required_params, method(:format_required_params)],
+    [optional_params, method(:format_optional_params)],
+    [rest_params, method(:format_rest_params)],
+    [more_required_params, method(:format_required_params)],
+    [kwargs, method(:format_kwargs)],
+    [block_arg, method(:format_blockarg)],
+  ]
 
+  did_emit = false
+  have_more = false
+  emission_order.each_with_index do |(values, callable), idx|
+    if values == 0
+      values = []
+    end
+    callable.call(ps, values)
+    did_emit = !values.empty?
+    have_more = emission_order[idx+1..-1].map { |x| x[0] != 0 && !x[0].empty? && x[0] != [:excessed_comma] }.any?
+    ps.emit_ident(", ") if did_emit && have_more && idx != emission_order.length - 1
+  end
 
-  format_required_params(ps, required_params)
-
-  did_emit = !emission_order.shift.empty?
-  have_more = emission_order.map { |x| !x.empty? }.any?
-  ps.emit_ident(", ") if did_emit && have_more
-
-  format_optional_params(ps, optional_params)
-
-  did_emit = !emission_order.shift.empty?
-  have_more = emission_order.map { |x| !x.empty? }.any?
-  ps.emit_ident(", ") if did_emit && have_more
-
-  format_rest_params(ps, rest_params)
-
-  did_emit = !emission_order.shift.empty?
-  have_more = emission_order.map { |x| !x.empty? }.any?
-  ps.emit_ident(", ") if did_emit && have_more
-
-  format_kwargs(ps, kwargs)
-
-  did_emit = !emission_order.shift.empty?
-  have_more = emission_order.map { |x| !x.empty? }.any?
-  ps.emit_ident(", ") if did_emit && have_more
-
-  format_blockarg(ps, block_arg)
+  if f_params && !f_params.empty?
+    ps.emit_ident(" ;")
+    format_list_like_thing_items(ps, [f_params], single_line = true)
+  end
 
   if have_any_params
     ps.emit_ident(close_delim)
@@ -760,7 +769,7 @@ def format_method_add_arg(ps, rest)
   ps.with_start_of_line(!emitted_paren) do
     next if args_list.empty?
     case args_list[0]
-    when :args_add_block, :command_call, :command
+    when :args_add_block, :command_call, :command, :vcall
       format_expression(ps, args_list) unless args_list.empty?
     else
       format_list_like_thing(ps, [args_list],single_line=true)
@@ -996,6 +1005,8 @@ def format_call(ps, rest)
   case
   when is_normal_dot(dot)
     ps.emit_dot
+  when :"::"
+    ps.emit_ident("::")
   when dot == :"&."
     ps.emit_lonely_operator
   else
@@ -1238,10 +1249,16 @@ end
 def format_else(ps, else_part)
   return if else_part.nil?
 
-  _, exprs = else_part
+  exprs = if RUBY_VERSION.to_f > 2.5
+    else_part
+  else
+    _, a = else_part
+    a
+  end
+
   ps.dedent do
     ps.emit_indent
-    ps.emit_ident("else")
+    ps.emit_else
   end
 
   if !exprs.nil?
@@ -1362,15 +1379,14 @@ def format_if(ps, expression)
 end
 
 def format_conditional(ps, expression, kind)
-  ps.push_conditional_indent(:conditional)
   if_conditional, body, further_conditionals = expression[0], expression[1], expression[2]
 
   ps.emit_indent if ps.start_of_line.last
-  ps.start_of_line << false
-  ps.emit_ident(kind)
-  ps.emit_space
-  format_expression(ps, if_conditional)
-  ps.start_of_line.pop
+  ps.with_start_of_line(false) do
+    ps.emit_ident(kind)
+    ps.emit_space
+    format_expression(ps, if_conditional)
+  end
 
   ps.emit_newline
   ps.new_block do
@@ -1379,13 +1395,12 @@ def format_conditional(ps, expression, kind)
     end
   end
 
-  ps.start_of_line << true
-  ps.emit_newline
-  format_conditional_parts(ps, further_conditionals || [])
+  ps.with_start_of_line(true) do
+    ps.emit_newline
+    format_conditional_parts(ps, further_conditionals || [])
 
-  ps.emit_end
-  ps.start_of_line.pop
-  ps.pop_conditional_indent
+    ps.emit_end
+  end
   ps.emit_newline if ps.start_of_line.last
 end
 
@@ -1440,15 +1455,24 @@ def format_zsuper(ps, rest)
 end
 
 def format_array_fast_path(ps, rest)
-  ps.emit_ident("[")
-  ps.emit_newline unless rest.first.nil?
+  single_statement = rest[0] && rest[0].length == 1
+  if single_statement
+    ps.emit_ident("[")
+    ps.with_start_of_line(false) do
+      format_list_like_thing(ps, rest, true)
+    end
+    ps.emit_ident("]")
+  else
+    ps.emit_ident("[")
+    ps.emit_newline unless rest.first.nil?
 
-  ps.new_block do
-    format_list_like_thing(ps, rest, false)
+    ps.new_block do
+      format_list_like_thing(ps, rest, false)
+    end
+
+    ps.emit_indent unless rest.first.nil?
+    ps.emit_ident("]")
   end
-
-  ps.emit_indent unless rest.first.nil?
-  ps.emit_ident("]")
 end
 
 def format_array(ps, rest)
@@ -1548,21 +1572,46 @@ def format_brace_block(ps, expression)
   raise "didn't get right array in brace block" if expression.length != 2
   params, body = expression
 
-  bv, params, f = params
+  output = StringIO.new
+
+  next_ps = ParserState.with_depth_stack(output, from: ps)
+  ps.new_block do
+    body.each do |expr|
+      format_expression(next_ps, expr)
+    end
+  end
+
+  multiline = next_ps.render_queue.length > 1
+  orig_params = params
+
+  bv, params, _ = params
   raise "got something other than block var" if bv != :block_var && bv != nil
-  raise "got something other than false" if f != false && f != nil
+
   ps.emit_ident("{")
   unless bv.nil?
     ps.emit_space
-    format_params(ps, params, "|", "|")
+    format_params(ps, orig_params, "|", "|")
   end
-  ps.emit_newline
+
+  if multiline
+    ps.emit_newline
+  else
+    ps.emit_space
+  end
+
   ps.new_block do
-    body.each do |expr|
-      format_expression(ps, expr)
+    ps.with_start_of_line(multiline) do
+      body.each do |expr|
+        format_expression(ps, expr)
+      end
     end
   end
-  ps.emit_indent
+
+  if multiline
+    ps.emit_indent
+  else
+    ps.emit_space
+  end
   ps.emit_ident("}")
   ps.emit_newline if ps.start_of_line.last
 end
@@ -1870,7 +1919,7 @@ def format_case_parts(ps, case_parts)
   elsif type == :else
     _, body = case_parts
     ps.emit_indent
-    ps.emit_ident("else")
+    ps.emit_else
     ps.emit_newline
 
     ps.new_block do
@@ -1932,14 +1981,14 @@ def format_empty_kwd(ps, expression, keyword)
   ps.emit_newline if ps.start_of_line.last
 end
 
-def format_while_mod(ps, rest)
+def format_while_mod(ps, rest, type)
   while_conditional, while_expr = rest
 
   ps.emit_indent if ps.start_of_line.last
 
   ps.with_start_of_line(false) do
     format_expression(ps, while_expr)
-    ps.emit_ident(" while ")
+    ps.emit_ident(" #{type} ")
     format_expression(ps, while_conditional)
   end
 
@@ -2046,12 +2095,22 @@ end
 def format_lambda(ps, rest)
   ps.emit_indent if ps.start_of_line.last
   params, body = rest
-  ps.emit_ident("-> ")
+  ps.emit_ident("->")
+  if params[0] == :paren
+    params = params[1]
+  end
+  ps.emit_space if params.drop(1).any?
   format_params(ps, params, "(", ")")
+
+  delim = if body[0] == :bodystmt
+    ["do", "end"]
+  else
+    ["{", "}"]
+  end
 
   # lambdas typically are a single statement, so line breaking them would
   # be masochistic
-  if body.length == 1
+  if delim[0] == "{" && body.length == 1
     ps.emit_ident(" { ")
     ps.with_start_of_line(false) do
       format_expression(ps, body[0])
@@ -2059,15 +2118,19 @@ def format_lambda(ps, rest)
 
     ps.emit_ident(" }")
   else
-    ps.emit_ident(" {")
+    ps.emit_ident(" #{delim[0]}")
     ps.emit_newline
     ps.new_block do
-      body.each do |expr|
-        format_expression(ps, expr)
-        ps.emit_newline
+      if body[0] != :bodystmt
+        body.each do |expr|
+          format_expression(ps, expr)
+          ps.emit_newline
+        end
+      else
+        format_bodystmt(ps, body.drop(1))
       end
     end
-    ps.emit_ident("}")
+    ps.emit_ident(delim[1])
 
   end
 
@@ -2188,7 +2251,8 @@ def format_expression(ps, expression)
     :retry => lambda { |ps, rest| format_empty_kwd(ps, rest, "retry") },
     :break => lambda { |ps, rest| format_break(ps, rest) },
     :next => lambda { |ps, rest| format_empty_kwd(ps, rest, "next") },
-    :while_mod => lambda { |ps, rest| format_while_mod(ps, rest) },
+    :while_mod => lambda { |ps, rest| format_while_mod(ps, rest, "while") },
+    :until_mod => lambda { |ps, rest| format_while_mod(ps, rest, "until") },
     :mlhs => lambda { |ps, rest| format_mlhs(ps, rest) },
     :dyna_symbol => lambda { |ps, rest| format_dyna_symbol(ps, rest) },
     :rest_param => lambda { |ps, rest| format_rest_param(ps, rest) },
@@ -2349,8 +2413,13 @@ def main
 
   parser = Parser.new(file_data)
   sexp = parser.parse
-  if parser.error?
+  if ENV["RUBYFMT_DEBUG"] == "2"
     require 'pry'; binding.pry
+  end
+  if parser.error?
+    if ENV["RUBYFMT_DEBUG"] == "2"
+      require 'pry'; binding.pry
+    end
     raise parser.error
   end
 
