@@ -988,6 +988,19 @@ def format_const_path_ref(ps, rest)
   end
 end
 
+def format_dot(ps, dot)
+  case
+  when is_normal_dot(dot)
+    ps.emit_dot
+  when dot == :"::"
+    ps.emit_ident("::")
+  when dot == :"&."
+    ps.emit_lonely_operator
+  else
+    raise "got unrecognised dot"
+  end
+end
+
 def format_call(ps, rest)
   raise "got non 3 length rest" if rest.length != 3
   front = rest[0]
@@ -1002,16 +1015,7 @@ def format_call(ps, rest)
   ps.start_of_line << false
   format_expression(ps, front)
 
-  case
-  when is_normal_dot(dot)
-    ps.emit_dot
-  when dot == :"::"
-    ps.emit_ident("::")
-  when dot == :"&."
-    ps.emit_lonely_operator
-  else
-    raise "got unrecognised dot"
-  end
+  format_dot(ps, dot)
 
   format_expression(ps, back)
   ps.start_of_line.pop
@@ -1052,8 +1056,7 @@ def format_command_call(ps, expression)
 
   ps.with_start_of_line(false) do
     format_expression(ps, left)
-    raise "got something other than a dot" if !is_normal_dot(dot)
-    ps.emit_dot
+    format_dot(ps, dot)
     format_expression(ps, right)
     ps.emit_open_paren
     ps.surpress_one_paren = true
