@@ -769,7 +769,7 @@ def format_method_add_arg(ps, rest)
   ps.with_start_of_line(!emitted_paren) do
     next if args_list.empty?
     case args_list[0]
-    when :args_add_block, :command_call, :command, :vcall, :bare_assoc_hash
+    when Symbol
       format_expression(ps, args_list) unless args_list.empty?
     else
       format_list_like_thing(ps, [args_list],single_line=true)
