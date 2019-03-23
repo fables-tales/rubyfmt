@@ -1441,7 +1441,9 @@ def format_super(ps, rest)
     args = rest[0][1]
   end
 
-  raise "nope args" if args != nil && args[0] != :args_add_block
+  if args != nil && args[0] != :args_add_block
+    args = [:args_add_block, args, false]
+  end
 
   ps.emit_indent if ps.start_of_line.last
   ps.emit_ident("super")
