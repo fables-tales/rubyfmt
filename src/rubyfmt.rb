@@ -1552,8 +1552,8 @@ def format_paren(ps, rest)
   raise "didn't get len 1 paren" if rest.length != 1
   ps.emit_indent if ps.start_of_line.last
   ps.emit_ident("(")
-  if rest[0].length == 1
-    format_expression(ps, rest[0][0])
+  if rest[0][0].is_a?(Array)
+    rest[0].each { |exp| format_expression(ps, exp) }
   else
     format_expression(ps, rest[0])
   end
