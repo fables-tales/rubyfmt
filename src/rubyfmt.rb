@@ -1554,13 +1554,28 @@ def format_string_concat(ps, rest)
 end
 
 def format_paren(ps, rest)
-  raise "didn't get len 1 paren" if rest.length != 1
   ps.emit_indent if ps.start_of_line.last
   ps.emit_ident("(")
-  if rest[0].length == 1
-    format_expression(ps, rest[0][0])
+  exprs = rest[0]
+  case
+  when Symbol === exprs[0]
+    # this case arm happens when a yield with a paren is given, e.g.
+    # yield(foo)
+    format_expression(ps, exprs)
+  when exprs.length == 1
+    # paren with a single entry
+    ps.with_start_of_line(false) do
+      format_expression(ps, exprs[0])
+    end
   else
-    format_expression(ps, rest[0])
+    # paren with multiple expressions
+    ps.emit_newline
+    ps.new_block do
+      exprs.each do |expr|
+        format_expression(ps, expr)
+      end
+    end
+    ps.emit_newline
   end
   ps.emit_ident(")")
   ps.emit_newline if ps.start_of_line.last
