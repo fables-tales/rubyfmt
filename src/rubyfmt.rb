@@ -1045,8 +1045,11 @@ def is_normal_dot(candidate)
 end
 
 def is_lonely_operator(candidate)
-  candidate == :"&." ||
-    (candidate.is_a?(Array) && candidate[0] == :@op && candidate[1] == "&.")
+  candidate == :"&." || [
+    candidate.is_a?(Array),
+    candidate[0] == :@op,
+    candidate[1] == "&.",
+  ].all?
 end
 
 def format_command_call(ps, expression)
