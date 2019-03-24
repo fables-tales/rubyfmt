@@ -749,7 +749,9 @@ def format_method_add_arg(ps, rest)
   raise "got call rest longer than one" if call_rest.length > 1
   args_list = call_rest[0]
   emitted_paren = false
-  if args_list[0] == :arg_paren
+  if args_list[0] == :arg_paren && args_list[1].nil?
+    args_list = []
+  elsif args_list[0] == :arg_paren
     args_list = args_list[1]
     if args_list.count == 1
       args_list = args_list.first
