@@ -1031,8 +1031,10 @@ def format_symbol_literal(ps, literal)
     elsif literal[0][0] == :symbol
       ps.emit_ident(":")
       format_expression(ps, literal[0][1])
+    elsif literal[0][0] == :"@op"
+      ps.emit_ident(literal[0][1])
     else
-      raise "didn't get ident in right position" if literal[0][1][0] != :"@ident"
+      raise "didn't get ident in right position #{literal}" if literal[0][1][0] != :"@ident"
       ps.emit_symbol(literal[0][1][1])
     end
   end
