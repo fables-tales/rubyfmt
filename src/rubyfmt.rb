@@ -768,12 +768,7 @@ def format_method_add_arg(ps, rest)
 
   ps.with_start_of_line(!emitted_paren) do
     next if args_list.empty?
-    case args_list[0]
-    when Symbol
-      format_expression(ps, args_list) unless args_list.empty?
-    else
-      format_list_like_thing(ps, [args_list],single_line=true)
-    end
+    format_inner_args_list(ps, args_list)
   end
   if emitted_paren
     ps.emit_close_paren
@@ -1433,16 +1428,21 @@ def format_top_const_ref(ps, rest)
   ps.emit_ident(rest[0][1])
 end
 
+def format_inner_args_list(ps, args_list)
+  case args_list[0]
+  when Symbol
+    format_expression(ps, args_list) unless args_list.empty?
+  else
+    format_list_like_thing(ps, [args_list], single_line=true)
+  end
+end
+
 def format_super(ps, rest)
   return if rest.nil?
   raise "got bad super" if rest.length != 1
   args = rest[0]
   if rest[0][0] == :arg_paren
     args = rest[0][1]
-  end
-
-  if args != nil && args[0] != :args_add_block
-    args = [:args_add_block, args, false]
   end
 
   ps.emit_indent if ps.start_of_line.last
@@ -1452,9 +1452,12 @@ def format_super(ps, rest)
     ps.emit_open_paren
     ps.emit_close_paren
   else
+    ps.emit_open_paren
     ps.with_start_of_line(false) do
-      format_expression(ps, args)
+      ps.surpress_one_paren = true
+      format_inner_args_list(ps, args)
     end
+    ps.emit_close_paren
   end
 
   ps.emit_newline if ps.start_of_line.last
