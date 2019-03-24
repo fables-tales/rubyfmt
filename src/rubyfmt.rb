@@ -1945,7 +1945,7 @@ def format_case_parts(ps, case_parts)
     ps.emit_indent
     ps.emit_ident("when ")
     ps.with_start_of_line(false) do
-      format_list_like_thing_items(ps, [conditional], true)
+      format_list_like_thing(ps, [conditional], true)
     end
 
     ps.emit_newline
