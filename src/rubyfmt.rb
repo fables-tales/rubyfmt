@@ -2410,7 +2410,7 @@ class Parser < Ripper::SexpBuilderPP
             raise "got non tstring content in single string"
           end
         end
-      elsif quote == ")"
+      elsif [")", "}", "|"].include?(quote)
         (args[0][1..-1] || []).each do |part|
           next if part.nil?
           case part[0]
