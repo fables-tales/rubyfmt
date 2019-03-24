@@ -985,6 +985,21 @@ def format_const_path_ref(ps, rest)
   end
 end
 
+def format_const_path_field(ps, rest)
+  format_expression(ps, rest[0])
+  rest[1..-1].each do |expr|
+    ps.emit_ident("::")
+    format_expression(ps, expr)
+  end
+end
+
+def format_top_const_field(ps, rest)
+  rest.each do |expr|
+    ps.emit_ident("::")
+    format_expression(ps, expr)
+  end
+end
+
 def format_dot(ps, dot)
   case
   when is_normal_dot(dot)
@@ -2243,6 +2258,8 @@ def format_expression(ps, expression)
     :class => lambda { |ps, rest| format_class(ps, rest) },
     :call => lambda { |ps, rest| format_call(ps, rest) },
     :const_path_ref => lambda { |ps, rest| format_const_path_ref(ps, rest) },
+    :const_path_field => lambda { |ps, rest| format_const_path_field(ps, rest) },
+    :top_const_field => lambda { |ps, rest| format_top_const_field(ps, rest) },
     :@ident => lambda { |ps, rest| format_ident(ps, rest) },
     :symbol_literal => lambda { |ps, rest| format_symbol_literal(ps, rest) },
     :command_call => lambda { |ps, rest| format_command_call(ps, rest) },
