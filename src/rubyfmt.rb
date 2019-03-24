@@ -1057,6 +1057,9 @@ def format_command_call(ps, expression)
     format_expression(ps, right)
     ps.emit_open_paren
     ps.surpress_one_paren = true
+    if args.length == 1
+      args = args[0]
+    end
     format_expression(ps, args)
     ps.emit_close_paren
   end
