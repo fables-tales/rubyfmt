@@ -989,7 +989,7 @@ def format_dot(ps, dot)
     ps.emit_dot
   when dot == :"::"
     ps.emit_ident("::")
-  when dot == :"&."
+  when is_lonely_operator(dot)
     ps.emit_lonely_operator
   else
     raise "got unrecognised dot"
@@ -1042,6 +1042,11 @@ end
 
 def is_normal_dot(candidate)
   candidate == :"." || (candidate.is_a?(Array) && candidate[0] == :@period)
+end
+
+def is_lonely_operator(candidate)
+  candidate == :"&." ||
+    (candidate.is_a?(Array) && candidate[0] == :@op && candidate[1] == "&.")
 end
 
 def format_command_call(ps, expression)
