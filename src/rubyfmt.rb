@@ -558,6 +558,20 @@ def format_rest_params(ps, rest_params)
   end
 end
 
+def format_kwrest_params(ps, kwrest_params)
+  return if kwrest_params.empty?
+
+  ps.emit_ident("**")
+  return if kwrest_params[1].nil?
+
+  kwrest_param, expr = kwrest_params
+  raise "got bad kwrest_params" if kwrest_param != :kwrest_param
+
+  ps.with_start_of_line(false) do
+    format_expression(ps, expr)
+  end
+end
+
 def format_blockarg(ps, blockarg)
   return if blockarg.empty?
   _, expr = blockarg
@@ -584,7 +598,7 @@ def format_params(ps, params, open_delim, close_delim)
     ps.emit_ident(open_delim)
   end
 
-  bad_params = params[6..-1].any? { |x| !x.nil? }
+  bad_params = params[7..-1].any? { |x| !x.nil? }
   bad_params = false if params[5]
   bad_params = false if params[7]
 
@@ -594,6 +608,7 @@ def format_params(ps, params, open_delim, close_delim)
   rest_params = params[3] || []
   more_required_params = params[4] || []
   kwargs = params[5] || []
+  kwrest_params = params[6] || []
   block_arg = params[7] || []
 
   emission_order = [
@@ -602,6 +617,7 @@ def format_params(ps, params, open_delim, close_delim)
     [rest_params, method(:format_rest_params)],
     [more_required_params, method(:format_required_params)],
     [kwargs, method(:format_kwargs)],
+    [kwrest_params, method(:format_kwrest_params)],
     [block_arg, method(:format_blockarg)],
   ]
 
