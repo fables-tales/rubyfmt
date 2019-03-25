@@ -438,7 +438,7 @@ class ParserState
       if indent
         emit_indent
       end
-      emit_ident(symbol)
+      emit_ident(symbol.to_s.gsub("'", ""))
       if !skip
         emit_newline
       end
