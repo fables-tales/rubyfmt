@@ -1984,7 +1984,7 @@ def format_dot2(ps, expression)
   ps.with_start_of_line(false) do
     format_expression(ps, left)
     ps.emit_ident("..")
-    format_expression(ps, right)
+    format_expression(ps, right) unless right.nil?
   end
 
   ps.emit_newline if ps.start_of_line.last
