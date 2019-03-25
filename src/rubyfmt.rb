@@ -1743,15 +1743,18 @@ def format_assocs(ps, assocs, newlines=true)
         end
 
         format_expression(ps, assoc[2])
-        if newlines
-          ps.emit_ident(",")
-          ps.emit_newline
-        elsif idx != assocs.length - 1
-          ps.emit_ident(",")
-          ps.emit_space
-        end
+      elsif assoc[0] == :assoc_splat
+        ps.emit_ident("**")
+        format_expression(ps, assoc[1])
       else
-        raise "got non assoc_new in hash literal"
+        raise "got non assoc_new in hash literal #{assocs}"
+      end
+      if newlines
+        ps.emit_ident(",")
+        ps.emit_newline
+      elsif idx != assocs.length - 1
+        ps.emit_ident(",")
+        ps.emit_space
       end
     end
   end
