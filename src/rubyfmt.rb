@@ -361,12 +361,10 @@ class ParserState
   end
 
   def emit_int(int)
-    emit_indent if start_of_line.last
     line << int
   end
 
   def emit_var_ref(ref)
-    emit_indent if start_of_line.last
     line << ref
   end
 
@@ -681,19 +679,33 @@ def format_method_add_block(ps, rest)
 end
 
 def format_int(ps, rest)
+  ps.emit_indent if ps.start_of_line.last
+
   int = rest[0]
   ps.emit_int(int)
+
+  ps.emit_newline if ps.start_of_line.last
 end
 
 def format_rational(ps, rest)
+  ps.emit_indent if ps.start_of_line.last
+
   ps.emit_ident(rest[0])
+
+  ps.emit_newline if ps.start_of_line.last
 end
 
 def format_imaginary(ps, rest)
+  ps.emit_indent if ps.start_of_line.last
+
   ps.emit_ident(rest[0])
+
+  ps.emit_newline if ps.start_of_line.last
 end
 
 def format_var_ref(ps, rest)
+  ps.emit_indent if ps.start_of_line.last
+
   ref = rest[0][1]
   line_number = rest[0][2][0]
   ps.on_line(line_number)
@@ -1699,7 +1711,11 @@ def format_brace_block(ps, expression)
 end
 
 def format_float(ps, expression)
+  ps.emit_indent if ps.start_of_line.last
+
   ps.emit_ident(expression[0])
+
+  ps.emit_newline if ps.start_of_line.last
 end
 
 def format_ifop(ps, expression)
