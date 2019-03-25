@@ -685,6 +685,10 @@ def format_int(ps, rest)
   ps.emit_int(int)
 end
 
+def format_rational(ps, rest)
+  ps.emit_ident(rest[0])
+end
+
 def format_var_ref(ps, rest)
   ref = rest[0][1]
   line_number = rest[0][2][0]
@@ -2254,6 +2258,7 @@ def format_expression(ps, expression)
     :assign => lambda { |ps, rest| format_assign_expression(ps, rest) },
     :method_add_block => lambda { |ps, rest| format_method_add_block(ps, rest) },
     :@int => lambda { |ps, rest| format_int(ps, rest) },
+    :@rational => lambda { |ps, rest| format_rational(ps, rest) },
     :var_ref => lambda { |ps, rest| format_var_ref(ps, rest) },
     :do_block => lambda { |ps, rest| format_do_block(ps, rest) },
     :binary => lambda { |ps, rest| format_binary(ps, rest) },
