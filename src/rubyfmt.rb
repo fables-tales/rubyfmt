@@ -789,17 +789,16 @@ end
 def format_command(ps, rest)
   ps.on_line(rest[0][2][0])
 
-  # this is definitely wrong
-  ident = rest[0]
-  have_require = {
-    :"@ident" => lambda {
-      ps.emit_indent if ps.start_of_line.last
-      ps.emit_ident(ident[1])
-      ident[1] == "require"
-    },
-  }.fetch(rest[0][0]).call
-
+  call_start = rest[0]
   args_list = rest[1]
+
+  should_emit_parens = call_start[1] != "require"
+
+  ps.emit_indent if ps.start_of_line.last
+  ps.with_start_of_line(false) do
+    format_expression(ps, call_start)
+  end
+
   if args_list.count == 1
     args_list = args_list[0]
   end
@@ -809,10 +808,10 @@ def format_command(ps, rest)
       ps.emit_space
     end
 
-    if have_require
+    if !should_emit_parens
       ps.emit_ident(" ")
     end
-    ps.surpress_one_paren = have_require
+    ps.surpress_one_paren = !should_emit_parens
     format_expression(ps, args_list)
   end
   ps.emit_newline if ps.start_of_line.last
