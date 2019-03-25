@@ -883,6 +883,16 @@ def format_string_literal(ps, rest)
   ps.emit_newline if ps.start_of_line.last && ps.string_concat_position.empty?
 end
 
+def format_character_literal(ps, rest)
+  ps.emit_indent if ps.start_of_line.last
+  ps.emit_double_quote
+
+  ps.emit_ident(rest[0][1..-1])
+
+  ps.emit_double_quote
+  ps.emit_newline if ps.start_of_line.last && ps.string_concat_position.empty?
+end
+
 def format_xstring_literal(ps, rest)
   items = rest[0]
   parts = nil
@@ -2332,6 +2342,7 @@ def format_expression(ps, expression)
     :rescue_mod => lambda { |ps, rest| format_rescue_mod(ps, rest) },
     :xstring_literal => lambda { |ps, rest| format_xstring_literal(ps, rest) },
     :@backref => lambda { |ps, rest| format_backref(ps, rest) },
+    :@CHAR => lambda { |ps, rest| format_character_literal(ps, rest) },
   }.fetch(type).call(ps, rest)
 end
 
