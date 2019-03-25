@@ -2,7 +2,6 @@
 require "ripper"
 require "stringio"
 require "pp"
-
 LineMetadata = Struct.new(:comment_blocks)
 
 class Line
@@ -2463,6 +2462,8 @@ class Parser < Ripper::SexpBuilderPP
     string.gsub!("\\", "\\\\\\\\")
     string.gsub!("\"", "\\\"")
     string.gsub!("__RUBYFMT_SAFE_QUAD", "\\\\\\\\")
+    string.gsub!("\#{", "\\\#{")
+    string.gsub!("\#@", "\\\#@")
   end
 
   def on_string_literal(*args, &blk)
