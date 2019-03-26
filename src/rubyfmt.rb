@@ -2486,9 +2486,10 @@ class Parser < Ripper::SexpBuilderPP
   end
 
 
-  FOUR_SLASHES_IN_TSTRING_CONTENT_OUTPUT = "\\\\\\\\"
-  TWO_SLASHES_IN_TSTRING_CONTENT_INPUT = "\\\\"
-  ONE_SLASH_IN_TSTRING_CONTENT_INPUT = "\\"
+  FOUR_SLASHES_IN_TSTRING = "\\\\\\\\"
+  LITERAL_DOUBLE_QUOTE_IN_TSTRING = "\""
+  TWO_SLASHES_IN_TSTRING = "\\\\"
+  ONE_SLASH_IN_TSTRING = "\\"
 
   # Rubyfmt renders all string literals as double quotes for consistency's sake
   # this method fixes up individual tstring content items to ensure that they
@@ -2496,28 +2497,69 @@ class Parser < Ripper::SexpBuilderPP
   # called on string literals that were already surrounded by double quotes,
   # and so this formatting only applies to tstring_contents from strings that
   # need to be manipulated to correctly reform as a double quoted string
-  def fixup_tstring_content_for_double_quotes(string)
+  #
+  def fixup_tstring_content_for_double_quotes(string, delimiter:)
+    # cleanup escaped delimiters
+    string.gsub!("#{ONE_SLASH_IN_TSTRING}#{delimiter}", "#{delimiter}")
+
     # Given '\\a' we get a tstring content with "\\\\a", and we need to keep
     # it the same. However, the next substitution line will replace "\\\\a"
     # with "\\\\\\\\\\a", so we insert "__RUBYFMT_SAFE_QUAD" as a placeholder
     # to sub back with quad slashes.
-    string.gsub!(TWO_SLASHES_IN_TSTRING_CONTENT_INPUT, "__RUBYFMT_SAFE_QUAD")
+    string.gsub!(TWO_SLASHES_IN_TSTRING, "__RUBYFMT_SAFE_QUAD")
 
     # Given '\a' we get a tstring content with "\\a", and we need to replace it
     # with literally "\\\\a", which needs four escaped slashes
     string.gsub!(
-      ONE_SLASH_IN_TSTRING_CONTENT_INPUT,
-      FOUR_SLASHES_IN_TSTRING_CONTENT_OUTPUT,
+      ONE_SLASH_IN_TSTRING,
+      FOUR_SLASHES_IN_TSTRING,
     )
 
-    # Given '"', we get a tstring content with "\"", however we need to
-    # literally serialize that slash back out, so we replace it with "\\\""
-    string.gsub!("\"", "\\\"")
+    if delimiter == "\'"
+      # Given '"', we get a tstring content with "\"", however we need to
+      # literally serialize that slash back out, so we replace it with "\\\""
+      string.gsub!(
+        LITERAL_DOUBLE_QUOTE_IN_TSTRING,
+        "#{ONE_SLASH_IN_TSTRING}#{LITERAL_DOUBLE_QUOTE_IN_TSTRING}",
+      )
+    else
+      # deals with e.g. %^\"^ which should format to "\"" (that is, a
+      # literal quote)
+      string.gsub!(
+        "#{TWO_SLASHES_IN_TSTRING}#{LITERAL_DOUBLE_QUOTE_IN_TSTRING}",
+        "__RUBYFMT_PLEASE_SERIALIZE_THIS_TO_A_LITERAL_DOUBLE_QUOTE",
+      )
+
+      # deals with e.g. %^\\"^ which should format to "\\\"" (that is, an
+      # escaped double quote)
+      string.gsub!(
+        "__RUBYFMT_SAFE_QUAD\"",
+        "__RUBYFMT_PLEASE_SERIALIZE_THIS_TO_AN_ESACPED_DOUBLE_QUOTE"
+      )
+
+      # deals with bare double quotes, replacing them with \"
+      string.gsub!(
+        LITERAL_DOUBLE_QUOTE_IN_TSTRING,
+        "#{ONE_SLASH_IN_TSTRING}#{LITERAL_DOUBLE_QUOTE_IN_TSTRING}",
+      )
+
+      # undoes the literal double quote replacement
+      string.gsub!(
+        "__RUBYFMT_PLEASE_SERIALIZE_THIS_TO_A_LITERAL_DOUBLE_QUOTE",
+        "#{ONE_SLASH_IN_TSTRING}#{LITERAL_DOUBLE_QUOTE_IN_TSTRING}",
+      )
+
+      # undoes the escaped double quote replacement
+      string.gsub!(
+        "__RUBYFMT_PLEASE_SERIALIZE_THIS_TO_AN_ESACPED_DOUBLE_QUOTE",
+        "#{FOUR_SLASHES_IN_TSTRING}#{ONE_SLASH_IN_TSTRING}#{LITERAL_DOUBLE_QUOTE_IN_TSTRING}",
+      )
+    end
 
     # Fixup the quad safes
     string.gsub!(
       "__RUBYFMT_SAFE_QUAD",
-      FOUR_SLASHES_IN_TSTRING_CONTENT_OUTPUT,
+      FOUR_SLASHES_IN_TSTRING,
     )
 
     # protect against escaped interpolation
@@ -2536,7 +2578,10 @@ class Parser < Ripper::SexpBuilderPP
           next if part[1].nil?
           case part[1][0]
           when :@tstring_content
-            fixup_tstring_content_for_double_quotes(part[1][1])
+            fixup_tstring_content_for_double_quotes(
+              part[1][1],
+              delimiter: quote,
+            )
           else
             raise "got non tstring content in single string"
           end
@@ -2546,7 +2591,10 @@ class Parser < Ripper::SexpBuilderPP
           next if part.nil?
           case part[0]
           when :@tstring_content
-            fixup_tstring_content_for_double_quotes(part[1])
+            fixup_tstring_content_for_double_quotes(
+              part[1],
+              delimiter: quote,
+            )
           when :string_embexpr
             # this is fine
           else
