@@ -1,7 +1,9 @@
 #!/bin/bash
 set -ex
-RES=`echo "puts 'a'" | ruby src/rubyfmt.rb`
-if [ $RES != "puts(\"a\")"]
+
+RES=$(echo "puts 'a'" | ruby src/rubyfmt.rb)
+
+if [ "$RES" != "puts(\"a\")" ]
 then
     exit 1
 fi
