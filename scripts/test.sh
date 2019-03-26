@@ -37,7 +37,7 @@ test_folder fixtures/
 RUBY_VERSION=$(ruby -v | grep -o "[0-9].[0-9]" | head -n 1)
 echo "$RUBY_VERSION"
 
-find fixtures/ -type d -name "2.*" | while read -r dir
+find fixtures -type d -name '2.*' | while read -r dir
 do
     fixture_version=$(basename "$dir")
     if [[ $(echo "$fixture_version<=$RUBY_VERSION" | bc -l) -ne 0 ]]
