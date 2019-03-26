@@ -3,7 +3,8 @@
 set -ex
 
 temp=$(mktemp -q)
-EXPECTED_FILENAME="${1//_actual_/_expected}"
+# shellcheck disable=SC2001
+EXPECTED_FILENAME=$(echo "$1" | sed s/expected/actual/)
 
 bundle exec ruby src/rubyfmt.rb "$1" "$EXPECTED_FILENAME" > "$temp" && mv "$temp" "$EXPECTED_FILENAME"
 git diff "$EXPECTED_FILENAME"
