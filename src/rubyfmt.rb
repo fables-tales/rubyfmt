@@ -2451,6 +2451,7 @@ class Parser < Ripper::SexpBuilderPP
     @next_comment_delete = []
     @comments_delete = []
     @regexp_stack = []
+    @string_stack = []
   end
 
   attr_reader :comments_delete
@@ -2498,7 +2499,7 @@ class Parser < Ripper::SexpBuilderPP
   # and so this formatting only applies to tstring_contents from strings that
   # need to be manipulated to correctly reform as a double quoted string
   #
-  def fixup_tstring_content_for_double_quotes(string, delimiter:)
+  def fixup_tstring_content_for_double_quotes(string, is_single_quote:, delimiter:)
     # cleanup escaped delimiters
     string.gsub!("#{ONE_SLASH_IN_TSTRING}#{delimiter}", "#{delimiter}")
 
@@ -2515,7 +2516,7 @@ class Parser < Ripper::SexpBuilderPP
       FOUR_SLASHES_IN_TSTRING,
     )
 
-    if delimiter == "\'"
+    if is_single_quote
       # Given '"', we get a tstring content with "\"", however we need to
       # literally serialize that slash back out, so we replace it with "\\\""
       string.gsub!(
@@ -2580,6 +2581,7 @@ class Parser < Ripper::SexpBuilderPP
           when :@tstring_content
             fixup_tstring_content_for_double_quotes(
               part[1][1],
+              is_single_quote: true,
               delimiter: quote,
             )
           else
@@ -2587,12 +2589,15 @@ class Parser < Ripper::SexpBuilderPP
           end
         end
       elsif /\W/ === quote && quote != "\""
+        next_string = @string_stack.pop
+        is_single_quote =  next_string.start_with?("%q")
         (args[0][1..-1] || []).each do |part|
           next if part.nil?
           case part[0]
           when :@tstring_content
             fixup_tstring_content_for_double_quotes(
               part[1],
+              is_single_quote: is_single_quote,
               delimiter: quote,
             )
           when :string_embexpr
@@ -2617,6 +2622,11 @@ class Parser < Ripper::SexpBuilderPP
       args.insert(1, :do)
     end
 
+    super
+  end
+
+  def on_tstring_beg(*args, &blk)
+    @string_stack << args[0]
     super
   end
 
