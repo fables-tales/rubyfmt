@@ -2485,11 +2485,42 @@ class Parser < Ripper::SexpBuilderPP
     super
   end
 
+
+  FOUR_SLASHES_IN_TSTRING_CONTENT_OUTPUT = "\\\\\\\\"
+  TWO_SLASHES_IN_TSTRING_CONTENT_INPUT = "\\\\"
+  ONE_SLASH_IN_TSTRING_CONTENT_INPUT = "\\"
+
+  # Rubyfmt renders all string literals as double quotes for consistency's sake
+  # this method fixes up individual tstring content items to ensure that they
+  # represent the same string literal once reformatted. This method is not
+  # called on string literals that were already surrounded by double quotes,
+  # and so this formatting only applies to tstring_contents from strings that
+  # need to be manipulated to correctly reform as a double quoted string
   def fixup_tstring_content_for_double_quotes(string)
-    string.gsub!("\\\\", "__RUBYFMT_SAFE_QUAD")
-    string.gsub!("\\", "\\\\\\\\")
+    # Given '\\a' we get a tstring content with "\\\\a", and we need to keep
+    # it the same. However, the next substitution line will replace "\\\\a"
+    # with "\\\\\\\\\\a", so we insert "__RUBYFMT_SAFE_QUAD" as a placeholder
+    # to sub back with quad slashes.
+    string.gsub!(TWO_SLASHES_IN_TSTRING_CONTENT_INPUT, "__RUBYFMT_SAFE_QUAD")
+
+    # Given '\a' we get a tstring content with "\\a", and we need to replace it
+    # with literally "\\\\a", which needs four escaped slashes
+    string.gsub!(
+      ONE_SLASH_IN_TSTRING_CONTENT_INPUT,
+      FOUR_SLASHES_IN_TSTRING_CONTENT_OUTPUT,
+    )
+
+    # Given '"', we get a tstring content with "\"", however we need to
+    # literally serialize that slash back out, so we replace it with "\\\""
     string.gsub!("\"", "\\\"")
-    string.gsub!("__RUBYFMT_SAFE_QUAD", "\\\\\\\\")
+
+    # Fixup the quad safes
+    string.gsub!(
+      "__RUBYFMT_SAFE_QUAD",
+      FOUR_SLASHES_IN_TSTRING_CONTENT_OUTPUT,
+    )
+
+    # protect against escaped interpolation
     string.gsub!("\#{", "\\\#{")
     string.gsub!("\#@", "\\\#@")
   end
@@ -2510,7 +2541,7 @@ class Parser < Ripper::SexpBuilderPP
             raise "got non tstring content in single string"
           end
         end
-      elsif [")", "}", "|"].include?(quote)
+      elsif /\W/ === quote && quote != "\""
         (args[0][1..-1] || []).each do |part|
           next if part.nil?
           case part[0]
