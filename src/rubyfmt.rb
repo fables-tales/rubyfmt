@@ -2457,13 +2457,27 @@ class Parser < Ripper::SexpBuilderPP
     super
   end
 
+  def on_tstring_beg(*args, &blk)
+    @open_quote = args[0]
+  end
+
+  def on_tstring_end(*args, &blk)
+    @close_quote = args[0]
+  end
+
   def fixup_tstring_content_for_double_quotes(string)
+    return if @open_quote == "\""
+
     string.gsub!("\\\\", "__RUBYFMT_SAFE_QUAD")
     string.gsub!("\\", "\\\\\\\\")
+    string.gsub!("\\#{@close_quote}", @close_quote)
     string.gsub!("\"", "\\\"")
     string.gsub!("__RUBYFMT_SAFE_QUAD", "\\\\\\\\")
-    string.gsub!("\#{", "\\\#{")
-    string.gsub!("\#@", "\\\#@")
+
+    if @open_quote == "'" || @open_quote.start_with?("%q")
+      string.gsub!("\#{", "\\\#{")
+      string.gsub!("\#@", "\\\#@")
+    end
   end
 
   def on_string_literal(*args, &blk)
@@ -2471,32 +2485,10 @@ class Parser < Ripper::SexpBuilderPP
       heredoc_parts = @heredoc_stack.pop
       args.insert(0, [:heredoc_string_literal, heredoc_parts])
     else
-      quote = [@file_lines[lineno-1].bytes[column-1]].pack("c*")
-      if quote == "'"
-        (args || []).each do |part|
-          next if part[1].nil?
-          case part[1][0]
-          when :@tstring_content
-            fixup_tstring_content_for_double_quotes(part[1][1])
-          else
-            raise "got non tstring content in single string"
-          end
+      (args[0][1..-1] || []).each do |part|
+        if part && part[0] == :@tstring_content
+          fixup_tstring_content_for_double_quotes(part[1])
         end
-      elsif quote =~ /[^a-zA-Z0-9]/
-        (args[0][1..-1] || []).each do |part|
-          next if part.nil?
-          case part[0]
-          when :@tstring_content
-            fixup_tstring_content_for_double_quotes(part[1])
-          when :string_embexpr
-            # this is fine
-          else
-            raise "got something bad in %q string"
-          end
-        end
-      elsif quote == "\""
-      else
-        raise "what even is this string type #{quote}"
       end
     end
     super
