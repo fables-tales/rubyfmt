@@ -12,6 +12,7 @@ for file in $(git --work-tree="$repo_path" --git-dir="$repo_path/.git" ls-files 
 do
   full_path="$repo_path/$file"
   errors=$(ruby --disable=gems src/rubyfmt.rb "$full_path" 2>&1)
+  # shellcheck disable=SC2181
   if [[ "$?" -ne 0 ]]
   then
     echo "$full_path"

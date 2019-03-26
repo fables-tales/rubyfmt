@@ -2,9 +2,9 @@
 set -ex
 
 mkdir -p tmp
-if [ -z ${GITHUB_REF+x} ]
+if [ -z "${GITHUB_REF+x}" ]
 then
-echo "not on github"
+    echo "not on github"
 else
     rm -rf tmp/rspec-core
 fi
@@ -15,12 +15,12 @@ git reset --hard
 bundle
 cd ../..
 
-FILES=`find tmp/rspec-core/lib -type f | grep -i '\.rb$'`
+FILES=$(find tmp/rspec-core/lib -type f | grep -i '\.rb$')
 for FN in $FILES
 do
     echo "running rubyfmt on $FN"
-    ruby --disable=gems src/rubyfmt.rb $FN > /tmp/this_one.rb
-    ruby --disable=gems src/rubyfmt.rb /tmp/this_one.rb > $FN
+    ruby --disable=gems src/rubyfmt.rb "$FN" > /tmp/this_one.rb
+    ruby --disable=gems src/rubyfmt.rb /tmp/this_one.rb > "$FN"
 done
 cd tmp/rspec-core
 bundle exec rspec
@@ -30,12 +30,12 @@ cd ../../
 # refmt.rb replaces rubyfmt.rb
 ruby --disable=gems src/rubyfmt.rb src/rubyfmt.rb > tmp/refmt.rb
 
-FILES=`find tmp/rspec-core/lib -type f | grep -i '\.rb$'`
+FILES=$(find tmp/rspec-core/lib -type f | grep -i '\.rb$')
 for FN in $FILES
 do
     echo "running rubyfmt on $FN"
-    ruby --disable=gems tmp/refmt.rb $FN > /tmp/this_one.rb
-    ruby --disable=gems tmp/refmt.rb /tmp/this_one.rb > $FN
+    ruby --disable=gems tmp/refmt.rb "$FN" > /tmp/this_one.rb
+    ruby --disable=gems tmp/refmt.rb /tmp/this_one.rb > "$FN"
 done
 cd tmp/rspec-core
 bundle exec rspec
