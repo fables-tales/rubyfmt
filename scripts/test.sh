@@ -14,6 +14,14 @@ test_folder() {
     done
 }
 
+STRING_LITERALS_EXPECTED=`ruby string_literals_stress_test.rb | md5`
+STRING_LITERALS_ACTUAL=`ruby --disable=gems src/rubyfmt.rb string_literals_stress_test.rb | ruby | md5`
+if [[ $STRING_LITERALS_EXPECTED != $STRING_LITERALS_ACTUAL ]]
+then
+    echo "string literals are broken"
+    exit 1
+fi
+
 test_folder fixtures/
 
 RUBY_VERSION=$(ruby -v | grep -o "[0-9].[0-9]" | head -n 1)
