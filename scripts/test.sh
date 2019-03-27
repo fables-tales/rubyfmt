@@ -16,7 +16,7 @@ test_folder() {
 
 test_folder fixtures/
 
-RUBY_VERSION=$(ruby -v | grep -o '\d\.\d')
+RUBY_VERSION=$(ruby -v | grep -o "[0-9].[0-9]" | head -n 1)
 echo $RUBY_VERSION
 if [[ `echo "2.5<=$RUBY_VERSION" | bc -l` -ne 0 ]]
 then
