@@ -2360,7 +2360,7 @@ EXPRESSION_HANDLERS = {
   :xstring_literal => lambda { |ps, rest| format_xstring_literal(ps, rest) },
   :@backref => lambda { |ps, rest| format_backref(ps, rest) },
   :@CHAR => lambda { |ps, rest| format_character_literal(ps, rest) },
-}
+}.freeze
 
 def format_expression(ps, expression)
   type, rest = expression[0],expression[1...expression.length]
