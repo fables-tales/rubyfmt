@@ -2588,7 +2588,7 @@ class Parser < Ripper::SexpBuilderPP
             raise "got non tstring content in single string"
           end
         end
-      elsif /\W/ === quote && quote != "\""
+      elsif /[^a-zA-Z0-9]/ === quote && quote != "\""
         next_string = @string_stack.pop
         is_single_quote =  next_string.start_with?("%q")
         (args[0][1..-1] || []).each do |part|
