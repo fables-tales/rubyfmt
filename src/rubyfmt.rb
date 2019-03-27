@@ -565,7 +565,7 @@ def format_kwrest_params(ps, kwrest_params)
   return if kwrest_params[1].nil?
 
   if kwrest_params[0] == :kwrest_param
-    expr = kwrest_params[1]
+    _, expr = kwrest_params
   else
     expr = kwrest_params
   end
@@ -611,7 +611,14 @@ def format_params(ps, params, open_delim, close_delim)
   rest_params = params[3] || []
   more_required_params = params[4] || []
   kwargs = params[5] || []
+
   kwrest_params = params[6] || []
+  # on ruby 2.3 this position contains literally the integer 183 if a `**` is
+  # given in the splatted kwargs position. Why, I have no idea.
+  if kwrest_params == 183
+    kwrest_params = [""]
+  end
+
   block_arg = params[7] || []
 
   emission_order = [
@@ -638,7 +645,7 @@ def format_params(ps, params, open_delim, close_delim)
 
   if f_params && !f_params.empty?
     ps.emit_ident(" ;")
-    format_list_like_thing_items(ps, [f_params], single_line = true)
+    format_list_like_thing_items(ps, [f_params], true)
   end
 
   if have_any_params
