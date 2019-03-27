@@ -1,6 +1,6 @@
 workflow "Rubyfmt CI" {
   on = "push"
-  resolves = ["CI 2.3", "CI 2.5", "CI 2.6"]
+  resolves = ["CI 2.3", "CI 2.5"]
 }
 
 action "CI 2.3" {
