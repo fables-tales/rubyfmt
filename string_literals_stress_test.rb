@@ -26,3 +26,4 @@ puts '\"\"'
 puts %q(\\"\\")
 puts %q(\))
 puts %Q(\))
+puts %<foo\>>
