@@ -17,7 +17,7 @@ test_folder() {
 test_folder fixtures/
 
 RUBY_VERSION=$(ruby -v | grep -o '\d\.\d')
-
+echo $RUBY_VERSION
 if [[ `echo "2.5<=$RUBY_VERSION" | bc -l` -ne 0 ]]
 then
     test_folder fixtures/2.5
