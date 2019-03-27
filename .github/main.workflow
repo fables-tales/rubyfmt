@@ -12,3 +12,8 @@ action "CI 2.5" {
   uses = "./dockerfiles/2.5"
   secrets = ["GITHUB_TOKEN"]
 }
+
+action "CI 2.6" {
+  uses = "./dockerfiles/2.6"
+  secrets = ["GITHUB_TOKEN"]
+}
