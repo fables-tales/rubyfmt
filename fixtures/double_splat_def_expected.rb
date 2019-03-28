@@ -6,6 +6,3 @@ end
 
 def foo(**_)
 end
-
-def foo(**)
-end
