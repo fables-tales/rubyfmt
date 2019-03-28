@@ -564,8 +564,11 @@ def format_kwrest_params(ps, kwrest_params)
   ps.emit_ident("**")
   return if kwrest_params[1].nil?
 
-  kwrest_param, expr = kwrest_params
-  raise "got bad kwrest_params" if kwrest_param != :kwrest_param
+  if kwrest_params[0] == :kwrest_param
+    expr = kwrest_params[1]
+  else
+    expr = kwrest_params
+  end
 
   ps.with_start_of_line(false) do
     format_expression(ps, expr)
