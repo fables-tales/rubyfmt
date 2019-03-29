@@ -219,6 +219,14 @@ class ParserState
     line << :while
   end
 
+  def emit_for
+    line << :for
+  end
+
+  def emit_in
+    line << :in
+  end
+
   def emit_indent
     spaces = (@conditional_indent.last) + (2 * @depth_stack.last)
     line << " " * spaces
@@ -2238,6 +2246,38 @@ def format_while(ps, rest)
   ps.emit_newline if ps.start_of_line.last
 end
 
+def format_for(ps, rest)
+  loop_vars, iterable, expressions = rest
+
+  unless Array === loop_vars[0]
+    loop_vars = [loop_vars]
+  end
+
+  ps.emit_indent if ps.start_of_line.last
+
+  ps.emit_for
+  ps.emit_ident(" ")
+  format_list_like_thing_items(ps, [loop_vars], true)
+  ps.emit_ident(" ")
+  ps.emit_in
+  ps.emit_ident(" ")
+  ps.with_start_of_line(false) do
+    format_expression(ps, iterable)
+  end
+  ps.emit_newline
+  ps.new_block do
+    expressions.each do |expression|
+      ps.with_start_of_line(true) do
+        format_expression(ps, expression)
+      end
+      ps.emit_newline
+    end
+  end
+  ps.emit_end
+
+  ps.emit_newline if ps.start_of_line.last
+end
+
 def format_lambda(ps, rest)
   ps.emit_indent if ps.start_of_line.last
   params, type, body = rest
@@ -2422,6 +2462,7 @@ EXPRESSION_HANDLERS = {
   :mlhs_paren => lambda { |ps, rest| format_mlhs_paren(ps, rest) },
   :mrhs_add_star => lambda { |ps, rest| format_mrhs_add_star(ps, rest) },
   :while => lambda { |ps, rest| format_while(ps, rest) },
+  :for => lambda { |ps, rest| format_for(ps, rest) },
   :lambda => lambda { |ps, rest| format_lambda(ps, rest) },
   :rescue_mod => lambda { |ps, rest| format_rescue_mod(ps, rest) },
   :xstring_literal => lambda { |ps, rest| format_xstring_literal(ps, rest) },
