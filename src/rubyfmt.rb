@@ -1993,11 +1993,8 @@ def format_mrhs_new_from_args(ps, expression)
   parts,tail = expression
 
   ps.with_start_of_line(false) do
-    parts.each do |expr|
-      format_expression(ps, expr)
-      ps.emit_ident(", ")
-    end
-
+    format_list_like_thing(ps, [parts], true)
+    ps.emit_comma_space if tail != nil && tail != []
     format_expression(ps, tail)
   end
 
