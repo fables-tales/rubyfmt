@@ -1097,17 +1097,7 @@ end
 def format_symbol_literal(ps, literal)
   ps.emit_indent if ps.start_of_line.last
   ps.with_start_of_line(false) do
-    if literal[0][0] == :@ident
-      format_expression(ps, literal[0])
-    elsif literal[0][0] == :symbol
-      ps.emit_ident(":")
-      format_expression(ps, literal[0][1])
-    elsif literal[0][0] == :"@op"
-      ps.emit_ident(literal[0][1])
-    else
-      raise "didn't get ident in right position #{literal}" if literal[0][1][0] != :"@ident"
-      ps.emit_symbol(literal[0][1][1])
-    end
+    format_expression(ps, literal[0])
   end
 
   ps.emit_newline if ps.start_of_line.last
@@ -2298,6 +2288,27 @@ def format_keyword_with_args(ps, expression, keyword)
   ps.emit_newline if ps.start_of_line.last
 end
 
+def format_symbol(ps, expression)
+  ps.emit_indent if ps.start_of_line.last
+
+  expression = expression[0]
+  ps.on_line(expression[2][0])
+  ps.emit_ident(":")
+  ps.emit_ident(expression[1])
+
+  ps.emit_newline if ps.start_of_line.last
+end
+
+def format_redo(ps, expression)
+  if !expression.empty?
+    raise "omg redo #{expression}"
+  end
+
+  ps.emit_indent if ps.start_of_line.last
+  ps.emit_ident("redo")
+  ps.emit_newline if ps.start_of_line.last
+end
+
 EXPRESSION_HANDLERS = {
   :return => lambda { |ps, rest| format_return(ps, rest) },
   :def => lambda { |ps, rest| format_def(ps, rest) },
@@ -2386,6 +2397,8 @@ EXPRESSION_HANDLERS = {
   :xstring_literal => lambda { |ps, rest| format_xstring_literal(ps, rest) },
   :@backref => lambda { |ps, rest| format_backref(ps, rest) },
   :@CHAR => lambda { |ps, rest| format_character_literal(ps, rest) },
+  :symbol => lambda { |ps, rest| format_symbol(ps, rest) },
+  :redo => lambda { |ps, rest| format_redo(ps, rest) },
 }.freeze
 
 def format_expression(ps, expression)
