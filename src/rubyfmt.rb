@@ -2573,8 +2573,8 @@ class Parser < Ripper::SexpBuilderPP
       heredoc_parts = @heredoc_stack.pop
       args.insert(0, [:heredoc_string_literal, heredoc_parts])
     else
-      quote = [@file_lines[lineno-1].bytes[column-1]].pack("c*")
-      if quote == "'"
+      next_string_end_delim = [@file_lines[lineno-1].bytes[column-1]].pack("c*")
+      if next_string_end_delim == "'"
         (args || []).each do |part|
           next if part[1].nil?
           case part[1][0]
@@ -2582,23 +2582,23 @@ class Parser < Ripper::SexpBuilderPP
             fixup_tstring_content_for_double_quotes(
               part[1][1],
               is_single_quote: true,
-              delimiter: quote,
+              delimiter: next_string_end_delim,
             )
           else
             raise "got non tstring content in single string"
           end
         end
-      elsif /[^a-zA-Z0-9]/ === quote && quote != "\""
-        next_string = @string_stack.pop
-        is_single_quote =  next_string.start_with?("%q")
+      elsif /[^a-zA-Z0-9]/ === next_string_end_delim && next_string_end_delim != "\""
+        next_string_start_delim = @string_stack.pop
+        is_single_q_string = next_string_start_delim.start_with?("%q")
         (args[0][1..-1] || []).each do |part|
           next if part.nil?
           case part[0]
           when :@tstring_content
             fixup_tstring_content_for_double_quotes(
               part[1],
-              is_single_quote: is_single_quote,
-              delimiter: quote,
+              is_single_quote: is_single_q_string,
+              delimiter: next_string_end_delim,
             )
           when :string_embexpr
             # this is fine
@@ -2606,9 +2606,9 @@ class Parser < Ripper::SexpBuilderPP
             raise "got something bad in %q string"
           end
         end
-      elsif quote == "\""
+      elsif next_string_end_delim == "\""
       else
-        raise "what even is this string type #{quote}"
+        raise "what even is this string type #{next_string_end_delim}"
       end
     end
     super
