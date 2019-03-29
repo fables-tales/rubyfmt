@@ -2220,7 +2220,7 @@ end
 
 def format_lambda(ps, rest)
   ps.emit_indent if ps.start_of_line.last
-  params, body = rest
+  params, type, body = rest
   ps.emit_ident("->")
   if params[0] == :paren
     params = params[1]
@@ -2228,7 +2228,7 @@ def format_lambda(ps, rest)
   ps.emit_space if params.drop(1).any?
   format_params(ps, params, "(", ")")
 
-  delim = if body[0] == :bodystmt
+  delim = if type == :do
     ["do", "end"]
   else
     ["{", "}"]
@@ -2527,6 +2527,17 @@ class Parser < Ripper::SexpBuilderPP
         raise "what even is this string type #{quote}"
       end
     end
+    super
+  end
+
+  def on_lambda(*args, &blk)
+    terminator = @file_lines[lineno-1]
+    if terminator.include?("}")
+      args.insert(1, :curly)
+    else
+      args.insert(1, :do)
+    end
+
     super
   end
 
