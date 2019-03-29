@@ -35,12 +35,12 @@ test_folder fixtures/
 
 RUBY_VERSION=$(ruby -v | grep -o "[0-9].[0-9]" | head -n 1)
 echo $RUBY_VERSION
-if [[ `echo "2.5<=$RUBY_VERSION" | bc -l` -ne 0 ]]
-then
-    test_folder fixtures/2.5
-fi
 
-if [[ `echo "2.6<=$RUBY_VERSION" | bc -l` -ne 0 ]]
-then
-    test_folder fixtures/2.6
-fi
+for dir in $(find fixtures -type d -name '2.*')
+do
+    fixture_version=$(basename "$dir")
+    if [[ $(echo "$fixture_version<=$RUBY_VERSION" | bc -l) -ne 0 ]]
+    then
+        test_folder $dir
+    fi
+done
