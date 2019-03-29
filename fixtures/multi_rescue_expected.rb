@@ -1,3 +1,7 @@
 begin
-rescue *a, b
+  a
+rescue A
+  p("a")
+rescue B
+  p("b")
 end
