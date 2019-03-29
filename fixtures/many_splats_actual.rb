@@ -2,3 +2,4 @@
 [*self,c,*d,e,nil,*a]
 [*a]
 a.b(:a, :b, *c, &blk)
+[*[], *[]]
