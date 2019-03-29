@@ -119,6 +119,7 @@ class ParserState
   attr_accessor :depth_stack, :start_of_line, :line, :string_concat_position, :surpress_one_paren
   attr_reader :heredoc_strings
   attr_reader :result
+  attr_reader :current_orig_line_number
   attr_accessor :render_queue
   attr_reader :comments_hash
   attr_reader :depth_stack
@@ -1097,17 +1098,7 @@ end
 def format_symbol_literal(ps, literal)
   ps.emit_indent if ps.start_of_line.last
   ps.with_start_of_line(false) do
-    if literal[0][0] == :@ident
-      format_expression(ps, literal[0])
-    elsif literal[0][0] == :symbol
-      ps.emit_ident(":")
-      format_expression(ps, literal[0][1])
-    elsif literal[0][0] == :"@op"
-      ps.emit_ident(literal[0][1])
-    else
-      raise "didn't get ident in right position #{literal}" if literal[0][1][0] != :"@ident"
-      ps.emit_symbol(literal[0][1][1])
-    end
+    format_expression(ps, literal[0])
   end
 
   ps.emit_newline if ps.start_of_line.last
@@ -1178,25 +1169,54 @@ def format_list_like_thing(ps, args_list, single_line=true)
   if args_list[0][0] != :args_add_star
     emitted_args = format_list_like_thing_items(ps, args_list, single_line)
   else
-    _, args_list, call = args_list[0]
+    _args_add_star, args_list, *calls = args_list[0]
+    raise "this is impossible" unless _args_add_star == :args_add_star
     args_list = [args_list]
-    emitted_args = format_list_like_thing_items(ps, args_list, single_line)
+    emitted_args = format_list_like_thing(ps, args_list, single_line)
 
-    emit_extra_separator(ps, single_line, emitted_args)
-
-    ps.emit_ident("*")
-    emitted_args = true
-    ps.with_start_of_line(false) do
-      format_expression(ps, call)
+    if single_line
+      # if we're single line, our predecessor didn't emit a trailing comma
+      # space because rubyfmt terminates single line arg lists without the
+      # trailer so emit one here
+      ps.emit_comma_space if emitted_args
+    else
+      # similarly if we're multi line, we emit a newline but not an indent
+      # at the end our formatting spree, because we might be at a terminator
+      # so fix up the indent
+      ps.emit_indent
     end
 
-    if !single_line
-      ps.emit_ident(",")
-      ps.emit_newline
+    emitted_args = true
+    ps.with_start_of_line(false) do
+      ps.emit_ident("*")
+      first_call = calls.shift
+      format_expression(ps, first_call)
+
+      calls.each do |call|
+        emit_intermediate_array_separator(ps, single_line)
+        format_expression(ps, call)
+      end
+
+      # if we are not single line, we need to emit a comma newline, to be a
+      # good citizen
+      if !single_line
+        ps.emit_ident(",")
+        ps.emit_newline
+      end
     end
   end
 
   emitted_args
+end
+
+def emit_intermediate_array_separator(ps, single_line)
+  if single_line
+    ps.emit_comma_space
+  else
+    ps.emit_ident(",")
+    ps.emit_newline
+    ps.emit_indent
+  end
 end
 
 def emit_extra_separator(ps, single_line, emitted_args)
@@ -2298,6 +2318,27 @@ def format_keyword_with_args(ps, expression, keyword)
   ps.emit_newline if ps.start_of_line.last
 end
 
+def format_symbol(ps, expression)
+  ps.emit_indent if ps.start_of_line.last
+
+  expression = expression[0]
+  ps.on_line(expression[2][0])
+  ps.emit_ident(":")
+  ps.emit_ident(expression[1])
+
+  ps.emit_newline if ps.start_of_line.last
+end
+
+def format_redo(ps, expression)
+  if !expression.empty?
+    raise "omg redo #{expression}"
+  end
+
+  ps.emit_indent if ps.start_of_line.last
+  ps.emit_ident("redo")
+  ps.emit_newline if ps.start_of_line.last
+end
+
 EXPRESSION_HANDLERS = {
   :return => lambda { |ps, rest| format_return(ps, rest) },
   :def => lambda { |ps, rest| format_def(ps, rest) },
@@ -2386,6 +2427,8 @@ EXPRESSION_HANDLERS = {
   :xstring_literal => lambda { |ps, rest| format_xstring_literal(ps, rest) },
   :@backref => lambda { |ps, rest| format_backref(ps, rest) },
   :@CHAR => lambda { |ps, rest| format_character_literal(ps, rest) },
+  :symbol => lambda { |ps, rest| format_symbol(ps, rest) },
+  :redo => lambda { |ps, rest| format_redo(ps, rest) },
 }.freeze
 
 def format_expression(ps, expression)
@@ -2399,6 +2442,10 @@ def format_expression(ps, expression)
   end
 
   EXPRESSION_HANDLERS.fetch(type).call(ps, rest)
+rescue KeyError => e
+  puts ps.current_orig_line_number
+  puts ps.line
+  raise e
 end
 
 def format_program(line_metadata, sexp, result)
