@@ -1,2 +1,5 @@
--> {  }
--> { puts("bees") }
+-> do
+end
+-> do
+  puts("bees")
+end

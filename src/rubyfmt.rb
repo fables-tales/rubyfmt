@@ -565,7 +565,7 @@ def format_kwrest_params(ps, kwrest_params)
   return if kwrest_params[1].nil?
 
   if kwrest_params[0] == :kwrest_param
-    expr = kwrest_params[1]
+    _, expr = kwrest_params
   else
     expr = kwrest_params
   end
@@ -611,7 +611,14 @@ def format_params(ps, params, open_delim, close_delim)
   rest_params = params[3] || []
   more_required_params = params[4] || []
   kwargs = params[5] || []
+
   kwrest_params = params[6] || []
+  # on ruby 2.3 this position contains literally the integer 183 if a `**` is
+  # given in the splatted kwargs position. Why, I have no idea.
+  if kwrest_params == 183
+    kwrest_params = [""]
+  end
+
   block_arg = params[7] || []
 
   emission_order = [
@@ -638,7 +645,7 @@ def format_params(ps, params, open_delim, close_delim)
 
   if f_params && !f_params.empty?
     ps.emit_ident(" ;")
-    format_list_like_thing_items(ps, [f_params], single_line = true)
+    format_list_like_thing_items(ps, [f_params], true)
   end
 
   if have_any_params
@@ -1984,7 +1991,7 @@ def format_dot2(ps, expression)
   ps.with_start_of_line(false) do
     format_expression(ps, left)
     ps.emit_ident("..")
-    format_expression(ps, right)
+    format_expression(ps, right) unless right.nil?
   end
 
   ps.emit_newline if ps.start_of_line.last
@@ -2213,7 +2220,7 @@ end
 
 def format_lambda(ps, rest)
   ps.emit_indent if ps.start_of_line.last
-  params, body = rest
+  params, type, body = rest
   ps.emit_ident("->")
   if params[0] == :paren
     params = params[1]
@@ -2221,7 +2228,7 @@ def format_lambda(ps, rest)
   ps.emit_space if params.drop(1).any?
   format_params(ps, params, "(", ")")
 
-  delim = if body[0] == :bodystmt
+  delim = if type == :do
     ["do", "end"]
   else
     ["{", "}"]
@@ -2520,6 +2527,17 @@ class Parser < Ripper::SexpBuilderPP
         raise "what even is this string type #{quote}"
       end
     end
+    super
+  end
+
+  def on_lambda(*args, &blk)
+    terminator = @file_lines[lineno-1]
+    if terminator.include?("}")
+      args.insert(1, :curly)
+    else
+      args.insert(1, :do)
+    end
+
     super
   end
 
