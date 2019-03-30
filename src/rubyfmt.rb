@@ -850,7 +850,7 @@ def format_command(ps, rest)
   end
 
   ps.with_start_of_line(false) do
-    if !args_list.nil? && args_list[0] == :command_call
+    if !args_list.nil? && [:command, :command_call].include?(args_list[0])
       ps.emit_space
     end
 
