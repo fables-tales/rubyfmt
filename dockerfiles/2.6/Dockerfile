@@ -1,6 +1,10 @@
 FROM ruby:2.6
 
-RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y locales bc
+RUN apt-get update && \
+        DEBIAN_FRONTEND=noninteractive apt-get install -y \
+        bc \
+        locales \
+        shellcheck
 
 RUN sed -i -e 's/# en_US.UTF-8 UTF-8/en_US.UTF-8 UTF-8/' /etc/locale.gen && \
     locale-gen

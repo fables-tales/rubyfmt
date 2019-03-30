@@ -5,4 +5,5 @@ if [ $RES != "puts(\"a\")"]
 then
     exit 1
 fi
+./scripts/lint.sh
 ./scripts/test.sh
