@@ -1660,9 +1660,10 @@ def format_string_concat(ps, rest)
   ps.with_start_of_line(true) do
     format_expression(ps, string)
   end
-  ps.emit_newline if ps.start_of_line.last
 
   ps.end_string_concat
+
+  ps.emit_newline if ps.start_of_line.last && ps.string_concat_position.empty?
 end
 
 def format_paren(ps, rest)
