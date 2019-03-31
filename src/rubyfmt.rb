@@ -895,6 +895,12 @@ def format_inner_string(ps, parts, type)
       if on_line_skip
         ps.render_heredocs(true)
       end
+    when :string_dvar
+      ps.emit_ident("\#{")
+      ps.with_start_of_line(false) do
+        format_expression(ps, part[1])
+      end
+      ps.emit_ident("}")
     else
       raise "dont't know how to do this #{part[0].inspect}"
     end
@@ -2606,9 +2612,9 @@ class Parser < Ripper::SexpBuilderPP
           case part[0]
           when :@tstring_content
             part[1] = eval("#{start_delim}#{part[1]}#{end_delim}").inspect[1..-2]
-          when :string_embexpr
+          when :string_embexpr, :string_dvar
             if reject_embexpr
-              raise "got string_embexpr in a #{start_delim}...#{end_delim} string"
+              raise "got #{part[0]} in a #{start_delim}...#{end_delim} string"
             end
           else
             raise "got #{part[0]} in a #{start_delim}...#{end_delim} string"
