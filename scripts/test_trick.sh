@@ -5,18 +5,23 @@ set -ex
 # shellcheck disable=SC1091
 source ./scripts/functions.sh
 
-curl https://raw.githubusercontent.com/tric/trick2018/master/01-kinaba/entry.rb > /tmp/kinaba.rb
-ruby src/rubyfmt.rb /tmp/kinaba.rb > /tmp/kinaba_out.rb
-ruby /tmp/kinaba_out.rb
-ruby src/rubyfmt.rb /tmp/kinaba_out.rb > /tmp/kinaba_out_2.rb
-ruby /tmp/kinaba_out_2.rb
+RUBYFMT=$(pwd)/src/rubyfmt.rb
 
-echo "def sleep(n); end;" > /tmp/mame.rb
-curl https://raw.githubusercontent.com/tric/trick2018/master/02-mame/entry.rb >> /tmp/mame.rb
+git clone https://github.com/tric/trick2018 /tmp/trick2018 || echo "already have repo"
+cd /tmp/trick2018
+git reset --hard
+git checkout a9eb6555e0e3ba2ca8ebe0fd6be3671423f0aed4
 
-ruby src/rubyfmt.rb /tmp/mame.rb > /tmp/mame_out.rb
-MAME_EXPECTED=$(ruby /tmp/mame.rb | f_md5)
-MAME_ACTUAL=$(ruby /tmp/mame_out.rb | f_md5)
+ruby "$RUBYFMT" 01-kinaba/entry.rb > ./kinaba_out.rb
+ruby ./kinaba_out.rb
+ruby "$RUBYFMT" ./kinaba_out.rb > ./kinaba_out_2.rb
+ruby ./kinaba_out_2.rb
+
+echo "def sleep(n); end;" | cat - 02-mame/entry.rb  > 02-mame/fast_entry.rb
+
+ruby "$RUBYFMT" 02-mame/fast_entry.rb > ./mame_out.rb
+MAME_EXPECTED=$(ruby 02-mame/fast_entry.rb | f_md5)
+MAME_ACTUAL=$(ruby ./mame_out.rb | f_md5)
 if [[ "$MAME_EXPECTED" != "$MAME_ACTUAL" ]]
 then
     echo "mame is broken"
