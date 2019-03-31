@@ -2138,8 +2138,26 @@ def format_while_mod(ps, rest, type)
 
   ps.emit_indent if ps.start_of_line.last
 
+  buf = StringIO.new
+  render = ParserState.with_depth_stack(buf, from: ps)
+  format_expression(render, while_expr)
+  render.write
+  buf.rewind
+  data = buf.read
+
   ps.with_start_of_line(false) do
-    format_expression(ps, while_expr)
+    if data.count("\n") > 1
+      ps.emit_open_paren
+      ps.emit_newline
+      ps.new_block do
+        format_expression(ps, while_expr)
+      end
+      ps.emit_indent
+      ps.emit_close_paren
+    else
+      format_expression(ps, while_expr)
+    end
+
     ps.emit_ident(" #{type} ")
     format_expression(ps, while_conditional)
   end
