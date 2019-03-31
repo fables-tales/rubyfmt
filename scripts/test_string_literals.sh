@@ -1,8 +1,6 @@
 #!/bin/bash
 set -ex
 
-# this one is safe because functions does in fact exist
-# shellcheck disable=SC1091
 source ./scripts/functions.sh
 
 STRING_LITERALS_EXPECTED=$(ruby string_literals_stress_test.rb | f_md5)
