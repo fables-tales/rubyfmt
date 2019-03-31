@@ -45,3 +45,5 @@ do
         test_folder "$dir"
     fi
 done
+
+./scripts/test_trick.sh
