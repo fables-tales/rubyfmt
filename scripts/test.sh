@@ -2,12 +2,12 @@
 set -ex
 
 test_folder() {
-    find "$1" -name "*_expected.rb" -type f | while read -r file
+    find "$1" -name "*_expected.rb" -maxdepth 1 | while read -r file
     do
         # shellcheck disable=SC2001
         time ruby --disable=gems src/rubyfmt.rb "$(echo "$file" | sed s/expected/actual/)" > /tmp/out.rb
 
-        if ! diff /tmp/out.rb "$file"
+        if ! diff -u /tmp/out.rb "$file"
         then
             echo "got diff"
             exit 1
