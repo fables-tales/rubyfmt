@@ -5,7 +5,7 @@ test_folder() {
     for file in `ls $1/*_expected.rb`
     do
         time ruby --disable=gems src/rubyfmt.rb `echo $file | sed s/expected/actual/` > /tmp/out.rb
-        diff /tmp/out.rb $file
+        diff -u /tmp/out.rb $file
         if [[ $? -ne 0 ]]
         then
             echo "got diff"
