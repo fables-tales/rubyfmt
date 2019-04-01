@@ -5,6 +5,7 @@ set -ex
 # shellcheck disable=SC1091
 source ./scripts/functions.sh
 
+RUBY_VERSION=$(ruby -v | grep -o "[0-9].[0-9]" | head -n 1)
 RUBYFMT=$(pwd)/src/rubyfmt.rb
 
 git clone https://github.com/tric/trick2018 /tmp/trick2018 || echo "already have repo"
@@ -27,3 +28,33 @@ then
     echo "mame is broken"
     exit 1
 fi
+
+if [[ $(echo "2.5<=$RUBY_VERSION" | bc -l) -ne 0 ]]
+then
+    cd 03-tompng
+    bundle install
+    bundle exec ruby entry.rb trick.png
+    ruby "$RUBYFMT" entry.rb > entry_formatted.rb
+    bundle exec ruby entry_formatted.rb trick.png
+    cd ..
+fi
+
+cd 04-colin
+cat > sample_test.rb <<EOD
+$: << \`pwd\`.strip
+require './entry.rb'
+string_1 = "Hello world!"
+string_2 = "This is not the same!"
+
+🤔 "The two strings are equal", string_1 == string_2
+EOD
+COLIN_EXPECTED=$(ruby sample_test.rb | f_md5)
+ruby "$RUBYFMT" entry.rb > entry_formatted.rb
+mv entry_formatted.rb entry.rb
+COLIN_ACTUAL=$(ruby sample_test.rb | f_md5)
+if [[ "$COLIN_EXPECTED" != "$COLIN_ACTUAL" ]]
+then
+    echo "colin is broken"
+    exit 1
+fi
+cd ..
