@@ -31,15 +31,17 @@ fi
 
 if [[ $(echo "2.5<=$RUBY_VERSION" | bc -l) -ne 0 ]]
 then
-    cd 03-tompng
+    (
+    cd 03-tompng || exit
     bundle install
     bundle exec ruby entry.rb trick.png
     ruby "$RUBYFMT" entry.rb > entry_formatted.rb
     bundle exec ruby entry_formatted.rb trick.png
-    cd ..
+    )
 fi
 
-cd 04-colin
+(
+cd 04-colin || exit
 cat > sample_test.rb <<EOD
 $: << \`pwd\`.strip
 require './entry.rb'
@@ -57,4 +59,4 @@ then
     echo "colin is broken"
     exit 1
 fi
-cd ..
+)
