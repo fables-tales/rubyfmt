@@ -60,3 +60,17 @@ then
     exit 1
 fi
 )
+
+(
+cd 05-tompng || exit
+ruby entry.rb
+TOMPNG_ACTUAL=$(f_md5 < wine_glass.stl)
+ruby "$RUBYFMT" entry.rb > entry_formatted.rb
+ruby entry_formatted.rb
+TOMPNG_EXPECTED=$(f_md5 < wine_glass.stl)
+if [[ "$TOMPNG_ACTUAL" != "$TOMPNG_EXPECTED" ]]
+then
+    echo "tompng (wineglass) is broken"
+    exit 1
+fi
+)
