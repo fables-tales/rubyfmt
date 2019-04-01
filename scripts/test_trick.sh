@@ -74,3 +74,18 @@ then
     exit 1
 fi
 )
+
+(
+set -ex
+cd 06-mame || exit
+cat > test.txt <<EOD
+2 -- C
+3 -- A
+1 -- B
+EOD
+
+ruby entry.rb test.txt > out_1.txt
+ruby "$RUBYFMT" entry.rb > entry_formatted.rb
+ruby entry_formatted.rb test.txt > out_2.txt
+diff out_1.txt out_2.txt
+)
