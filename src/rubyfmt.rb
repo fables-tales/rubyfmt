@@ -1548,6 +1548,8 @@ end
 
 def format_inner_args_list(ps, args_list)
   case args_list[0]
+  when :args_add_star
+    format_list_like_thing(ps, [args_list], single_line=true)
   when Symbol
     format_expression(ps, args_list) unless args_list.empty?
   else
