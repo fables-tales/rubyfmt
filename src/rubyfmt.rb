@@ -2249,11 +2249,11 @@ def use_parens_for_method_call(method, args, original_used_parens)
   return true if method == :call
 
   # Never use parens for some methods and keywords
-  return false if ["require", "return", "raise"].include?(method[1])
+  return false if ["return", "raise"].include?(method[1])
 
   # Follow the original code style for super and yield
   # Note that `super()` has different semantics to `super`
-  return original_used_parens if ["super", "yield"].include?(method[1])
+  return original_used_parens if ["super", "yield", "require"].include?(method[1])
 
   # No parens if there are no arguments
   return false if args.empty?
