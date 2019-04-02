@@ -9,3 +9,4 @@ then
 fi
 ./scripts/lint.sh
 ./scripts/test.sh
+./scripts/rspec_stress_test.sh
