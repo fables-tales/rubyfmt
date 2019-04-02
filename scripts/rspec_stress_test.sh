@@ -9,6 +9,7 @@ run_rspec() {
     )
 }
 
+rm -rf ./workspace
 mkdir -p ./workspace/rubyfmt
 if [ -z "${GITHUB_REF+x}" ]
 then
