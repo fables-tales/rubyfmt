@@ -2607,19 +2607,20 @@ class Parser < Ripper::SexpBuilderPP
       start_delim = @string_stack.pop
 
       if start_delim != "\""
-        reject_embexpr = start_delim == "'" || start_delim.start_with?("%q")
-
         (args[0][1..-1] || []).each do |part|
           next if part.nil?
+
+          if start_delim != end_delim && !start_delim.start_with?("%")
+            raise "got #{part[0]} in a #{start_delim}...#{end_delim} string"
+          end
+
           case part[0]
           when :@tstring_content
             part[1] = eval("#{start_delim}#{part[1]}#{end_delim}").inspect[1..-2]
           when :string_embexpr, :string_dvar
-            if reject_embexpr
-              raise "got #{part[0]} in a #{start_delim}...#{end_delim} string"
-            end
+            # No op
           else
-            raise "got #{part[0]} in a #{start_delim}...#{end_delim} string"
+            raise "couldn't handle string"
           end
         end
       end
