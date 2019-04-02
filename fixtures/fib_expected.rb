@@ -13,7 +13,7 @@ end
 
 def fibs
   10.times do |i|
-    p(fib(i))
+    p fib(i)
   end
 end
 

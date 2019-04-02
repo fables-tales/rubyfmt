@@ -123,6 +123,7 @@ class ParserState
   attr_accessor :render_queue
   attr_reader :comments_hash
   attr_reader :depth_stack
+  attr_accessor :method_call_depth
   def initialize(result, line_metadata)
     @surpress_comments_stack = [false]
     @surpress_one_paren = false
@@ -136,6 +137,7 @@ class ParserState
     @conditional_indent = [0]
     @heredoc_strings = []
     @string_concat_position = []
+    @method_call_depth = 0
   end
 
   def self.with_depth_stack(output, from:)
@@ -791,87 +793,6 @@ def format_do_block(ps, rest)
   end
 end
 
-def format_method_add_arg(ps, rest)
-  type, call_rest = rest.first, rest.drop(1)
-
-  ps.emit_indent if ps.start_of_line.last
-
-  ps.with_start_of_line(false) do
-    format_expression(ps, type)
-  end
-
-  raise "got call rest longer than one" if call_rest.length > 1
-  args_list = call_rest[0]
-  emitted_paren = false
-  if args_list[0] == :arg_paren && args_list[1].nil?
-    args_list = []
-  elsif args_list[0] == :arg_paren
-    args_list = args_list[1]
-    if args_list.count == 1
-      args_list = args_list.first
-    end
-
-    if !args_list.empty?
-      emitted_paren = true
-      ps.emit_open_paren
-      ps.surpress_one_paren = true
-    end
-  elsif args_list[0] == :args_add_block
-  elsif args_list.empty?
-  else
-    raise "got non call paren args list"
-  end
-
-  ps.with_start_of_line(!emitted_paren) do
-    next if args_list.empty?
-    format_inner_args_list(ps, args_list)
-  end
-  if emitted_paren
-    ps.emit_close_paren
-  end
-  ps.emit_newline if ps.start_of_line.last
-end
-
-def format_command(ps, rest)
-  ps.on_line(rest[0][2][0])
-
-  call_start = rest[0]
-  args_list = rest[1]
-
-  should_emit_parens = call_start[1] != "require"
-
-  ps.emit_indent if ps.start_of_line.last
-  ps.with_start_of_line(false) do
-    format_expression(ps, call_start)
-  end
-
-  if args_list.count == 1
-    args_list = args_list[0]
-  end
-
-  ps.with_start_of_line(false) do
-    if !args_list.nil? && [:command, :command_call].include?(args_list[0])
-      ps.emit_space
-    end
-
-    if !should_emit_parens
-      ps.emit_ident(" ")
-    end
-    ps.surpress_one_paren = !should_emit_parens
-    format_expression(ps, args_list)
-  end
-  ps.emit_newline if ps.start_of_line.last
-end
-
-def format_vcall(ps, rest)
-  raise "didn't get exactly one part" if rest.count != 1
-  raise "didn't get an ident" if rest[0][0] != :"@ident"
-
-  ps.emit_indent if ps.start_of_line.last
-  ps.emit_ident(rest[0][1])
-  ps.emit_newline if ps.start_of_line.last
-end
-
 def format_tstring_content(ps, rest)
   ps.emit_ident(rest[1])
   ps.on_line(rest[2][0])
@@ -995,21 +916,6 @@ def format_module(ps, rest)
   ps.emit_newline if ps.start_of_line.last
 end
 
-def format_fcall(ps, rest)
-  # this is definitely wrong
-  raise "omg" if rest.length != 1
-  {
-    :@ident => lambda {
-      ps.emit_indent if ps.start_of_line.last
-      ps.emit_ident(rest[0][1])
-    },
-    :@const => lambda {
-      ps.emit_indent if ps.start_of_line.last
-      ps.emit_const(rest[0][1])
-    },
-  }.fetch(rest[0][0]).call
-end
-
 def format_class(ps, rest)
   class_name = rest[0]
 
@@ -1069,7 +975,9 @@ def format_top_const_field(ps, rest)
   end
 end
 
-def format_dot(ps, dot)
+def format_dot(ps, rest)
+  dot = rest[0]
+
   case
   when is_normal_dot(dot)
     ps.emit_dot
@@ -1080,27 +988,6 @@ def format_dot(ps, dot)
   else
     raise "got unrecognised dot"
   end
-end
-
-def format_call(ps, rest)
-  raise "got non 3 length rest" if rest.length != 3
-  front = rest[0]
-  dot = rest[1]
-  back = rest[2]
-
-  ps.emit_indent if ps.start_of_line.last
-
-  line_number = back.last.first
-  ps.on_line(line_number)
-
-  ps.start_of_line << false
-  format_expression(ps, front)
-
-  format_dot(ps, dot)
-
-  format_expression(ps, back)
-  ps.start_of_line.pop
-  ps.emit_newline if ps.start_of_line.last
 end
 
 def format_ident(ps, ident)
@@ -1128,26 +1015,6 @@ def is_lonely_operator(candidate)
     candidate[0] == :@op,
     candidate[1] == "&.",
   ].all?
-end
-
-def format_command_call(ps, expression)
-  ps.emit_indent if ps.start_of_line.last
-
-  left, dot, right, args = expression
-
-  ps.with_start_of_line(false) do
-    format_expression(ps, left)
-    format_dot(ps, dot)
-    format_expression(ps, right)
-    ps.emit_open_paren
-    ps.surpress_one_paren = true
-    if args.length == 1
-      args = args[0]
-    end
-    format_expression(ps, args)
-    ps.emit_close_paren
-  end
-  ps.emit_newline if ps.start_of_line.last
 end
 
 def format_list_like_thing_items(ps, args_list, single_line)
@@ -1428,27 +1295,6 @@ def format_conditional_mod(ps, rest, conditional_type)
   ps.emit_newline if ps.start_of_line.last
 end
 
-def format_return(ps, rest)
-  raise "got wrong size return args" if rest.length != 1
-  ps.emit_indent if ps.start_of_line.last
-  ps.with_start_of_line(false) do
-    ps.emit_return
-    ps.emit_space
-
-    # unpack the nested hell sexps until we get something we can format
-    while !(Symbol === rest.first)
-      rest = rest.first
-    end
-
-    # args add block gets parens by default unless we surpress, so e.g.
-    # return head(:ok) would become return (head(:ok)) if we don't do this
-    ps.surpress_one_paren = true if rest.first == :args_add_block
-
-    format_expression(ps, rest)
-  end
-  ps.emit_newline if ps.start_of_line.last
-end
-
 def format_conditional_parts(ps, further_conditionals)
   return if further_conditionals.nil?
   type = further_conditionals[0]
@@ -1555,40 +1401,6 @@ def format_inner_args_list(ps, args_list)
   else
     format_list_like_thing(ps, [args_list], single_line=true)
   end
-end
-
-def format_super(ps, rest)
-  return if rest.nil?
-  raise "got bad super" if rest.length != 1
-  args = rest[0]
-  if rest[0][0] == :arg_paren
-    args = rest[0][1]
-  end
-
-  ps.emit_indent if ps.start_of_line.last
-  ps.emit_ident("super")
-
-  if args.nil?
-    ps.emit_open_paren
-    ps.emit_close_paren
-  else
-    ps.emit_open_paren
-    ps.with_start_of_line(false) do
-      ps.surpress_one_paren = true
-      format_inner_args_list(ps, args)
-    end
-    ps.emit_close_paren
-  end
-
-  ps.emit_newline if ps.start_of_line.last
-end
-
-def format_zsuper(ps, rest)
-  ps.emit_indent if ps.start_of_line.last
-
-  ps.emit_ident("super")
-
-  ps.emit_newline if ps.start_of_line.last
 end
 
 def format_array_fast_path(ps, rest)
@@ -2001,7 +1813,24 @@ def format_alias(ps, expression)
 end
 
 def format_field(ps, rest)
-  format_call(ps, rest)
+  raise "got non 3 length rest" if rest.length != 3
+  front = rest[0]
+  dot = rest[1]
+  back = rest[2]
+
+  ps.emit_indent if ps.start_of_line.last
+
+  line_number = back.last.first
+  ps.on_line(line_number)
+
+  ps.start_of_line << false
+  format_expression(ps, front)
+
+  format_dot(ps, [dot])
+
+  format_expression(ps, back)
+  ps.start_of_line.pop
+  ps.emit_newline if ps.start_of_line.last
 end
 
 def format_mrhs_new_from_args(ps, expression)
@@ -2403,8 +2232,254 @@ def format_redo(ps, expression)
   ps.emit_newline if ps.start_of_line.last
 end
 
+def format_splat(ps, rest)
+  ps.emit_ident("*")
+  format_expression(ps, rest[0])
+end
+
+def format_to_proc(ps, rest)
+  ps.emit_ident("&")
+  format_expression(ps, rest[0])
+end
+
+def format_keyword(ps, rest)
+  ps.emit_ident(rest[0])
+end
+
+def format_method_call(ps, rest)
+  ps.emit_indent if ps.start_of_line.last
+
+  chain, method, original_used_parens, args = rest
+
+  args = args.map { |a| normalize(a) }
+
+  use_parens = (
+    (method[1] != "require" && method[1] != "return") && (
+      (method == :call) ||
+      (method == [:keyword, "super"] && original_used_parens) ||
+      (method == [:keyword, "yield"] && original_used_parens) ||
+      (
+        args.any? &&
+        !(
+          args.length == 1 &&
+          (args[0][0] == :method_call && args[0][4].length > 0 || args[0][0] == :method_add_block)
+        )
+      ) ||
+      (args.any? && ps.method_call_depth > 0)
+    )
+  )
+
+  ps.method_call_depth += 1
+  ps.with_start_of_line(false) do
+    chain.each do |chain_expr|
+      format_expression(ps, chain_expr)
+    end
+
+    if method != :call
+      format_expression(ps, method)
+    end
+
+    if use_parens
+      ps.emit_ident("(")
+    elsif args.any?
+      ps.emit_ident(" ")
+    end
+
+    format_list_like_thing_items(ps, [args], true)
+
+    if use_parens
+      ps.emit_ident(")")
+    end
+  end
+  ps.method_call_depth -= 1
+
+  ps.emit_newline if ps.start_of_line.last
+end
+
+def normalize_method_add_arg(rest)
+  [
+    :method_call,
+    *normalize_inner_call(rest[0]),
+    true,
+    normalize_args(rest[1]),
+  ]
+end
+
+def normalize_command(rest)
+  [
+    :method_call,
+    [],
+    rest[0],
+    false,
+    normalize_args(rest[1]),
+  ]
+end
+
+def normalize_command_call(rest)
+  head, tail = normalize_inner_call(rest[0])
+  [
+    :method_call,
+    head + [tail, [:dot, rest[1]]],
+    rest[2],
+    false,
+    normalize_args(rest[3]),
+  ]
+end
+
+def normalize_call(rest)
+  [
+    :method_call,
+    *normalize_inner_call([:call, *rest]),
+    false,
+    [],
+  ]
+end
+
+def normalize_vcall(rest)
+  [
+    :method_call,
+    [],
+    rest[0],
+    false,
+    [],
+  ]
+end
+
+def normalize_zsuper(rest)
+  [
+    :method_call,
+    [],
+    [:keyword, "super"],
+    false,
+    [],
+  ]
+end
+
+def normalize_super(rest)
+  [
+    :method_call,
+    [],
+    [:keyword, "super"],
+    rest[0][0] == :arg_paren,
+    normalize_args(rest[0]),
+  ]
+end
+
+def normalize_return(rest)
+  [
+    :method_call,
+    [],
+    [:keyword, "return"],
+    false,
+    normalize_args(rest[0]),
+  ]
+end
+
+def normalize_yield(rest)
+  [
+    :method_call,
+    [],
+    [:keyword, "yield"],
+    rest[0][0] == :paren,
+    normalize_args(rest[0]),
+  ]
+end
+
+def normalize_arg_paren(rest)
+  args = rest[0]
+
+  if args.nil?
+    []
+  else
+    normalize_args(args)
+  end
+end
+
+def normalize_paren(rest)
+  args = rest[0]
+
+  if args.nil?
+    []
+  else
+    normalize_args(args)
+  end
+end
+
+def normalize_args_add_block(rest)
+  block = rest[1]
+  if block
+    [*normalize_args(rest[0]), [:to_proc, block]]
+  else
+    normalize_args(rest[0])
+  end
+end
+
+def normalize_args_add_star(rest)
+  [*rest[0], [:splat, rest[1]]]
+end
+
+def normalize_inner_call(expr)
+  type, rest = expr[0], expr[1..-1]
+
+  case type
+  when :fcall, :vcall
+    [[], rest[0]]
+  when :call
+    a, b = normalize_inner_call(rest[0])
+    [
+      a + [b, [:dot, rest[1]]],
+      rest[2],
+    ]
+  else
+    [[], expr]
+  end
+end
+
+def normalize_args(expr)
+  type, rest = expr[0], expr[1..-1]
+
+  case type
+  when :arg_paren
+    normalize_arg_paren(rest)
+  when :paren
+    normalize_paren(rest)
+  when :args_add_block
+    normalize_args_add_block(rest)
+  when :args_add_star
+    normalize_args_add_star(rest)
+  else
+    expr
+  end
+end
+
+def normalize(expr)
+  type, rest = expr[0], expr[1..-1]
+
+  case type
+  when :method_add_arg
+    normalize_method_add_arg(rest)
+  when :command
+    normalize_command(rest)
+  when :command_call
+    normalize_command_call(rest)
+  when :call
+    normalize_call(rest)
+  when :vcall
+    normalize_vcall(rest)
+  when :zsuper
+    normalize_zsuper(rest)
+  when :super
+    normalize_super(rest)
+  when :return
+    normalize_return(rest)
+  when :yield
+    normalize_yield(rest)
+  else
+    expr
+  end
+end
+
 EXPRESSION_HANDLERS = {
-  :return => method(:format_return),
   :def => method(:format_def),
   :void_stmt => method(:format_void_expression),
   :assign => method(:format_assign_expression),
@@ -2415,20 +2490,14 @@ EXPRESSION_HANDLERS = {
   :var_ref => method(:format_var_ref),
   :do_block => method(:format_do_block),
   :binary => method(:format_binary),
-  :command => method(:format_command),
-  :method_add_arg => method(:format_method_add_arg),
-  :vcall => method(:format_vcall),
-  :fcall => method(:format_fcall),
   :string_literal => method(:format_string_literal),
   :module => method(:format_module),
   :class => method(:format_class),
-  :call => method(:format_call),
   :const_path_ref => method(:format_const_path_ref),
   :const_path_field => method(:format_const_path_field),
   :top_const_field => method(:format_top_const_field),
   :@ident => method(:format_ident),
   :symbol_literal => method(:format_symbol_literal),
-  :command_call => method(:format_command_call),
   :const_ref => method(:format_const_ref),
   :"@const" => method(:format_const),
   :defs => method(:format_defs),
@@ -2441,8 +2510,6 @@ EXPRESSION_HANDLERS = {
   :var_field => method(:format_var_field),
   :@ivar => method(:format_ivar),
   :top_const_ref => method(:format_top_const_ref),
-  :super => method(:format_super),
-  :zsuper => method(:format_zsuper),
   :array => method(:format_array),
   :unary => method(:format_unary),
   :paren => method(:format_paren),
@@ -2494,9 +2561,18 @@ EXPRESSION_HANDLERS = {
   :@CHAR => method(:format_character_literal),
   :symbol => method(:format_symbol),
   :redo => method(:format_redo),
+
+  # Normalized by rubyfmt, not from Ripper:
+  :dot => lambda { |ps, rest| format_dot(ps, rest) },
+  :method_call => lambda { |ps, rest| format_method_call(ps, rest) },
+  :splat => lambda { |ps, rest| format_splat(ps, rest) },
+  :to_proc => lambda { |ps, rest| format_to_proc(ps, rest) },
+  :keyword => lambda { |ps, rest| format_keyword(ps, rest) },
 }.freeze
 
 def format_expression(ps, expression)
+  expression = normalize(expression)
+
   type, rest = expression[0],expression[1...expression.length]
 
   line_re = /(\[\d+, \d+\])/

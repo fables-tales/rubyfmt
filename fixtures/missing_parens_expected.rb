@@ -1,1 +1,1 @@
-expect(foo).to(redirect_to("bar"))
+expect(foo).to redirect_to("bar")
