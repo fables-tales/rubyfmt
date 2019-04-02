@@ -1,1 +1,1 @@
-should eq(1)
+should(eq(1))

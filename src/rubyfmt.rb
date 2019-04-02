@@ -123,7 +123,6 @@ class ParserState
   attr_accessor :render_queue
   attr_reader :comments_hash
   attr_reader :depth_stack
-  attr_accessor :method_call_depth
   def initialize(result, line_metadata)
     @surpress_comments_stack = [false]
     @surpress_one_paren = false
@@ -137,7 +136,6 @@ class ParserState
     @conditional_indent = [0]
     @heredoc_strings = []
     @string_concat_position = []
-    @method_call_depth = 0
   end
 
   def self.with_depth_stack(output, from:)
@@ -2246,7 +2244,7 @@ def format_keyword(ps, rest)
   ps.emit_ident(rest[0])
 end
 
-def use_parens_for_method_call(method, args, original_used_parens, method_call_depth)
+def use_parens_for_method_call(method, args, original_used_parens)
   # Always use parens for the shorthand `foo::()` syntax
   return true if method == :call
 
@@ -2260,18 +2258,6 @@ def use_parens_for_method_call(method, args, original_used_parens, method_call_d
   # No parens if there are no arguments
   return false if args.empty?
 
-  # Use parens if this call appears while formatting another call
-  # e.g. in a chain like `previous.this_one(1).next`, or in an argument
-  # like `another_call(this_one(1))`
-  return true if method_call_depth > 0
-
-  # Don't use parens if this call only has one argument, and that
-  # argument is another call
-  return false if (
-    args.length == 1 &&
-    (args[0][0] == :method_call && args[0][4].length > 0 || args[0][0] == :method_add_block)
-  )
-
   # If in doubt, use parens
   true
 end
@@ -2281,16 +2267,12 @@ def format_method_call(ps, rest)
 
   chain, method, original_used_parens, args = rest
 
-  args = args.map { |a| normalize(a) }
-
   use_parens = use_parens_for_method_call(
     method,
     args,
     original_used_parens,
-    ps.method_call_depth,
   )
 
-  ps.method_call_depth += 1
   ps.with_start_of_line(false) do
     chain.each do |chain_expr|
       format_expression(ps, chain_expr)
@@ -2312,7 +2294,6 @@ def format_method_call(ps, rest)
       ps.emit_ident(")")
     end
   end
-  ps.method_call_depth -= 1
 
   ps.emit_newline if ps.start_of_line.last
 end

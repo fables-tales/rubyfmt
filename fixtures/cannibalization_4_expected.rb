@@ -1,1 +1,1 @@
-Metadata.relative_path File.expand_path(rerun_path)
+Metadata.relative_path(File.expand_path(rerun_path))
