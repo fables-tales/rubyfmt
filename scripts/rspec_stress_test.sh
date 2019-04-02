@@ -1,54 +1,44 @@
 #!/bin/bash
 set -ex
 
-run_rspec() {
-    (
-    cd ~/workspace/rubyfmt/rspec-core || exit
-    bundle exec rspec
-    git reset --hard
-    )
-}
-
-rm -rf ~/workspace
-mkdir -p ~/workspace/rubyfmt
+mkdir -p tmp
 if [ -z "${GITHUB_REF+x}" ]
 then
     echo "not on github"
 else
-    rm -rf ~/workspace/rubyfmt/rspec-core
+    rm -rf tmp/rspec-core
 fi
-ls ~/workspace/rubyfmt/rspec-core/lib || git clone --depth=1 https://github.com/rspec/rspec-core ~/workspace/rubyfmt/rspec-core
+ls tmp/rspec-core/lib || git clone --depth=1 https://github.com/rspec/rspec-core tmp/rspec-core
 
-(
-cd ~/workspace/rubyfmt/rspec-core || exit
+cd tmp/rspec-core
 git reset --hard
 bundle
-)
+cd ../..
 
-FILES=$(find ~/workspace/rubyfmt/rspec-core/lib -type f | grep -i '\.rb$')
+FILES=$(find tmp/rspec-core/lib -type f | grep -i '\.rb$')
 for FN in $FILES
 do
     echo "running rubyfmt on $FN"
-    ruby --disable=gems src/rubyfmt.rb "$FN" > ~/workspace/rubyfmt/this_one.rb
-    ruby --disable=gems src/rubyfmt.rb ~/workspace/rubyfmt/this_one.rb > "$FN"
-
-    if [[ "$1" == "--debug" ]]
-    then
-        run_rspec
-    fi
+    ruby --disable=gems src/rubyfmt.rb "$FN" > /tmp/this_one.rb
+    ruby --disable=gems src/rubyfmt.rb /tmp/this_one.rb > "$FN"
 done
-
-run_rspec
+cd tmp/rspec-core
+bundle exec rspec --exclude-pattern ./spec/integration/persistence_failures_spec.rb
+git reset --hard
+cd ../../
 
 # refmt.rb replaces rubyfmt.rb
-ruby --disable=gems src/rubyfmt.rb src/rubyfmt.rb > ~/workspace/rubyfmt/refmt.rb
+ruby --disable=gems src/rubyfmt.rb src/rubyfmt.rb > tmp/refmt.rb
 
-FILES=$(find ~/workspace/rubyfmt/rspec-core/lib -type f | grep -i '\.rb$')
+FILES=$(find tmp/rspec-core/lib -type f | grep -i '\.rb$')
 for FN in $FILES
 do
     echo "running rubyfmt on $FN"
-    ruby --disable=gems ~/workspace/rubyfmt/refmt.rb "$FN" > /~/workspace/rubyfmt/this_one.rb
-    ruby --disable=gems ~/workspace/rubyfmt/refmt.rb /~/workspace/rubyfmt/this_one.rb > "$FN"
+    ruby --disable=gems tmp/refmt.rb "$FN" > /tmp/this_one.rb
+    ruby --disable=gems tmp/refmt.rb /tmp/this_one.rb > "$FN"
 done
-
-run_rspec
+cd tmp/rspec-core
+bundle exec rspec --exclude-pattern ./spec/integration/persistence_failures_spec.rb
+git reset --hard
+cd ../../
+rm -rf tmp
