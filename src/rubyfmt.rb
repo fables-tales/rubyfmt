@@ -1878,7 +1878,7 @@ def format_aref(ps, expression)
     format_expression(ps, expression)
     ps.emit_ident("[")
     ps.surpress_one_paren = true
-    format_inner_args_list(ps, sqb_args)
+    format_inner_args_list(ps, sqb_args) if sqb_args
     ps.emit_ident("]")
   end
   ps.emit_newline if ps.start_of_line.last
