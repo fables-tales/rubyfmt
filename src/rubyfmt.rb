@@ -2682,4 +2682,4 @@ def main
   format_program(line_metadata, sexp, $stdout)
 end
 
-main
+main if __FILE__ == $0
