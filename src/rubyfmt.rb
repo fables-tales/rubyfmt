@@ -2645,7 +2645,11 @@ class Parser < Ripper::SexpBuilderPP
   end
 
   def on_tstring_end(*args, &blk)
-    @string_stack << args[0]
+    if !@in_string_containing_string_symbol
+      @string_stack << args[0]
+    else
+      @in_string_containing_string_symbol = nil
+    end
     super
   end
 
@@ -2656,6 +2660,11 @@ class Parser < Ripper::SexpBuilderPP
   def on_regexp_literal(*args)
     args[1] << @regexp_stack.pop
     super(*args)
+  end
+
+  def on_label_end(*args)
+    @in_string_containing_string_symbol = args[0] =~ /["'}]:/
+    super
   end
 end
 
