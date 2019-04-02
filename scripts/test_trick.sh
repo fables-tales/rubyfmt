@@ -89,3 +89,5 @@ ruby "$RUBYFMT" entry.rb > entry_formatted.rb
 ruby entry_formatted.rb test.txt > out_2.txt
 diff out_1.txt out_2.txt
 )
+
+# 07-colin is impossible because the file is sensitive to the layout of the file.
