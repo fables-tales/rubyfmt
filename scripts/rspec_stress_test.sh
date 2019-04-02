@@ -1,6 +1,9 @@
 #!/bin/bash
 set -ex
 
+RUBYFMT=$(pwd)/src/rubyfmt.rb
+
+cd "$(mktemp -d)"
 mkdir -p tmp
 if [ -z "${GITHUB_REF+x}" ]
 then
@@ -19,16 +22,16 @@ FILES=$(find tmp/rspec-core/lib -type f | grep -i '\.rb$')
 for FN in $FILES
 do
     echo "running rubyfmt on $FN"
-    ruby --disable=gems src/rubyfmt.rb "$FN" > /tmp/this_one.rb
-    ruby --disable=gems src/rubyfmt.rb /tmp/this_one.rb > "$FN"
+    ruby --disable=gems "$RUBYFMT" "$FN" > /tmp/this_one.rb
+    ruby --disable=gems "$RUBYFMT" /tmp/this_one.rb > "$FN"
 done
 cd tmp/rspec-core
-bundle exec rspec
+bundle exec rspec --exclude-pattern ./spec/integration/persistence_failures_spec.rb
 git reset --hard
 cd ../../
 
 # refmt.rb replaces rubyfmt.rb
-ruby --disable=gems src/rubyfmt.rb src/rubyfmt.rb > tmp/refmt.rb
+ruby --disable=gems "$RUBYFMT" "$RUBYFMT" > tmp/refmt.rb
 
 FILES=$(find tmp/rspec-core/lib -type f | grep -i '\.rb$')
 for FN in $FILES
@@ -38,6 +41,7 @@ do
     ruby --disable=gems tmp/refmt.rb /tmp/this_one.rb > "$FN"
 done
 cd tmp/rspec-core
-bundle exec rspec
+bundle exec rspec --exclude-pattern ./spec/integration/persistence_failures_spec.rb
 git reset --hard
 cd ../../
+rm -rf tmp
