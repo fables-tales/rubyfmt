@@ -2246,6 +2246,36 @@ def format_keyword(ps, rest)
   ps.emit_ident(rest[0])
 end
 
+def use_parens_for_method_call(method, args, original_used_parens, method_call_depth)
+  # Always use parens for the shorthand `foo::()` syntax
+  return true if method == :call
+
+  # Never use parens for some methods and keywords
+  return false if ["require", "return", "raise"].include?(method[1])
+
+  # Follow the original code style for super and yield
+  # Note that `super()` has different semantics to `super`
+  return original_used_parens if ["super", "yield"].include?(method[1])
+
+  # No parens if there are no arguments
+  return false if args.empty?
+
+  # Use parens if this call appears while formatting another call
+  # e.g. in a chain like `previous.this_one(1).next`, or in an argument
+  # like `another_call(this_one(1))`
+  return true if method_call_depth > 0
+
+  # Don't use parens if this call only has one argument, and that
+  # argument is another call
+  return false if (
+    args.length == 1 &&
+    (args[0][0] == :method_call && args[0][4].length > 0 || args[0][0] == :method_add_block)
+  )
+
+  # If in doubt, use parens
+  true
+end
+
 def format_method_call(ps, rest)
   ps.emit_indent if ps.start_of_line.last
 
@@ -2253,20 +2283,11 @@ def format_method_call(ps, rest)
 
   args = args.map { |a| normalize(a) }
 
-  use_parens = (
-    (method[1] != "require" && method[1] != "return") && (
-      (method == :call) ||
-      (method == [:keyword, "super"] && original_used_parens) ||
-      (method == [:keyword, "yield"] && original_used_parens) ||
-      (
-        args.any? &&
-        !(
-          args.length == 1 &&
-          (args[0][0] == :method_call && args[0][4].length > 0 || args[0][0] == :method_add_block)
-        )
-      ) ||
-      (args.any? && ps.method_call_depth > 0)
-    )
+  use_parens = use_parens_for_method_call(
+    method,
+    args,
+    original_used_parens,
+    ps.method_call_depth,
   )
 
   ps.method_call_depth += 1
