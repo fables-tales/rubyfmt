@@ -10,6 +10,7 @@ module RSpec::Core
     # @private
     module NullColorizer
       module_function
+
       def wrap(line, _code_or_symbol)
         line
       end
@@ -40,6 +41,7 @@ module RSpec::Core
       # @private
       def self.for(example)
         execution_result = example.execution_result
+
         return SkippedExampleNotification.new(example) if execution_result.example_skipped?
         return new(example) unless execution_result.status == :pending || execution_result.status == :failed
 
@@ -233,6 +235,7 @@ module RSpec::Core
       #   RSpec's built-in formatters emit.
       def fully_formatted(pending_number, colorizer=::RSpec::Core::Formatters::ConsoleCodes)
         formatted_caller = RSpec.configuration.backtrace_formatter.backtrace_line(example.location)
+
         [
           colorizer.wrap("\n  #{pending_number}) #{example.full_description}", :pending),
           "\n     ",
@@ -392,6 +395,7 @@ module RSpec::Core
       private
 
       include(RSpec::Core::ShellEscape)
+
       def rerun_argument_for(example)
         location = example.location_rerun_argument
         return location unless duplicate_rerun_locations.include?(location)

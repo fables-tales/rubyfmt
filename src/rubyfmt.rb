@@ -6,9 +6,11 @@ LineMetadata = Struct.new(:comment_blocks)
 
 class Line
   attr_accessor :parts
+  attr_accessor :manual_blankline
   def initialize(parts)
     @comments = []
     @parts = parts
+    @manual_blankline = false
   end
 
   def push_comment(comment)
@@ -63,6 +65,10 @@ class Line
     @parts.any? { |x| x == :end }
   end
 
+  def contains_rescue?
+    @parts.any? { |x| x == :rescue }
+  end
+
   def contains_def?
     @parts.any? { |x| x == :def }
   end
@@ -99,13 +105,32 @@ class Line
     @parts.any? { |x| x == :while }
   end
 
+  def contains_keyword?
+    [
+      :def,
+      :do,
+      :while,
+      :if,
+      :else,
+      :elsif,
+      :rescue,
+      :begin,
+      :finally,
+      :ensure,
+      :case,
+      :when,
+    ].any? { |kw| @parts.include?(kw) }
+  end
+
   def surpresses_blankline?
-    contains_def? || contains_do? || contains_while? || contains_if? || contains_else?
+    contains_keyword? || declares_class_or_module?
   end
 end
 
 def want_blankline?(line, next_line)
   return unless next_line
+  require 'pry'; binding.pry
+  return true if line.manual_blankline && !line.surpresses_blankline?
   return true if line.contains_end? && !next_line.contains_end?
   return true if next_line.contains_do? && !line.surpresses_blankline?
   return true if (next_line.contains_if? || next_line.contains_unless?) && !line.surpresses_blankline?
@@ -184,6 +209,9 @@ class ParserState
   end
 
   def on_line(line_number, skip=false)
+    if line_number > @current_orig_line_number + 1
+      (@render_queue.last || line).manual_blankline = true
+    end
     if line_number != @current_orig_line_number
       @arrays_on_line = -1
     end
@@ -428,8 +456,29 @@ class ParserState
     line << ":#{symbol}"
   end
 
+  def emit_rescue
+    line << :rescue
+  end
+
+  def emit_case
+    line << :case
+  end
+
+  def emit_when
+    line << :when
+  end
+
+  def emit_ensure
+    line << :ensure
+  end
+
+  def emit_begin
+    line << :begin
+  end
+
   def render_heredocs(skip=false)
     while !heredoc_strings.empty?
+      line.manual_blankline = false
       symbol, indent, string = heredoc_strings.pop
       unless render_queue[-1] && render_queue[-1].ends_with_newline?
         line << "\n"
@@ -1172,7 +1221,7 @@ def format_rescue(ps, rescue_part)
   _, rescue_class, rescue_capture, rescue_expressions, next_rescue = rescue_part
   ps.dedent do
     ps.emit_indent
-    ps.emit_ident("rescue")
+    ps.emit_rescue
     ps.with_start_of_line(false) do
       if !rescue_class.nil? || !rescue_capture.nil?
         ps.emit_space
@@ -1214,7 +1263,7 @@ def format_ensure(ps, ensure_part)
   _, ensure_expressions = ensure_part
   ps.dedent do
     ps.emit_indent
-    ps.emit_ident("ensure")
+    ps.emit_ensure
   end
 
   if !ensure_expressions.nil?
@@ -1296,11 +1345,14 @@ end
 def format_conditional_parts(ps, further_conditionals)
   return if further_conditionals.nil?
   type = further_conditionals[0]
+
   case type
   when :else
     _, body = further_conditionals
     ps.emit_indent
     ps.emit_else
+
+
     ps.emit_newline
     ps.with_start_of_line(true) do
       ps.new_block do
@@ -1522,7 +1574,7 @@ def format_begin(ps, expression)
   raise "begin body was not a bodystmt" if begin_body[0] != :bodystmt
 
   ps.emit_indent if ps.start_of_line.last
-  ps.emit_ident("begin")
+  ps.emit_begin
   ps.emit_newline
   ps.new_block do
     format_bodystmt(ps, begin_body[1..-1], inside_begin=true)
@@ -1890,7 +1942,8 @@ def format_case_parts(ps, case_parts)
   if type == :when
     _, conditional, body, case_parts = case_parts
     ps.emit_indent
-    ps.emit_ident("when ")
+    ps.emit_when
+    ps.emit_space
     ps.with_start_of_line(false) do
       format_list_like_thing(ps, [conditional], true)
     end
@@ -1923,7 +1976,7 @@ def format_case(ps, rest)
   case_expr, case_parts = rest
   ps.emit_indent if ps.start_of_line.last
 
-  ps.emit_ident("case")
+  ps.emit_case
   if !case_expr.nil?
     ps.with_start_of_line(false) do
       ps.emit_space
@@ -2584,15 +2637,24 @@ EXPRESSION_HANDLERS = {
   :keyword => lambda { |ps, rest| format_keyword(ps, rest) },
 }.freeze
 
+def extract_line_number_from_construct(construct)
+  line_re = /(\[\d+, \d+\])/
+  line_number = line_re.match(construct.inspect)
+  if line_number != nil
+    line_number = line_number.to_s.split(",")[0].gsub("[", "").to_i
+    line_number
+  else
+    nil
+  end
+end
+
 def format_expression(ps, expression)
   expression = normalize(expression)
 
   type, rest = expression[0],expression[1...expression.length]
 
-  line_re = /(\[\d+, \d+\])/
-  line_number = line_re.match(rest.inspect)
+  line_number = extract_line_number_from_construct(rest)
   if line_number != nil
-    line_number = line_number.to_s.split(",")[0].gsub("[", "").to_i
     ps.on_line(line_number)
   end
 

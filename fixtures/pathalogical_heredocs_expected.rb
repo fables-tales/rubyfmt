@@ -4,13 +4,16 @@ eom part
 EOM
 part 2 of heredoc
 EOD
+
 b = <<-EOD
 oweqijfoiwjefqwoefij
 EOD
+
 def foo
   c = <<~EOD
 oqweijfoqwiejf
   EOD
+
   puts(c)
 end
 

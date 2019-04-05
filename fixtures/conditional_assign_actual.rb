@@ -4,6 +4,9 @@ def foo
       elsif "hi"
         "hi2"
       else
+
+        puts("hi")
+
         puts("hi")
       end
 end
