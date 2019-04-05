@@ -1,4 +1,4 @@
-raise(<<-EOM.gsub(/^\s+\|/, ""))
+raise <<-EOM.gsub(/^\s+\|/, "")
               |#{"*" * 50}
               |:#{key} is not allowed
               |
