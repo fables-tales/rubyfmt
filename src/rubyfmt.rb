@@ -716,6 +716,12 @@ def format_int(ps, rest)
   ps.emit_indent if ps.start_of_line.last
 
   int = rest[0]
+  int_chars = int.chars
+
+  if int_chars[0] != "0" && !int_chars.include?("_")
+    int = int_chars.reverse.each_slice(3).map(&:join).join("_").reverse
+  end
+
   ps.emit_int(int)
 
   ps.emit_newline if ps.start_of_line.last
