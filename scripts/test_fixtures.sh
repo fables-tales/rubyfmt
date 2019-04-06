@@ -9,7 +9,15 @@ test_folder() {
 
         if ! diff -u /tmp/out.rb "$file"
         then
-            echo "got diff"
+            echo "got diff between formated actual and expected"
+            exit 1
+        fi
+
+        time ruby --disable=gems src/rubyfmt.rb "$file" > /tmp/out.rb
+
+        if ! diff -u /tmp/out.rb "$file"
+        then
+            echo "got diff between formatted expected and expected (not idempotent)"
             exit 1
         fi
     done
