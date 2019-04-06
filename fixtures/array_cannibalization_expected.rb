@@ -4,7 +4,6 @@ groups.map { |group, data|
     data,
   ]
 }
-
 [
   a,
   b,
