@@ -133,7 +133,7 @@ class Line
 end
 
 def want_blankline?(line, next_line)
-  if ENV["RUBYFMT_DEBUG"] == "2"
+  if ENV["RUBYFMT_DEBUG"] == "3"
     require 'pry'; binding.pry
   end
   return unless next_line
@@ -561,6 +561,7 @@ def format_def(ps, rest)
   params = rest[1]
   body = rest[2]
 
+  ps.blankline_please
   ps.emit_indent
   ps.emit_def(def_name)
 
@@ -1484,9 +1485,9 @@ def format_array_fast_path(ps, rest)
     end
     ps.emit_ident("]")
   else
-
     line_number = extract_line_number_from_construct(rest)
     if line_number != nil
+      ps.on_line(line_number-1)
       ps.on_line(line_number)
     end
     ps.emit_ident("[")
@@ -1497,6 +1498,7 @@ def format_array_fast_path(ps, rest)
     end
 
     ps.emit_indent unless rest.first.nil?
+    ps.on_line(ps.current_orig_line_number+1)
     ps.emit_ident("]")
   end
 end
