@@ -1664,6 +1664,7 @@ end
 def format_float(ps, expression)
   ps.emit_indent if ps.start_of_line.last
 
+  ps.on_line(expression[1][0])
   ps.emit_ident(expression[0])
 
   ps.emit_newline if ps.start_of_line.last
