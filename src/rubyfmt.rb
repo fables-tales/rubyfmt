@@ -216,6 +216,10 @@ class ParserState
     pop_conditional_indent if @string_concat_position.empty?
   end
 
+  def blankline_please
+    (@render_queue.last || line).manual_blankline = true
+  end
+
   def on_line(line_number, skip=false)
     if ENV["RUBYFMT_DEBUG"] == "2"
       p [line_number, @current_orig_line_number]
@@ -224,7 +228,7 @@ class ParserState
       if ENV["RUBYFMT_DEBUG"] == 2
         require 'pry'; binding.pry
       end
-      (@render_queue.last || line).manual_blankline = true
+      blankline_please
     end
 
     if line_number != @current_orig_line_number
@@ -551,6 +555,7 @@ def format_until(ps, rest)
 end
 
 def format_def(ps, rest)
+  ps.blankline_please
   def_expression, params, body = rest
 
   def_name = def_expression[1]
@@ -1215,6 +1220,7 @@ end
 def format_defs(ps, rest)
   head, period, tail, params, body = rest
   ps.emit_indent if ps.start_of_line.last
+  ps.blankline_please
   ps.emit_ident("def")
   ps.emit_space
   ps.start_of_line << false
