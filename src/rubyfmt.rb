@@ -156,6 +156,7 @@ class ParserState
   attr_accessor :render_queue
   attr_reader :comments_hash
   attr_reader :depth_stack
+  attr_accessor :formatting_class_or_module_stack
   def initialize(result, line_metadata)
     @surpress_comments_stack = [false]
     @surpress_one_paren = false
@@ -169,6 +170,7 @@ class ParserState
     @conditional_indent = [0]
     @heredoc_strings = []
     @string_concat_position = []
+    @formatting_class_or_module_stack = [false]
   end
 
   def self.with_depth_stack(output, from:)
@@ -431,9 +433,17 @@ class ParserState
     line << ")"
   end
 
-  def new_block(&blk)
+  def with_formatting_class_or_module(formatting_class_or_module, &blk)
+    formatting_class_or_module_stack << formatting_class_or_module
+    blk.call
+    formatting_class_or_module_stack.pop
+  end
+
+  def new_block(formatting_class_or_module: false, &blk)
     depth_stack[-1] += 1
-    with_start_of_line(true, &blk)
+    with_formatting_class_or_module(formatting_class_or_module) do
+      with_start_of_line(true, &blk)
+    end
     depth_stack[-1] -= 1
   end
 
@@ -570,7 +580,9 @@ def format_def(ps, rest)
   ps.emit_indent
   ps.emit_def(def_name)
 
-  format_params(ps, params, "(", ")")
+  ps.with_formatting_class_or_module(false) do
+    format_params(ps, params, "(", ")")
+  end
 
   ps.emit_newline
   ps.new_block do
@@ -766,7 +778,9 @@ def format_assign_expression(ps, rest)
     ps.emit_op("=")
     ps.emit_space
 
-    format_expression(ps, tail)
+    ps.with_formatting_class_or_module(false) do
+      format_expression(ps, tail)
+    end
   end
 
   ps.emit_newline if ps.start_of_line.last
@@ -980,7 +994,7 @@ def format_module(ps, rest)
   ps.emit_newline
 
 
-  ps.new_block do
+  ps.new_block(formatting_class_or_module: true) do
     exprs = rest[1][1]
     exprs.each do |expr|
       format_expression(ps, expr)
@@ -1010,7 +1024,7 @@ def format_class(ps, rest)
 
   ps.emit_newline
 
-  ps.new_block do
+  ps.new_block(formatting_class_or_module: true) do
     exprs = rest[2][1]
     exprs.each do |expr|
       format_expression(ps, expr)
@@ -2350,7 +2364,9 @@ def format_keyword(ps, rest)
   ps.emit_ident(rest[0])
 end
 
-def use_parens_for_method_call(method, args, original_used_parens)
+def use_parens_for_method_call(ps, method, args, original_used_parens)
+  return false if ps.formatting_class_or_module_stack.last
+
   # Always use parens for the shorthand `foo::()` syntax
   return true if method == :call
 
@@ -2374,6 +2390,7 @@ def format_method_call(ps, rest)
   chain, method, original_used_parens, args = rest
 
   use_parens = use_parens_for_method_call(
+    ps,
     method,
     args,
     original_used_parens,
