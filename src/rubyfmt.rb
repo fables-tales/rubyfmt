@@ -119,6 +119,7 @@ class Line
       :ensure,
       :case,
       :when,
+      :"->",
     ].any? { |kw| @parts.include?(kw) }
   end
 
@@ -132,6 +133,9 @@ class Line
 end
 
 def want_blankline?(line, next_line)
+  if ENV["RUBYFMT_DEBUG"] == "2"
+    require 'pry'; binding.pry
+  end
   return unless next_line
   return false if line.surpresses_blankline?
   return true if line.manual_blankline
@@ -213,9 +217,16 @@ class ParserState
   end
 
   def on_line(line_number, skip=false)
+    if ENV["RUBYFMT_DEBUG"] == "2"
+      p [line_number, @current_orig_line_number]
+    end
     if line_number > @current_orig_line_number + 1
+      if ENV["RUBYFMT_DEBUG"] == 2
+        require 'pry'; binding.pry
+      end
       (@render_queue.last || line).manual_blankline = true
     end
+
     if line_number != @current_orig_line_number
       @arrays_on_line = -1
     end
@@ -462,6 +473,10 @@ class ParserState
 
   def emit_rescue
     line << :rescue
+  end
+
+  def emit_stabby_lambda
+    line << :"->"
   end
 
   def emit_case
@@ -768,6 +783,7 @@ end
 def format_int(ps, rest)
   ps.emit_indent if ps.start_of_line.last
 
+  ps.on_line(rest[1][0])
   int = rest[0]
   ps.emit_int(int)
 
@@ -777,6 +793,7 @@ end
 def format_rational(ps, rest)
   ps.emit_indent if ps.start_of_line.last
 
+  ps.on_line(rest[1][0])
   ps.emit_ident(rest[0])
 
   ps.emit_newline if ps.start_of_line.last
@@ -785,6 +802,7 @@ end
 def format_imaginary(ps, rest)
   ps.emit_indent if ps.start_of_line.last
 
+  ps.on_line(rest[1][0])
   ps.emit_ident(rest[0])
 
   ps.emit_newline if ps.start_of_line.last
@@ -1466,6 +1484,11 @@ def format_array_fast_path(ps, rest)
     end
     ps.emit_ident("]")
   else
+
+    line_number = extract_line_number_from_construct(rest)
+    if line_number != nil
+      ps.on_line(line_number)
+    end
     ps.emit_ident("[")
     ps.emit_newline unless rest.first.nil?
 
@@ -1826,6 +1849,7 @@ end
 
 def format_regexp_literal(ps, expression)
   parts,re_end = expression
+  ps.on_line(re_end[2][0])
   re_delimiters = case re_end[3][0]
             when "%"
               ["%r#{re_end[3][2]}", re_end[1]]
@@ -2200,8 +2224,12 @@ end
 
 def format_lambda(ps, rest)
   ps.emit_indent if ps.start_of_line.last
+  line_number = extract_line_number_from_construct(rest)
+  if line_number
+    ps.on_line(line_number)
+  end
   params, type, body = rest
-  ps.emit_ident("->")
+  ps.emit_stabby_lambda
   if params[0] == :paren
     params = params[1]
   end
@@ -2657,10 +2685,10 @@ def format_expression(ps, expression)
 
   type, rest = expression[0],expression[1...expression.length]
 
-  line_number = extract_line_number_from_construct(rest)
-  if line_number != nil
-    ps.on_line(line_number)
-  end
+  #line_number = extract_line_number_from_construct(rest)
+  #if line_number != nil
+  #  ps.on_line(line_number)
+  #end
 
   EXPRESSION_HANDLERS.fetch(type).call(ps, rest)
 rescue KeyError => e
@@ -2810,6 +2838,12 @@ class Parser < Ripper::SexpBuilderPP
 
   def on_regexp_literal(*args)
     args[1] << @regexp_stack.pop
+    super(*args)
+  end
+
+
+  def on_void_stmt(*args)
+    args << [lineno, column]
     super(*args)
   end
 end
