@@ -123,17 +123,21 @@ class Line
   end
 
   def surpresses_blankline?
-    contains_keyword? || declares_class_or_module?
+    contains_keyword? || declares_class_or_module? || ends_with_parenish_construct?
+  end
+
+  def ends_with_parenish_construct?
+    ["(", "{", "["].any? { |item| @parts[-2].to_s.end_with?(item) }
   end
 end
 
 def want_blankline?(line, next_line)
   return unless next_line
-  require 'pry'; binding.pry
-  return true if line.manual_blankline && !line.surpresses_blankline?
+  return false if line.surpresses_blankline?
+  return true if line.manual_blankline
   return true if line.contains_end? && !next_line.contains_end?
-  return true if next_line.contains_do? && !line.surpresses_blankline?
-  return true if (next_line.contains_if? || next_line.contains_unless?) && !line.surpresses_blankline?
+  return true if next_line.contains_do?
+  return true if (next_line.contains_if? || next_line.contains_unless?)
   return true if line.declares_private?
   return true if line.declares_require? && !next_line.declares_require?
   return true if !line.declares_class_or_module? && next_line.has_comment?
