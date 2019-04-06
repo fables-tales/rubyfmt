@@ -1973,9 +1973,19 @@ def format_while_mod(ps, rest, type)
 
   ps.emit_indent if ps.start_of_line.last
 
+  # Unwrap parens, so that we can consistently decide if we need them
+  # or not when doing the final formatting.
+  if while_expr[0] == :paren
+    while_exprs = while_expr[1]
+  else
+    while_exprs = [while_expr]
+  end
+
   buf = StringIO.new
   render = ParserState.with_depth_stack(buf, from: ps)
-  format_expression(render, while_expr)
+  while_exprs.each do |while_expr|
+    format_expression(render, while_expr)
+  end
   render.write
   buf.rewind
   data = buf.read
@@ -1985,7 +1995,9 @@ def format_while_mod(ps, rest, type)
       ps.emit_open_paren
       ps.emit_newline
       ps.new_block do
-        format_expression(ps, while_expr)
+        while_exprs.each do |while_expr|
+          format_expression(ps, while_expr)
+        end
       end
       ps.emit_indent
       ps.emit_close_paren
