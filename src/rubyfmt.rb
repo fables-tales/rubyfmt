@@ -1673,6 +1673,8 @@ def format_brace_block(ps, expression)
   raise "didn't get right array in brace block" if expression.length != 2
   params, body = expression
 
+  user_did_line_break = extract_all_line_numbers_from_construct(expression).count > 1
+
   multiline = ParserState.block_will_render_as_multiline?(ps) do |next_ps|
     ps.new_block do
       body.each do |expr|
@@ -1680,6 +1682,9 @@ def format_brace_block(ps, expression)
       end
     end
   end
+
+  multiline ||= user_did_line_break
+
   orig_params = params
 
   bv, params, _ = params
@@ -2392,7 +2397,7 @@ def format_keyword(ps, rest)
 end
 
 def use_parens_for_method_call(ps, method, args, original_used_parens)
-  return false if ps.formatting_class_or_module_stack.last
+  return false if ps.formatting_class_or_module_stack.last && !original_used_parens
 
   # Always use parens for the shorthand `foo::()` syntax
   return true if method == :call
