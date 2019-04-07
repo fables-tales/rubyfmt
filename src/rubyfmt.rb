@@ -173,6 +173,16 @@ class ParserState
     @formatting_class_or_module_stack = [false]
   end
 
+  def self.block_will_render_as_multiline?(ps, &blk)
+    output = StringIO.new
+
+    next_ps = ParserState.with_depth_stack(output, from: ps)
+    blk.call(next_ps)
+    next_ps.write
+    output.rewind
+    output.read.strip.split("\n").length > 1
+  end
+
   def self.with_depth_stack(output, from:)
     i = new(output, LineMetadata.new({}))
     i.depth_stack = from.depth_stack.dup
@@ -1639,16 +1649,13 @@ def format_brace_block(ps, expression)
   raise "didn't get right array in brace block" if expression.length != 2
   params, body = expression
 
-  output = StringIO.new
-
-  next_ps = ParserState.with_depth_stack(output, from: ps)
-  ps.new_block do
-    body.each do |expr|
-      format_expression(next_ps, expr)
+  multiline = ParserState.block_will_render_as_multiline?(ps) do |next_ps|
+    ps.new_block do
+      body.each do |expr|
+        format_expression(next_ps, expr)
+      end
     end
   end
-
-  multiline = next_ps.render_queue.length > 1
   orig_params = params
 
   bv, params, _ = params
@@ -2085,17 +2092,13 @@ def format_while_mod(ps, rest, type)
     while_exprs = [while_expr]
   end
 
-  buf = StringIO.new
-  render = ParserState.with_depth_stack(buf, from: ps)
-  while_exprs.each do |while_expr|
-    format_expression(render, while_expr)
+  multiline = ParserState.block_will_render_as_multiline?(ps) do |next_ps|
+    while_exprs.each do |while_expr|
+      format_expression(next_ps, while_expr)
+    end
   end
-  render.write
-  buf.rewind
-  data = buf.read
-
   ps.with_start_of_line(false) do
-    if data.count("\n") > 1
+    if multiline
       ps.emit_open_paren
       ps.emit_newline
       ps.new_block do
