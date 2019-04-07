@@ -4,6 +4,9 @@ require "stringio"
 require "pp"
 LineMetadata = Struct.new(:comment_blocks)
 
+# I'm sorry
+MAX_WIDTH = 100
+
 class Line
   attr_accessor :parts
   attr_accessor :manual_blankline
@@ -174,13 +177,20 @@ class ParserState
   end
 
   def self.block_will_render_as_multiline?(ps, &blk)
-    output = StringIO.new
+    render_block(ps, &blk).strip.split("\n").length > 1
+  end
 
+  def self.block_will_render_wider_than_max_width?(ps, &blk)
+    render_block(ps, &blk).strip.split("\n").any? { |x| x.length > MAX_WIDTH }
+  end
+
+  def self.render_block(ps, &blk)
+    output = StringIO.new
     next_ps = ParserState.with_depth_stack(output, from: ps)
     blk.call(next_ps)
     next_ps.write
     output.rewind
-    output.read.strip.split("\n").length > 1
+    output.read
   end
 
   def self.with_depth_stack(output, from:)
@@ -1507,14 +1517,15 @@ def format_inner_args_list(ps, args_list)
 end
 
 def format_array_fast_path(ps, rest)
-  single_statement = rest[0] && rest[0].length == 1
-  if single_statement
+  render_on_single_line = lambda { |ps, rest|
     ps.emit_ident("[")
     ps.with_start_of_line(false) do
       format_list_like_thing(ps, rest, true)
     end
     ps.emit_ident("]")
-  else
+  }
+
+  render_on_multiple_lines = lambda { |ps, rest|
     line_number = extract_line_number_from_construct(rest)
     if line_number != nil
       ps.on_line(line_number-1)
@@ -1530,6 +1541,17 @@ def format_array_fast_path(ps, rest)
     ps.emit_indent unless rest.first.nil?
     ps.on_line(ps.current_orig_line_number+1)
     ps.emit_ident("]")
+  }
+
+  too_wide = ParserState.block_will_render_wider_than_max_width?(ps) do |next_ps|
+    render_on_single_line.call(next_ps, rest)
+    next_ps.emit_newline
+  end
+
+  if too_wide
+    render_on_multiple_lines.call(ps, rest)
+  else
+    render_on_single_line.call(ps, rest)
   end
 end
 

@@ -1,2 +1,2 @@
 do_something { |a| [a] }
-do_something { |a| [a, b,c] }
+do_something { |a| a; b }
