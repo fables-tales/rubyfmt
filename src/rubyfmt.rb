@@ -1526,7 +1526,7 @@ def format_array_fast_path(ps, rest)
   }
 
   render_on_multiple_lines = lambda { |ps, rest|
-    line_number = extract_line_number_from_construct(rest)
+    line_number = extract_first_line_number_from_construct(rest)
     if line_number != nil
       ps.on_line(line_number-1)
       ps.on_line(line_number)
@@ -1548,7 +1548,9 @@ def format_array_fast_path(ps, rest)
     next_ps.emit_newline
   end
 
-  if too_wide
+  user_did_line_break = extract_all_line_numbers_from_construct(rest).count > 1
+
+  if too_wide || user_did_line_break
     render_on_multiple_lines.call(ps, rest)
   else
     render_on_single_line.call(ps, rest)
@@ -2272,7 +2274,7 @@ end
 
 def format_lambda(ps, rest)
   ps.emit_indent if ps.start_of_line.last
-  line_number = extract_line_number_from_construct(rest)
+  line_number = extract_first_line_number_from_construct(rest)
   if line_number
     ps.on_line(line_number)
   end
@@ -2720,15 +2722,18 @@ EXPRESSION_HANDLERS = {
   :keyword => lambda { |ps, rest| format_keyword(ps, rest) },
 }.freeze
 
-def extract_line_number_from_construct(construct)
-  line_re = /(\[\d+, \d+\])/
-  line_number = line_re.match(construct.inspect)
-  if line_number != nil
-    line_number = line_number.to_s.split(",")[0].gsub("[", "").to_i
-    line_number
-  else
-    nil
-  end
+def extract_first_line_number_from_construct(construct)
+  extract_all_line_numbers_from_construct(construct).first
+end
+
+def extract_all_line_numbers_from_construct(construct)
+  location_re = /(\[\d+, \d+\])/
+  locations = construct.inspect.scan(location_re)
+  unique_line_numbers = locations.map { |location|
+    location[0].split(",")[0].gsub("[", "").to_i
+  }.uniq
+
+  unique_line_numbers
 end
 
 def format_expression(ps, expression)
@@ -2736,7 +2741,7 @@ def format_expression(ps, expression)
 
   type, rest = expression[0],expression[1...expression.length]
 
-  #line_number = extract_line_number_from_construct(rest)
+  #line_number = extract_first_line_number_from_construct(rest)
   #if line_number != nil
   #  ps.on_line(line_number)
   #end
