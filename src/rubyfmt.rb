@@ -810,8 +810,10 @@ def format_method_add_block(ps, rest)
   raise "got non 2 length rest in add block" if rest.count != 2
   left, block_body = rest
   ps.emit_indent if ps.start_of_line.last
-  ps.with_start_of_line(false) do
-    format_expression(ps, left)
+  ps.with_formatting_class_or_module(false) do
+    ps.with_start_of_line(false) do
+      format_expression(ps, left)
+    end
   end
   ps.emit_space
 
@@ -862,9 +864,11 @@ def format_binary(ps, rest)
   ps.emit_indent if ps.start_of_line.last
 
   ps.with_start_of_line(false) do
-    format_expression(ps, rest[0])
-    ps.emit_binary("#{rest[1].to_s}")
-    format_expression(ps, rest[2])
+    ps.with_formatting_class_or_module(false) do
+      format_expression(ps, rest[0])
+      ps.emit_binary("#{rest[1].to_s}")
+      format_expression(ps, rest[2])
+    end
   end
   ps.emit_newline if ps.start_of_line.last
 end
@@ -2396,8 +2400,9 @@ def format_keyword(ps, rest)
   ps.emit_ident(rest[0])
 end
 
-def use_parens_for_method_call(ps, method, args, original_used_parens)
-  return false if ps.formatting_class_or_module_stack.last && !original_used_parens
+def use_parens_for_method_call(ps, chain, method, args, original_used_parens)
+  return true if args.inspect.include?(":to_proc")
+  return false if ps.formatting_class_or_module_stack.last
 
   # Always use parens for the shorthand `foo::()` syntax
   return true if method == :call
@@ -2408,6 +2413,7 @@ def use_parens_for_method_call(ps, method, args, original_used_parens)
   # Follow the original code style for super and yield
   # Note that `super()` has different semantics to `super`
   return original_used_parens if ["super", "yield", "require"].include?(method[1])
+
 
   # No parens if there are no arguments
   return false if args.empty?
@@ -2420,13 +2426,14 @@ def format_method_call(ps, rest)
   ps.emit_indent if ps.start_of_line.last
 
   chain, method, original_used_parens, args = rest
-
   use_parens = use_parens_for_method_call(
     ps,
+    chain,
     method,
     args,
     original_used_parens,
   )
+
 
   ps.with_start_of_line(false) do
     chain.each do |chain_expr|
