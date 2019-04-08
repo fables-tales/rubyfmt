@@ -452,12 +452,6 @@ class ParserState
   end
 end
 
-def format_block_params_list(ps, params_list)
-  ps.emit_open_block_arg_list
-  ps.emit_params_list(params_list)
-  ps.emit_close_block_arg_list
-end
-
 def format_until(ps, rest)
   conditional, expressions = rest
 
@@ -789,11 +783,6 @@ def format_do_block(ps, rest)
   ps.with_start_of_line(true) do
     ps.emit_end
   end
-end
-
-def format_tstring_content(ps, rest)
-  ps.emit_ident(rest[1])
-  ps.on_line(rest[2][0])
 end
 
 def format_inner_string(ps, parts, type)
