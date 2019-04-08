@@ -966,11 +966,11 @@ def format_dot(ps, rest)
   dot = rest[0]
 
   case
-  when is_normal_dot(dot)
+  when is_normal_dot?(dot)
     ps.emit_dot
   when dot == :"::"
     ps.emit_ident("::")
-  when is_lonely_operator(dot)
+  when is_lonely_operator?(dot)
     ps.emit_lonely_operator
   else
     raise "got unrecognised dot"
@@ -992,11 +992,11 @@ def format_symbol_literal(ps, literal)
   ps.emit_newline if ps.start_of_line.last
 end
 
-def is_normal_dot(candidate)
+def is_normal_dot?(candidate)
   candidate == :"." || (candidate.is_a?(Array) && candidate[0] == :@period)
 end
 
-def is_lonely_operator(candidate)
+def is_lonely_operator?(candidate)
   candidate == :"&." || [
     candidate.is_a?(Array),
     candidate[0] == :@op,
@@ -2245,7 +2245,7 @@ def format_keyword(ps, rest)
   ps.emit_ident(rest[0])
 end
 
-def use_parens_for_method_call(method, args, original_used_parens)
+def use_parens_for_method_call?(method, args, original_used_parens)
   # Always use parens for the shorthand `foo::()` syntax
   return true if method == :call
 
@@ -2268,7 +2268,7 @@ def format_method_call(ps, rest)
 
   chain, method, original_used_parens, args = rest
 
-  use_parens = use_parens_for_method_call(
+  use_parens = use_parens_for_method_call?(
     method,
     args,
     original_used_parens,
