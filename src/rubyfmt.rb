@@ -345,8 +345,31 @@ class ParserState
     line << :do
   end
 
-  def emit_newline
-    line << "\n"
+  class SoftNewline
+    def initialize(is_last, indentation_level)
+      @is_last = is_last
+      @indentation_level = indentation_level
+    end
+
+    def to_s
+      build = "\n"
+      build += " " * (@indentation_level * 2) unless @is_last
+      build
+    end
+  end
+
+  class HardNewline
+    def to_s
+      "\n"
+    end
+  end
+
+  def emit_newline(soft: false, is_last: false)
+    if !soft
+      line << HardNewline.new
+    else
+      line << SoftNewline.new(is_last, @depth_stack.last)
+    end
     render_queue << line
     self.line = Line.new([])
     render_heredocs
@@ -386,7 +409,9 @@ class ParserState
 
   def new_block(&blk)
     depth_stack[-1] += 1
-    with_start_of_line(true, &blk)
+    emit_newline
+    emit_indent
+    with_start_of_line(false, &blk)
     depth_stack[-1] -= 1
   end
 
@@ -470,8 +495,6 @@ def format_until(ps, rest)
     format_expression(ps, conditional)
   end
 
-  ps.emit_newline
-
   (expressions || []).each do |expr|
     ps.new_block do
       format_expression(ps, expr)
@@ -498,7 +521,6 @@ def format_def(ps, rest)
 
   format_params(ps, params, "(", ")")
 
-  ps.emit_newline
   ps.new_block do
     format_expression(ps, body)
   end
@@ -766,8 +788,6 @@ def format_do_block(ps, rest)
 
   format_params(ps, params, " |", "|")
 
-  ps.emit_newline
-
   ps.new_block do
     # in ruby 2.5 blocks are bodystmts because blocks support
     # ```
@@ -900,8 +920,6 @@ def format_module(ps, rest)
   format_expression(ps, module_name)
 
   ps.start_of_line.pop
-  ps.emit_newline
-
 
   ps.new_block do
     exprs = rest[1][1]
@@ -930,8 +948,6 @@ def format_class(ps, rest)
     format_expression(ps, rest[1])
     ps.start_of_line.pop
   end
-
-  ps.emit_newline
 
   ps.new_block do
     exprs = rest[2][1]
@@ -1015,6 +1031,24 @@ def is_lonely_operator(candidate)
   ].all?
 end
 
+def format_list_like_thing_items_with_soft_newlines(ps, args_list)
+  return false if args_list.nil?
+  emitted_args = false
+  args_list[0].each_with_index do |expr, idx|
+    raise "this is bad" if expr[0] == :tstring_content
+
+    ps.with_start_of_line(false) do
+      format_expression(ps, expr)
+      ps.emit_ident(",")
+      ps.emit_newline(soft: true, is_last: idx == args_list[0].length - 1)
+    end
+
+    emitted_args = true
+  end
+
+  emitted_args
+end
+
 def format_list_like_thing_items(ps, args_list, single_line)
   return false if args_list.nil?
   emitted_args = false
@@ -1046,7 +1080,11 @@ def format_list_like_thing(ps, args_list, single_line=true)
   emitted_args = false
   return false if args_list.nil? || args_list[0].nil?
   if args_list[0][0] != :args_add_star
-    emitted_args = format_list_like_thing_items(ps, args_list, single_line)
+    emitted_args = if single_line
+      format_list_like_thing_items(ps, args_list, single_line)
+    else
+      format_list_like_thing_items_with_soft_newlines(ps, args_list)
+    end
   else
     _args_add_star, args_list, *calls = args_list[0]
     raise "this is impossible" unless _args_add_star == :args_add_star
@@ -1145,14 +1183,14 @@ def format_defs(ps, rest)
   ps.emit_indent if ps.start_of_line.last
   ps.emit_ident("def")
   ps.emit_space
-  ps.start_of_line << false
-  format_expression(ps, head)
-  ps.emit_dot
-  format_expression(ps, tail)
+  ps.with_start_of_line(false) do
+    format_expression(ps, head)
+    ps.emit_dot
+    format_expression(ps, tail)
 
-  format_params(ps, params, "(", ")")
-  ps.emit_newline
-  ps.start_of_line.pop
+    format_params(ps, params, "(", ")")
+  end
+
   ps.new_block do
     format_expression(ps, body)
   end
@@ -1301,7 +1339,6 @@ def format_conditional_parts(ps, further_conditionals)
     _, body = further_conditionals
     ps.emit_indent
     ps.emit_else
-    ps.emit_newline
     ps.with_start_of_line(true) do
       ps.new_block do
         body.each do |expr|
@@ -1316,19 +1353,17 @@ def format_conditional_parts(ps, further_conditionals)
     ps.emit_elsif
     ps.emit_space
 
-    ps.start_of_line << false
-    format_expression(ps, cond)
-    ps.start_of_line.pop
+    ps.with_start_of_line(false) do
+      format_expression(ps, cond)
+    end
 
-    ps.emit_newline
-    ps.start_of_line << true
-
-    ps.new_block do
-      body.each do |expr|
-        format_expression(ps, expr)
+    ps.with_start_of_line(true) do
+      ps.new_block do
+        body.each do |expr|
+          format_expression(ps, expr)
+        end
       end
     end
-    ps.start_of_line.pop
     ps.emit_newline
 
     format_conditional_parts(ps, further_conditionals)
@@ -1357,7 +1392,6 @@ def format_conditional(ps, expression, kind)
     format_expression(ps, if_conditional)
   end
 
-  ps.emit_newline
   ps.new_block do
     body.each do |expr|
       format_expression(ps, expr)
@@ -1402,24 +1436,13 @@ def format_inner_args_list(ps, args_list)
 end
 
 def format_array_fast_path(ps, rest)
-  single_statement = rest[0] && rest[0].length == 1
-  if single_statement
-    ps.emit_ident("[")
-    ps.with_start_of_line(false) do
-      format_list_like_thing(ps, rest, true)
-    end
-    ps.emit_ident("]")
-  else
-    ps.emit_ident("[")
-    ps.emit_newline unless rest.first.nil?
+  ps.emit_ident("[")
 
-    ps.new_block do
-      format_list_like_thing(ps, rest, false)
-    end
-
-    ps.emit_indent unless rest.first.nil?
-    ps.emit_ident("]")
+  ps.new_block do
+    format_list_like_thing(ps, rest, false)
   end
+
+  ps.emit_ident("]")
 end
 
 def format_array(ps, rest)
@@ -1500,7 +1523,6 @@ def format_paren(ps, rest)
     end
   else
     # paren with multiple expressions
-    ps.emit_newline
     ps.new_block do
       exprs.each do |expr|
         format_expression(ps, expr)
@@ -1523,7 +1545,6 @@ def format_begin(ps, expression)
 
   ps.emit_indent if ps.start_of_line.last
   ps.emit_ident("begin")
-  ps.emit_newline
   ps.new_block do
     format_bodystmt(ps, begin_body[1..-1], inside_begin=true)
   end
@@ -1538,16 +1559,6 @@ def format_brace_block(ps, expression)
   raise "didn't get right array in brace block" if expression.length != 2
   params, body = expression
 
-  output = StringIO.new
-
-  next_ps = ParserState.with_depth_stack(output, from: ps)
-  ps.new_block do
-    body.each do |expr|
-      format_expression(next_ps, expr)
-    end
-  end
-
-  multiline = next_ps.render_queue.length > 1
   orig_params = params
 
   bv, params, _ = params
@@ -1559,25 +1570,13 @@ def format_brace_block(ps, expression)
     format_params(ps, orig_params, "|", "|")
   end
 
-  if multiline
-    ps.emit_newline
-  else
-    ps.emit_space
-  end
-
   ps.new_block do
-    ps.with_start_of_line(multiline) do
-      body.each do |expr|
-        format_expression(ps, expr)
-      end
+    #TODO: Work out how indentation cleans up here
+    body.each do |expr|
+      format_expression(ps, expr)
     end
   end
 
-  if multiline
-    ps.emit_indent
-  else
-    ps.emit_space
-  end
   ps.emit_ident("}")
   ps.emit_newline if ps.start_of_line.last
 end
@@ -1654,11 +1653,9 @@ def format_hash(ps, expression)
   elsif expression[0][0] == :assoclist_from_args
     assocs = expression[0][1]
     ps.emit_ident("{")
-    ps.emit_newline
     ps.new_block do
       format_assocs(ps, assocs)
     end
-    ps.emit_indent
     ps.emit_ident("}")
   else
     raise "omg"
@@ -1951,7 +1948,6 @@ def format_sclass(ps, rest)
   ps.with_start_of_line(false) do
     format_expression(ps, arrow_expr)
   end
-  ps.emit_newline
   ps.new_block do
     format_expression(ps, statements)
   end
@@ -1979,6 +1975,8 @@ def format_while_mod(ps, rest, type)
     while_exprs = [while_expr]
   end
 
+  # Test render to see if the construct modified by the while/until
+  # will render over multiple lines.
   buf = StringIO.new
   render = ParserState.with_depth_stack(buf, from: ps)
   while_exprs.each do |while_expr|
@@ -1990,14 +1988,13 @@ def format_while_mod(ps, rest, type)
 
   ps.with_start_of_line(false) do
     if data.count("\n") > 1
+      # Wrap in parens if multiline
       ps.emit_open_paren
-      ps.emit_newline
       ps.new_block do
         while_exprs.each do |while_expr|
           format_expression(ps, while_expr)
         end
       end
-      ps.emit_indent
       ps.emit_close_paren
     else
       format_expression(ps, while_expr)
@@ -2094,7 +2091,6 @@ def format_while(ps, rest)
   ps.with_start_of_line(false) do
     format_expression(ps, condition)
   end
-  ps.emit_newline
   ps.new_block do
     expressions.each do |expression|
       ps.with_start_of_line(true) do
@@ -2125,7 +2121,6 @@ def format_for(ps, rest)
   ps.with_start_of_line(false) do
     format_expression(ps, iterable)
   end
-  ps.emit_newline
   ps.new_block do
     expressions.each do |expression|
       ps.with_start_of_line(true) do
@@ -2166,7 +2161,6 @@ def format_lambda(ps, rest)
     ps.emit_ident(" }")
   else
     ps.emit_ident(" #{delim[0]}")
-    ps.emit_newline
     ps.new_block do
       if body[0] != :bodystmt
         body.each do |expr|
