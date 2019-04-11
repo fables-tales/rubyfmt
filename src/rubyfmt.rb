@@ -1702,9 +1702,7 @@ def format_bare_assoc_hash(ps, expression)
       format_expression(ps, assoc_expr)
     end
   else
-    ps.new_block do
-      format_assocs(ps, expression[0], newlines = false)
-    end
+    format_assocs(ps, expression[0], newlines = false)
   end
 end
 
