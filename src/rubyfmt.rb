@@ -10,11 +10,32 @@ class HardNewLine
   end
 end
 
+class BreakableEntry
+  def initialize
+    @parts = []
+  end
+
+  def <<(item)
+    @parts << item
+  end
+
+  def to_s
+    @parts.join("")
+  end
+end
+
 class Line
   attr_accessor :parts
   def initialize(parts)
     @comments = []
+    @breakable_entry_stack = []
     @parts = parts
+  end
+
+  def breakable_entry(&blk)
+    @breakable_entry_stack << BreakableEntry.new
+    blk.call
+    @parts << @breakable_entry_stack.pop
   end
 
   def push_comment(comment)
@@ -26,7 +47,11 @@ class Line
   end
 
   def <<(item)
-    @parts << item
+    if be = @breakable_entry_stack.last
+      be << item
+    else
+      @parts << item
+    end
   end
 
   def string_length
@@ -148,6 +173,10 @@ class ParserState
     i = new(output, LineMetadata.new({}))
     i.depth_stack = from.depth_stack.dup
     i
+  end
+
+  def breakable_entry(&blk)
+    @line.breakable_entry(&blk)
   end
 
   def with_surpress_comments(value, &blk)
@@ -1023,16 +1052,20 @@ def format_list_like_thing_items(ps, args_list, single_line)
   args_list[0].each_with_index do |expr, idx|
     raise "this is bad" if expr[0] == :tstring_content
     if single_line
-      format_expression(ps, expr)
-
-      ps.emit_comma_space unless idx == args_list[0].count-1
-    else
-      ps.emit_indent
-      ps.with_start_of_line(false) do
+      ps.breakable_entry do
         format_expression(ps, expr)
 
-        ps.emit_ident(",")
-        ps.emit_newline
+        ps.emit_comma_space unless idx == args_list[0].count-1
+      end
+    else
+      ps.breakable_entry do
+        ps.emit_indent
+        ps.with_start_of_line(false) do
+          format_expression(ps, expr)
+
+          ps.emit_ident(",")
+          ps.emit_newline
+        end
       end
     end
 
