@@ -4,6 +4,12 @@ require "stringio"
 require "pp"
 LineMetadata = Struct.new(:comment_blocks)
 
+class HardNewLine
+  def to_s
+    "\n"
+  end
+end
+
 class Line
   attr_accessor :parts
   def initialize(parts)
@@ -42,7 +48,7 @@ class Line
   end
 
   def strip_trailing_newlines
-    while @parts.last == "\n"
+    while ends_with_newline?
       @parts.pop
     end
   end
@@ -52,11 +58,11 @@ class Line
   end
 
   def ends_with_newline?
-    @parts.last == "\n"
+    HardNewLine === @parts.last
   end
 
   def is_only_a_newline?
-    @parts == ["\n"]
+    @parts.length == 1 && HardNewLine === @parts[0]
   end
 
   def contains_end?
@@ -314,7 +320,7 @@ class ParserState
       render_queue.pop
     end
 
-    while render_queue.last == ["\n"]
+    while render_queue.last.is_only_a_newline?
       render_queue.pop
     end
   end
@@ -346,7 +352,7 @@ class ParserState
   end
 
   def emit_newline
-    line << "\n"
+    line << HardNewLine.new
     render_queue << line
     self.line = Line.new([])
     render_heredocs
