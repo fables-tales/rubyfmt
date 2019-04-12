@@ -471,9 +471,8 @@ def format_until(ps, rest)
   end
 
   ps.emit_newline
-
-  (expressions || []).each do |expr|
-    ps.new_block do
+  ps.new_block do
+    (expressions || []).each do |expr|
       format_expression(ps, expr)
     end
   end
@@ -894,15 +893,12 @@ def format_module(ps, rest)
   ps.emit_indent
   ps.emit_module_keyword
 
-  ps.start_of_line << false
+  ps.with_start_of_line(false) do
+    ps.emit_space
+    format_expression(ps, module_name)
+  end
 
-  ps.emit_space
-  format_expression(ps, module_name)
-
-  ps.start_of_line.pop
   ps.emit_newline
-
-
   ps.new_block do
     exprs = rest[1][1]
     exprs.each do |expr|
@@ -926,9 +922,9 @@ def format_class(ps, rest)
 
   if rest[1] != nil
     ps.emit_ident(" < ")
-    ps.start_of_line << false
-    format_expression(ps, rest[1])
-    ps.start_of_line.pop
+    ps.with_start_of_line(false) do
+      format_expression(ps, rest[1])
+    end
   end
 
   ps.emit_newline
@@ -947,12 +943,12 @@ end
 def format_const_path_ref(ps, rest)
   expr, const = rest
 
-  ps.start_of_line << false
-  format_expression(ps, expr)
-  ps.emit_double_colon
-  raise "cont a non const" if const[0] != :"@const"
-  ps.emit_const(const[1])
-  ps.start_of_line.pop
+  ps.with_start_of_line(false) do
+    format_expression(ps, expr)
+    ps.emit_double_colon
+    raise "cont a non const" if const[0] != :"@const"
+    ps.emit_const(const[1])
+  end
   if ps.start_of_line.last
     ps.emit_newline
   end
@@ -1020,18 +1016,18 @@ def format_list_like_thing_items(ps, args_list, single_line)
   emitted_args = false
   args_list[0].each_with_index do |expr, idx|
     raise "this is bad" if expr[0] == :tstring_content
-    if !single_line
-      ps.emit_indent
-      ps.start_of_line << false
-    end
-    format_expression(ps, expr)
-
     if single_line
+      format_expression(ps, expr)
+
       ps.emit_comma_space unless idx == args_list[0].count-1
     else
-      ps.emit_ident(",")
-      ps.emit_newline
-      ps.start_of_line.pop
+      ps.emit_indent
+      ps.with_start_of_line(false) do
+        format_expression(ps, expr)
+
+        ps.emit_ident(",")
+        ps.emit_newline
+      end
     end
 
     emitted_args = true
@@ -1112,19 +1108,18 @@ def format_args_add_block(ps, args_list)
   surpress_paren = ps.surpress_one_paren
   ps.surpress_one_paren = false
   ps.emit_open_paren unless surpress_paren
-  ps.start_of_line << false
 
-  emitted_args = format_list_like_thing(ps, args_list)
+  ps.with_start_of_line(false) do
+    emitted_args = format_list_like_thing(ps, args_list)
 
-  if args_list[1]
-    ps.emit_ident(", ") if emitted_args
-    ps.emit_ident("&")
-    format_expression(ps, args_list[1])
+    if args_list[1]
+      ps.emit_ident(", ") if emitted_args
+      ps.emit_ident("&")
+      format_expression(ps, args_list[1])
+    end
+
+    ps.emit_close_paren unless surpress_paren
   end
-
-  ps.emit_close_paren unless surpress_paren
-
-  ps.start_of_line.pop
 end
 
 def format_const_ref(ps, expression)
@@ -1145,14 +1140,14 @@ def format_defs(ps, rest)
   ps.emit_indent if ps.start_of_line.last
   ps.emit_ident("def")
   ps.emit_space
-  ps.start_of_line << false
-  format_expression(ps, head)
-  ps.emit_dot
-  format_expression(ps, tail)
+  ps.with_start_of_line(false) do
+    format_expression(ps, head)
+    ps.emit_dot
+    format_expression(ps, tail)
 
-  format_params(ps, params, "(", ")")
-  ps.emit_newline
-  ps.start_of_line.pop
+    format_params(ps, params, "(", ")")
+    ps.emit_newline
+  end
   ps.new_block do
     format_expression(ps, body)
   end
@@ -1282,14 +1277,13 @@ end
 def format_conditional_mod(ps, rest, conditional_type)
   conditional, guarded_expression = rest
   ps.emit_indent if ps.start_of_line.last
-  ps.start_of_line << false
-
-  format_expression(ps, guarded_expression)
-  ps.emit_space
-  ps.emit_ident(conditional_type)
-  ps.emit_space
-  format_expression(ps, conditional)
-  ps.start_of_line.pop
+  ps.with_start_of_line(false) do
+    format_expression(ps, guarded_expression)
+    ps.emit_space
+    ps.emit_ident(conditional_type)
+    ps.emit_space
+    format_expression(ps, conditional)
+  end
   ps.emit_newline if ps.start_of_line.last
 end
 
@@ -1316,19 +1310,16 @@ def format_conditional_parts(ps, further_conditionals)
     ps.emit_elsif
     ps.emit_space
 
-    ps.start_of_line << false
-    format_expression(ps, cond)
-    ps.start_of_line.pop
+    ps.with_start_of_line(false) do
+      format_expression(ps, cond)
+    end
 
     ps.emit_newline
-    ps.start_of_line << true
-
     ps.new_block do
       body.each do |expr|
         format_expression(ps, expr)
       end
     end
-    ps.start_of_line.pop
     ps.emit_newline
 
     format_conditional_parts(ps, further_conditionals)
@@ -1402,8 +1393,8 @@ def format_inner_args_list(ps, args_list)
 end
 
 def format_array_fast_path(ps, rest)
-  single_statement = rest[0] && rest[0].length == 1
-  if single_statement
+  single_statement_or_empty = (rest[0] && rest[0].length == 1) || rest.first.nil?
+  if single_statement_or_empty
     ps.emit_ident("[")
     ps.with_start_of_line(false) do
       format_list_like_thing(ps, rest, true)
@@ -1411,13 +1402,11 @@ def format_array_fast_path(ps, rest)
     ps.emit_ident("]")
   else
     ps.emit_ident("[")
-    ps.emit_newline unless rest.first.nil?
-
+    ps.emit_newline
     ps.new_block do
       format_list_like_thing(ps, rest, false)
     end
-
-    ps.emit_indent unless rest.first.nil?
+    ps.emit_indent
     ps.emit_ident("]")
   end
 end
@@ -1454,9 +1443,10 @@ def format_unary(ps, rest)
   if op.to_s == "not"
     ps.emit_space
   end
-  ps.start_of_line << false
-  format_expression(ps, tail)
-  ps.start_of_line.pop
+
+  ps.with_start_of_line(false) do
+    format_expression(ps, tail)
+  end
   ps.emit_newline if ps.start_of_line.last
 end
 
@@ -1819,13 +1809,13 @@ def format_field(ps, rest)
   line_number = back.last.first
   ps.on_line(line_number)
 
-  ps.start_of_line << false
-  format_expression(ps, front)
+  ps.with_start_of_line(false) do
+    format_expression(ps, front)
 
-  format_dot(ps, [dot])
+    format_dot(ps, [dot])
 
-  format_expression(ps, back)
-  ps.start_of_line.pop
+    format_expression(ps, back)
+  end
   ps.emit_newline if ps.start_of_line.last
 end
 
