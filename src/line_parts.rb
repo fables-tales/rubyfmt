@@ -60,3 +60,25 @@ class Keyword < PartBase
     @keyword.to_s
   end
 end
+
+class Indent < PartBase
+  def initialize(spaces)
+    @spaces = spaces
+  end
+
+  def to_s
+    " " * @spaces
+  end
+end
+
+class CommaSpace < PartBase
+  def to_s
+    ", "
+  end
+end
+
+class Comma < PartBase
+  def to_s
+    ","
+  end
+end

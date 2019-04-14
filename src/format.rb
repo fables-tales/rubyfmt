@@ -74,7 +74,7 @@ def format_optional_params(ps, optional_params)
       ps.emit_ident("=")
       format_expression(ps, right)
       if i != optional_params.length - 1
-        ps.emit_ident(", ")
+        ps.emit_comma_space
       end
     end
   end
@@ -95,7 +95,7 @@ def format_kwargs(ps, kwargs)
       format_expression(ps, false_or_expr) if false_or_expr
     end
 
-    ps.emit_ident(", ") if index != kwargs.length-1
+    ps.emit_comma_space if index != kwargs.length-1
   end
 end
 
@@ -194,7 +194,7 @@ def format_params(ps, params, open_delim, close_delim)
     callable.call(ps, values)
     did_emit = !values.empty?
     have_more = emission_order[idx+1..-1].map { |x| x[0] != 0 && !x[0].empty? && x[0] != [:excessed_comma] }.any?
-    ps.emit_ident(", ") if did_emit && have_more && idx != emission_order.length - 1
+    ps.emit_comma_space if did_emit && have_more && idx != emission_order.length - 1
   end
 
   if f_params && !f_params.empty?
@@ -574,7 +574,7 @@ def format_list_like_thing_items(ps, args_list, single_line)
         ps.with_start_of_line(false) do
           format_expression(ps, expr)
 
-          ps.emit_ident(",")
+          ps.emit_comma
           ps.emit_newline
         end
       end
@@ -625,7 +625,7 @@ def format_list_like_thing(ps, args_list, single_line=true)
       # if we are not single line, we need to emit a comma newline, to be a
       # good citizen
       if !single_line
-        ps.emit_ident(",")
+        ps.emit_comma
         ps.emit_newline
       end
     end
@@ -638,7 +638,7 @@ def emit_intermediate_array_separator(ps, single_line)
   if single_line
     ps.emit_comma_space
   else
-    ps.emit_ident(",")
+    ps.emit_comma
     ps.emit_newline
     ps.emit_indent
   end
@@ -663,7 +663,7 @@ def format_args_add_block(ps, args_list)
     emitted_args = format_list_like_thing(ps, args_list)
 
     if args_list[1]
-      ps.emit_ident(", ") if emitted_args
+      ps.emit_comma_space if emitted_args
       ps.emit_ident("&")
       format_expression(ps, args_list[1])
     end
@@ -1177,10 +1177,10 @@ def format_assocs(ps, assocs, newlines=true)
         raise "got non assoc_new in hash literal #{assocs}"
       end
       if newlines
-        ps.emit_ident(",")
+        ps.emit_comma
         ps.emit_newline
       elsif idx != assocs.length - 1
-        ps.emit_ident(",")
+        ps.emit_comma
         ps.emit_space
       end
     end
@@ -1279,7 +1279,7 @@ def format_massign(ps, expression)
 
     assigns.each_with_index do |assign, index|
       format_expression(ps, assign)
-      ps.emit_ident(", ") if index != assigns.length - 1
+      ps.emit_comma_space if index != assigns.length - 1
     end
 
     ps.emit_ident(" = ")
