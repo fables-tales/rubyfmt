@@ -52,8 +52,64 @@ class StringPart < PartBase
   end
 
   def is_a_newline?
-    part == "\n"
+    part == "\n".tap { |res|
+      raise "is a newline returned true on a string, which should be impossible" if res
+    }
   end
+end
+
+class SingleSlash < PartBase
+  def to_s
+    "\\"
+  end
+end
+
+class Binary < PartBase
+  def initialize(symbol)
+    @symbol = symbol
+  end
+
+  def to_s
+    " #{symbol} "
+  end
+end
+
+class Space < PartBase
+  def to_s
+    " "
+  end
+end
+
+class Dot < PartBase
+  def to_s
+    "."
+  end
+end
+
+class LonelyOperator < PartBase
+  def to_s
+    "&."
+  end
+end
+
+class OpenParen < PartBase
+  def to_s
+    "("
+  end
+end
+
+class CloseParen < PartBase
+  def to_s
+    ")"
+  end
+end
+
+class OpenSquareBracket < PartBase
+
+end
+
+class CloseSquareBracket < PartBase
+
 end
 
 class Keyword < PartBase
