@@ -945,19 +945,19 @@ end
 def format_array_fast_path(ps, rest)
   single_statement_or_empty = (rest[0] && rest[0].length == 1) || rest.first.nil?
   if single_statement_or_empty
-    ps.emit_ident("[")
+    ps.emit_open_square_bracket
     ps.with_start_of_line(false) do
       format_list_like_thing(ps, rest, true)
     end
-    ps.emit_ident("]")
+    ps.emit_close_square_bracket
   else
-    ps.emit_ident("[")
+    ps.emit_open_square_bracket
     ps.emit_newline
     ps.new_block do
       format_list_like_thing(ps, rest, false)
     end
     ps.emit_indent
-    ps.emit_ident("]")
+    ps.emit_close_square_bracket
   end
 end
 
@@ -967,7 +967,7 @@ def format_array(ps, rest)
   if Parser.is_percent_array?(rest)
     ps.emit_ident(Parser.percent_symbol_for(rest))
 
-    ps.emit_ident("[")
+    ps.emit_open_square_bracket
     ps.with_start_of_line(false) do
       parts = rest[0][1]
 
@@ -977,7 +977,7 @@ def format_array(ps, rest)
         ps.emit_space if index != parts.length - 1
       end
     end
-    ps.emit_ident("]")
+    ps.emit_close_square_bracket
   else
     format_array_fast_path(ps, rest)
   end
@@ -1213,10 +1213,10 @@ def format_aref_field(ps, expression)
   ps.emit_indent if ps.start_of_line.last
   ps.with_start_of_line(false) do
     format_expression(ps, expression)
-    ps.emit_ident("[")
+    ps.emit_open_square_bracket
     ps.surpress_one_paren = true
     format_expression(ps, sqb_args)
-    ps.emit_ident("]")
+    ps.emit_close_square_bracket
   end
 end
 
@@ -1226,10 +1226,10 @@ def format_aref(ps, expression)
   ps.emit_indent if ps.start_of_line.last
   ps.with_start_of_line(false) do
     format_expression(ps, expression)
-    ps.emit_ident("[")
+    ps.emit_open_square_bracket
     ps.surpress_one_paren = true
     format_inner_args_list(ps, sqb_args) if sqb_args
-    ps.emit_ident("]")
+    ps.emit_close_square_bracket
   end
   ps.emit_newline if ps.start_of_line.last
 end

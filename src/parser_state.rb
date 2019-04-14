@@ -108,7 +108,7 @@ class ParserState
   end
 
   def emit_slash
-    line << "\\"
+    line << SingleSlash.new
   end
 
   def push_conditional_indent(type)
@@ -260,11 +260,11 @@ class ParserState
   end
 
   def emit_binary(symbol)
-    line << " #{symbol} "
+    line << Binary.new(symbol)
   end
 
   def emit_space
-    line << " "
+    line << Space.new
   end
 
   def emit_newline
@@ -275,11 +275,11 @@ class ParserState
   end
 
   def emit_dot
-    line << "."
+    line << Dot.new
   end
 
   def emit_lonely_operator
-    line << "&."
+    line << LonelyOperator.new
   end
 
   def emit_ident(ident)
@@ -299,11 +299,19 @@ class ParserState
   end
 
   def emit_open_paren
-    line << "("
+    line << OpenParen.new
   end
 
   def emit_close_paren
-    line << ")"
+    line << CloseParen.new
+  end
+
+  def emit_open_square_bracket
+    line << OpenSquareBracket.new
+  end
+
+  def emit_close_square_bracket
+    line << CloseSquareBracket.ne
   end
 
   def new_block(&blk)
