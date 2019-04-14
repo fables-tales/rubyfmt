@@ -104,7 +104,7 @@ class ParserState
 
   def emit_indent
     spaces = (@conditional_indent.last) + (2 * @depth_stack.last)
-    line << " " * spaces
+    line << Indent.new(spaces)
   end
 
   def emit_slash
@@ -131,9 +131,12 @@ class ParserState
   end
 
   def emit_comma_space
-    line << ", "
+    line << CommaSpace.new
   end
 
+  def emit_comma
+    line << Comma.new
+  end
 
   def ensure_file_ends_with_exactly_one_newline(lines)
     lines.each_with_index do |line, i|
