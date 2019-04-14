@@ -46,46 +46,30 @@ class Line
     build
   end
 
+  def remove_redundant_indents
+    @parts.shift if @parts[0] == ""
+  end
+
   def strip_trailing_newlines
     while ends_with_newline?
       @parts.pop
     end
   end
 
-  def remove_redundant_indents
-    @parts.shift if @parts[0] == ""
-  end
-
   def ends_with_newline?
-    HardNewLine === @parts.last
-  end
-
-  def is_only_a_newline?
-    @parts.length == 1 && @parts[0].is_a_newline?
+    @parts.last.respond_to?(:is_a_newline?) && @parts.last.is_a_newline?
   end
 
   def contains_end?
-    @parts.any? { |x| x == :end }
-  end
-
-  def contains_def?
-    @parts.any? { |x| x == :def }
+    @parts.any? { |x| x.respond_to?(:is_end?) && x.is_end? }
   end
 
   def contains_do?
-    @parts.any? { |x| x == :do }
-  end
-
-  def contains_if?
-    @parts.any? { |x| x == :if }
+    @parts.any? { |x| x.respond_to?(:is_do?) && x.is_do? }
   end
 
   def contains_else?
-    @parts.any? { |x| x == :else }
-  end
-
-  def contains_unless?
-    @parts.any? { |x| x == :unless }
+    @parts.any? { |x| x.respond_to?(:is_else) && x.is_else? }
   end
 
   def declares_private?
@@ -98,6 +82,10 @@ class Line
 
   def declares_class_or_module?
     @parts.any? { |x| x.respond_to?(:declares_class_or_module?) && x.declares_class_or_module? }
+  end
+
+  def contains_if_or_unless?
+    @parts.any? { |x| x.respond_to?(:declares_if_or_unless?) && x.declares_if_or_unless? }
   end
 
   def contains_keyword?
@@ -113,7 +101,7 @@ def want_blankline?(line, next_line)
   return unless next_line
   return true if line.contains_end? && !next_line.contains_end?
   return true if next_line.contains_do? && !line.surpresses_blankline?
-  return true if (next_line.contains_if? || next_line.contains_unless?) && !line.surpresses_blankline?
+  return true if next_line.contains_if_or_unless? && !line.surpresses_blankline?
   return true if line.declares_private?
   return true if line.declares_require? && !next_line.declares_require?
   return true if !line.declares_class_or_module? && next_line.has_comment?
