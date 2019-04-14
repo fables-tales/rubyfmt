@@ -2,6 +2,34 @@ class PartBase
   def is_a_newline?
     false
   end
+
+  def is_keyword?
+    false
+  end
+
+  def declares_class_or_module?
+    false
+  end
+
+  def declares_if_or_unless?
+    false
+  end
+
+  def is_end?
+    false
+  end
+
+  def is_do?
+    false
+  end
+
+  def is_def?
+    false
+  end
+
+  def is_else?
+    false
+  end
 end
 
 class HardNewLine < PartBase
@@ -11,14 +39,6 @@ class HardNewLine < PartBase
 
   def is_a_newline?
     true
-  end
-
-  def is_keyword?
-    false
-  end
-
-  def declares_class_or_module?
-    false
   end
 end
 
@@ -36,9 +56,6 @@ class StringPart < PartBase
   end
 end
 
-class EndKeyword < PartBase
-end
-
 class Keyword < PartBase
   def initialize(keyword)
     @keyword = keyword
@@ -52,8 +69,24 @@ class Keyword < PartBase
     @keyword == :class || @keyword == :module
   end
 
-  def declares_if_unless?
+  def declares_if_or_unless?
     @keyword == :if || @keyword == :unless
+  end
+
+  def is_end?
+    @keyword == :end
+  end
+
+  def is_do?
+    @keyword == :do
+  end
+
+  def is_def?
+    @keyword == :def
+  end
+
+  def is_else?
+    @keyword == :do
   end
 
   def to_s
