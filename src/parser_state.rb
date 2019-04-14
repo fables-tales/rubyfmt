@@ -327,15 +327,15 @@ class ParserState
   end
 
   def emit_open_block_arg_list
-    line << "|"
+    line << OpenArgPipe.new
   end
 
   def emit_close_block_arg_list
-    line << "|"
+    line << CloseArgPipe.new
   end
 
   def emit_double_quote
-    line << "\""
+    line << DoubleQuote.new
   end
 
   def emit_const(const)

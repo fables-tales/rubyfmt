@@ -104,6 +104,24 @@ class CloseParen < PartBase
   end
 end
 
+class OpenArgPipe < PartBase
+  def to_s
+    "|"
+  end
+end
+
+class CloseArgPipe < PartBase
+  def to_s
+    "|"
+  end
+end
+
+class DoubleQuote < PartBAse
+  def to_s
+    "\""
+  end
+end
+
 class OpenSquareBracket < PartBase
 
 end
