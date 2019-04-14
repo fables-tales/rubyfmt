@@ -22,35 +22,35 @@ class TokenCollection < SimpleDelegator
   end
 
   def contains_end?
-    any? { |x| x.is_end? }
+    flatten.any? { |x| x.is_end? }
   end
 
   def contains_do?
-    any? { |x| x.is_do? }
+    flatten.any? { |x| x.is_do? }
   end
 
   def contains_else?
-    any? { |x| x.is_else? }
+    flatten.any? { |x| x.is_else? }
   end
 
   def declares_private?
-    any? { |x| x.is_private? }
+    flatten.any? { |x| x.is_private? }
   end
 
   def declares_require?
-    any? { |x| x.is_require? } && none? { |x| x.to_s == "}" }
+    flatten.any? { |x| x.is_require? } && flatten.none? { |x| x.to_s == "}" }
   end
 
   def declares_class_or_module?
-    any? { |x| x.declares_class_or_module? }
+    flatten.any? { |x| x.declares_class_or_module? }
   end
 
   def contains_if_or_unless?
-    any? { |x| x.declares_if_or_unless? }
+    flatten.any? { |x| x.declares_if_or_unless? }
   end
 
   def contains_keyword?
-    any? { |x| x.is_keyword? }
+    flatten.any? { |x| x.is_keyword? }
   end
 
   def surpresses_blankline?

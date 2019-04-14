@@ -1,4 +1,4 @@
-class TokenBase
+module TokenBase
   def is_a_newline?
     false
   end
@@ -44,7 +44,8 @@ class TokenBase
   end
 end
 
-class HardNewLine < TokenBase
+class HardNewLine
+  include TokenBase
   def to_s
     "\n"
   end
@@ -54,7 +55,8 @@ class HardNewLine < TokenBase
   end
 end
 
-class DirectPart < TokenBase
+class DirectPart
+  include TokenBase
   def initialize(part)
     @part = part
   end
@@ -80,13 +82,15 @@ class DirectPart < TokenBase
   end
 end
 
-class SingleSlash < TokenBase
+class SingleSlash
+  include TokenBase
   def to_s
     "\\"
   end
 end
 
-class Binary < TokenBase
+class Binary
+  include TokenBase
   def initialize(symbol)
     @symbol = symbol
   end
@@ -96,67 +100,78 @@ class Binary < TokenBase
   end
 end
 
-class Space < TokenBase
+class Space
+  include TokenBase
   def to_s
     " "
   end
 end
 
-class Dot < TokenBase
+class Dot
+  include TokenBase
   def to_s
     "."
   end
 end
 
-class LonelyOperator < TokenBase
+class LonelyOperator
+  include TokenBase
   def to_s
     "&."
   end
 end
 
-class OpenParen < TokenBase
+class OpenParen
+  include TokenBase
   def to_s
     "("
   end
 end
 
-class CloseParen < TokenBase
+class CloseParen
+  include TokenBase
   def to_s
     ")"
   end
 end
 
-class OpenArgPipe < TokenBase
+class OpenArgPipe
+  include TokenBase
   def to_s
     "|"
   end
 end
 
-class CloseArgPipe < TokenBase
+class CloseArgPipe
+  include TokenBase
   def to_s
     "|"
   end
 end
 
-class DoubleQuote < TokenBase
+class DoubleQuote
+  include TokenBase
   def to_s
     "\""
   end
 end
 
-class OpenSquareBracket < TokenBase
+class OpenSquareBracket
+  include TokenBase
   def to_s
     "["
   end
 end
 
-class CloseSquareBracket < TokenBase
+class CloseSquareBracket
+  include TokenBase
   def to_s
     "]"
   end
 end
 
-class Keyword < TokenBase
+class Keyword
+  include TokenBase
   def initialize(keyword)
     @keyword = keyword
   end
@@ -194,7 +209,8 @@ class Keyword < TokenBase
   end
 end
 
-class Indent < TokenBase
+class Indent
+  include TokenBase
   def initialize(spaces)
     @spaces = spaces
   end
@@ -204,19 +220,22 @@ class Indent < TokenBase
   end
 end
 
-class CommaSpace < TokenBase
+class CommaSpace
+  include TokenBase
   def to_s
     ", "
   end
 end
 
-class Comma < TokenBase
+class Comma
+  include TokenBase
   def to_s
     ","
   end
 end
 
-class Op < TokenBase
+class Op
+  include TokenBase
   def initialize(op)
     @op = op
   end
