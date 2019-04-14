@@ -61,7 +61,7 @@ class Line
   end
 
   def is_only_a_newline?
-    @parts.length == 1 && HardNewLine === @parts[0]
+    @parts.length == 1 && @parts[0].is_a_newline?
   end
 
   def contains_end?
@@ -97,15 +97,15 @@ class Line
   end
 
   def declares_class_or_module?
-    @parts.any? { |x| x == :class || x == :module }
+    @parts.any? { |x| x.respond_to?(:declares_class_or_module?) && x.declares_class_or_module? }
   end
 
-  def contains_while?
-    @parts.any? { |x| x == :while }
+  def contains_keyword?
+    @parts.any? { |x| x.respond_to(:is_keyword?) && x.is_keyword? }
   end
 
   def surpresses_blankline?
-    contains_def? || contains_do? || contains_while? || contains_if? || contains_else?
+    contains_keyword?
   end
 end
 

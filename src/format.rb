@@ -717,7 +717,7 @@ def format_rescue(ps, rescue_part)
   _, rescue_class, rescue_capture, rescue_expressions, next_rescue = rescue_part
   ps.dedent do
     ps.emit_indent
-    ps.emit_ident("rescue")
+    ps.emit_rescue
     ps.with_start_of_line(false) do
       if !rescue_class.nil? || !rescue_capture.nil?
         ps.emit_space
@@ -1260,7 +1260,7 @@ end
 def format_return0(ps, rest)
   ps.emit_indent if ps.start_of_line.last
 
-  ps.emit_ident("return")
+  ps.emit_return
 
   ps.emit_newline if ps.start_of_line.last
 end
@@ -1730,7 +1730,9 @@ def format_rescue_mod(ps, expression)
   ps.emit_indent if ps.start_of_line.last
   ps.with_start_of_line(false) do
     format_expression(ps, expression)
-    ps.emit_ident(" rescue ")
+    ps.emit_space
+    ps.emit_rescue
+    ps.emit_space
     format_expression(ps, rescue_clause)
   end
   ps.emit_newline if ps.start_of_line.last

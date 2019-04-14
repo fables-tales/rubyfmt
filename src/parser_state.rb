@@ -103,15 +103,27 @@ class ParserState
   end
 
   def emit_while
-    line << :while
+    line << Keyword.new(:while)
   end
 
   def emit_for
-    line << :for
+    line << Keyword.new(:for)
   end
 
   def emit_in
-    line << :in
+    line << Keyword.new(:in)
+  end
+
+  def emit_else
+    line << Keyword.new(:else)
+  end
+
+  def emit_elsif
+    line << Keyword.new(:elsif)
+  end
+
+  def emit_return
+    line << Keyword.new(:return)
   end
 
   def emit_indent
@@ -121,14 +133,6 @@ class ParserState
 
   def emit_slash
     line << "\\"
-  end
-
-  def emit_else
-    line << :else
-  end
-
-  def emit_elsif
-    line << "elsif"
   end
 
   def push_conditional_indent(type)
@@ -152,10 +156,6 @@ class ParserState
 
   def emit_comma_space
     line << ", "
-  end
-
-  def emit_return
-    line << :return
   end
 
 
@@ -207,8 +207,30 @@ class ParserState
   end
 
   def emit_def(def_name)
-    line << :def
+    line << Keyword.new(:def)
     line << " #{def_name}"
+  end
+
+  def emit_end
+    emit_newline
+    emit_indent if start_of_line.last
+    line << Keyword.new(:end)
+  end
+
+  def emit_do
+    line << Keyword.new(:do)
+  end
+
+  def emit_rescue
+    line << Keyword.new(:rescue)
+  end
+
+  def emit_module_keyword
+    line << Keyword.new(:module)
+  end
+
+  def emit_class_keyword
+    line << Keyword.new(:class)
   end
 
   def emit_params_list(params_list)
@@ -218,18 +240,8 @@ class ParserState
     line << " #{symbol} "
   end
 
-  def emit_end
-    emit_newline
-    emit_indent if start_of_line.last
-    line << :end
-  end
-
   def emit_space
     line << " "
-  end
-
-  def emit_do
-    line << :do
   end
 
   def emit_newline
@@ -293,14 +305,6 @@ class ParserState
 
   def emit_double_quote
     line << "\""
-  end
-
-  def emit_module_keyword
-    line << :module
-  end
-
-  def emit_class_keyword
-    line << :class
   end
 
   def emit_const(const)
