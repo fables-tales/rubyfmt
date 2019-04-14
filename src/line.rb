@@ -1,9 +1,20 @@
-class Line
+class Line < SimpleDelegator
   attr_accessor :parts
   def initialize(parts)
     @comments = []
     @breakable_entry_stack = []
-    @parts = parts
+    @parts = TokenCollection.new(parts)
+    super(@parts)
+  end
+
+  def to_s
+    build = join("")
+
+    unless @comments.empty?
+      build = "#{@comments.join("\n")}\n#{build}"
+    end
+
+    build
   end
 
   def breakable_entry(&blk)
@@ -26,74 +37,6 @@ class Line
     else
       @parts << item
     end
-  end
-
-  def string_length
-    @parts.join("").length
-  end
-
-  def empty?
-    @parts.empty?
-  end
-
-  def to_s
-    build = @parts.join("")
-
-    unless @comments.empty?
-      build = "#{@comments.join("\n")}\n#{build}"
-    end
-
-    build
-  end
-
-  def remove_redundant_indents
-    @parts.shift if @parts[0] == ""
-  end
-
-  def strip_trailing_newlines
-    while ends_with_newline?
-      @parts.pop
-    end
-  end
-
-  def ends_with_newline?
-    @parts.last.respond_to?(:is_a_newline?) && @parts.last.is_a_newline?
-  end
-
-  def contains_end?
-    @parts.any? { |x| x.respond_to?(:is_end?) && x.is_end? }
-  end
-
-  def contains_do?
-    @parts.any? { |x| x.respond_to?(:is_do?) && x.is_do? }
-  end
-
-  def contains_else?
-    @parts.any? { |x| x.respond_to?(:is_else) && x.is_else? }
-  end
-
-  def declares_private?
-    @parts.any? { |x| x == "private" } && @parts.length == 3
-  end
-
-  def declares_require?
-    @parts.any? { |x| x == "require" } && @parts.none? { |x| x == "}" }
-  end
-
-  def declares_class_or_module?
-    @parts.any? { |x| x.respond_to?(:declares_class_or_module?) && x.declares_class_or_module? }
-  end
-
-  def contains_if_or_unless?
-    @parts.any? { |x| x.respond_to?(:declares_if_or_unless?) && x.declares_if_or_unless? }
-  end
-
-  def contains_keyword?
-    @parts.any? { |x| x.respond_to(:is_keyword?) && x.is_keyword? }
-  end
-
-  def surpresses_blankline?
-    contains_keyword?
   end
 end
 

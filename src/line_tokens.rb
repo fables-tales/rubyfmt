@@ -1,4 +1,4 @@
-class PartBase
+class TokenBase
   def is_a_newline?
     false
   end
@@ -30,9 +30,21 @@ class PartBase
   def is_else?
     false
   end
+
+  def is_require?
+    false
+  end
+
+  def is_private?
+    false
+  end
+
+  def is_empty_string?
+    false
+  end
 end
 
-class HardNewLine < PartBase
+class HardNewLine < TokenBase
   def to_s
     "\n"
   end
@@ -42,95 +54,109 @@ class HardNewLine < PartBase
   end
 end
 
-class StringPart < PartBase
+class DirectPart < TokenBase
   def initialize(part)
     @part = part
   end
 
   def to_s
-    part
+    @part
   end
 
   def is_a_newline?
-    part == "\n".tap { |res|
-      raise "is a newline returned true on a string, which should be impossible" if res
-    }
+    @part == "\n"
+  end
+
+  def is_require?
+    @part == "require"
+  end
+
+  def is_private?
+    @part == "private"
+  end
+
+  def is_empty_string?
+    @part == ""
   end
 end
 
-class SingleSlash < PartBase
+class SingleSlash < TokenBase
   def to_s
     "\\"
   end
 end
 
-class Binary < PartBase
+class Binary < TokenBase
   def initialize(symbol)
     @symbol = symbol
   end
 
   def to_s
-    " #{symbol} "
+    " #{@symbol} "
   end
 end
 
-class Space < PartBase
+class Space < TokenBase
   def to_s
     " "
   end
 end
 
-class Dot < PartBase
+class Dot < TokenBase
   def to_s
     "."
   end
 end
 
-class LonelyOperator < PartBase
+class LonelyOperator < TokenBase
   def to_s
     "&."
   end
 end
 
-class OpenParen < PartBase
+class OpenParen < TokenBase
   def to_s
     "("
   end
 end
 
-class CloseParen < PartBase
+class CloseParen < TokenBase
   def to_s
     ")"
   end
 end
 
-class OpenArgPipe < PartBase
+class OpenArgPipe < TokenBase
   def to_s
     "|"
   end
 end
 
-class CloseArgPipe < PartBase
+class CloseArgPipe < TokenBase
   def to_s
     "|"
   end
 end
 
-class DoubleQuote < PartBAse
+class DoubleQuote < TokenBase
   def to_s
     "\""
   end
 end
 
-class OpenSquareBracket < PartBase
-
+class OpenSquareBracket < TokenBase
+  def to_s
+    "["
+  end
 end
 
-class CloseSquareBracket < PartBase
-
+class CloseSquareBracket < TokenBase
+  def to_s
+    "]"
+  end
 end
 
-class Keyword < PartBase
+class Keyword < TokenBase
   def initialize(keyword)
     @keyword = keyword
   end
@@ -168,7 +194,7 @@ class Keyword < PartBase
   end
 end
 
-class Indent < PartBase
+class Indent < TokenBase
   def initialize(spaces)
     @spaces = spaces
   end
@@ -178,14 +204,24 @@ class Indent < PartBase
   end
 end
 
-class CommaSpace < PartBase
+class CommaSpace < TokenBase
   def to_s
     ", "
   end
 end
 
-class Comma < PartBase
+class Comma < TokenBase
   def to_s
     ","
+  end
+end
+
+class Op < TokenBase
+  def initialize(op)
+    @op = op
+  end
+
+  def to_s
+    @op
   end
 end

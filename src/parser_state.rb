@@ -153,7 +153,7 @@ class ParserState
     next_index = 1
     while next_index < lines.length
       if want_blankline?(line, lines[next_index])
-        lines.insert(next_index, Line.new(["\n"]))
+        lines.insert(next_index, Line.new([HardNewLine.new]))
         next_index += 1
       end
 
@@ -187,13 +187,17 @@ class ParserState
 
   def emit_def(def_name)
     line << Keyword.new(:def)
-    line << " #{def_name}"
+    line << DirectPart.new(" #{def_name}")
   end
 
   def emit_end
     emit_newline
     emit_indent if start_of_line.last
     line << Keyword.new(:end)
+  end
+
+  def emit_keyword(keyword)
+    line << Keyword.new(keyword)
   end
 
   def emit_do
@@ -283,19 +287,19 @@ class ParserState
   end
 
   def emit_ident(ident)
-    line << ident
+    line << DirectPart.new(ident)
   end
 
   def emit_op(op)
-    line << op
+    line << Op.new(op)
   end
 
   def emit_int(int)
-    line << int
+    line << DirectPart.new(int)
   end
 
   def emit_var_ref(ref)
-    line << ref
+    line << DirectPart.new(ref)
   end
 
   def emit_open_paren
@@ -311,7 +315,7 @@ class ParserState
   end
 
   def emit_close_square_bracket
-    line << CloseSquareBracket.ne
+    line << CloseSquareBracket.new
   end
 
   def new_block(&blk)
@@ -339,29 +343,29 @@ class ParserState
   end
 
   def emit_const(const)
-    line << const
+    line << DirectPart.new(const)
   end
 
   def emit_double_colon
-    line << "::"
+    line << Op.new("::")
   end
 
   def emit_symbol(symbol)
-    line << ":#{symbol}"
+    line << DirectPart.new(":#{symbol}")
   end
 
   def render_heredocs(skip=false)
     while !heredoc_strings.empty?
       symbol, indent, string = heredoc_strings.pop
       unless render_queue[-1] && render_queue[-1].ends_with_newline?
-        line << "\n"
+        line << HardNewLine.new
       end
 
       if string.end_with?("\n")
         string = string[0...-1]
       end
 
-      line << string
+      line << DirectPart.new(string)
       emit_newline
       if indent
         emit_indent

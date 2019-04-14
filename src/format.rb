@@ -560,16 +560,14 @@ end
 def format_list_like_thing_items(ps, args_list, single_line)
   return false if args_list.nil?
   emitted_args = false
-  args_list[0].each_with_index do |expr, idx|
-    raise "this is bad" if expr[0] == :tstring_content
-    if single_line
-      ps.breakable_entry do
+  ps.breakable_entry do
+    args_list[0].each_with_index do |expr, idx|
+      raise "this is bad" if expr[0] == :tstring_content
+      if single_line
         format_expression(ps, expr)
 
         ps.emit_comma_space unless idx == args_list[0].count-1
-      end
-    else
-      ps.breakable_entry do
+      else
         ps.emit_indent
         ps.with_start_of_line(false) do
           format_expression(ps, expr)
@@ -578,10 +576,10 @@ def format_list_like_thing_items(ps, args_list, single_line)
           ps.emit_newline
         end
       end
+      emitted_args = true
     end
-
-    emitted_args = true
   end
+
 
   emitted_args
 end
@@ -893,7 +891,7 @@ def format_conditional(ps, expression, kind)
 
   ps.emit_indent if ps.start_of_line.last
   ps.with_start_of_line(false) do
-    ps.emit_ident(kind)
+    ps.emit_keyword(kind)
     ps.emit_space
     format_expression(ps, if_conditional)
   end
