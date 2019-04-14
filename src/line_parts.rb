@@ -1,5 +1,5 @@
 class PartBase
-  def is_a_blankline?
+  def is_a_newline?
     false
   end
 end
@@ -9,8 +9,16 @@ class HardNewLine < PartBase
     "\n"
   end
 
-  def is_a_blankline?
+  def is_a_newline?
     true
+  end
+
+  def is_keyword?
+    false
+  end
+
+  def declares_class_or_module?
+    false
   end
 end
 
@@ -23,22 +31,32 @@ class StringPart < PartBase
     part
   end
 
-  def is_a_blankline?
+  def is_a_newline?
     part == "\n"
   end
 end
 
-class BreakableEntry < PartBase
-  def initialize
-    @parts = []
+class EndKeyword < PartBase
+end
+
+class Keyword < PartBase
+  def initialize(keyword)
+    @keyword = keyword
   end
 
-  def <<(item)
-    @parts << item
+  def is_keyword?
+    true
+  end
+
+  def declares_class_or_module?
+    @keyword == :class || @keyword == :module
+  end
+
+  def declares_if_unless?
+    @keyword == :if || @keyword == :unless
   end
 
   def to_s
-    @parts.join("")
+    @keyword.to_s
   end
 end
-
