@@ -759,7 +759,7 @@ def format_ensure(ps, ensure_part)
   _, ensure_expressions = ensure_part
   ps.dedent do
     ps.emit_indent
-    ps.emit_ident("ensure")
+    ps.emit_ensure
   end
 
   if !ensure_expressions.nil?
@@ -1062,7 +1062,7 @@ def format_begin(ps, expression)
   raise "begin body was not a bodystmt" if begin_body[0] != :bodystmt
 
   ps.emit_indent if ps.start_of_line.last
-  ps.emit_ident("begin")
+  ps.emit_begin
   ps.emit_newline
   ps.new_block do
     format_bodystmt(ps, begin_body[1..-1], inside_begin=true)
@@ -1428,7 +1428,8 @@ def format_case_parts(ps, case_parts)
   if type == :when
     _, conditional, body, case_parts = case_parts
     ps.emit_indent
-    ps.emit_ident("when ")
+    ps.emit_when
+    ps.emit_space
     ps.with_start_of_line(false) do
       format_list_like_thing(ps, [conditional], true)
     end
@@ -1461,7 +1462,7 @@ def format_case(ps, rest)
   case_expr, case_parts = rest
   ps.emit_indent if ps.start_of_line.last
 
-  ps.emit_ident("case")
+  ps.emit_case
   if !case_expr.nil?
     ps.with_start_of_line(false) do
       ps.emit_space
@@ -1682,7 +1683,7 @@ end
 def format_lambda(ps, rest)
   ps.emit_indent if ps.start_of_line.last
   params, type, body = rest
-  ps.emit_ident("->")
+  ps.emit_stabby_lambda
   if params[0] == :paren
     params = params[1]
   end

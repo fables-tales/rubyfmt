@@ -102,30 +102,6 @@ class ParserState
     result.flush
   end
 
-  def emit_while
-    line << Keyword.new(:while)
-  end
-
-  def emit_for
-    line << Keyword.new(:for)
-  end
-
-  def emit_in
-    line << Keyword.new(:in)
-  end
-
-  def emit_else
-    line << Keyword.new(:else)
-  end
-
-  def emit_elsif
-    line << Keyword.new(:elsif)
-  end
-
-  def emit_return
-    line << Keyword.new(:return)
-  end
-
   def emit_indent
     spaces = (@conditional_indent.last) + (2 * @depth_stack.last)
     line << " " * spaces
@@ -231,6 +207,50 @@ class ParserState
 
   def emit_class_keyword
     line << Keyword.new(:class)
+  end
+
+  def emit_while
+    line << Keyword.new(:while)
+  end
+
+  def emit_for
+    line << Keyword.new(:for)
+  end
+
+  def emit_in
+    line << Keyword.new(:in)
+  end
+
+  def emit_else
+    line << Keyword.new(:else)
+  end
+
+  def emit_elsif
+    line << Keyword.new(:elsif)
+  end
+
+  def emit_return
+    line << Keyword.new(:return)
+  end
+
+  def emit_ensure
+    line << Keyword.new(:ensure)
+  end
+
+  def emit_when
+    line << Keyword.new(:when)
+  end
+
+  def emit_stabby_lambda
+    line << Keyword.new(:"->")
+  end
+
+  def emit_case
+    line << Keyword.new(:case)
+  end
+
+  def emit_begin
+    line << Keyword.new(:begin)
   end
 
   def emit_params_list(params_list)
