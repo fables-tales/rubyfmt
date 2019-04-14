@@ -452,12 +452,6 @@ class ParserState
   end
 end
 
-def format_block_params_list(ps, params_list)
-  ps.emit_open_block_arg_list
-  ps.emit_params_list(params_list)
-  ps.emit_close_block_arg_list
-end
-
 def format_until(ps, rest)
   conditional, expressions = rest
 
@@ -791,11 +785,6 @@ def format_do_block(ps, rest)
   end
 end
 
-def format_tstring_content(ps, rest)
-  ps.emit_ident(rest[1])
-  ps.on_line(rest[2][0])
-end
-
 def format_inner_string(ps, parts, type)
   parts = parts.dup
 
@@ -977,11 +966,11 @@ def format_dot(ps, rest)
   dot = rest[0]
 
   case
-  when is_normal_dot(dot)
+  when is_normal_dot?(dot)
     ps.emit_dot
   when dot == :"::"
     ps.emit_ident("::")
-  when is_lonely_operator(dot)
+  when is_lonely_operator?(dot)
     ps.emit_lonely_operator
   else
     raise "got unrecognised dot"
@@ -1003,11 +992,11 @@ def format_symbol_literal(ps, literal)
   ps.emit_newline if ps.start_of_line.last
 end
 
-def is_normal_dot(candidate)
+def is_normal_dot?(candidate)
   candidate == :"." || (candidate.is_a?(Array) && candidate[0] == :@period)
 end
 
-def is_lonely_operator(candidate)
+def is_lonely_operator?(candidate)
   candidate == :"&." || [
     candidate.is_a?(Array),
     candidate[0] == :@op,
@@ -2254,7 +2243,7 @@ def format_keyword(ps, rest)
   ps.emit_ident(rest[0])
 end
 
-def use_parens_for_method_call(method, args, original_used_parens)
+def use_parens_for_method_call?(method, args, original_used_parens)
   # Always use parens for the shorthand `foo::()` syntax
   return true if method == :call
 
@@ -2277,7 +2266,7 @@ def format_method_call(ps, rest)
 
   chain, method, original_used_parens, args = rest
 
-  use_parens = use_parens_for_method_call(
+  use_parens = use_parens_for_method_call?(
     method,
     args,
     original_used_parens,
@@ -2575,11 +2564,11 @@ EXPRESSION_HANDLERS = {
   :redo => method(:format_redo),
 
   # Normalized by rubyfmt, not from Ripper:
-  :dot => lambda { |ps, rest| format_dot(ps, rest) },
-  :method_call => lambda { |ps, rest| format_method_call(ps, rest) },
-  :splat => lambda { |ps, rest| format_splat(ps, rest) },
-  :to_proc => lambda { |ps, rest| format_to_proc(ps, rest) },
-  :keyword => lambda { |ps, rest| format_keyword(ps, rest) },
+  :dot => method(:format_dot),
+  :method_call => method(:format_method_call),
+  :splat => method(:format_splat),
+  :to_proc => method(:format_to_proc),
+  :keyword => method(:format_keyword),
 }.freeze
 
 def format_expression(ps, expression)
