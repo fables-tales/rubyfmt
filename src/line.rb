@@ -18,9 +18,16 @@ class Line < SimpleDelegator
   end
 
   def breakable_entry(&blk)
-    #@breakable_entry_stack << BreakableEntry.new
+    @breakable_entry_stack << BreakableEntry.new
     blk.call
-    #@parts << @breakable_entry_stack.pop
+    be = @breakable_entry_stack
+    if be.length >= 2
+      be_last = be.pop
+      be_next = be.last
+      be_next << be_last
+    else
+      @parts << @breakable_entry_stack.pop
+    end
   end
 
   def push_comment(comment)
