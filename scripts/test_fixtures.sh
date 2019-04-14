@@ -1,6 +1,8 @@
 #!/bin/bash
 set -ex
 
+make build/rubyfmt.rb
+
 test_folder() {
     find "$1" -name "*_expected.rb" -maxdepth 1 | while read -r file
     do
