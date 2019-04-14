@@ -1,3 +1,7 @@
+# We're doing dev on master please check out the v0.1 tag
+# We're doing dev on master please check out the v0.1 tag
+# We're doing dev on master please check out the v0.1 tag
+
 # Rubyfmt - 0.1, the one where it doesn't break RSpec
 
 Rubyfmt is a Ruby autoformatter in the style of
@@ -21,7 +25,7 @@ hook and run really fast.
 
 I suggest:
 
-* Download `src/rubyfmt.rb` to `~/bin`
+* Download `build/rubyfmt.rb` to `~/bin`
 * Add `~/bin` to your PATH (e.g. `echo "$HOME/bin:$PATH" >> ~/.bash_profile`)
 * Set your editor to run `rubyfmt file_name > file_name` on save.
 

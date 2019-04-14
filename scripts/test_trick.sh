@@ -6,7 +6,7 @@ set -ex
 source ./scripts/functions.sh
 
 RUBY_VERSION=$(ruby -v | grep -o "[0-9].[0-9]" | head -n 1)
-RUBYFMT=$(pwd)/src/rubyfmt.rb
+RUBYFMT=$(pwd)/build/rubyfmt.rb
 
 git clone https://github.com/tric/trick2018 /tmp/trick2018 || echo "already have repo"
 cd /tmp/trick2018
