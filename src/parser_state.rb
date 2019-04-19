@@ -27,6 +27,14 @@ class ParserState
     i
   end
 
+  def insert_token_before_current_line(token)
+    @render_queue << token
+  end
+
+  def push_token(token)
+    @line << token
+  end
+
   def breakable_entry(&blk)
     @line.breakable_entry(&blk)
   end
@@ -47,8 +55,10 @@ class ParserState
     next_ps.write
     buf.rewind
 
+    buf_data = buf.read
+
     # buf gets an extra newline on the end, trim it
-    @heredoc_strings << [symbol, indent, buf.read[0...-1]]
+    @heredoc_strings << [symbol, indent, buf_data[0...-1]]
     next_ps.heredoc_strings.each do |s|
       @heredoc_strings << s
     end
@@ -75,11 +85,14 @@ class ParserState
       @arrays_on_line = -1
     end
 
+    build_comments = []
     while !comments_hash.empty? && comments_hash.keys.sort.first < line_number
       key = comments_hash.keys.sort.first
       comment = comments_hash.delete(key)
-      @line.push_comment(comment) unless @surpress_comments_stack.last
+      build_comments << Comment.new(comment)
+      build_comments << HardNewLine.new
     end
+    insert_token_before_current_line(TokenCollection.new(build_comments)) if !@surpress_comments_stack.last && !build_comments.empty?
 
     @current_orig_line_number = line_number
   end
@@ -104,11 +117,11 @@ class ParserState
 
   def emit_indent
     spaces = (@conditional_indent.last) + (2 * @depth_stack.last)
-    line << Indent.new(spaces)
+    push_token(Indent.new(spaces))
   end
 
   def emit_slash
-    line << SingleSlash.new
+    push_token(SingleSlash.new)
   end
 
   def push_conditional_indent(type)
@@ -131,11 +144,11 @@ class ParserState
   end
 
   def emit_comma_space
-    line << CommaSpace.new
+    push_token(CommaSpace.new)
   end
 
   def emit_comma
-    line << Comma.new
+    push_token(Comma.new)
   end
 
   def ensure_file_ends_with_exactly_one_newline(lines)
@@ -186,136 +199,136 @@ class ParserState
   end
 
   def emit_def(def_name)
-    line << Keyword.new(:def)
-    line << DirectPart.new(" #{def_name}")
+    push_token(Keyword.new(:def))
+    push_token(DirectPart.new(" #{def_name}"))
   end
 
   def emit_end
     emit_newline
     emit_indent if start_of_line.last
-    line << Keyword.new(:end)
+    push_token(Keyword.new(:end))
   end
 
   def emit_keyword(keyword)
-    line << Keyword.new(keyword)
+    push_token(Keyword.new(keyword))
   end
 
   def emit_do
-    line << Keyword.new(:do)
+    push_token(Keyword.new(:do))
   end
 
   def emit_rescue
-    line << Keyword.new(:rescue)
+    push_token(Keyword.new(:rescue))
   end
 
   def emit_module_keyword
-    line << Keyword.new(:module)
+    push_token(Keyword.new(:module))
   end
 
   def emit_class_keyword
-    line << Keyword.new(:class)
+    push_token(Keyword.new(:class))
   end
 
   def emit_while
-    line << Keyword.new(:while)
+    push_token(Keyword.new(:while))
   end
 
   def emit_for
-    line << Keyword.new(:for)
+    push_token(Keyword.new(:for))
   end
 
   def emit_in
-    line << Keyword.new(:in)
+    push_token(Keyword.new(:in))
   end
 
   def emit_else
-    line << Keyword.new(:else)
+    push_token(Keyword.new(:else))
   end
 
   def emit_elsif
-    line << Keyword.new(:elsif)
+    push_token(Keyword.new(:elsif))
   end
 
   def emit_return
-    line << Keyword.new(:return)
+    push_token(Keyword.new(:return))
   end
 
   def emit_ensure
-    line << Keyword.new(:ensure)
+    push_token(Keyword.new(:ensure))
   end
 
   def emit_when
-    line << Keyword.new(:when)
+    push_token(Keyword.new(:when))
   end
 
   def emit_stabby_lambda
-    line << Keyword.new(:"->")
+    push_token(Keyword.new(:"->"))
   end
 
   def emit_case
-    line << Keyword.new(:case)
+    push_token(Keyword.new(:case))
   end
 
   def emit_begin
-    line << Keyword.new(:begin)
+    push_token(Keyword.new(:begin))
   end
 
   def emit_params_list(params_list)
   end
 
   def emit_binary(symbol)
-    line << Binary.new(symbol)
+    push_token(Binary.new(symbol))
   end
 
   def emit_space
-    line << Space.new
+    push_token(Space.new)
   end
 
   def emit_newline
-    line << HardNewLine.new
+    push_token(HardNewLine.new)
     render_queue << line
     self.line = Line.new([])
     render_heredocs
   end
 
   def emit_dot
-    line << Dot.new
+    push_token(Dot.new)
   end
 
   def emit_lonely_operator
-    line << LonelyOperator.new
+    push_token(LonelyOperator.new)
   end
 
   def emit_ident(ident)
-    line << DirectPart.new(ident)
+    push_token(DirectPart.new(ident))
   end
 
   def emit_op(op)
-    line << Op.new(op)
+    push_token(Op.new(op))
   end
 
   def emit_int(int)
-    line << DirectPart.new(int)
+    push_token(DirectPart.new(int))
   end
 
   def emit_var_ref(ref)
-    line << DirectPart.new(ref)
+    push_token(DirectPart.new(ref))
   end
 
   def emit_open_paren
-    line << OpenParen.new
+    push_token(OpenParen.new)
   end
 
   def emit_close_paren
-    line << CloseParen.new
+    push_token(CloseParen.new)
   end
 
   def emit_open_square_bracket
-    line << OpenSquareBracket.new
+    push_token(OpenSquareBracket.new)
   end
 
   def emit_close_square_bracket
-    line << CloseSquareBracket.new
+    push_token(CloseSquareBracket.new)
   end
 
   def new_block(&blk)
@@ -331,41 +344,41 @@ class ParserState
   end
 
   def emit_open_block_arg_list
-    line << OpenArgPipe.new
+    push_token(OpenArgPipe.new)
   end
 
   def emit_close_block_arg_list
-    line << CloseArgPipe.new
+    push_token(CloseArgPipe.new)
   end
 
   def emit_double_quote
-    line << DoubleQuote.new
+    push_token(DoubleQuote.new)
   end
 
   def emit_const(const)
-    line << DirectPart.new(const)
+    push_token(DirectPart.new(const))
   end
 
   def emit_double_colon
-    line << Op.new("::")
+    push_token(Op.new("::"))
   end
 
   def emit_symbol(symbol)
-    line << DirectPart.new(":#{symbol}")
+    push_token(DirectPart.new(":#{symbol}"))
   end
 
   def render_heredocs(skip=false)
     while !heredoc_strings.empty?
       symbol, indent, string = heredoc_strings.pop
       unless render_queue[-1] && render_queue[-1].ends_with_newline?
-        line << HardNewLine.new
+        push_token(HardNewLine.new)
       end
 
       if string.end_with?("\n")
         string = string[0...-1]
       end
 
-      line << DirectPart.new(string)
+      push_token(DirectPart.new(string))
       emit_newline
       if indent
         emit_indent

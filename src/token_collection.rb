@@ -3,8 +3,16 @@ class TokenCollection < SimpleDelegator
     super(parts)
   end
 
+  def to_s
+    join("")
+  end
+
+  def has_comment?
+    any? { |x| Comment === x }
+  end
+
   def string_length
-    join("").length
+    to_s.length
   end
 
   def remove_redundant_indents

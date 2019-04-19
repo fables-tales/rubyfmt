@@ -30,14 +30,6 @@ class Line < SimpleDelegator
     end
   end
 
-  def push_comment(comment)
-    @comments << comment
-  end
-
-  def has_comment?
-    !@comments.empty?
-  end
-
   def <<(item)
     if be = @breakable_entry_stack.last
       be << item
@@ -49,6 +41,7 @@ end
 
 def want_blankline?(line, next_line)
   return unless next_line
+  return false if line.has_comment? && next_line.declares_class_or_module?
   return true if line.contains_end? && !next_line.contains_end?
   return true if next_line.contains_do? && !line.surpresses_blankline?
   return true if next_line.contains_if_or_unless? && !line.surpresses_blankline?
