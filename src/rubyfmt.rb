@@ -525,7 +525,7 @@ def format_optional_params(ps, optional_params)
     optional_params.each_with_index do |param, i|
       left,right = param
       format_expression(ps, left)
-      ps.emit_ident("=")
+      ps.emit_ident(" = ")
       format_expression(ps, right)
       if i != optional_params.length - 1
         ps.emit_ident(", ")

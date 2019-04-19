@@ -1,2 +1,2 @@
-def foo(a, b=nil, *args, &blk)
+def foo(a, b = nil, *args, &blk)
 end
