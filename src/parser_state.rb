@@ -13,7 +13,6 @@ class ParserState
     @depth_stack = [0]
     @start_of_line = [true]
     @render_queue = []
-    @line = Line.new([])
     @current_orig_line_number = 0
     @comments_hash = line_metadata.comment_blocks
     @conditional_indent = [0]
@@ -28,15 +27,16 @@ class ParserState
   end
 
   def insert_token_before_current_line(token)
+    require 'pry'; binding.pry
     @render_queue << token
   end
 
   def push_token(token)
-    @line << token
+    @render_queue << token
   end
 
   def breakable_entry(&blk)
-    @line.breakable_entry(&blk)
+    blk.call
   end
 
   def with_surpress_comments(value, &blk)
@@ -92,6 +92,9 @@ class ParserState
       build_comments << Comment.new(comment)
       build_comments << HardNewLine.new
     end
+    if !build_comments.empty?
+      build_comments.insert(0, HardNewLine.new)
+    end
     insert_token_before_current_line(TokenCollection.new(build_comments)) if !@surpress_comments_stack.last && !build_comments.empty?
 
     @current_orig_line_number = line_number
@@ -99,17 +102,11 @@ class ParserState
 
   def write
     on_line(100000000000000)
-    clear_empty_trailing_lines
 
     lines = render_queue
-    clear_double_spaces(lines)
-    add_valid_blanklines(lines)
-
-    lines.each do |line|
-      line.remove_redundant_indents
-    end
-
-    ensure_file_ends_with_exactly_one_newline(lines)
+    lines.each { |x|
+      result.write(x)
+    }
 
     result.write("\n")
     result.flush
@@ -161,39 +158,12 @@ class ParserState
     end
   end
 
-  def add_valid_blanklines(lines)
-    line = lines.first
-    next_index = 1
-    while next_index < lines.length
-      if want_blankline?(line, lines[next_index])
-        lines.insert(next_index, Line.new([HardNewLine.new]))
-        next_index += 1
-      end
-
-      line = lines[next_index]
-      next_index += 1
-    end
-  end
-
-  def clear_double_spaces(lines)
-    line = lines.first
-    next_index = 1
-    while next_index < lines.length
-      while line.ends_with_newline? && lines[next_index] && lines[next_index].is_only_a_newline?
-        lines.delete_at(next_index)
-      end
-
-      line = lines[next_index]
-      next_index += 1
-    end
-  end
-
   def clear_empty_trailing_lines
     while render_queue.last == []
       render_queue.pop
     end
 
-    while render_queue.last.is_only_a_newline?
+    while HardNewLine === render_queue.last
       render_queue.pop
     end
   end
@@ -287,7 +257,6 @@ class ParserState
   def emit_newline
     push_token(HardNewLine.new)
     render_queue << line
-    self.line = Line.new([])
     render_heredocs
   end
 
@@ -370,7 +339,7 @@ class ParserState
   def render_heredocs(skip=false)
     while !heredoc_strings.empty?
       symbol, indent, string = heredoc_strings.pop
-      unless render_queue[-1] && render_queue[-1].ends_with_newline?
+      unless render_queue[-1] && HardNewLine === render_queue[-1]
         push_token(HardNewLine.new)
       end
 
