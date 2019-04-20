@@ -386,6 +386,8 @@ def format_heredoc_string_literal(ps, rest)
     components = inner_string_components
     ps.push_heredoc_content(heredoc_symbol, heredoc_type.include?("~"), components)
   end
+
+  ps.emit_newline if ps.start_of_line.last
 end
 
 def format_string_literal(ps, rest)
@@ -466,6 +468,8 @@ def format_class(ps, rest)
     format_expression(ps, class_name)
   end
 
+  ps.on_line(ps.current_orig_line_number+1)
+
   if rest[1] != nil
     ps.emit_ident(" < ")
     ps.with_start_of_line(false) do
@@ -473,10 +477,13 @@ def format_class(ps, rest)
     end
   end
 
-  ps.emit_newline
-
   ps.new_block do
     exprs = rest[2][1]
+
+    if have_empty_exprs?(exprs)
+      ps.emit_newline
+    end
+
     exprs.each do |expr|
       format_expression(ps, expr)
     end
@@ -484,6 +491,10 @@ def format_class(ps, rest)
 
   ps.emit_end
   ps.emit_newline if ps.start_of_line.last
+end
+
+def have_empty_exprs?(exprs)
+  !(exprs.empty? || exprs.first.nil? || exprs[0] == [:void_stmt])
 end
 
 def format_const_path_ref(ps, rest)

@@ -26,9 +26,19 @@ class ParserState
     i
   end
 
-  def insert_token_before_current_line(token)
-    require 'pry'; binding.pry
-    @render_queue << token
+  def render_queue_as_lines
+    render_queue.flatten.split { |x| HardNewLine === x }.map { |x| TokenCollection.new(x) }
+  end
+
+  def tokens_from_previous_line
+    render_queue_as_lines.last
+  end
+
+  def insert_comment_collection(cc)
+    if HardNewLine === cc.first && tokens_from_previous_line.declares_class_or_module?
+      cc.pop
+    end
+    @render_queue << cc
   end
 
   def push_token(token)
@@ -95,7 +105,7 @@ class ParserState
     if !build_comments.empty?
       build_comments.insert(0, HardNewLine.new)
     end
-    insert_token_before_current_line(TokenCollection.new(build_comments)) if !@surpress_comments_stack.last && !build_comments.empty?
+    insert_comment_collection(TokenCollection.new(build_comments)) if !@surpress_comments_stack.last && !build_comments.empty?
 
     @current_orig_line_number = line_number
   end
@@ -103,13 +113,18 @@ class ParserState
   def write
     on_line(100000000000000)
 
-    lines = render_queue
-    lines.each { |x|
+    fixup_render_queue
+
+    @render_queue.each { |x|
       result.write(x)
     }
 
     result.write("\n")
     result.flush
+  end
+
+  def fixup_render_queue
+    @render_queue = RenderQueueDFA.new(@render_queue).call
   end
 
   def emit_indent
@@ -256,7 +271,6 @@ class ParserState
 
   def emit_newline
     push_token(HardNewLine.new)
-    render_queue << line
     render_heredocs
   end
 
@@ -341,6 +355,10 @@ class ParserState
       symbol, indent, string = heredoc_strings.pop
       unless render_queue[-1] && HardNewLine === render_queue[-1]
         push_token(HardNewLine.new)
+      end
+
+      if string.end_with?("\n")
+        string = string[0...-1]
       end
 
       if string.end_with?("\n")

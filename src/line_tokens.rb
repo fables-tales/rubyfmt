@@ -7,6 +7,10 @@ module TokenBase
     false
   end
 
+  def is_indent?
+    false
+  end
+
   def declares_class_or_module?
     false
   end
@@ -217,6 +221,10 @@ class Indent
 
   def to_s
     " " * @spaces
+  end
+
+  def is_indent?
+    true
   end
 end
 
