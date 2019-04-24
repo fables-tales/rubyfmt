@@ -12,7 +12,7 @@ class ParserState
     @result = result
     @depth_stack = [0]
     @start_of_line = [true]
-    @render_queue = []
+    @render_queue = TokenCollection.new([])
     @current_orig_line_number = 0
     @comments_hash = line_metadata.comment_blocks
     @conditional_indent = [0]
@@ -137,13 +137,13 @@ class ParserState
   end
 
   def push_conditional_indent(type)
-    if line.empty?
+    if start_of_line.last
       @conditional_indent << 2*@depth_stack.last
     else
       if type == :conditional
         @conditional_indent << 2*@depth_stack.last
       elsif type == :string
-        @conditional_indent << line.string_length
+        @conditional_indent << render_queue_as_lines.last.to_s.length
       end
     end
 

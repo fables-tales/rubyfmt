@@ -3,6 +3,26 @@ class TokenCollection < SimpleDelegator
     super(parts)
   end
 
+  def each_flat(&blk)
+    e = Enumerator.new do |yielder|
+      each do |item|
+        if TokenCollection === item
+          item.each_flat do |i|
+            yielder << i
+          end
+        else
+          yielder << item
+        end
+      end
+    end
+
+    if blk
+      e.each(&blk)
+    else
+      e
+    end
+  end
+
   def to_s
     join("")
   end
@@ -30,35 +50,35 @@ class TokenCollection < SimpleDelegator
   end
 
   def contains_end?
-    flatten.any? { |x| x.is_end? }
+    each_flat.any? { |x| x.is_end? }
   end
 
   def contains_do?
-    flatten.any? { |x| x.is_do? }
+    each_flat.any? { |x| x.is_do? }
   end
 
   def contains_else?
-    flatten.any? { |x| x.is_else? }
+    each_flat.any? { |x| x.is_else? }
   end
 
   def declares_private?
-    flatten.any? { |x| x.is_private? }
+    each_flat.any? { |x| x.is_private? }
   end
 
   def declares_require?
-    flatten.any? { |x| x.is_require? } && flatten.none? { |x| x.to_s == "}" }
+    each_flat.any? { |x| x.is_require? } && each_flat.none? { |x| x.to_s == "}" }
   end
 
   def declares_class_or_module?
-    flatten.any? { |x| x.declares_class_or_module? }
+    each_flat.any? { |x| x.declares_class_or_module? }
   end
 
   def contains_if_or_unless?
-    flatten.any? { |x| x.declares_if_or_unless? }
+    each_flat.any? { |x| x.declares_if_or_unless? }
   end
 
   def contains_keyword?
-    flatten.any? { |x| x.is_keyword? }
+    each_flat.any? { |x| x.is_keyword? }
   end
 
   def surpresses_blankline?

@@ -50,7 +50,6 @@ def format_def(ps, rest)
 
   ps.emit_end
   ps.emit_newline
-  ps.emit_newline
 end
 
 def format_required_params(ps, required_params)
@@ -477,6 +476,7 @@ def format_class(ps, rest)
     end
   end
 
+  ps.emit_newline
   ps.new_block do
     exprs = rest[2][1]
 
@@ -879,8 +879,6 @@ def format_conditional_parts(ps, further_conditionals)
         format_expression(ps, expr)
       end
     end
-    ps.emit_newline
-
     format_conditional_parts(ps, further_conditionals)
   when nil
 
@@ -915,7 +913,6 @@ def format_conditional(ps, expression, kind)
   end
 
   ps.with_start_of_line(true) do
-    ps.emit_newline
     format_conditional_parts(ps, further_conditionals || [])
 
     ps.emit_end
@@ -1096,7 +1093,7 @@ def format_brace_block(ps, expression)
     end
   end
 
-  multiline = next_ps.render_queue.length > 1
+  multiline = next_ps.render_queue.select { |x| HardNewLine === x}.length > 1
   orig_params = params
 
   bv, params, _ = params
@@ -1128,7 +1125,6 @@ def format_brace_block(ps, expression)
     ps.emit_space
   end
   ps.emit_ident("}")
-  ps.emit_newline if ps.start_of_line.last
 end
 
 def format_float(ps, expression)
@@ -1646,11 +1642,11 @@ def format_while(ps, rest)
   end
   ps.emit_newline
   ps.new_block do
-    expressions.each do |expression|
+    expressions.each_with_index do |expression, idx|
       ps.with_start_of_line(true) do
         format_expression(ps, expression)
       end
-      ps.emit_newline
+      ps.emit_newline if idx != expressions.length - 1
     end
   end
   ps.emit_end
