@@ -19,12 +19,31 @@ Rubyfmt is a standalone script that only loads the standard library of Ruby,
 as such it is not packaged as a gem. It is intended to be in your editor's save
 hook and run really fast.
 
-I suggest:
+```sh
+# Clone the repo
+git clone https://github.com/samphippen/rubyfmt.git
 
-* Download `src/rubyfmt.rb` to `~/bin`
-* Add `~/bin` to your PATH (e.g. `echo "$HOME/bin:$PATH" >> ~/.bash_profile`)
-* Set your editor to run `rubyfmt file_name > file_name` on save.
+# cd into the project
+cd rubyfmt
 
+# add src/rubyfmt.rb to your ~/bin folder
+mv src/rubyfmt.rb ~/bin/
+
+# make the file executable
+chmod +x ~/bin/rubyfmt.rb
+```
+
+Add `~/bin` to your PATH if it is not already there:
+
+```sh
+# Bash
+echo "$HOME/bin:$PATH" >> ~/.bash_profile
+
+# ZSH
+echo "$HOME/bin:$PATH" >> ~/.zshrc
+```
+
+Now you can tell your editor to run `rubyfmt.rb file_name > file_name` on save.
 
 ## Contributing
 
