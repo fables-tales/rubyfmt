@@ -21,9 +21,9 @@ hook and run really fast.
 
 I suggest:
 
-* Download `src/rubyfmt.rb` to `~/bin`
+* Download `src/rubyfmt.rb` to `~/bin` as `rubyfmt`
 * Add `~/bin` to your PATH (e.g. `echo "$HOME/bin:$PATH" >> ~/.bash_profile`)
-* Set your editor to run `rubyfmt file_name > file_name` on save.
+* Set your editor to run `echo "$(rubyfmt file_name)" > file_name` on save.
 
 
 ## Contributing
