@@ -479,11 +479,6 @@ def format_class(ps, rest)
   ps.emit_newline
   ps.new_block do
     exprs = rest[2][1]
-
-    if have_empty_exprs?(exprs)
-      ps.emit_newline
-    end
-
     exprs.each do |expr|
       format_expression(ps, expr)
     end
@@ -494,7 +489,7 @@ def format_class(ps, rest)
 end
 
 def have_empty_exprs?(exprs)
-  (exprs.empty? || exprs.first.nil? || exprs[0] == [:void_stmt])
+  (exprs.empty? || exprs.first.nil? || (exprs[0] == [:void_stmt] && exprs.length == 1))
 end
 
 def format_const_path_ref(ps, rest)

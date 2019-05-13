@@ -26,8 +26,6 @@ class RenderQueueDFA
         raise "omg" if !(HardNewLine === c)
       when is_non_requirish_and_previous_line_is_requirish(char)
         @render_queue_out.insert(@render_queue_out.rindex_by { |x| HardNewLine === x }, HardNewLine.new)
-      when is_class_comment(pluck_chars(3) + [char])
-        @render_queue_out.insert(@render_queue_out.length-2, HardNewLine.newww)
       end
 
       @render_queue_out << char
@@ -43,12 +41,6 @@ class RenderQueueDFA
 
   def pluck_chars(n)
     @render_queue_out[-n..-1] || []
-  end
-
-  def is_class_comment(chars)
-    raise "nope" if chars.length != 4
-
-    chars[0].is_a_comment? && HardNewLine === chars[1] && chars[2].is_indent? && chars[3].declares_class_or_module?
   end
 
   def is_non_requirish_and_previous_line_is_requirish(char)
