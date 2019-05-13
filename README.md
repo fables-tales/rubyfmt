@@ -33,7 +33,7 @@ mv path/to/ruby/file.rb.tmp path/to/ruby/file.rb
 To run over an entire project run the following from the project root:
 
 ```
-find ./ -type f -name "*.rb" -exec sh -c 'rubyfmt {} > {}.tmp' \; -exec sh -c 'mv {}.tmp {}' \;
+find ./ -type f -name "*.rb" -exec sh -c 'rubyfmt $1 > "$1.tmp"' _ {} \; -exec sh -c 'mv "$1.tmp" $1' _ {} \;
 ```
 
 ## Contributing
