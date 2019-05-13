@@ -26,6 +26,8 @@ class RenderQueueDFA
         raise "omg" if !(HardNewLine === c)
       when is_non_requirish_and_previous_line_is_requirish(char)
         @render_queue_out.insert(@render_queue_out.rindex_by { |x| HardNewLine === x }, HardNewLine.new)
+      when is_end_proceeded_by_not_end?(pluck_chars(3) + [char])
+        @render_queue_out.insert(@render_queue_out.rindex_by { |x| HardNewLine === x }, HardNewLine.new)
       end
 
       @render_queue_out << char
@@ -41,6 +43,11 @@ class RenderQueueDFA
 
   def pluck_chars(n)
     @render_queue_out[-n..-1] || []
+  end
+
+  def is_end_proceeded_by_not_end?(chars)
+    return false unless chars.length == 4
+    raise "sam fix this"
   end
 
   def is_non_requirish_and_previous_line_is_requirish(char)
