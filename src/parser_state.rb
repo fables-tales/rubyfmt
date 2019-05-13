@@ -18,6 +18,7 @@ class ParserState
     @conditional_indent = [0]
     @heredoc_strings = []
     @string_concat_position = []
+    @comments_to_insert = CommentBlock.new
   end
 
   def self.with_depth_stack(output, from:)
@@ -35,10 +36,7 @@ class ParserState
   end
 
   def insert_comment_collection(cc)
-    if HardNewLine === cc.first && tokens_from_previous_line.declares_class_or_module?
-      cc.pop
-    end
-    @render_queue << cc
+    @comments_to_insert.merge(cc)
   end
 
   def push_token(token)
@@ -95,17 +93,13 @@ class ParserState
       @arrays_on_line = -1
     end
 
-    build_comments = []
+    build_comments = CommentBlock.new
     while !comments_hash.empty? && comments_hash.keys.sort.first < line_number
       key = comments_hash.keys.sort.first
       comment = comments_hash.delete(key)
-      build_comments << Comment.new(comment)
-      build_comments << HardNewLine.new
+      build_comments.add_comment(Comment.new(comment))
     end
-    if !build_comments.empty?
-      build_comments.insert(0, HardNewLine.new)
-    end
-    insert_comment_collection(TokenCollection.new(build_comments)) if !@surpress_comments_stack.last && !build_comments.empty?
+    insert_comment_collection(build_comments) if !@surpress_comments_stack.last && !build_comments.empty?
 
     @current_orig_line_number = line_number
   end
@@ -183,8 +177,12 @@ class ParserState
     end
   end
 
-  def emit_def(def_name)
+  def emit_def_keyword
     push_token(Keyword.new(:def))
+  end
+
+  def emit_def(def_name)
+    emit_def_keyword
     push_token(DirectPart.new(" #{def_name}"))
   end
 
@@ -270,6 +268,16 @@ class ParserState
   end
 
   def emit_newline
+    idx_of_prev_hard_newline = @render_queue.rindex_by { |x| HardNewLine === x }
+    if !@comments_to_insert.empty?
+      if idx_of_prev_hard_newline
+        @render_queue.insert(idx_of_prev_hard_newline, @comments_to_insert.to_token_collection)
+      else
+        @render_queue.insert(0, @comments_to_insert.to_token_collection)
+      end
+      @comments_to_insert = CommentBlock.new
+    end
+
     push_token(HardNewLine.new)
     render_heredocs
   end

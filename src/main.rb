@@ -2,7 +2,7 @@ def extract_line_metadata(file_data)
   comment_blocks = {}
 
   file_data.split("\n").each_with_index do |line, index|
-    comment_blocks[index] = line if /^ *#/ === line
+    comment_blocks[index + 1] = line if /^ *#/ === line
   end
 
   LineMetadata.new(comment_blocks)

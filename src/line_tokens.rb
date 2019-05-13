@@ -3,6 +3,10 @@ module TokenBase
     false
   end
 
+  def is_a_comment?
+    false
+  end
+
   def is_keyword?
     false
   end
@@ -36,6 +40,10 @@ module TokenBase
   end
 
   def is_require?
+    false
+  end
+
+  def is_requirish?
     false
   end
 
@@ -75,6 +83,11 @@ class DirectPart
 
   def is_require?
     @part == "require"
+  end
+
+  def is_requirish?
+    require_regex = /([^A-Za-z0-9]|^)require[^A-Za-z0-9]/
+    require_regex === @part
   end
 
   def is_private?
@@ -259,7 +272,42 @@ class Comment
     @content = content
   end
 
+  def is_a_comment?
+    true
+  end
+
   def to_s
     @content.to_s
+  end
+end
+
+class CommentBlock
+  include TokenBase
+
+  attr_reader :comments
+
+  def initialize
+    @comments = []
+  end
+
+  def empty?
+    @comments.empty?
+  end
+
+  def add_comment(comment)
+    raise ArgumentError, "got something other than a comment" unless Comment === comment
+    @comments << comment
+  end
+
+  def merge(other)
+    @comments += other.comments
+  end
+
+  def to_token_collection
+    TokenCollection.new(@comments.flat_map { |x| [x, HardNewLine.new] })
+  end
+
+  def is_a_comment?
+    true
   end
 end

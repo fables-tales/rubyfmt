@@ -494,7 +494,7 @@ def format_class(ps, rest)
 end
 
 def have_empty_exprs?(exprs)
-  !(exprs.empty? || exprs.first.nil? || exprs[0] == [:void_stmt])
+  (exprs.empty? || exprs.first.nil? || exprs[0] == [:void_stmt])
 end
 
 def format_const_path_ref(ps, rest)
@@ -697,7 +697,7 @@ end
 def format_defs(ps, rest)
   head, period, tail, params, body = rest
   ps.emit_indent if ps.start_of_line.last
-  ps.emit_ident("def")
+  ps.emit_def_keyword
   ps.emit_space
   ps.with_start_of_line(false) do
     format_expression(ps, head)
