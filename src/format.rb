@@ -817,7 +817,6 @@ def format_bodystmt(ps, rest, inside_begin=false)
   format_rescue(ps, rescue_part)
   format_else(ps, else_part)
   format_ensure(ps, ensure_part)
-
 end
 
 def format_if_mod(ps, rest)
