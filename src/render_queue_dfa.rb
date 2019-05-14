@@ -26,7 +26,7 @@ class RenderQueueDFA
         raise "omg" if !(HardNewLine === c)
       when is_non_requirish_and_previous_line_is_requirish(char)
         @render_queue_out.insert(@render_queue_out.rindex_by { |x| HardNewLine === x }, HardNewLine.new)
-      when is_end_proceeded_by_not_end?(pluck_chars(3) + [char])
+      when comment_wants_leading_newline?(char)
         @render_queue_out.insert(@render_queue_out.rindex_by { |x| HardNewLine === x }, HardNewLine.new)
       end
 
@@ -45,9 +45,12 @@ class RenderQueueDFA
     @render_queue_out[-n..-1] || []
   end
 
-  def is_end_proceeded_by_not_end?(chars)
-    return false unless chars.length == 4
-    raise "sam fix this"
+  def comment_wants_leading_newline?(char)
+    return false unless char.is_a_comment?
+    return false unless prev_line
+
+    surpress = current_line.any? { |x| x.declares_class_or_module? || x.is_def? || x.is_a_comment? }
+    !surpress
   end
 
   def is_non_requirish_and_previous_line_is_requirish(char)
@@ -59,6 +62,20 @@ class RenderQueueDFA
     current_line = TokenCollection.new(lines[-1])
 
     prev_line.any?(&:is_requirish?) && !(current_line.any?(&:is_requirish?))
+  end
+
+  def prev_line
+    return false if lines.length < 2
+    TokenCollection.new(lines[-2])
+  end
+
+  def current_line
+    return false if lines.length < 2
+    TokenCollection.new(lines[-1])
+  end
+
+  def lines
+    @render_queue_out.split { |x| HardNewLine === x }
   end
 
   def is_end_with_blankline?(chars)
