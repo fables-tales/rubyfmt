@@ -41,6 +41,8 @@ class RenderQueueDFA
         @render_queue_out.insert(@render_queue_out.rindex_by { |x| HardNewLine === x }, HardNewLine.new)
       when class_wants_leading_newline?(char)
         @render_queue_out.insert(@render_queue_out.rindex_by { |x| HardNewLine === x }, HardNewLine.new)
+      when if_wants_leading_newline?(char)
+        @render_queue_out.insert(@render_queue_out.rindex_by { |x| HardNewLine === x }, HardNewLine.new)
       when private_wants_trailing_blankline?(pluck_chars(2) + [char])
         @render_queue_out.insert(@render_queue_out.rindex_by { |x| HardNewLine === x }, HardNewLine.new)
       end
@@ -59,6 +61,13 @@ class RenderQueueDFA
     @render_queue_out[-n..-1] || []
   end
 
+  def if_wants_leading_newline?(char)
+    return false unless char.declares_if_or_unless?
+    return false unless prev_line
+
+    return true unless prev_line.any? { |x| x.is_a_comment? || x.is_def? || x.declares_class_or_module? || x.is_do? || x.declares_if_or_unless? || x.is_else? } || prev_line.is_only_a_newline?
+  end
+
   def private_wants_trailing_blankline?(chars)
     return false unless chars.length == 3
 
@@ -69,7 +78,11 @@ class RenderQueueDFA
     return false unless char.declares_class_or_module?
     return false unless prev_line
 
-    return true unless prev_line.any? { |x| x.is_a_comment? || x.is_requirish? } || prev_line.is_only_a_newline?
+    return true unless prev_line.any? { |x|
+      x.is_a_comment? ||
+      x.is_requirish? ||
+      x.declares_class_or_module?
+    } || prev_line.is_only_a_newline?
   end
 
   def have_end_with_double_blankline?(chars)
@@ -96,12 +109,7 @@ class RenderQueueDFA
 
   def is_non_requirish_and_previous_line_is_requirish(char)
     return false unless HardNewLine === char
-
-    lines = @render_queue_out.split { |x| HardNewLine === x }
     return false if lines.length < 2
-    prev_line = TokenCollection.new(lines[-2])
-    current_line = TokenCollection.new(lines[-1])
-
     prev_line.any?(&:is_requirish?) && !(current_line.any?(&:is_requirish?))
   end
 

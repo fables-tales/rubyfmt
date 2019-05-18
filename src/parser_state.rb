@@ -94,7 +94,7 @@ class ParserState
     end
 
     build_comments = CommentBlock.new
-    while !comments_hash.empty? && comments_hash.keys.sort.first < line_number
+    while !comments_hash.empty? && comments_hash.keys.sort.first <= line_number
       key = comments_hash.keys.sort.first
       comment = comments_hash.delete(key)
       build_comments.add_comment(Comment.new(comment))

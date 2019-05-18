@@ -86,7 +86,7 @@ class DirectPart
   end
 
   def is_requirish?
-    require_regex = /([^A-Za-z0-9]|^)require[^A-Za-z0-9]/
+    require_regex = /([^A-Za-z0-9]|^)require([^A-Za-z0-9])?/
     require_regex === @part
   end
 
@@ -218,7 +218,7 @@ class Keyword
   end
 
   def is_else?
-    @keyword == :do
+    @keyword == :else
   end
 
   def to_s

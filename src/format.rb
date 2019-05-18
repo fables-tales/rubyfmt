@@ -467,7 +467,6 @@ def format_class(ps, rest)
     format_expression(ps, class_name)
   end
 
-  ps.on_line(ps.current_orig_line_number+1)
 
   if rest[1] != nil
     ps.emit_ident(" < ")
@@ -477,6 +476,7 @@ def format_class(ps, rest)
   end
 
   ps.emit_newline
+  ps.on_line(ps.current_orig_line_number+1)
   ps.new_block do
     exprs = rest[2][1]
     exprs.each do |expr|
@@ -1046,7 +1046,6 @@ def format_paren(ps, rest)
         format_expression(ps, expr)
       end
     end
-    ps.emit_newline
   end
   ps.emit_ident(")")
   ps.emit_newline if ps.start_of_line.last
@@ -1711,7 +1710,6 @@ def format_lambda(ps, rest)
       if body[0] != :bodystmt
         body.each do |expr|
           format_expression(ps, expr)
-          ps.emit_newline
         end
       else
         format_bodystmt(ps, body.drop(1))
