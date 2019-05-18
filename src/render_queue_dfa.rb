@@ -8,7 +8,7 @@ class Intermediary
   def <<(x)
     @content << x
     if HardNewLine === x
-      @lines << @build
+      @lines << TokenCollection.new(@build) unless @build.empty?
       @build = []
     else
       @build << x
@@ -24,21 +24,19 @@ class Intermediary
   end
 
   def prev_line
-    return false if lines.length < 2
-    TokenCollection.new(lines[-2])
+    return false if _line_length < 2
+    if @build.empty?
+      @lines[-2]
+    else
+      @lines[-1]
+    end
   end
 
   def current_line
-    return false if lines.length < 2
-    _current_line
-  end
-
-  def _current_line
+    return false if _line_length < 2
     line = @build
-    i = -1
-    while line.empty?
-      line = @lines[i]
-      i -= 1
+    if line.empty?
+      line = @lines[-1]
     end
     line
   end
@@ -56,7 +54,11 @@ class Intermediary
   end
 
   def pluck_chars(n)
-    @content[-n..-1] || []
+    raise unless n == 3
+    (@content[-n..-1] || []).tap { |x|
+      #
+      #raise "omg #{x.inspect}> #{@last_3.inspect}" if @last_3 != x
+    }
   end
 
   def each(*args, &blk)
@@ -65,8 +67,8 @@ class Intermediary
 
   private
 
-  def lines
-    @content.split { |x| HardNewLine === x }
+  def _line_length
+    @lines.length + (@build.empty? ? 0 : 1)
   end
 end
 
@@ -78,12 +80,13 @@ class RenderQueueDFA
 
   def call
     @render_queue_in.each_flat.each_with_index do |char, i|
+      pc = pluck_chars(3)
       case
-      when is_end_and_not_end?(pluck_chars(3) + [char])
+      when is_end_and_not_end?(pc + [char])
         # make sure that ends have blanklines if they are followed by something
         # that isn't an end
         push_additional_newline
-      when is_end_with_blankline?(pluck_chars(3) + [char])
+      when is_end_with_blankline?(pc + [char])
         # make sure the ends don't get extra blanklines
         # e.g.
         # if bees
@@ -102,7 +105,7 @@ class RenderQueueDFA
           c = @render_queue_out.delete_last_newline
           raise "omg" if !(HardNewLine === c)
         end
-      when is_comment_with_double_newline?(pluck_chars(2) + [char])
+      when is_comment_with_double_newline?(pc + [char])
         c = @render_queue_out.delete_last_newline
         raise "omg" if !(HardNewLine === c)
       when is_non_requirish_and_previous_line_is_requirish(char)
@@ -115,7 +118,7 @@ class RenderQueueDFA
         push_additional_newline
       when if_wants_leading_newline?(char)
         push_additional_newline
-      when private_wants_trailing_blankline?(pluck_chars(2) + [char])
+      when private_wants_trailing_blankline?(pc + [char])
         push_additional_newline
       end
 
@@ -145,9 +148,9 @@ class RenderQueueDFA
   end
 
   def private_wants_trailing_blankline?(chars)
-    return false unless chars.length == 3
+    return false unless chars.length == 4
 
-    chars[0].is_private? && chars[1].is_a_newline? && !chars[2].is_a_newline?
+    chars[1].is_private? && chars[2].is_a_newline? && !chars[3].is_a_newline?
   end
 
   def class_wants_leading_newline?(char)
@@ -204,9 +207,9 @@ class RenderQueueDFA
   end
 
   def is_comment_with_double_newline?(chars)
-    return false if chars.length != 3
+    return false if chars.length != 4
 
-    chars[0].is_a_comment? && chars[1].is_a_newline? && chars[2].is_a_newline?
+    chars[1].is_a_comment? && chars[2].is_a_newline? && chars[3].is_a_newline?
   end
 
   def is_end_and_not_end?(chars)

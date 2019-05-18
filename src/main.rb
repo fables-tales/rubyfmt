@@ -32,4 +32,7 @@ def main
   format_program(line_metadata, sexp, $stdout)
 end
 
-main if __FILE__ == $0
+#require 'stackprof'
+#StackProf.run(raw: true, mode: :wall, interval: 30, out:'/tmp/stackprof') do
+  main if __FILE__ == $0
+#end

@@ -12,7 +12,7 @@ class ParserState
     @result = result
     @depth_stack = [0]
     @start_of_line = [true]
-    @render_queue = TokenCollection.new([])
+    @render_queue = []
     @current_orig_line_number = 0
     @comments_hash = line_metadata.comment_blocks
     @conditional_indent = [0]
@@ -37,10 +37,6 @@ class ParserState
 
   def insert_comment_collection(cc)
     @comments_to_insert.merge(cc)
-  end
-
-  def push_token(token)
-    @render_queue << token
   end
 
   def breakable_entry(&blk)
@@ -118,16 +114,16 @@ class ParserState
   end
 
   def fixup_render_queue
-    @render_queue = RenderQueueDFA.new(@render_queue).call
+    @render_queue = RenderQueueDFA.new(TokenCollection.new(@render_queue)).call
   end
 
   def emit_indent
     spaces = (@conditional_indent.last) + (2 * @depth_stack.last)
-    push_token(Indent.new(spaces))
+    @render_queue << Indent.new(spaces)
   end
 
   def emit_slash
-    push_token(SingleSlash.new)
+    @render_queue << SingleSlash.new
   end
 
   def push_conditional_indent(type)
@@ -150,11 +146,11 @@ class ParserState
   end
 
   def emit_comma_space
-    push_token(CommaSpace.new)
+    @render_queue << CommaSpace.new
   end
 
   def emit_comma
-    push_token(Comma.new)
+    @render_queue << Comma.new
   end
 
   def ensure_file_ends_with_exactly_one_newline(lines)
@@ -178,93 +174,93 @@ class ParserState
   end
 
   def emit_def_keyword
-    push_token(Keyword.new(:def))
+    @render_queue << Keyword.new(:def)
   end
 
   def emit_def(def_name)
     emit_def_keyword
-    push_token(DirectPart.new(" #{def_name}"))
+    @render_queue << DirectPart.new(" #{def_name}")
   end
 
   def emit_end
     emit_newline
     emit_indent if start_of_line.last
-    push_token(Keyword.new(:end))
+    @render_queue << Keyword.new(:end)
   end
 
   def emit_keyword(keyword)
-    push_token(Keyword.new(keyword))
+    @render_queue << Keyword.new(keyword)
   end
 
   def emit_do
-    push_token(Keyword.new(:do))
+    @render_queue << Keyword.new(:do)
   end
 
   def emit_rescue
-    push_token(Keyword.new(:rescue))
+    @render_queue << Keyword.new(:rescue)
   end
 
   def emit_module_keyword
-    push_token(Keyword.new(:module))
+    @render_queue << Keyword.new(:module)
   end
 
   def emit_class_keyword
-    push_token(Keyword.new(:class))
+    @render_queue << Keyword.new(:class)
   end
 
   def emit_while
-    push_token(Keyword.new(:while))
+    @render_queue << Keyword.new(:while)
   end
 
   def emit_for
-    push_token(Keyword.new(:for))
+    @render_queue << Keyword.new(:for)
   end
 
   def emit_in
-    push_token(Keyword.new(:in))
+    @render_queue << Keyword.new(:in)
   end
 
   def emit_else
-    push_token(Keyword.new(:else))
+    @render_queue << Keyword.new(:else)
   end
 
   def emit_elsif
-    push_token(Keyword.new(:elsif))
+    @render_queue << Keyword.new(:elsif)
   end
 
   def emit_return
-    push_token(Keyword.new(:return))
+    @render_queue << Keyword.new(:return)
   end
 
   def emit_ensure
-    push_token(Keyword.new(:ensure))
+    @render_queue << Keyword.new(:ensure)
   end
 
   def emit_when
-    push_token(Keyword.new(:when))
+    @render_queue << Keyword.new(:when)
   end
 
   def emit_stabby_lambda
-    push_token(Keyword.new(:"->"))
+    @render_queue << Keyword.new(:"->")
   end
 
   def emit_case
-    push_token(Keyword.new(:case))
+    @render_queue << Keyword.new(:case)
   end
 
   def emit_begin
-    push_token(Keyword.new(:begin))
+    @render_queue << Keyword.new(:begin)
   end
 
   def emit_params_list(params_list)
   end
 
   def emit_binary(symbol)
-    push_token(Binary.new(symbol))
+    @render_queue << Binary.new(symbol)
   end
 
   def emit_space
-    push_token(Space.new)
+    @render_queue << Space.new
   end
 
   def emit_newline
@@ -278,48 +274,48 @@ class ParserState
       @comments_to_insert = CommentBlock.new
     end
 
-    push_token(HardNewLine.new)
+    @render_queue << HardNewLine.new
     render_heredocs
   end
 
   def emit_dot
-    push_token(Dot.new)
+    @render_queue << Dot.new
   end
 
   def emit_lonely_operator
-    push_token(LonelyOperator.new)
+    @render_queue << LonelyOperator.new
   end
 
   def emit_ident(ident)
-    push_token(DirectPart.new(ident))
+    @render_queue << DirectPart.new(ident)
   end
 
   def emit_op(op)
-    push_token(Op.new(op))
+    @render_queue << Op.new(op)
   end
 
   def emit_int(int)
-    push_token(DirectPart.new(int))
+    @render_queue << DirectPart.new(int)
   end
 
   def emit_var_ref(ref)
-    push_token(DirectPart.new(ref))
+    @render_queue << DirectPart.new(ref)
   end
 
   def emit_open_paren
-    push_token(OpenParen.new)
+    @render_queue << OpenParen.new
   end
 
   def emit_close_paren
-    push_token(CloseParen.new)
+    @render_queue << CloseParen.new
   end
 
   def emit_open_square_bracket
-    push_token(OpenSquareBracket.new)
+    @render_queue << OpenSquareBracket.new
   end
 
   def emit_close_square_bracket
-    push_token(CloseSquareBracket.new)
+    @render_queue << CloseSquareBracket.new
   end
 
   def new_block(&blk)
@@ -335,34 +331,34 @@ class ParserState
   end
 
   def emit_open_block_arg_list
-    push_token(OpenArgPipe.new)
+    @render_queue << OpenArgPipe.new
   end
 
   def emit_close_block_arg_list
-    push_token(CloseArgPipe.new)
+    @render_queue << CloseArgPipe.new
   end
 
   def emit_double_quote
-    push_token(DoubleQuote.new)
+    @render_queue << DoubleQuote.new
   end
 
   def emit_const(const)
-    push_token(DirectPart.new(const))
+    @render_queue << DirectPart.new(const)
   end
 
   def emit_double_colon
-    push_token(Op.new("::"))
+    @render_queue << Op.new("::")
   end
 
   def emit_symbol(symbol)
-    push_token(DirectPart.new(":#{symbol}"))
+    @render_queue << DirectPart.new(":#{symbol}")
   end
 
   def render_heredocs(skip=false)
     while !heredoc_strings.empty?
       symbol, indent, string = heredoc_strings.pop
       unless render_queue[-1] && HardNewLine === render_queue[-1]
-        push_token(HardNewLine.new)
+        @render_queue << HardNewLine.new
       end
 
       if string.end_with?("\n")
@@ -373,7 +369,7 @@ class ParserState
         string = string[0...-1]
       end
 
-      push_token(DirectPart.new(string))
+      @render_queue << DirectPart.new(string)
       emit_newline
       if indent
         emit_indent
