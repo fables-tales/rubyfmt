@@ -21,10 +21,20 @@ hook and run really fast.
 
 I suggest:
 
-* Download `src/rubyfmt.rb` to `~/bin`
+* Download `src/rubyfmt.rb` to `~/bin` as `rubyfmt`
 * Add `~/bin` to your PATH (e.g. `echo "$HOME/bin:$PATH" >> ~/.bash_profile`)
-* Set your editor to run `rubyfmt file_name > file_name` on save.
+* Set your editor to run the following on save.
 
+```
+rubyfmt path/to/ruby/file.rb > path/to/ruby/file.rb.tmp
+mv path/to/ruby/file.rb.tmp path/to/ruby/file.rb
+```
+
+To run over an entire project run the following from the project root:
+
+```
+find ./ -type f -name "*.rb" -exec sh -c 'rubyfmt $1 > "$1.tmp"' _ {} \; -exec sh -c 'mv "$1.tmp" $1' _ {} \;
+```
 
 ## Contributing
 
