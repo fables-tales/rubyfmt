@@ -67,6 +67,17 @@ class HardNewLine
   end
 end
 
+class SoftNewLine
+  include TokenBase
+  def to_s
+    "\n"
+  end
+
+  def is_a_newline?
+    true
+  end
+end
+
 class DirectPart
   include TokenBase
   def initialize(part)

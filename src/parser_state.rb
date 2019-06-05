@@ -1,3 +1,15 @@
+class BreakableState
+  attr_reader :indentation_depth
+
+  def initialize(indentation_depth)
+    @indentation_depth = indentation_depth
+  end
+
+  def to_s
+    ""
+  end
+end
+
 class ParserState
   attr_accessor :depth_stack, :start_of_line, :line, :string_concat_position, :surpress_one_paren
   attr_reader :heredoc_strings
@@ -19,6 +31,7 @@ class ParserState
     @heredoc_strings = []
     @string_concat_position = []
     @comments_to_insert = CommentBlock.new
+    @breakable_state_stack = []
   end
 
   def self.with_depth_stack(output, from:)
@@ -39,8 +52,26 @@ class ParserState
     @comments_to_insert.merge(cc)
   end
 
-  def breakable_entry(&blk)
+  def breakable_of(start_delim, end_delim, &blk)
+    emit_ident(start_delim)
+    @breakable_state_stack << BreakableState.new(@depth_stack.last)
+    # we insert breakable state markers in to the render queue indicating
+    # to the formatter where it can consider breaking constructs
+    @render_queue << @breakable_state_stack.last
+    emit_newwline
     blk.call
+    emit_indent
+    @render_queue << @breakable_state_stack.pop
+    emit_ident(end_delim)
+  end
+
+  def breakable_entry(&blk)
+    render_queue = @render_queue
+    be = BreakableEntry.new
+    @render_queue = be
+    blk.call
+    @render_queue = render_queue
+    @render_queue << be
   end
 
   def with_surpress_comments(value, &blk)
@@ -263,7 +294,7 @@ class ParserState
     @render_queue << Space.new
   end
 
-  def emit_newline
+  def shift_comments
     idx_of_prev_hard_newline = @render_queue.rindex_by { |x| x.is_a_newline? }
     if !@comments_to_insert.empty?
       if idx_of_prev_hard_newline
@@ -273,9 +304,18 @@ class ParserState
       end
       @comments_to_insert = CommentBlock.new
     end
+  end
 
+  def emit_newline
+    shift_comments
     @render_queue << HardNewLine.new
     render_heredocs
+  end
+
+  def emit_soft_newline
+    return emit_newline if have_heredocs
+    shift_comments
+    @render_queue << SoftNewLine.new
   end
 
   def emit_dot
@@ -354,8 +394,12 @@ class ParserState
     @render_queue << DirectPart.new(":#{symbol}")
   end
 
+  def have_heredocs?
+    !heredoc_strings.empty?
+  end
+
   def render_heredocs(skip=false)
-    while !heredoc_strings.empty?
+    while have_heredocs?
       symbol, indent, string = heredoc_strings.pop
       unless render_queue[-1] && render_queue[-1].is_a_newline?
         @render_queue << HardNewLine.new

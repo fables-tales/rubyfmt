@@ -1153,33 +1153,35 @@ end
 
 def format_assocs(ps, assocs, newlines=true)
   assocs.each_with_index do |assoc, idx|
-    ps.emit_indent if newlines
+    ps.breakable_entry do
+      ps.emit_indent if newlines
+      ps.with_start_of_line(false) do
+        if assoc[0] == :assoc_new
+          if assoc[1][0] == :@label
+            ps.emit_ident(assoc[1][1])
+            ps.emit_space
+          else
+            format_expression(ps, assoc[1])
+            ps.emit_space
+            ps.emit_ident("=>")
+            ps.emit_space
+          end
 
-    ps.with_start_of_line(false) do
-      if assoc[0] == :assoc_new
-        if assoc[1][0] == :@label
-          ps.emit_ident(assoc[1][1])
-          ps.emit_space
-        else
+          format_expression(ps, assoc[2])
+        elsif assoc[0] == :assoc_splat
+          ps.emit_ident("**")
           format_expression(ps, assoc[1])
-          ps.emit_space
-          ps.emit_ident("=>")
-          ps.emit_space
+        else
+          raise "got non assoc_new in hash literal #{assocs}"
         end
 
-        format_expression(ps, assoc[2])
-      elsif assoc[0] == :assoc_splat
-        ps.emit_ident("**")
-        format_expression(ps, assoc[1])
-      else
-        raise "got non assoc_new in hash literal #{assocs}"
-      end
-      if newlines
-        ps.emit_comma
-        ps.emit_newline
-      elsif idx != assocs.length - 1
-        ps.emit_comma
-        ps.emit_space
+        if newlines
+          ps.emit_comma
+          ps.emit_newline
+        elsif idx != assocs.length - 1
+          ps.emit_comma
+          ps.emit_space
+        end
       end
     end
   end
@@ -1191,13 +1193,11 @@ def format_hash(ps, expression)
     ps.emit_ident("{}")
   elsif expression[0][0] == :assoclist_from_args
     assocs = expression[0][1]
-    ps.emit_ident("{")
-    ps.emit_newline
-    ps.new_block do
-      format_assocs(ps, assocs)
+    ps.breakable_of("{", "}") do
+      ps.new_block do
+        format_assocs(ps, assocs)
+      end
     end
-    ps.emit_indent
-    ps.emit_ident("}")
   else
     raise "omg"
   end
