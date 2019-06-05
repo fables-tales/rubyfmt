@@ -1,457 +1,3 @@
-#!/usr/bin/env ruby
-require "ripper"
-require "stringio"
-require "pp"
-LineMetadata = Struct.new(:comment_blocks)
-
-class Line
-  attr_accessor :parts
-  def initialize(parts)
-    @comments = []
-    @parts = parts
-  end
-
-  def push_comment(comment)
-    @comments << comment
-  end
-
-  def has_comment?
-    !@comments.empty?
-  end
-
-  def <<(item)
-    @parts << item
-  end
-
-  def string_length
-    @parts.join("").length
-  end
-
-  def empty?
-    @parts.empty?
-  end
-
-  def to_s
-    build = @parts.join("")
-
-    unless @comments.empty?
-      build = "#{@comments.join("\n")}\n#{build}"
-    end
-
-    build
-  end
-
-  def strip_trailing_newlines
-    while @parts.last == "\n"
-      @parts.pop
-    end
-  end
-
-  def remove_redundant_indents
-    @parts.shift if @parts[0] == ""
-  end
-
-  def ends_with_newline?
-    @parts.last == "\n"
-  end
-
-  def is_only_a_newline?
-    @parts == ["\n"]
-  end
-
-  def contains_end?
-    @parts.any? { |x| x == :end }
-  end
-
-  def contains_def?
-    @parts.any? { |x| x == :def }
-  end
-
-  def contains_do?
-    @parts.any? { |x| x == :do }
-  end
-
-  def contains_if?
-    @parts.any? { |x| x == :if }
-  end
-
-  def contains_else?
-    @parts.any? { |x| x == :else }
-  end
-
-  def contains_unless?
-    @parts.any? { |x| x == :unless }
-  end
-
-  def declares_private?
-    @parts.any? { |x| x == "private" } && @parts.length == 3
-  end
-
-  def declares_require?
-    @parts.any? { |x| x == "require" } && @parts.none? { |x| x == "}" }
-  end
-
-  def declares_class_or_module?
-    @parts.any? { |x| x == :class || x == :module }
-  end
-
-  def contains_while?
-    @parts.any? { |x| x == :while }
-  end
-
-  def surpresses_blankline?
-    contains_def? || contains_do? || contains_while? || contains_if? || contains_else?
-  end
-end
-
-def want_blankline?(line, next_line)
-  return unless next_line
-  return true if line.contains_end? && !next_line.contains_end?
-  return true if next_line.contains_do? && !line.surpresses_blankline?
-  return true if (next_line.contains_if? || next_line.contains_unless?) && !line.surpresses_blankline?
-  return true if line.declares_private?
-  return true if line.declares_require? && !next_line.declares_require?
-  return true if !line.declares_class_or_module? && next_line.has_comment?
-  return true if !line.declares_class_or_module? && next_line.declares_class_or_module?
-end
-
-class ParserState
-  attr_accessor :depth_stack, :start_of_line, :line, :string_concat_position, :surpress_one_paren
-  attr_reader :heredoc_strings
-  attr_reader :result
-  attr_reader :current_orig_line_number
-  attr_accessor :render_queue
-  attr_reader :comments_hash
-  attr_reader :depth_stack
-  def initialize(result, line_metadata)
-    @surpress_comments_stack = [false]
-    @surpress_one_paren = false
-    @result = result
-    @depth_stack = [0]
-    @start_of_line = [true]
-    @render_queue = []
-    @line = Line.new([])
-    @current_orig_line_number = 0
-    @comments_hash = line_metadata.comment_blocks
-    @conditional_indent = [0]
-    @heredoc_strings = []
-    @string_concat_position = []
-  end
-
-  def self.with_depth_stack(output, from:)
-    i = new(output, LineMetadata.new({}))
-    i.depth_stack = from.depth_stack.dup
-    i
-  end
-
-  def with_surpress_comments(value, &blk)
-    @surpress_comments_stack << value
-    blk.call
-    @surpress_comments_stack.pop
-  end
-
-  def push_heredoc_content(symbol, indent, inner_string_components)
-    buf = StringIO.new
-    next_ps = ParserState.new(buf, LineMetadata.new({}))
-    next_ps.depth_stack = depth_stack.dup
-    format_inner_string(next_ps, inner_string_components, :heredoc)
-
-    next_ps.emit_newline
-    next_ps.write
-    buf.rewind
-
-    # buf gets an extra newline on the end, trim it
-    @heredoc_strings << [symbol, indent, buf.read[0...-1]]
-    next_ps.heredoc_strings.each do |s|
-      @heredoc_strings << s
-    end
-  end
-
-  def with_start_of_line(value, &blk)
-    start_of_line << value
-    blk.call
-    start_of_line.pop
-  end
-
-  def start_string_concat
-    push_conditional_indent(:string) if @string_concat_position.empty?
-    @string_concat_position << Object.new
-  end
-
-  def end_string_concat
-    @string_concat_position.pop
-    pop_conditional_indent if @string_concat_position.empty?
-  end
-
-  def on_line(line_number, skip=false)
-    if line_number != @current_orig_line_number
-      @arrays_on_line = -1
-    end
-
-    while !comments_hash.empty? && comments_hash.keys.sort.first < line_number
-      key = comments_hash.keys.sort.first
-      comment = comments_hash.delete(key)
-      @line.push_comment(comment) unless @surpress_comments_stack.last
-    end
-
-    @current_orig_line_number = line_number
-  end
-
-  def write
-    on_line(100000000000000)
-    clear_empty_trailing_lines
-
-    lines = render_queue
-    clear_double_spaces(lines)
-    add_valid_blanklines(lines)
-
-    lines.each do |line|
-      line.remove_redundant_indents
-    end
-
-    ensure_file_ends_with_exactly_one_newline(lines)
-
-    result.write("\n")
-    result.flush
-  end
-
-  def emit_while
-    line << :while
-  end
-
-  def emit_for
-    line << :for
-  end
-
-  def emit_in
-    line << :in
-  end
-
-  def emit_indent
-    spaces = (@conditional_indent.last) + (2 * @depth_stack.last)
-    line << " " * spaces
-  end
-
-  def emit_slash
-    line << "\\"
-  end
-
-  def emit_else
-    line << :else
-  end
-
-  def emit_elsif
-    line << "elsif"
-  end
-
-  def push_conditional_indent(type)
-    if line.empty?
-      @conditional_indent << 2*@depth_stack.last
-    else
-      if type == :conditional
-        @conditional_indent << 2*@depth_stack.last
-      elsif type == :string
-        @conditional_indent << line.string_length
-      end
-    end
-
-    @depth_stack << 0
-  end
-
-  def pop_conditional_indent
-    @conditional_indent.pop
-    @depth_stack.pop
-  end
-
-  def emit_comma_space
-    line << ", "
-  end
-
-  def emit_return
-    line << :return
-  end
-
-
-  def ensure_file_ends_with_exactly_one_newline(lines)
-    lines.each_with_index do |line, i|
-      if i == lines.length-1
-        line.strip_trailing_newlines
-      end
-
-      result.write(line)
-    end
-  end
-
-  def add_valid_blanklines(lines)
-    line = lines.first
-    next_index = 1
-    while next_index < lines.length
-      if want_blankline?(line, lines[next_index])
-        lines.insert(next_index, Line.new(["\n"]))
-        next_index += 1
-      end
-
-      line = lines[next_index]
-      next_index += 1
-    end
-  end
-
-  def clear_double_spaces(lines)
-    line = lines.first
-    next_index = 1
-    while next_index < lines.length
-      while line.ends_with_newline? && lines[next_index] && lines[next_index].is_only_a_newline?
-        lines.delete_at(next_index)
-      end
-
-      line = lines[next_index]
-      next_index += 1
-    end
-  end
-
-  def clear_empty_trailing_lines
-    while render_queue.last == []
-      render_queue.pop
-    end
-
-    while render_queue.last == ["\n"]
-      render_queue.pop
-    end
-  end
-
-  def emit_def(def_name)
-    line << :def
-    line << " #{def_name}"
-  end
-
-  def emit_params_list(params_list)
-  end
-
-  def emit_binary(symbol)
-    line << " #{symbol} "
-  end
-
-  def emit_end
-    emit_newline
-    emit_indent if start_of_line.last
-    line << :end
-  end
-
-  def emit_space
-    line << " "
-  end
-
-  def emit_do
-    line << :do
-  end
-
-  def emit_newline
-    line << "\n"
-    render_queue << line
-    self.line = Line.new([])
-    render_heredocs
-  end
-
-  def emit_dot
-    line << "."
-  end
-
-  def emit_lonely_operator
-    line << "&."
-  end
-
-  def emit_ident(ident)
-    line << ident
-  end
-
-  def emit_op(op)
-    line << op
-  end
-
-  def emit_int(int)
-    line << int
-  end
-
-  def emit_var_ref(ref)
-    line << ref
-  end
-
-  def emit_open_paren
-    line << "("
-  end
-
-  def emit_close_paren
-    line << ")"
-  end
-
-  def new_block(&blk)
-    depth_stack[-1] += 1
-    with_start_of_line(true, &blk)
-    depth_stack[-1] -= 1
-  end
-
-  def dedent(&blk)
-    depth_stack[-1] -= 1
-    with_start_of_line(true, &blk)
-    depth_stack[-1] += 1
-  end
-
-  def emit_open_block_arg_list
-    line << "|"
-  end
-
-  def emit_close_block_arg_list
-    line << "|"
-  end
-
-  def emit_double_quote
-    line << "\""
-  end
-
-  def emit_module_keyword
-    line << :module
-  end
-
-  def emit_class_keyword
-    line << :class
-  end
-
-  def emit_const(const)
-    line << const
-  end
-
-  def emit_double_colon
-    line << "::"
-  end
-
-  def emit_symbol(symbol)
-    line << ":#{symbol}"
-  end
-
-  def render_heredocs(skip=false)
-    while !heredoc_strings.empty?
-      symbol, indent, string = heredoc_strings.pop
-      unless render_queue[-1] && render_queue[-1].ends_with_newline?
-        line << "\n"
-      end
-
-      if string.end_with?("\n")
-        string = string[0...-1]
-      end
-
-      line << string
-      emit_newline
-      if indent
-        emit_indent
-      end
-      emit_ident(symbol.to_s.gsub("'", ""))
-      if !skip
-        emit_newline
-      end
-    end
-  end
-end
-
 def format_block_params_list(ps, params_list)
   ps.emit_open_block_arg_list
   ps.emit_params_list(params_list)
@@ -504,7 +50,6 @@ def format_def(ps, rest)
 
   ps.emit_end
   ps.emit_newline
-  ps.emit_newline
 end
 
 def format_required_params(ps, required_params)
@@ -528,7 +73,7 @@ def format_optional_params(ps, optional_params)
       ps.emit_ident(" = ")
       format_expression(ps, right)
       if i != optional_params.length - 1
-        ps.emit_ident(", ")
+        ps.emit_comma_space
       end
     end
   end
@@ -549,7 +94,7 @@ def format_kwargs(ps, kwargs)
       format_expression(ps, false_or_expr) if false_or_expr
     end
 
-    ps.emit_ident(", ") if index != kwargs.length-1
+    ps.emit_comma_space if index != kwargs.length-1
   end
 end
 
@@ -648,7 +193,7 @@ def format_params(ps, params, open_delim, close_delim)
     callable.call(ps, values)
     did_emit = !values.empty?
     have_more = emission_order[idx+1..-1].map { |x| x[0] != 0 && !x[0].empty? && x[0] != [:excessed_comma] }.any?
-    ps.emit_ident(", ") if did_emit && have_more && idx != emission_order.length - 1
+    ps.emit_comma_space if did_emit && have_more && idx != emission_order.length - 1
   end
 
   if f_params && !f_params.empty?
@@ -840,6 +385,8 @@ def format_heredoc_string_literal(ps, rest)
     components = inner_string_components
     ps.push_heredoc_content(heredoc_symbol, heredoc_type.include?("~"), components)
   end
+
+  ps.emit_newline if ps.start_of_line.last
 end
 
 def format_string_literal(ps, rest)
@@ -920,6 +467,7 @@ def format_class(ps, rest)
     format_expression(ps, class_name)
   end
 
+
   if rest[1] != nil
     ps.emit_ident(" < ")
     ps.with_start_of_line(false) do
@@ -928,7 +476,7 @@ def format_class(ps, rest)
   end
 
   ps.emit_newline
-
+  ps.on_line(ps.current_orig_line_number+1)
   ps.new_block do
     exprs = rest[2][1]
     exprs.each do |expr|
@@ -938,6 +486,10 @@ def format_class(ps, rest)
 
   ps.emit_end
   ps.emit_newline if ps.start_of_line.last
+end
+
+def have_empty_exprs?(exprs)
+  (exprs.empty? || exprs.first.nil? || (exprs[0] == [:void_stmt] && exprs.length == 1))
 end
 
 def format_const_path_ref(ps, rest)
@@ -1014,24 +566,26 @@ end
 def format_list_like_thing_items(ps, args_list, single_line)
   return false if args_list.nil?
   emitted_args = false
-  args_list[0].each_with_index do |expr, idx|
-    raise "this is bad" if expr[0] == :tstring_content
-    if single_line
-      format_expression(ps, expr)
-
-      ps.emit_comma_space unless idx == args_list[0].count-1
-    else
-      ps.emit_indent
-      ps.with_start_of_line(false) do
+  ps.breakable_entry do
+    args_list[0].each_with_index do |expr, idx|
+      raise "this is bad" if expr[0] == :tstring_content
+      if single_line
         format_expression(ps, expr)
 
-        ps.emit_ident(",")
-        ps.emit_newline
-      end
-    end
+        ps.emit_comma_space unless idx == args_list[0].count-1
+      else
+        ps.emit_indent
+        ps.with_start_of_line(false) do
+          format_expression(ps, expr)
 
-    emitted_args = true
+          ps.emit_comma
+          ps.emit_newline
+        end
+      end
+      emitted_args = true
+    end
   end
+
 
   emitted_args
 end
@@ -1075,7 +629,7 @@ def format_list_like_thing(ps, args_list, single_line=true)
       # if we are not single line, we need to emit a comma newline, to be a
       # good citizen
       if !single_line
-        ps.emit_ident(",")
+        ps.emit_comma
         ps.emit_newline
       end
     end
@@ -1088,7 +642,7 @@ def emit_intermediate_array_separator(ps, single_line)
   if single_line
     ps.emit_comma_space
   else
-    ps.emit_ident(",")
+    ps.emit_comma
     ps.emit_newline
     ps.emit_indent
   end
@@ -1113,7 +667,7 @@ def format_args_add_block(ps, args_list)
     emitted_args = format_list_like_thing(ps, args_list)
 
     if args_list[1]
-      ps.emit_ident(", ") if emitted_args
+      ps.emit_comma_space if emitted_args
       ps.emit_ident("&")
       format_expression(ps, args_list[1])
     end
@@ -1138,7 +692,7 @@ end
 def format_defs(ps, rest)
   head, period, tail, params, body = rest
   ps.emit_indent if ps.start_of_line.last
-  ps.emit_ident("def")
+  ps.emit_def_keyword
   ps.emit_space
   ps.with_start_of_line(false) do
     format_expression(ps, head)
@@ -1167,7 +721,7 @@ def format_rescue(ps, rescue_part)
   _, rescue_class, rescue_capture, rescue_expressions, next_rescue = rescue_part
   ps.dedent do
     ps.emit_indent
-    ps.emit_ident("rescue")
+    ps.emit_rescue
     ps.with_start_of_line(false) do
       if !rescue_class.nil? || !rescue_capture.nil?
         ps.emit_space
@@ -1209,7 +763,7 @@ def format_ensure(ps, ensure_part)
   _, ensure_expressions = ensure_part
   ps.dedent do
     ps.emit_indent
-    ps.emit_ident("ensure")
+    ps.emit_ensure
   end
 
   if !ensure_expressions.nil?
@@ -1263,7 +817,6 @@ def format_bodystmt(ps, rest, inside_begin=false)
   format_rescue(ps, rescue_part)
   format_else(ps, else_part)
   format_ensure(ps, ensure_part)
-
 end
 
 def format_if_mod(ps, rest)
@@ -1320,8 +873,6 @@ def format_conditional_parts(ps, further_conditionals)
         format_expression(ps, expr)
       end
     end
-    ps.emit_newline
-
     format_conditional_parts(ps, further_conditionals)
   when nil
 
@@ -1343,7 +894,7 @@ def format_conditional(ps, expression, kind)
 
   ps.emit_indent if ps.start_of_line.last
   ps.with_start_of_line(false) do
-    ps.emit_ident(kind)
+    ps.emit_keyword(kind)
     ps.emit_space
     format_expression(ps, if_conditional)
   end
@@ -1356,7 +907,6 @@ def format_conditional(ps, expression, kind)
   end
 
   ps.with_start_of_line(true) do
-    ps.emit_newline
     format_conditional_parts(ps, further_conditionals || [])
 
     ps.emit_end
@@ -1395,19 +945,19 @@ end
 def format_array_fast_path(ps, rest)
   single_statement_or_empty = (rest[0] && rest[0].length == 1) || rest.first.nil?
   if single_statement_or_empty
-    ps.emit_ident("[")
+    ps.emit_open_square_bracket
     ps.with_start_of_line(false) do
       format_list_like_thing(ps, rest, true)
     end
-    ps.emit_ident("]")
+    ps.emit_close_square_bracket
   else
-    ps.emit_ident("[")
+    ps.emit_open_square_bracket
     ps.emit_newline
     ps.new_block do
       format_list_like_thing(ps, rest, false)
     end
     ps.emit_indent
-    ps.emit_ident("]")
+    ps.emit_close_square_bracket
   end
 end
 
@@ -1417,7 +967,7 @@ def format_array(ps, rest)
   if Parser.is_percent_array?(rest)
     ps.emit_ident(Parser.percent_symbol_for(rest))
 
-    ps.emit_ident("[")
+    ps.emit_open_square_bracket
     ps.with_start_of_line(false) do
       parts = rest[0][1]
 
@@ -1427,7 +977,7 @@ def format_array(ps, rest)
         ps.emit_space if index != parts.length - 1
       end
     end
-    ps.emit_ident("]")
+    ps.emit_close_square_bracket
   else
     format_array_fast_path(ps, rest)
   end
@@ -1496,7 +1046,6 @@ def format_paren(ps, rest)
         format_expression(ps, expr)
       end
     end
-    ps.emit_newline
   end
   ps.emit_ident(")")
   ps.emit_newline if ps.start_of_line.last
@@ -1512,7 +1061,7 @@ def format_begin(ps, expression)
   raise "begin body was not a bodystmt" if begin_body[0] != :bodystmt
 
   ps.emit_indent if ps.start_of_line.last
-  ps.emit_ident("begin")
+  ps.emit_begin
   ps.emit_newline
   ps.new_block do
     format_bodystmt(ps, begin_body[1..-1], inside_begin=true)
@@ -1537,7 +1086,7 @@ def format_brace_block(ps, expression)
     end
   end
 
-  multiline = next_ps.render_queue.length > 1
+  multiline = next_ps.render_queue.select { |x| HardNewLine === x}.length > 1
   orig_params = params
 
   bv, params, _ = params
@@ -1569,7 +1118,6 @@ def format_brace_block(ps, expression)
     ps.emit_space
   end
   ps.emit_ident("}")
-  ps.emit_newline if ps.start_of_line.last
 end
 
 def format_float(ps, expression)
@@ -1627,10 +1175,10 @@ def format_assocs(ps, assocs, newlines=true)
         raise "got non assoc_new in hash literal #{assocs}"
       end
       if newlines
-        ps.emit_ident(",")
+        ps.emit_comma
         ps.emit_newline
       elsif idx != assocs.length - 1
-        ps.emit_ident(",")
+        ps.emit_comma
         ps.emit_space
       end
     end
@@ -1663,10 +1211,10 @@ def format_aref_field(ps, expression)
   ps.emit_indent if ps.start_of_line.last
   ps.with_start_of_line(false) do
     format_expression(ps, expression)
-    ps.emit_ident("[")
+    ps.emit_open_square_bracket
     ps.surpress_one_paren = true
     format_expression(ps, sqb_args)
-    ps.emit_ident("]")
+    ps.emit_close_square_bracket
   end
 end
 
@@ -1676,10 +1224,10 @@ def format_aref(ps, expression)
   ps.emit_indent if ps.start_of_line.last
   ps.with_start_of_line(false) do
     format_expression(ps, expression)
-    ps.emit_ident("[")
+    ps.emit_open_square_bracket
     ps.surpress_one_paren = true
     format_inner_args_list(ps, sqb_args) if sqb_args
-    ps.emit_ident("]")
+    ps.emit_close_square_bracket
   end
   ps.emit_newline if ps.start_of_line.last
 end
@@ -1710,7 +1258,7 @@ end
 def format_return0(ps, rest)
   ps.emit_indent if ps.start_of_line.last
 
-  ps.emit_ident("return")
+  ps.emit_return
 
   ps.emit_newline if ps.start_of_line.last
 end
@@ -1729,7 +1277,7 @@ def format_massign(ps, expression)
 
     assigns.each_with_index do |assign, index|
       format_expression(ps, assign)
-      ps.emit_ident(", ") if index != assigns.length - 1
+      ps.emit_comma_space if index != assigns.length - 1
     end
 
     ps.emit_ident(" = ")
@@ -1878,7 +1426,8 @@ def format_case_parts(ps, case_parts)
   if type == :when
     _, conditional, body, case_parts = case_parts
     ps.emit_indent
-    ps.emit_ident("when ")
+    ps.emit_when
+    ps.emit_space
     ps.with_start_of_line(false) do
       format_list_like_thing(ps, [conditional], true)
     end
@@ -1911,7 +1460,7 @@ def format_case(ps, rest)
   case_expr, case_parts = rest
   ps.emit_indent if ps.start_of_line.last
 
-  ps.emit_ident("case")
+  ps.emit_case
   if !case_expr.nil?
     ps.with_start_of_line(false) do
       ps.emit_space
@@ -2086,11 +1635,11 @@ def format_while(ps, rest)
   end
   ps.emit_newline
   ps.new_block do
-    expressions.each do |expression|
+    expressions.each_with_index do |expression, idx|
       ps.with_start_of_line(true) do
         format_expression(ps, expression)
       end
-      ps.emit_newline
+      ps.emit_newline if idx != expressions.length - 1
     end
   end
   ps.emit_end
@@ -2132,7 +1681,7 @@ end
 def format_lambda(ps, rest)
   ps.emit_indent if ps.start_of_line.last
   params, type, body = rest
-  ps.emit_ident("->")
+  ps.emit_stabby_lambda
   if params[0] == :paren
     params = params[1]
   end
@@ -2161,7 +1710,6 @@ def format_lambda(ps, rest)
       if body[0] != :bodystmt
         body.each do |expr|
           format_expression(ps, expr)
-          ps.emit_newline
         end
       else
         format_bodystmt(ps, body.drop(1))
@@ -2180,7 +1728,9 @@ def format_rescue_mod(ps, expression)
   ps.emit_indent if ps.start_of_line.last
   ps.with_start_of_line(false) do
     format_expression(ps, expression)
-    ps.emit_ident(" rescue ")
+    ps.emit_space
+    ps.emit_rescue
+    ps.emit_space
     format_expression(ps, rescue_clause)
   end
   ps.emit_newline if ps.start_of_line.last
@@ -2600,164 +2150,3 @@ def format_program(line_metadata, sexp, result)
   ps.write
 end
 
-def extract_line_metadata(file_data)
-  comment_blocks = {}
-
-  file_data.split("\n").each_with_index do |line, index|
-    comment_blocks[index] = line if /^ *#/ === line
-  end
-
-  LineMetadata.new(comment_blocks)
-end
-
-class Parser < Ripper::SexpBuilderPP
-  ARRAY_SYMBOLS = {
-    qsymbols: '%i',
-    qwords: '%w',
-    symbols: '%I',
-    words: '%W'
-  }.freeze
-
-  def self.is_percent_array?(rest)
-    return false if rest.nil?
-    return false if rest[0].nil?
-    ARRAY_SYMBOLS.include?(rest[0][0])
-  end
-
-  def self.percent_symbol_for(rest)
-    ARRAY_SYMBOLS[rest[0][0]]
-  end
-
-  def initialize(file_data)
-    super(file_data)
-    @file_lines = file_data.split("\n")
-    # heredoc stack is the stack of identified heredocs
-    @heredoc_stack = []
-
-    # next_heredoc_stack is the type identifiers of the next heredocs, that
-    # we haven't emitted yet
-    @next_heredoc_stack = []
-    @heredoc_regex = /(<<[-~]?)(.*$)/
-    @next_comment_delete = []
-    @comments_delete = []
-    @regexp_stack = []
-    @string_stack = []
-  end
-
-  attr_reader :comments_delete
-
-  private
-
-  ARRAY_SYMBOLS.each do |event, symbol|
-    define_method(:"on_#{event}_new") do
-      [event, [], [lineno, column]]
-    end
-
-    define_method(:"on_#{event}_add") do |parts, part|
-      parts.tap do |node|
-        node[1] << part
-      end
-    end
-  end
-
-  def on_heredoc_beg(*args, &blk)
-    heredoc_parts = @heredoc_regex.match(args[0]).captures
-    raise "bad heredoc" unless heredoc_parts.select { |x| x != nil }.count == 2
-    @next_heredoc_stack.push(heredoc_parts)
-    @next_comment_delete.push(lineno)
-    super
-  end
-
-  def on_heredoc_end(*args, &blk)
-    @heredoc_stack.push(@next_heredoc_stack.pop)
-    start_com = @next_comment_delete.pop
-    end_com = lineno
-    @comments_delete.push([start_com, end_com])
-    super
-  end
-
-  def on_string_literal(*args, &blk)
-    if @heredoc_stack.last
-      heredoc_parts = @heredoc_stack.pop
-      args.insert(0, [:heredoc_string_literal, heredoc_parts])
-    else
-      end_delim = @string_stack.pop
-      start_delim = @string_stack.pop
-
-      if start_delim != "\""
-        reject_embexpr = start_delim == "'" || start_delim.start_with?("%q")
-
-        (args[0][1..-1] || []).each do |part|
-          next if part.nil?
-          case part[0]
-          when :@tstring_content
-            part[1] = eval("#{start_delim}#{part[1]}#{end_delim}").inspect[1..-2]
-          when :string_embexpr, :string_dvar
-            if reject_embexpr
-              raise "got #{part[0]} in a #{start_delim}...#{end_delim} string"
-            end
-          else
-            raise "got #{part[0]} in a #{start_delim}...#{end_delim} string"
-          end
-        end
-      end
-    end
-    super
-  end
-
-  def on_lambda(*args, &blk)
-    terminator = @file_lines[lineno-1]
-    if terminator.include?("}")
-      args.insert(1, :curly)
-    else
-      args.insert(1, :do)
-    end
-
-    super
-  end
-
-  def on_tstring_beg(*args, &blk)
-    @string_stack << args[0]
-    super
-  end
-
-  def on_tstring_end(*args, &blk)
-    @string_stack << args[0]
-    super
-  end
-
-  def on_regexp_beg(re_part)
-    @regexp_stack << re_part
-  end
-
-  def on_regexp_literal(*args)
-    args[1] << @regexp_stack.pop
-    super(*args)
-  end
-end
-
-def main
-  file_data = ARGF.read
-  file_data = file_data.gsub("\r\n", "\n")
-
-  line_metadata = extract_line_metadata(file_data)
-
-  parser = Parser.new(file_data)
-  sexp = parser.parse
-  if ENV["RUBYFMT_DEBUG"] == "2"
-    require 'pry'; binding.pry
-  end
-  if parser.error?
-    if ENV["RUBYFMT_DEBUG"] == "2"
-      require 'pry'; binding.pry
-    end
-    raise parser.error
-  end
-
-  parser.comments_delete.each do |(start, last)|
-    line_metadata.comment_blocks.reject! { |k, v| k >= start && k <= last }
-  end
-  format_program(line_metadata, sexp, $stdout)
-end
-
-main if __FILE__ == $0

@@ -1,7 +1,7 @@
 #!/bin/bash
 set -ex
 
-RUBYFMT=$(pwd)/src/rubyfmt.rb
+RUBYFMT=$(pwd)/build/rubyfmt.rb
 
 cd "$(mktemp -d)"
 mkdir -p tmp
