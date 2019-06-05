@@ -459,7 +459,6 @@ module RSpec::Core
       private
 
       def calculate_slowest_groups
-
         # stop if we've only one example group
         return {} if @example_groups.keys.length <= 1
 

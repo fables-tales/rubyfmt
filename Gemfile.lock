@@ -7,6 +7,7 @@ GEM
       coderay (~> 1.1.0)
       method_source (~> 0.9.0)
     rb-readline (0.5.5)
+    stackprof (0.2.12)
 
 PLATFORMS
   ruby
@@ -14,6 +15,7 @@ PLATFORMS
 DEPENDENCIES
   pry
   rb-readline
+  stackprof
 
 BUNDLED WITH
-   1.16.6
+   1.17.3
