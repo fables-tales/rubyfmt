@@ -2115,11 +2115,11 @@ EXPRESSION_HANDLERS = {
   :redo => method(:format_redo),
 
   # Normalized by rubyfmt, not from Ripper:
-  :dot => lambda { |ps, rest| format_dot(ps, rest) },
-  :method_call => lambda { |ps, rest| format_method_call(ps, rest) },
-  :splat => lambda { |ps, rest| format_splat(ps, rest) },
-  :to_proc => lambda { |ps, rest| format_to_proc(ps, rest) },
-  :keyword => lambda { |ps, rest| format_keyword(ps, rest) },
+  :dot => method(:format_dot),
+  :method_call =>  method(:format_method_call),
+  :splat => method(:format_splat),
+  :to_proc => method(:format_to_proc),
+  :keyword => method(:format_keyword),
 }.freeze
 
 def format_expression(ps, expression)
