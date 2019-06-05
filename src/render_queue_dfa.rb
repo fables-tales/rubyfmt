@@ -7,7 +7,7 @@ class Intermediary
 
   def <<(x)
     @content << x
-    if HardNewLine === x
+    if x.is_a_newline?
       @lines << TokenCollection.new(@build) unless @build.empty?
       @build = []
     else
@@ -16,11 +16,11 @@ class Intermediary
   end
 
   def insert_newline_before_last
-    @content.insert(@content.rindex_by { |x| HardNewLine === x } - 1, HardNewLine.new)
+    @content.insert(@content.rindex_by { |x| x.is_a_newline? } - 1, HardNewLine.new)
   end
 
   def delete_last_newline
-    @content.delete_at(@content.rindex_by { |x| HardNewLine === x } - 1)
+    @content.delete_at(@content.rindex_by { |x| x.is_a_newline? } - 1)
   end
 
   def prev_line
@@ -103,11 +103,11 @@ class RenderQueueDFA
         #  which generates triple blanklines, so hence the while loop
         while is_end_with_blankline?(pluck_chars(3) + [char])
           c = @render_queue_out.delete_last_newline
-          raise "omg" if !(HardNewLine === c)
+          raise "omg" if !c.is_a_newline?
         end
       when is_comment_with_double_newline?(pc + [char])
         c = @render_queue_out.delete_last_newline
-        raise "omg" if !(HardNewLine === c)
+        raise "omg" if !c.is_a_newline?
       when is_non_requirish_and_previous_line_is_requirish(char)
         push_additional_newline
       when comment_wants_leading_newline?(char)
@@ -187,7 +187,7 @@ class RenderQueueDFA
   end
 
   def is_non_requirish_and_previous_line_is_requirish(char)
-    return false unless HardNewLine === char
+    return false unless char.is_a_newline?
     return false unless (prev_line && current_line)
     prev_line.any?(&:is_requirish?) && !(current_line.any?(&:is_requirish?))
   end

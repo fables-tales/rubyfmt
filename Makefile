@@ -1,7 +1,7 @@
 .PHONY: docker-test
 SRCS=src/requires.rb src/line_metadata.rb src/line_tokens.rb src/token_collection.rb src/breakable_entry.rb src/parser_state.rb src/parser.rb src/render_queue_dfa.rb src/format.rb src/main.rb
 
-all: build/rubyfmt.rb docker-test
+all: build/rubyfmt.rb
 
 build/rubyfmt.rb: $(SRCS)
 	cat $(SRCS) > $@

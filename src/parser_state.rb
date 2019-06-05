@@ -28,7 +28,7 @@ class ParserState
   end
 
   def render_queue_as_lines
-    render_queue.flatten.split { |x| HardNewLine === x }.map { |x| TokenCollection.new(x) }
+    render_queue.flatten.split { |x| x.is_a_newline? }.map { |x| TokenCollection.new(x) }
   end
 
   def tokens_from_previous_line
@@ -168,7 +168,7 @@ class ParserState
       render_queue.pop
     end
 
-    while HardNewLine === render_queue.last
+    while render_queue.last.is_a_newline?
       render_queue.pop
     end
   end
@@ -264,7 +264,7 @@ class ParserState
   end
 
   def emit_newline
-    idx_of_prev_hard_newline = @render_queue.rindex_by { |x| HardNewLine === x }
+    idx_of_prev_hard_newline = @render_queue.rindex_by { |x| x.is_a_newline? }
     if !@comments_to_insert.empty?
       if idx_of_prev_hard_newline
         @render_queue.insert(idx_of_prev_hard_newline, @comments_to_insert.to_token_collection)
@@ -357,7 +357,7 @@ class ParserState
   def render_heredocs(skip=false)
     while !heredoc_strings.empty?
       symbol, indent, string = heredoc_strings.pop
-      unless render_queue[-1] && HardNewLine === render_queue[-1]
+      unless render_queue[-1] && render_queue[-1].is_a_newline?
         @render_queue << HardNewLine.new
       end
 

@@ -1086,7 +1086,7 @@ def format_brace_block(ps, expression)
     end
   end
 
-  multiline = next_ps.render_queue.select { |x| HardNewLine === x}.length > 1
+  multiline = next_ps.render_queue.select { |x| x.is_a_newline? }.length > 1
   orig_params = params
 
   bv, params, _ = params
