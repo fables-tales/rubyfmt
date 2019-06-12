@@ -1,4 +1,12 @@
 module TokenBase
+  def as_single_line
+    self
+  end
+
+  def as_multi_line
+    self
+  end
+
   def is_a_newline?
     false
   end
@@ -60,6 +68,21 @@ class HardNewLine
   include TokenBase
   def to_s
     "\n"
+  end
+
+  def is_a_newline?
+    true
+  end
+end
+
+class SoftNewLine
+  include TokenBase
+  def to_s
+    "\n"
+  end
+
+  def as_single_line
+    Space.new
   end
 
   def is_a_newline?
@@ -234,6 +257,25 @@ class Indent
 
   def to_s
     " " * @spaces
+  end
+
+  def is_indent?
+    true
+  end
+end
+
+class SoftIndent
+  include TokenBase
+  def initialize(spaces)
+    @spaces = spaces
+  end
+
+  def to_s
+    " " * @spaces
+  end
+
+  def as_single_line
+    DirectPart.new("")
   end
 
   def is_indent?
