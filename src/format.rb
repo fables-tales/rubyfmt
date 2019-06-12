@@ -140,11 +140,24 @@ end
 def format_params(ps, params, open_delim, close_delim)
   return if params.nil?
   f_params = []
+  # this deals with params lists like:
+  #
+  # def foo(a,b,c)
+  # do |c,e,d|
+  # in that the first is wrapped with :paren and the second is wrapped with
+  # block_var
   if params[0] == :paren || params[0] == :block_var
+    # this implements support for block local variables. That's where you
+    # have syntax in a block like:
+    # do |a;x,y,z|
+    # x, y, and z are local variables in the called block that are hermetic
+    # and cannot write variables in the closure outside
     if params[0] == :block_var && params[-1] != nil
       f_params = params[-1]
     end
 
+    # in both these cases, the params list is more complicated than just being
+    # a params list, but the thing we actually want is in the 1th position
     params = params[1]
   end
 
@@ -154,11 +167,31 @@ def format_params(ps, params, open_delim, close_delim)
     ps.emit_ident(open_delim)
   end
 
+  # this is the "bad params" detector, we've not yet experienced non nil
+  # positions in 5 and 7 despite having thrown a lot of stuff at rubyfmt
+  # so I'm not really sure what these do
   bad_params = params[7..-1].any? { |x| !x.nil? }
   bad_params = false if params[5]
   bad_params = false if params[7]
 
   raise "dont know how to deal with a params list" if bad_params
+
+  # def foo(a, b=nil, *args, d, e:, **kwargs, &blk)
+  #         ^  ^___^  ^___^  ^  ^    ^_____^   ^
+  #         |    |      |    |  |      |       |
+  #         |    |      |    |  |      |    block_arg
+  #         |    |      |    |  |      |
+  #         |    |      |    |  |  kwrest_params
+  #         |    |      |    |  |
+  #         |    |      |    | kwargs
+  #         |    |      |    |
+  #         |    |      | more_required_params
+  #         |    |      |
+  #         |    |  rest_params
+  #         |    |
+  #         | optional params
+  #         |
+  #     required params
   required_params = params[1] || []
   optional_params = params[2] || []
   rest_params = params[3] || []
