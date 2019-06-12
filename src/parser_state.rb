@@ -60,7 +60,9 @@ class ParserState
     # to the formatter where it can consider breaking constructs
     @render_queue << @breakable_state_stack.last
     emit_soft_newline
-    blk.call
+    new_block do
+      blk.call
+    end
     emit_soft_indent
     @render_queue << @breakable_state_stack.pop
     emit_ident(end_delim)

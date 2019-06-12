@@ -57,10 +57,10 @@ def format_required_params(ps, required_params)
 
   ps.with_start_of_line(false) do
     required_params.each_with_index do |expr, index|
+      ps.emit_soft_indent
       format_expression(ps, expr)
-      if index != required_params.length - 1
-        ps.emit_comma_space
-      end
+      ps.emit_comma
+      ps.emit_soft_newline
     end
   end
 end
@@ -68,13 +68,14 @@ end
 def format_optional_params(ps, optional_params)
   ps.with_start_of_line(false) do
     optional_params.each_with_index do |param, i|
+      ps.emit_soft_indent
       left,right = param
       format_expression(ps, left)
       ps.emit_ident(" = ")
       format_expression(ps, right)
-      if i != optional_params.length - 1
-        ps.emit_comma_space
-      end
+
+      ps.emit_comma
+      ps.emit_soft_newline
     end
   end
 end
@@ -85,6 +86,7 @@ def format_kwargs(ps, kwargs)
   kwargs.each_with_index do |kwarg, index|
     label, false_or_expr = kwarg
     raise "got non label in kwarg" if label[0] != :@label
+    ps.emit_soft_indent
 
     ps.emit_ident(label[1])
     ps.with_start_of_line(false) do
@@ -94,47 +96,60 @@ def format_kwargs(ps, kwargs)
       format_expression(ps, false_or_expr) if false_or_expr
     end
 
-    ps.emit_comma_space if index != kwargs.length-1
+    ps.emit_comma
+    ps.emit_soft_newline
   end
 end
 
 def format_rest_params(ps, rest_params)
   return if rest_params == 0 || rest_params.empty? || rest_params == [:excessed_comma]
+  ps.emit_soft_indent
   ps.emit_ident("*")
-  return if rest_params[1].nil?
+  if !rest_params[1].nil?
 
-  rest_param, expr = rest_params
-  raise "got bad rest_params" if rest_param != :rest_param
+    rest_param, expr = rest_params
+    raise "got bad rest_params" if rest_param != :rest_param
 
-  ps.with_start_of_line(false) do
-    format_expression(ps, expr)
+    ps.with_start_of_line(false) do
+      format_expression(ps, expr)
+    end
   end
+  ps.emit_comma
+  ps.emit_soft_newline
 end
 
 def format_kwrest_params(ps, kwrest_params)
   return if kwrest_params.empty?
 
+  ps.emit_soft_indent
   ps.emit_ident("**")
-  return if kwrest_params[1].nil?
+  if !kwrest_params[1].nil?
 
-  if kwrest_params[0] == :kwrest_param
-    _, expr = kwrest_params
-  else
-    expr = kwrest_params
-  end
+    if kwrest_params[0] == :kwrest_param
+      _, expr = kwrest_params
+    else
+      expr = kwrest_params
+    end
 
-  ps.with_start_of_line(false) do
-    format_expression(ps, expr)
+    ps.with_start_of_line(false) do
+      format_expression(ps, expr)
+    end
   end
+  ps.emit_comma
+  ps.emit_soft_newline
 end
 
 def format_blockarg(ps, blockarg)
   return if blockarg.empty?
   _, expr = blockarg
+  ps.emit_soft_indent
   ps.with_start_of_line(false) do
     ps.emit_ident("&")
     format_expression(ps, expr)
   end
+
+  ps.emit_comma
+  ps.emit_soft_newline
 end
 
 def format_params(ps, params, open_delim, close_delim)
@@ -164,80 +179,77 @@ def format_params(ps, params, open_delim, close_delim)
   have_any_params = params[1..-1].any? { |x| !x.nil? } || !f_params.empty?
   return unless have_any_params
 
-  ps.emit_ident(open_delim)
+  ps.breakable_of(open_delim, close_delim) do
+    # this is the "bad params" detector, we've not yet experienced non nil
+    # positions in 5 and 7 despite having thrown a lot of stuff at rubyfmt
+    # so I'm not really sure what these do
+    bad_params = params[7..-1].any? { |x| !x.nil? }
+    bad_params = false if params[5]
+    bad_params = false if params[7]
 
-  # this is the "bad params" detector, we've not yet experienced non nil
-  # positions in 5 and 7 despite having thrown a lot of stuff at rubyfmt
-  # so I'm not really sure what these do
-  bad_params = params[7..-1].any? { |x| !x.nil? }
-  bad_params = false if params[5]
-  bad_params = false if params[7]
+    raise "dont know how to deal with a params list" if bad_params
 
-  raise "dont know how to deal with a params list" if bad_params
+    # def foo(a, b=nil, *args, d, e:, **kwargs, &blk)
+    #         ^  ^___^  ^___^  ^  ^    ^_____^   ^
+    #         |    |      |    |  |      |       |
+    #         |    |      |    |  |      |    block_arg
+    #         |    |      |    |  |      |
+    #         |    |      |    |  |  kwrest_params
+    #         |    |      |    |  |
+    #         |    |      |    | kwargs
+    #         |    |      |    |
+    #         |    |      | more_required_params
+    #         |    |      |
+    #         |    |  rest_params
+    #         |    |
+    #         | optional params
+    #         |
+    #     required params
+    required_params = params[1] || []
+    optional_params = params[2] || []
+    rest_params = params[3] || []
+    more_required_params = params[4] || []
+    kwargs = params[5] || []
 
-  # def foo(a, b=nil, *args, d, e:, **kwargs, &blk)
-  #         ^  ^___^  ^___^  ^  ^    ^_____^   ^
-  #         |    |      |    |  |      |       |
-  #         |    |      |    |  |      |    block_arg
-  #         |    |      |    |  |      |
-  #         |    |      |    |  |  kwrest_params
-  #         |    |      |    |  |
-  #         |    |      |    | kwargs
-  #         |    |      |    |
-  #         |    |      | more_required_params
-  #         |    |      |
-  #         |    |  rest_params
-  #         |    |
-  #         | optional params
-  #         |
-  #     required params
-  required_params = params[1] || []
-  optional_params = params[2] || []
-  rest_params = params[3] || []
-  more_required_params = params[4] || []
-  kwargs = params[5] || []
-
-  kwrest_params = params[6] || []
-  # on ruby 2.3 this position contains literally the integer 183 if a `**` is
-  # given in the splatted kwargs position. Why, I have no idea.
-  if kwrest_params == 183
-    kwrest_params = [""]
-  end
-
-  block_arg = params[7] || []
-
-  emission_order = [
-    [required_params, method(:format_required_params)],
-    [optional_params, method(:format_optional_params)],
-    [rest_params, method(:format_rest_params)],
-    [more_required_params, method(:format_required_params)],
-    [kwargs, method(:format_kwargs)],
-    [kwrest_params, method(:format_kwrest_params)],
-    [block_arg, method(:format_blockarg)],
-  ]
-
-  did_emit = false
-  have_more = false
-  emission_order.each_with_index do |(values, callable), idx|
-    if values == 0
-      values = []
+    kwrest_params = params[6] || []
+    # on ruby 2.3 this position contains literally the integer 183 if a `**` is
+    # given in the splatted kwargs position. Why, I have no idea.
+    if kwrest_params == 183
+      kwrest_params = [""]
     end
-    callable.call(ps, values)
-    did_emit = !values.empty?
-    have_more = emission_order[idx+1..-1].map { |x|
-      # we don't actually have a test case for [:excessed_comma] lmao, but
-      # it's definitely in parse.y
-      x[0] != 0 && !x[0].empty? && x[0] != [:excessed_comma]
-    }.any?
-    ps.emit_comma_space if did_emit && have_more && idx != emission_order.length - 1
-  end
 
-  if f_params && !f_params.empty?
-    ps.emit_ident(" ;")
-    format_list_like_thing_items(ps, [f_params], true)
-  end
+    block_arg = params[7] || []
 
-  ps.emit_ident(close_delim)
+    emission_order = [
+      [required_params, method(:format_required_params)],
+      [optional_params, method(:format_optional_params)],
+      [rest_params, method(:format_rest_params)],
+      [more_required_params, method(:format_required_params)],
+      [kwargs, method(:format_kwargs)],
+      [kwrest_params, method(:format_kwrest_params)],
+      [block_arg, method(:format_blockarg)],
+    ]
+
+    did_emit = false
+    have_more = false
+    emission_order.each_with_index do |(values, callable), idx|
+      if values == 0
+        values = []
+      end
+      callable.call(ps, values)
+      did_emit = !values.empty?
+      have_more = emission_order[idx+1..-1].map { |x|
+        # we don't actually have a test case for [:excessed_comma] lmao, but
+        # it's definitely in parse.y
+        x[0] != 0 && !x[0].empty? && x[0] != [:excessed_comma]
+      }.any?
+    end
+
+    if f_params && !f_params.empty?
+      ps.emit_ident(" ;")
+      format_list_like_thing_items(ps, [f_params], true)
+    end
+  end
 end
 
 def format_void_expression(ps, rest)
@@ -1228,9 +1240,7 @@ def format_hash(ps, expression)
   elsif expression[0][0] == :assoclist_from_args
     assocs = expression[0][1]
     ps.breakable_of("{", "}") do
-      ps.new_block do
-        format_assocs(ps, assocs)
-      end
+      format_assocs(ps, assocs)
     end
   else
     raise "omg"
