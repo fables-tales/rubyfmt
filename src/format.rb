@@ -1151,7 +1151,7 @@ def format_ifop(ps, expression)
   ps.emit_newline if ps.start_of_line.last
 end
 
-def format_assocs(ps, assocs)
+def format_assocs(ps, assocs, newlines=true)
   assocs.each_with_index do |assoc, idx|
     ps.breakable_entry do
       ps.emit_soft_indent
@@ -1175,8 +1175,13 @@ def format_assocs(ps, assocs)
           raise "got non assoc_new in hash literal #{assocs}"
         end
 
-        ps.emit_comma
-        ps.emit_soft_newline
+        if newlines
+          ps.emit_comma
+          ps.emit_soft_newline
+        elsif idx != assocs.length - 1
+          ps.emit_comma
+          ps.emit_space
+        end
       end
     end
   end
@@ -1235,9 +1240,7 @@ def format_bare_assoc_hash(ps, expression)
       format_expression(ps, assoc_expr)
     end
   else
-    ps.breakable_of("", "") do
-      format_assocs(ps, expression[0])
-    end
+    format_assocs(ps, expression[0], newlines = false)
   end
 end
 
