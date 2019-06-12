@@ -162,10 +162,9 @@ def format_params(ps, params, open_delim, close_delim)
   end
 
   have_any_params = params[1..-1].any? { |x| !x.nil? } || !f_params.empty?
+  return unless have_any_params
 
-  if have_any_params
-    ps.emit_ident(open_delim)
-  end
+  ps.emit_ident(open_delim)
 
   # this is the "bad params" detector, we've not yet experienced non nil
   # positions in 5 and 7 despite having thrown a lot of stuff at rubyfmt
@@ -225,7 +224,11 @@ def format_params(ps, params, open_delim, close_delim)
     end
     callable.call(ps, values)
     did_emit = !values.empty?
-    have_more = emission_order[idx+1..-1].map { |x| x[0] != 0 && !x[0].empty? && x[0] != [:excessed_comma] }.any?
+    have_more = emission_order[idx+1..-1].map { |x|
+      # we don't actually have a test case for [:excessed_comma] lmao, but
+      # it's definitely in parse.y
+      x[0] != 0 && !x[0].empty? && x[0] != [:excessed_comma]
+    }.any?
     ps.emit_comma_space if did_emit && have_more && idx != emission_order.length - 1
   end
 
@@ -234,9 +237,7 @@ def format_params(ps, params, open_delim, close_delim)
     format_list_like_thing_items(ps, [f_params], true)
   end
 
-  if have_any_params
-    ps.emit_ident(close_delim)
-  end
+  ps.emit_ident(close_delim)
 end
 
 def format_void_expression(ps, rest)
