@@ -1,6 +1,6 @@
 class Intermediary
   def initialize
-    @content = []
+    @content = TokenCollection.new([])
     @lines = []
     @build = []
   end
@@ -17,6 +17,14 @@ class Intermediary
 
   def insert_newline_before_last
     @content.insert(@content.rindex_by { |x| x.is_a_newline? } - 1, HardNewLine.new)
+  end
+
+  def string_length
+    to_s.length
+  end
+
+  def to_s
+    @content.to_s
   end
 
   def delete_last_newline
@@ -79,7 +87,10 @@ class RenderQueueDFA
   end
 
   def call
-    @render_queue_in.each_flat.each_with_index do |char, i|
+    i = 0
+    chars = @render_queue_in.each_flat.to_a
+    while i < chars.length
+      char = chars[i]
       pc = pluck_chars(3)
       case
       when is_end_and_not_end?(pc + [char])
@@ -120,9 +131,38 @@ class RenderQueueDFA
         push_additional_newline
       when private_wants_trailing_blankline?(pc + [char])
         push_additional_newline
+      when BreakableState === char
+        ptr = i + 1
+        length = 0
+        while chars[ptr] != char
+          ptr += 1
+          length += chars[ptr].to_s.length unless chars[ptr].is_indent?
+        end
+        # if we don't drop this construct there's a comma and a newline we can
+        # ignore
+        length = length - 2
+
+        current_length = if current_line
+          TokenCollection.new(current_line).string_length
+        else
+          @render_queue_out.string_length
+        end
+
+        if current_length + length < MAX_WIDTH
+          (i+2..ptr-4).each do |idx|
+            @render_queue_out << chars[idx].as_single_line
+          end
+        else
+          (i..ptr).each do |idx|
+            @render_queue_out << chars[idx].as_multi_line
+          end
+        end
+        i = ptr
+        char = DirectPart.new("")
       end
 
       @render_queue_out << char
+      i += 1
     end
 
     while @render_queue_out.last.is_a_newline?
