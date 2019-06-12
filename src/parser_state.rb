@@ -1,4 +1,5 @@
 class BreakableState
+  include TokenBase
   attr_reader :indentation_depth
 
   def initialize(indentation_depth)
@@ -54,13 +55,13 @@ class ParserState
 
   def breakable_of(start_delim, end_delim, &blk)
     emit_ident(start_delim)
-    @breakable_state_stack << BreakableState.new(@depth_stack.last)
+    @breakable_state_stack << BreakableState.new(current_spaces)
     # we insert breakable state markers in to the render queue indicating
     # to the formatter where it can consider breaking constructs
     @render_queue << @breakable_state_stack.last
-    emit_newwline
+    emit_soft_newline
     blk.call
-    emit_indent
+    emit_soft_indent
     @render_queue << @breakable_state_stack.pop
     emit_ident(end_delim)
   end
@@ -149,8 +150,15 @@ class ParserState
   end
 
   def emit_indent
-    spaces = (@conditional_indent.last) + (2 * @depth_stack.last)
-    @render_queue << Indent.new(spaces)
+    @render_queue << Indent.new(current_spaces)
+  end
+
+  def emit_soft_indent
+    @render_queue << SoftIndent.new(current_spaces)
+  end
+
+  def current_spaces
+    (@conditional_indent.last) + (2 * @depth_stack.last)
   end
 
   def emit_slash
@@ -313,7 +321,7 @@ class ParserState
   end
 
   def emit_soft_newline
-    return emit_newline if have_heredocs
+    return emit_newline if have_heredocs?
     shift_comments
     @render_queue << SoftNewLine.new
   end

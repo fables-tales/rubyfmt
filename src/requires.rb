@@ -3,6 +3,8 @@ require "delegate"
 require "ripper"
 require "stringio"
 
+MAX_WIDTH=100
+
 GC.disable
 class Array
   def split(&blk)

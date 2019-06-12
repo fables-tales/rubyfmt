@@ -1154,7 +1154,7 @@ end
 def format_assocs(ps, assocs, newlines=true)
   assocs.each_with_index do |assoc, idx|
     ps.breakable_entry do
-      ps.emit_indent if newlines
+      ps.emit_soft_indent
       ps.with_start_of_line(false) do
         if assoc[0] == :assoc_new
           if assoc[1][0] == :@label
@@ -1177,7 +1177,7 @@ def format_assocs(ps, assocs, newlines=true)
 
         if newlines
           ps.emit_comma
-          ps.emit_newline
+          ps.emit_soft_newline
         elsif idx != assocs.length - 1
           ps.emit_comma
           ps.emit_space
