@@ -1,7 +1,7 @@
 <!--
-Hi there! Thanks for taking the time to file an issue against rubyfmt!
-We accept issues primarily of the form "rubyfmt broke this file", or
-"rubyfmt failed to format this file". We define "breaking" as any behaviour
+Hi there! Thanks for taking the time to file an issue against rubyformat!
+We accept issues primarily of the form "rubyformat broke this file", or
+"rubyformat failed to format this file". We define "breaking" as any behaviour
 that the file has changes.
 
 Please don't open "feature request" issues, or "I'd like to change the output to
@@ -15,13 +15,13 @@ issues up to those in a future release.
 ## Input file
 
 ```ruby
-Please paste a sample file that rubyfmt breaks here
+Please paste a sample file that rubyformat breaks here
 ```
 
 ## Rubyfmt's output
 
 ```
-Please paste the output that rubyfmt generated here
+Please paste the output that rubyformat generated here
 ```
 
 ## This breaks because

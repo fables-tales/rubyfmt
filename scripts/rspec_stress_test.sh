@@ -1,7 +1,7 @@
 #!/bin/bash
 set -ex
 
-RUBYFMT=$(pwd)/build/rubyfmt.rb
+RUBYFMT=$(pwd)/build/rubyformat.rb
 
 cd "$(mktemp -d)"
 mkdir -p tmp
@@ -21,7 +21,7 @@ cd ../..
 FILES=$(find tmp/rspec-core/lib -type f | grep -i '\.rb$')
 for FN in $FILES
 do
-    echo "running rubyfmt on $FN"
+    echo "running rubyformat on $FN"
     ruby --disable=gems "$RUBYFMT" "$FN" > /tmp/this_one.rb
     ruby --disable=gems "$RUBYFMT" /tmp/this_one.rb > "$FN"
 done
@@ -30,13 +30,13 @@ bundle exec rspec --exclude-pattern ./spec/integration/persistence_failures_spec
 git reset --hard
 cd ../../
 
-# refmt.rb replaces rubyfmt.rb
+# refmt.rb replaces rubyformat.rb
 ruby --disable=gems "$RUBYFMT" "$RUBYFMT" > tmp/refmt.rb
 
 FILES=$(find tmp/rspec-core/lib -type f | grep -i '\.rb$')
 for FN in $FILES
 do
-    echo "running rubyfmt on $FN"
+    echo "running rubyformat on $FN"
     ruby --disable=gems tmp/refmt.rb "$FN" > /tmp/this_one.rb
     ruby --disable=gems tmp/refmt.rb /tmp/this_one.rb > "$FN"
 done

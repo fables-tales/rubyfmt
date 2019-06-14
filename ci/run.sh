@@ -1,9 +1,9 @@
 #!/bin/bash
 set -ex
 
-make build/rubyfmt.rb
+make build/rubyformat.rb
 
-RES=$(echo "puts 'a'" | ruby build/rubyfmt.rb)
+RES=$(echo "puts 'a'" | ruby build/rubyformat.rb)
 
 if [ "$RES" != "puts(\"a\")" ]
 then

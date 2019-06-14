@@ -167,7 +167,7 @@ def format_params(ps, params, open_delim, close_delim)
   ps.emit_ident(open_delim)
 
   # this is the "bad params" detector, we've not yet experienced non nil
-  # positions in 5 and 7 despite having thrown a lot of stuff at rubyfmt
+  # positions in 5 and 7 despite having thrown a lot of stuff at rubyformat
   # so I'm not really sure what these do
   bad_params = params[7..-1].any? { |x| !x.nil? }
   bad_params = false if params[5]
@@ -639,7 +639,7 @@ def format_list_like_thing(ps, args_list, single_line=true)
 
     if single_line
       # if we're single line, our predecessor didn't emit a trailing comma
-      # space because rubyfmt terminates single line arg lists without the
+      # space because rubyformat terminates single line arg lists without the
       # trailer so emit one here
       ps.emit_comma_space if emitted_args
     else
@@ -2148,7 +2148,7 @@ EXPRESSION_HANDLERS = {
   :symbol => method(:format_symbol),
   :redo => method(:format_redo),
 
-  # Normalized by rubyfmt, not from Ripper:
+  # Normalized by rubyformat, not from Ripper:
   :dot => method(:format_dot),
   :method_call =>  method(:format_method_call),
   :splat => method(:format_splat),

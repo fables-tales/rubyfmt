@@ -1,6 +1,6 @@
 #!/bin/bash
 set -ex
-make build/rubyfmt.rb
+make build/rubyformat.rb
 
 ./scripts/test_string_literals.sh
 ./scripts/test_methods.sh

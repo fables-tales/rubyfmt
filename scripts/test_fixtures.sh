@@ -1,13 +1,13 @@
 #!/bin/bash
 set -ex
 
-make build/rubyfmt.rb
+make build/rubyformat.rb
 
 test_folder() {
     find "$1" -name "*_expected.rb" -maxdepth 1 | while read -r file
     do
         # shellcheck disable=SC2001
-        time ruby --disable=gems build/rubyfmt.rb "$(echo "$file" | sed s/expected/actual/)" > /tmp/out.rb
+        time ruby --disable=gems build/rubyformat.rb "$(echo "$file" | sed s/expected/actual/)" > /tmp/out.rb
 
         if ! diff -u /tmp/out.rb "$file"
         then
@@ -15,7 +15,7 @@ test_folder() {
             exit 1
         fi
 
-        time ruby --disable=gems build/rubyfmt.rb "$file" > /tmp/out.rb
+        time ruby --disable=gems build/rubyformat.rb "$file" > /tmp/out.rb
 
         if ! diff -u /tmp/out.rb "$file"
         then

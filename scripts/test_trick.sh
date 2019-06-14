@@ -6,7 +6,7 @@ set -ex
 source ./scripts/functions.sh
 
 RUBY_VERSION=$(ruby -v | grep -o "[0-9].[0-9]" | head -n 1)
-RUBYFMT=$(pwd)/build/rubyfmt.rb
+RUBYFMT=$(pwd)/build/rubyformat.rb
 
 rm -rf /tmp/trick2018
 
