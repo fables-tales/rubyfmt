@@ -7,6 +7,10 @@ module TokenBase
     self
   end
 
+  def is_a_comma?
+    false
+  end
+
   def is_a_newline?
     false
   end
@@ -83,6 +87,21 @@ class SoftNewLine
 
   def as_single_line
     Space.new
+  end
+
+  def is_a_newline?
+    true
+  end
+end
+
+class CollapsingNewLine
+  include TokenBase
+  def to_s
+    "\n"
+  end
+
+  def as_single_line
+    DirectPart.new("")
   end
 
   def is_a_newline?
@@ -292,6 +311,10 @@ end
 
 class Comma
   include TokenBase
+  def is_a_comma?
+    true
+  end
+
   def to_s
     ","
   end

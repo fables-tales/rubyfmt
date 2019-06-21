@@ -138,9 +138,18 @@ class RenderQueueDFA
           ptr += 1
           length += chars[ptr].to_s.length unless chars[ptr].is_indent?
         end
-        # if we don't drop this construct there's a comma and a newline we can
-        # ignore
-        length = length - 2
+
+        # we may not have a comma because params lists don't get a comma
+        # so here we check if the second to last character is a comma,
+        # and if is we drop two characters, otherwise we drop 1
+        ptr_offset = nil
+        if chars[ptr-3].is_a_comma?
+          length = length - 2
+          ptr_offset = 4
+        else
+          length = length - 1
+          ptr_offset = 3
+        end
 
         current_length = if current_line
           TokenCollection.new(current_line).string_length
@@ -149,7 +158,7 @@ class RenderQueueDFA
         end
 
         if current_length + length < MAX_WIDTH
-          (i+2..ptr-4).each do |idx|
+          (i+2..ptr-ptr_offset).each do |idx|
             @render_queue_out << chars[idx].as_single_line
           end
         else

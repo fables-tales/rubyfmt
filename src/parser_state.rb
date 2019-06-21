@@ -328,6 +328,10 @@ class ParserState
     @render_queue << SoftNewLine.new
   end
 
+  def emit_collapsing_newline
+    @render_queue << CollapsingNewLine.new
+  end
+
   def emit_dot
     @render_queue << Dot.new
   end

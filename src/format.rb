@@ -52,6 +52,13 @@ def format_def(ps, rest)
   ps.emit_newline
 end
 
+def emit_params_separator(ps, index, length)
+  if index != length - 1
+    ps.emit_comma
+    ps.emit_soft_newline
+  end
+end
+
 def format_required_params(ps, required_params)
   return if required_params.empty?
 
@@ -59,23 +66,21 @@ def format_required_params(ps, required_params)
     required_params.each_with_index do |expr, index|
       ps.emit_soft_indent
       format_expression(ps, expr)
-      ps.emit_comma
-      ps.emit_soft_newline
+      emit_params_separator(ps, index, required_params.length)
     end
   end
 end
 
 def format_optional_params(ps, optional_params)
   ps.with_start_of_line(false) do
-    optional_params.each_with_index do |param, i|
+    optional_params.each_with_index do |param, index|
       ps.emit_soft_indent
       left,right = param
       format_expression(ps, left)
       ps.emit_ident(" = ")
       format_expression(ps, right)
 
-      ps.emit_comma
-      ps.emit_soft_newline
+      emit_params_separator(ps, index, optional_params.length)
     end
   end
 end
@@ -96,8 +101,7 @@ def format_kwargs(ps, kwargs)
       format_expression(ps, false_or_expr) if false_or_expr
     end
 
-    ps.emit_comma
-    ps.emit_soft_newline
+    emit_params_separator(ps, index, kwargs.length)
   end
 end
 
@@ -114,8 +118,6 @@ def format_rest_params(ps, rest_params)
       format_expression(ps, expr)
     end
   end
-  ps.emit_comma
-  ps.emit_soft_newline
 end
 
 def format_kwrest_params(ps, kwrest_params)
@@ -135,8 +137,6 @@ def format_kwrest_params(ps, kwrest_params)
       format_expression(ps, expr)
     end
   end
-  ps.emit_comma
-  ps.emit_soft_newline
 end
 
 def format_blockarg(ps, blockarg)
@@ -147,9 +147,6 @@ def format_blockarg(ps, blockarg)
     ps.emit_ident("&")
     format_expression(ps, expr)
   end
-
-  ps.emit_comma
-  ps.emit_soft_newline
 end
 
 def format_params(ps, params, open_delim, close_delim)
@@ -237,18 +234,27 @@ def format_params(ps, params, open_delim, close_delim)
         values = []
       end
       callable.call(ps, values)
+
       did_emit = !values.empty?
       have_more = emission_order[idx+1..-1].map { |x|
         # we don't actually have a test case for [:excessed_comma] lmao, but
         # it's definitely in parse.y
         x[0] != 0 && !x[0].empty? && x[0] != [:excessed_comma]
       }.any?
+
+      if did_emit && have_more
+        ps.emit_comma
+        ps.emit_soft_newline
+      end
     end
 
     if f_params && !f_params.empty?
-      ps.emit_ident(" ;")
-      format_list_like_thing_items(ps, [f_params], true)
+      ps.breakable_of(" ;", "") do
+        format_list_like_thing_items(ps, [f_params], true)
+      end
     end
+
+    ps.emit_collapsing_newline
   end
 end
 
@@ -631,7 +637,6 @@ def format_list_like_thing_items(ps, args_list, single_line)
       emitted_args = true
     end
   end
-
 
   emitted_args
 end
