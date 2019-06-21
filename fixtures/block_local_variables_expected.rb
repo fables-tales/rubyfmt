@@ -1,3 +1,4 @@
+# typed: ignore
 y = 12
 lambda { |x ;y|
   puts(x)

@@ -1,3 +1,4 @@
+# typed: ignore
 class ForIndents
   def func
   rescue Bees => e

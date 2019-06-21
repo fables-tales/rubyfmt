@@ -1,3 +1,4 @@
+# typed: ignore
 class Foo
   def self.machine
     case a

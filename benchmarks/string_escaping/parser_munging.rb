@@ -1,3 +1,4 @@
+# typed: ignore
 class ParserMunging < Ripper::SexpBuilderPP
   ARRAY_SYMBOLS = {
     qsymbols: '%i',

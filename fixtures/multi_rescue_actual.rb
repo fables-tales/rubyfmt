@@ -1,3 +1,4 @@
+# typed: ignore
 begin
   a
 rescue A

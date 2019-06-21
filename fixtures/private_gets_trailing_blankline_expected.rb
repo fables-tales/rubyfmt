@@ -1,3 +1,4 @@
+# typed: ignore
 class Foo
   def a
   end

@@ -1,2 +1,3 @@
+# typed: ignore
 Set[]
 Set[ ]

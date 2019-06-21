@@ -1,3 +1,4 @@
+# typed: ignore
 class Foo
   alias bees cheese
   def bees

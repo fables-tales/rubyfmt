@@ -1,3 +1,4 @@
+# typed: ignore
 require 'bees'
 module A
   # this is the docstring for module b

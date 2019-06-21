@@ -1,3 +1,4 @@
+# typed: ignore
 GLOBAL_SCRIPTS = <<-EOF
 
  function addClass(element_id, classname) {

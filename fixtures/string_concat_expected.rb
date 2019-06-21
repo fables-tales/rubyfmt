@@ -1,3 +1,4 @@
+# typed: ignore
 "One" \
 "Two" \
 "Three" \

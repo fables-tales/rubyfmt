@@ -1,3 +1,4 @@
+# typed: ignore
 a = <<EOD
 part 1 of heredoc
 part 2 of heredoc

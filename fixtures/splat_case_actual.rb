@@ -1,3 +1,4 @@
+# typed: ignore
 case
 when *a
 when c

@@ -1,3 +1,4 @@
+# typed: ignore
 #adsf
 class Foo
   #but this one doesn't get a proceeding newline

@@ -1,3 +1,4 @@
+# typed: ignore
 for i in (1..3)
   p i
 end

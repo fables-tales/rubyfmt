@@ -1,3 +1,4 @@
+# typed: ignore
 def foo
   if a == b
     puts("bees")

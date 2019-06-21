@@ -1,1 +1,2 @@
+# typed: ignore
 foo(a)

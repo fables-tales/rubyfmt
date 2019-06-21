@@ -1,3 +1,4 @@
+# typed: ignore
 a
 
 b do

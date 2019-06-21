@@ -1,3 +1,4 @@
+#typed: strict
 puts %Q("")
 puts %^_^
 puts %^\"^

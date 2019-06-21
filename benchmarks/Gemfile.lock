@@ -1,3 +1,4 @@
+# typed: ignore
 GEM
   remote: https://rubygems.org/
   specs:

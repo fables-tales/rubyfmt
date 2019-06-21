@@ -1,3 +1,4 @@
+# typed: ignore
 def foo2
   return a
 end

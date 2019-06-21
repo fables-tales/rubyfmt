@@ -1,3 +1,4 @@
+# typed: ignore
 foo = <<EOM.gsub(".", "b")
 qoiefjqwoeifjqwe
 EOM

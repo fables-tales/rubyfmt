@@ -1,3 +1,4 @@
+# typed: ignore
 class Foo
   def self.machine
     a.b(:a, :b, *c, &blk)

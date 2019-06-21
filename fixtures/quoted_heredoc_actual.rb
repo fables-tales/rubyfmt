@@ -1,3 +1,4 @@
+# typed: ignore
 expected_result = <<-'EXPECTED'
 One plus one is #{1 + 1}
 EXPECTED

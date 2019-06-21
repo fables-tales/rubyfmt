@@ -1,3 +1,4 @@
+# typed: ignore
 HTML_HEADER = <<-EOF
 <!DOCTYPE html>
 <html lang='en'>

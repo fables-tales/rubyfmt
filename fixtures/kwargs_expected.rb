@@ -1,3 +1,4 @@
+# typed: ignore
 def foo(c, d = nil, a:, b: 3)
 end
 

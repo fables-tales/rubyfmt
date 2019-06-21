@@ -1,1 +1,2 @@
+# typed: ignore
 desc = *foo

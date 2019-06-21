@@ -1,3 +1,4 @@
+# typed: ignore
 raise <<-EOM.gsub(/^\s+\|/, "")
               |#{"*" * 50}
               |:#{key} is not allowed

@@ -1,3 +1,4 @@
+# typed: ignore
 class ParserEval < Ripper::SexpBuilderPP
   ARRAY_SYMBOLS = {
     qsymbols: '%i',

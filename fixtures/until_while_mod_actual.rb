@@ -1,3 +1,4 @@
+# typed: ignore
 class Foo
 end until true
 

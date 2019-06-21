@@ -1,3 +1,4 @@
+# typed: ignore
 if a
   if c
     a

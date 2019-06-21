@@ -1,3 +1,4 @@
+# typed: ignore
 puts %Q("")
 puts %^_^
 puts %^\"^

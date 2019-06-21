@@ -1,3 +1,4 @@
+# typed: ignore
 require 'benchmark/ips'
 require 'ripper'
 

@@ -1,3 +1,4 @@
+# typed: ignore
 module Foo
   def slowest_examples
     example.bees(a, &:foo)

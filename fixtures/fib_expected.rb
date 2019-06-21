@@ -1,3 +1,4 @@
+# typed: ignore
 def fib(i)
   a = 1
   b = 1

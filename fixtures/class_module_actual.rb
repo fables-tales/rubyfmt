@@ -1,3 +1,4 @@
+# typed: ignore
 require 'net/http'
 require 'pp'
 

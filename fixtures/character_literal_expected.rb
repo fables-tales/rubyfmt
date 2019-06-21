@@ -1,3 +1,4 @@
+# typed: ignore
 "a"
 "\n"
 "\s"
