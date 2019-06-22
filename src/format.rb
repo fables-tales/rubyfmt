@@ -626,12 +626,12 @@ def format_list_like_thing_items(ps, args_list, single_line)
 
         ps.emit_comma_space unless idx == args_list[0].count-1
       else
-        ps.emit_indent
+        ps.emit_soft_indent
         ps.with_start_of_line(false) do
           format_expression(ps, expr)
 
           ps.emit_comma
-          ps.emit_newline
+          ps.emit_soft_newline
         end
       end
       emitted_args = true
@@ -1002,13 +1002,9 @@ def format_array_fast_path(ps, rest)
     end
     ps.emit_close_square_bracket
   else
-    ps.emit_open_square_bracket
-    ps.emit_newline
-    ps.new_block do
+    ps.breakable_of("[", "]") do
       format_list_like_thing(ps, rest, false)
     end
-    ps.emit_indent
-    ps.emit_close_square_bracket
   end
 end
 
