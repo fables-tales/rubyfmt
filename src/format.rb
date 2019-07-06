@@ -1194,41 +1194,35 @@ def format_ifop(ps, expression)
   ps.emit_newline if ps.start_of_line.last
 end
 
-def format_assocs(ps, assocs, newlines=true)
+def format_assocs(ps, assocs, newlines=false)
   assocs.each_with_index do |assoc, idx|
-    ps.breakable_entry do
-      ps.emit_soft_indent
-      ps.with_start_of_line(false) do
-        if assoc[0] == :assoc_new
-          if assoc[1][0] == :@label
-            ps.emit_ident(assoc[1][1])
-            ps.emit_space
-          else
-            format_expression(ps, assoc[1])
-            ps.emit_space
-            ps.emit_ident("=>")
-            ps.emit_space
-          end
-
-          format_expression(ps, assoc[2])
-        elsif assoc[0] == :assoc_splat
-          ps.emit_ident("**")
-          format_expression(ps, assoc[1])
+    ps.emit_soft_indent
+    ps.with_start_of_line(false) do
+      if assoc[0] == :assoc_new
+        if assoc[1][0] == :@label
+          ps.emit_ident(assoc[1][1])
+          ps.emit_space
         else
-          raise "got non assoc_new in hash literal #{assocs}"
-        end
-
-        if newlines
-          if idx != assocs.length - 1
-            ps.emit_comma
-            ps.emit_soft_newline
-          else
-            ps.emit_trailing_comma_newline
-          end
-        elsif idx != assocs.length - 1
-          ps.emit_comma
+          format_expression(ps, assoc[1])
+          ps.emit_space
+          ps.emit_ident("=>")
           ps.emit_space
         end
+
+        format_expression(ps, assoc[2])
+      elsif assoc[0] == :assoc_splat
+        ps.emit_ident("**")
+        format_expression(ps, assoc[1])
+      else
+        raise "got non assoc_new in hash literal #{assocs}"
+      end
+
+      if newlines
+        ps.emit_comma
+        ps.emit_soft_newline
+      elsif idx != assocs.length - 1
+        ps.emit_comma
+        ps.emit_space
       end
     end
   end
@@ -1241,7 +1235,9 @@ def format_hash(ps, expression)
   elsif expression[0][0] == :assoclist_from_args
     assocs = expression[0][1]
     ps.breakable_of("{", "}") do
-      format_assocs(ps, assocs)
+      ps.breakable_entry do
+        format_assocs(ps, assocs, true)
+      end
     end
   else
     raise "omg"
