@@ -5,6 +5,14 @@ class Intermediary
     @build = []
   end
 
+  def is_indent?
+    false
+  end
+
+  def as_single_line
+    @content.as_single_line
+  end
+
   def <<(x)
     @content << x
     if x.is_a_newline?
@@ -13,6 +21,10 @@ class Intermediary
     else
       @build << x
     end
+  end
+
+  def empty?
+    @content.empty?
   end
 
   def insert_newline_before_last
@@ -199,7 +211,7 @@ class RenderQueueDFA
       i += 1
     end
 
-    while @render_queue_out.last.is_a_newline?
+    while !@render_queue_out.empty? && @render_queue_out.last.is_a_newline?
       @render_queue_out.pop
     end
 

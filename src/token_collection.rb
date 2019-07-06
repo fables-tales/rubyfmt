@@ -3,6 +3,10 @@ class TokenCollection < SimpleDelegator
     super(parts)
   end
 
+  def is_indent?
+    false
+  end
+
   def each_flat(&blk)
     e = Enumerator.new do |yielder|
       each do |item|
@@ -39,12 +43,24 @@ class TokenCollection < SimpleDelegator
     map(&:as_multi_line).map(&:to_s).join.length
   end
 
+  def as_single_line
+    TokenCollection.new(map { |x| x.as_single_line })
+  end
+
+  def as_multi_line
+    TokenCollection.new(map { |x| x.as_multi_line })
+  end
+
   def single_line_string_length
     map { |x|
       if x.is_indent?
         x.as_multi_line
       else
+        begin
         x.as_single_line
+        rescue NoMethodError
+          require 'pry'; binding.pry
+        end
       end
     }.map(&:to_s).join.length
   end
