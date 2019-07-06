@@ -56,11 +56,7 @@ class TokenCollection < SimpleDelegator
       if x.is_indent?
         x.as_multi_line
       else
-        begin
         x.as_single_line
-        rescue NoMethodError
-          require 'pry'; binding.pry
-        end
       end
     }.map(&:to_s).join.length
   end
