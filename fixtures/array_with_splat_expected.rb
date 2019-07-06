@@ -1,4 +1,1 @@
-[
-  file,
-  *scoped_id.split(":").map(&method(:Integer)),
-]
+[file, *scoped_id.split(":").map(&method(:Integer))]

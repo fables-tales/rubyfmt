@@ -64,8 +64,7 @@ class Intermediary
   def pluck_chars(n)
     raise unless n == 3
     (@content[-n..-1] || []).tap { |x|
-      #
-      #raise "omg #{x.inspect}> #{@last_3.inspect}" if @last_3 != x
+      # #raise "omg #{x.inspect}> #{@last_3.inspect}" if @last_3 != x
     }
   end
 
@@ -86,9 +85,65 @@ class RenderQueueDFA
     @render_queue_out = Intermediary.new
   end
 
+  def render_as(q, target_collection, idx, &blk)
+    q = q.dup
+    orig_idx = idx
+    breakable_state = target_collection[orig_idx]
+    token = target_collection[orig_idx + 1]
+
+    q << blk.call(token)
+    nested_tokens = target_collection[orig_idx + 2]
+    nested_index = 0
+    while nested_index < nested_tokens.length
+      t = nested_tokens[nested_index]
+
+      if BreakableState === t
+        q, nested_index = flatten_breakable_state(q, nested_tokens, nested_index)
+      else
+        q << blk.call(t)
+      end
+
+      nested_index += 1
+    end
+
+    idx = orig_idx + 3
+    while target_collection[idx] != breakable_state
+      q << blk.call(target_collection[idx])
+      idx += 1
+    end
+    [q, idx]
+  end
+
+  def flatten_breakable_state(q, token_collection, idx)
+    q = q.dup
+    length = token_collection[idx+2].single_line_string_length
+    if length > MAX_WIDTH
+      q, idx = render_as(q, token_collection, idx, &:as_multi_line)
+    else
+      token_collection[idx+1] = DirectPart.new("")
+      q, idx = render_as(q, token_collection, idx, &:as_single_line)
+    end
+
+    [q, idx]
+  end
+
   def call
     i = 0
-    chars = @render_queue_in.each_flat.to_a
+
+    q = TokenCollection.new([])
+    idx = 0
+    while idx < @render_queue_in.length
+      token = @render_queue_in[idx]
+      if BreakableState === token
+        q, idx = flatten_breakable_state(q, @render_queue_in, idx)
+      else
+        q << token
+      end
+
+      idx += 1
+    end
+
+    chars = q.each_flat.to_a
     while i < chars.length
       char = chars[i]
       pc = pluck_chars(3)
@@ -131,43 +186,6 @@ class RenderQueueDFA
         push_additional_newline
       when private_wants_trailing_blankline?(pc + [char])
         push_additional_newline
-      when BreakableState === char
-        ptr = i + 1
-        length = 0
-        while chars[ptr] != char
-          ptr += 1
-          length += chars[ptr].to_s.length unless chars[ptr].is_indent?
-        end
-
-        # we may not have a comma because params lists don't get a comma
-        # so here we check if the second to last character is a comma,
-        # and if is we drop two characters, otherwise we drop 1
-        ptr_offset = nil
-        if chars[ptr-3].is_a_comma?
-          length = length - 2
-          ptr_offset = 4
-        else
-          length = length - 1
-          ptr_offset = 3
-        end
-
-        current_length = if current_line
-          TokenCollection.new(current_line).string_length
-        else
-          @render_queue_out.string_length
-        end
-
-        if current_length + length < MAX_WIDTH
-          (i+2..ptr-ptr_offset).each do |idx|
-            @render_queue_out << chars[idx].as_single_line
-          end
-        else
-          (i..ptr).each do |idx|
-            @render_queue_out << chars[idx].as_multi_line
-          end
-        end
-        i = ptr
-        char = DirectPart.new("")
       end
 
       @render_queue_out << char

@@ -3,6 +3,10 @@ module TokenBase
     self
   end
 
+  def is_a_hard_newline?
+    false
+  end
+
   def as_multi_line
     self
   end
@@ -77,6 +81,10 @@ class HardNewLine
   def is_a_newline?
     true
   end
+
+  def is_a_hard_newline?
+    true
+  end
 end
 
 class SoftNewLine
@@ -87,6 +95,21 @@ class SoftNewLine
 
   def as_single_line
     Space.new
+  end
+
+  def is_a_newline?
+    true
+  end
+end
+
+class TrailingCommaNewline
+  include TokenBase
+  def to_s
+    ",\n"
+  end
+
+  def as_single_line
+    DirectPart.new("")
   end
 
   def is_a_newline?

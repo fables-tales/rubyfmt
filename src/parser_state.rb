@@ -19,6 +19,7 @@ class ParserState
   attr_accessor :render_queue
   attr_reader :comments_hash
   attr_reader :depth_stack
+
   def initialize(result, line_metadata)
     @surpress_comments_stack = [false]
     @surpress_one_paren = false
@@ -188,6 +189,10 @@ class ParserState
 
   def emit_comma_space
     @render_queue << CommaSpace.new
+  end
+
+  def emit_trailing_comma_newline
+    @render_queue << TrailingCommaNewline.new
   end
 
   def emit_comma

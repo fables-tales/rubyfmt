@@ -470,12 +470,7 @@ module RSpec::Core
         end
 
         groups = @example_groups.sort_by { |_, hash| -hash[:average] }.first(number_of_examples)
-        groups.map { |group, data|
-          [
-            group.location,
-            data,
-          ]
-        }
+        groups.map { |group, data| [group.location, data] }
       end
     end
 

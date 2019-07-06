@@ -24,7 +24,7 @@ class TokenCollection < SimpleDelegator
   end
 
   def to_s
-    join("")
+    join
   end
 
   def has_comment?
@@ -33,6 +33,14 @@ class TokenCollection < SimpleDelegator
 
   def string_length
     to_s.length
+  end
+
+  def multiline_string_length
+    map(&:as_multi_line).map(&:to_s).join.length
+  end
+
+  def single_line_string_length
+    map(&:as_single_line).map(&:to_s).join.length
   end
 
   def remove_redundant_indents
