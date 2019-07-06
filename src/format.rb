@@ -7,7 +7,6 @@ end
 def format_until(ps, rest)
   conditional, expressions = rest
 
-
   ps.emit_indent if ps.start_of_line.last
 
   ps.emit_ident("until")
@@ -250,7 +249,8 @@ def format_params(ps, params, open_delim, close_delim)
       end
 
       if f_params && !f_params.empty?
-        ps.breakable_of(" ;", "") do
+        ps.emit_ident(";")
+        ps.with_start_of_line(false) do
           format_list_like_thing_items(ps, [f_params], true)
         end
       end
@@ -620,28 +620,22 @@ end
 def format_list_like_thing_items(ps, args_list, single_line)
   return false if args_list.nil?
   emitted_args = false
-  ps.breakable_entry do
-    args_list[0].each_with_index do |expr, idx|
-      raise "this is bad" if expr[0] == :tstring_content
-      if single_line
+  args_list[0].each_with_index do |expr, idx|
+    raise "this is bad" if expr[0] == :tstring_content
+    if single_line
+      format_expression(ps, expr)
+
+      ps.emit_comma_space unless idx == args_list[0].count-1
+    else
+      ps.emit_soft_indent
+      ps.with_start_of_line(false) do
         format_expression(ps, expr)
 
-        ps.emit_comma_space unless idx == args_list[0].count-1
-      else
-        ps.emit_soft_indent
-        ps.with_start_of_line(false) do
-          format_expression(ps, expr)
-
-          if idx != args_list[0].length - 1
-            ps.emit_comma
-            ps.emit_soft_newline
-          else
-            ps.emit_trailing_comma_newline
-          end
-        end
+        ps.emit_comma
+        ps.emit_soft_newline
       end
-      emitted_args = true
     end
+    emitted_args = true
   end
 
   emitted_args
@@ -780,6 +774,9 @@ def format_rescue(ps, rescue_part)
         if rescue_class.count == 1
           rescue_class = rescue_class[0]
         end
+        # if this is a multiple rescue like
+        # rescue *a, b
+        # this will be a mrhs_new_from_args
         format_expression(ps, rescue_class)
       end
 
@@ -997,7 +994,9 @@ def format_array_fast_path(ps, rest)
     ps.emit_close_square_bracket
   else
     ps.breakable_of("[", "]") do
-      format_list_like_thing(ps, rest, false)
+      ps.breakable_entry do
+        format_list_like_thing(ps, rest, false)
+      end
     end
   end
 end
@@ -1419,9 +1418,19 @@ def format_mrhs_new_from_args(ps, expression)
   parts,tail = expression
 
   ps.with_start_of_line(false) do
-    format_list_like_thing(ps, [parts], true)
-    ps.emit_comma_space if tail != nil && tail != []
-    format_expression(ps, tail)
+    ps.breakable_of("", "") do
+      ps.breakable_entry do
+        format_list_like_thing(ps, [parts], false)
+
+        if tail != nil && tail != []
+          ps.with_start_of_line(false) do
+            format_expression(ps, tail)
+          end
+          ps.emit_comma
+          ps.emit_soft_newline
+        end
+      end
+    end
   end
 
   ps.emit_newline if ps.start_of_line.last
@@ -1475,7 +1484,11 @@ def format_case_parts(ps, case_parts)
     ps.emit_when
     ps.emit_space
     ps.with_start_of_line(false) do
-      format_list_like_thing(ps, [conditional], true)
+      ps.breakable_of("", "") do
+        ps.breakable_entry do
+          format_list_like_thing(ps, [conditional], false)
+        end
+      end
     end
 
     ps.emit_newline

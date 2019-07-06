@@ -1,7 +1,4 @@
-def foo(
-  aqwoeifjqwoiefjqwoifjoqiwfjoiqwefj,
-  cqwefqwefqwjeofijqwoeifjqwoiefjqwoiefjoiqwejfoqiwejfoi = nil
-)
+def foo(aqwoeifjqwoiefjqwoifjoqiwfjoiqwefj, cqwefqwefqwjeofijqwoeifjqwoiefjqwoiefjoiqwejfoqiwejfoi = nil)
 end
 
 def foo(a, b = nil)
@@ -9,12 +6,11 @@ end
 
 {:a => :b}
 
-a do | ;     x|
+a do |;x|
 end
 
 a do |
- ;
-    qwioefijqwoiefjoqiwefjoqwiejfqwe,     qwoiefjqowiejfoiqwejfoiqwjfoiqwejfiowqejfqwieqwoeifjoqwiejfiowqefjoijf  
+;qwioefijqwoiefjoqiwefjoqwiejfqwe, qwoiefjqowiejfoiqwejfoiqwjfoiqwejfiowqejfqwieqwoeifjoqwiejfiowqefjoijf
 |
 end
 

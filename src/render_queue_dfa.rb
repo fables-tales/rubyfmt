@@ -120,8 +120,16 @@ class RenderQueueDFA
     if length > MAX_WIDTH
       q, idx = render_as(q, token_collection, idx, &:as_multi_line)
     else
-      token_collection[idx+1] = DirectPart.new("")
+      token_collection[idx+1] = NULL_DIRECT_PART
       q, idx = render_as(q, token_collection, idx, &:as_single_line)
+      p q
+      q.pop while [
+        q.last.is_a_comma?,
+        SoftNewLine === q.last,
+        BreakableState === q.last,
+        Space === q.last,
+        NULL_DIRECT_PART == q.last,
+      ].any?
     end
 
     [q, idx]

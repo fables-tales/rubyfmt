@@ -40,7 +40,13 @@ class TokenCollection < SimpleDelegator
   end
 
   def single_line_string_length
-    map(&:as_single_line).map(&:to_s).join.length
+    map { |x|
+      if x.is_indent?
+        x.as_multi_line
+      else
+        x.as_single_line
+      end
+    }.map(&:to_s).join.length
   end
 
   def remove_redundant_indents

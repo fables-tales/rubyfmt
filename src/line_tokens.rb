@@ -102,21 +102,6 @@ class SoftNewLine
   end
 end
 
-class TrailingCommaNewline
-  include TokenBase
-  def to_s
-    ",\n"
-  end
-
-  def as_single_line
-    DirectPart.new("")
-  end
-
-  def is_a_newline?
-    true
-  end
-end
-
 class CollapsingNewLine
   include TokenBase
   def to_s
@@ -124,7 +109,7 @@ class CollapsingNewLine
   end
 
   def as_single_line
-    DirectPart.new("")
+    NULL_DIRECT_PART
   end
 
   def is_a_newline?
@@ -163,6 +148,16 @@ class DirectPart
     @part == ""
   end
 end
+
+
+
+class NullDirectPart < DirectPart
+  def initialize
+    super("")
+  end
+end
+
+NULL_DIRECT_PART = NullDirectPart.new
 
 class SingleSlash
   include TokenBase
@@ -317,7 +312,7 @@ class SoftIndent
   end
 
   def as_single_line
-    DirectPart.new("")
+    NULL_DIRECT_PART
   end
 
   def is_indent?
