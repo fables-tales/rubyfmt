@@ -1,10 +1,5 @@
 class Parser < Ripper::SexpBuilderPP
-  ARRAY_SYMBOLS = {
-    qsymbols: '%i',
-    qwords: '%w',
-    symbols: '%I',
-    words: '%W'
-  }.freeze
+  ARRAY_SYMBOLS = {qsymbols: "%i", qwords: "%w", symbols: "%I", words: "%W"}.freeze
 
   def self.is_percent_array?(rest)
     return false if rest.nil?
@@ -19,6 +14,7 @@ class Parser < Ripper::SexpBuilderPP
   def initialize(file_data)
     super(file_data)
     @file_lines = file_data.split("\n")
+
     # heredoc stack is the stack of identified heredocs
     @heredoc_stack = []
 
@@ -35,6 +31,7 @@ class Parser < Ripper::SexpBuilderPP
   attr_reader :comments_delete
 
   private
+
 
   ARRAY_SYMBOLS.each do |event, symbol|
     define_method(:"on_#{event}_new") do
@@ -81,20 +78,24 @@ class Parser < Ripper::SexpBuilderPP
           when :@tstring_content
             part[1] = eval("#{start_delim}#{part[1]}#{end_delim}").inspect[1..-2]
           when :string_embexpr, :string_dvar
+
             if reject_embexpr
               raise "got #{part[0]} in a #{start_delim}...#{end_delim} string"
             end
+
           else
             raise "got #{part[0]} in a #{start_delim}...#{end_delim} string"
           end
         end
       end
     end
+
     super
   end
 
   def on_lambda(*args, &blk)
-    terminator = @file_lines[lineno-1]
+    terminator = @file_lines[lineno - 1]
+
     if terminator.include?("}")
       args.insert(1, :curly)
     else
