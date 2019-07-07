@@ -7,6 +7,7 @@ EOD
 b = <<-EOD
 oweqijfoiwjefqwoefij
 EOD
+
 def foo
   c = <<~EOD
 oqweijfoqwiejf

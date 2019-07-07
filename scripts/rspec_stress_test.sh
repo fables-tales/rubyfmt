@@ -2,6 +2,7 @@
 set -ex
 
 RUBYFMT=$(pwd)/build/rubyfmt.rb
+make
 
 cd "$(mktemp -d)"
 mkdir -p tmp

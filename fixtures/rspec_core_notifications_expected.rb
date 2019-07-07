@@ -10,6 +10,7 @@ module RSpec::Core
     # @private
     module NullColorizer
       module_function
+
       def wrap(line, _code_or_symbol)
         line
       end
@@ -54,7 +55,7 @@ module RSpec::Core
         klass.new(example)
       end
 
-      private_class_method(:new)
+      private_class_method :new
     end
 
     # The `ExamplesNotification` represents notifications sent by the reporter
@@ -151,7 +152,7 @@ module RSpec::Core
     # @attr [RSpec::Core::Example] example the current example
     # @see ExampleNotification
     class FailedExampleNotification < ExampleNotification
-      public_class_method(:new)
+      public_class_method :new
 
       # @return [Exception] The example failure
       def exception
@@ -230,7 +231,7 @@ module RSpec::Core
     # @attr [RSpec::Core::Example] example the current example
     # @see ExampleNotification
     class SkippedExampleNotification < ExampleNotification
-      public_class_method(:new)
+      public_class_method :new
 
       # @return [String] The pending detail fully formatted in the way that
       #   RSpec's built-in formatters emit.
@@ -278,7 +279,7 @@ module RSpec::Core
         !!used
       end
 
-      private(:used)
+      private :used
 
       # @return [String] The seed information fully formatted in the way that
       #   RSpec's built-in formatters emit.
@@ -394,7 +395,8 @@ module RSpec::Core
 
       private
 
-      include(RSpec::Core::ShellEscape)
+      include RSpec::Core::ShellEscape
+
       def rerun_argument_for(example)
         location = example.location_rerun_argument
         return location unless duplicate_rerun_locations.include?(location)
@@ -430,7 +432,7 @@ module RSpec::Core
         @example_groups = example_groups
       end
 
-      attr_reader(:duration, :examples, :number_of_examples)
+      attr_reader :duration, :examples, :number_of_examples
 
       # @return [Array<RSpec::Core::Example>] the slowest examples
       def slowest_examples
@@ -487,7 +489,7 @@ module RSpec::Core
     DeprecationNotification = Struct.new(:deprecated, :message, :replacement, :call_site)
 
     class DeprecationNotification
-      private_class_method(:new)
+      private_class_method :new
 
       # @api
       # Convenience way to initialize the notification

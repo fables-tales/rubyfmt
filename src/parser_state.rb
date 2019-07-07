@@ -19,6 +19,7 @@ class ParserState
   attr_accessor :render_queue
   attr_reader :comments_hash
   attr_reader :depth_stack
+  attr_reader :formatting_context
 
   def initialize(result, line_metadata)
     @surpress_comments_stack = [false]
@@ -34,6 +35,7 @@ class ParserState
     @string_concat_position = []
     @comments_to_insert = CommentBlock.new
     @breakable_state_stack = []
+    @formatting_context = [:main]
   end
 
   def self.with_depth_stack(output, from:)
@@ -52,6 +54,12 @@ class ParserState
 
   def insert_comment_collection(cc)
     @comments_to_insert.merge(cc)
+  end
+
+  def with_formatting_context(context, &blk)
+    @formatting_context << context
+    blk.call
+    @formatting_context.pop
   end
 
   def breakable_of(start_delim, end_delim, &blk)
