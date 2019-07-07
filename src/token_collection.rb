@@ -55,13 +55,11 @@ class TokenCollection < SimpleDelegator
 
   def single_line_string_length
     map { |x|
-
       if x.is_indent?
         x.as_multi_line
       else
         x.as_single_line
       end
-
     }.map(&:to_s).join.length
   end
 
@@ -97,7 +95,6 @@ class TokenCollection < SimpleDelegator
 
   def declares_require?
     each_flat.any? { |x| x.is_require? } && each_flat.none? { |x| x.to_s == "}" }
-
   end
 
   def declares_class_or_module?

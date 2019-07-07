@@ -247,6 +247,7 @@ class RenderQueueDFA
   def if_wants_leading_newline?(char)
     return false unless char.declares_if_or_unless?
     return false unless prev_line
+    return false if prev_line.any? { |x| x.is_a_curly? } && prev_line.none? { |x| x.is_close_curly? }
     return true unless prev_line.any? { |x| x.is_a_comment? || x.is_def? || x.declares_class_or_module? || x.is_do? || x.declares_if_or_unless? || x.is_else? } || prev_line.is_only_a_newline?
   end
 
@@ -267,7 +268,7 @@ class RenderQueueDFA
   end
 
   def have_end_with_double_blankline?(chars)
-    return false unless chars.length == 5
+    return false unless chars.length == 4
     chars[0].is_end? && chars[1].is_a_newline? && chars[2].is_a_newline? && chars[3].is_indent? && chars[4].is_end?
   end
 
@@ -317,6 +318,6 @@ class RenderQueueDFA
 
   def is_end_and_not_end?(chars)
     return false if chars.length < 4
-    chars[0].is_end? && chars[1].is_a_newline? && chars[2].is_indent? && !chars[3].is_end?
+    chars[0].is_end? && chars[1].is_a_newline? && chars[2].is_indent? && !chars[3].is_end? && !chars[3].is_close_curly?
   end
 end

@@ -27,20 +27,15 @@ def main
 
   if ENV["RUBYFMT_DEBUG"] == "2"
     require "pry"
-
     binding.pry
   end
 
   if parser.error?
     if ENV["RUBYFMT_DEBUG"] == "2"
       require "pry"
-
       binding.pry
     end
 
-    STDERR.puts("Got a parse error while reading #{file_to_read.to_io.inspect}")
-    STDERR.puts(parser.error?.inspect)
-    STDERR.puts("bailing with exit code 1")
     exit(1)
   end
 
