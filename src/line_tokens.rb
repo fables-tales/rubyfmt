@@ -128,6 +128,14 @@ class CollapsingNewLine
   end
 end
 
+class RequireInStringLiteral
+  include TokenBase
+
+  def to_s
+    "require"
+  end
+end
+
 class DirectPart
   include TokenBase
 
@@ -148,6 +156,7 @@ class DirectPart
   end
 
   def is_requirish?
+    return true if is_require?
     require_regex = /([^A-Za-z0-9]|^)require( |\()([^A-Za-z0-9])?/
 
     require_regex === @part

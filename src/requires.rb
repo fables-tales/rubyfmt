@@ -2,6 +2,7 @@
 require "delegate"
 require "ripper"
 require "stringio"
+
 MAX_WIDTH = 100
 GC.disable
 
@@ -10,9 +11,9 @@ class Array
     chunk(&blk).reject { |sep, _| sep }.map(&:last)
   end
 
-  def rindex_by(&blk)
+  def rindex_by
     reverse_each.each_with_index do |item, idx|
-      if blk.call(item)
+      if yield item
         return length - idx
       end
     end

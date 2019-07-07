@@ -27,12 +27,14 @@ def main
 
   if ENV["RUBYFMT_DEBUG"] == "2"
     require "pry"
+
     binding.pry
   end
 
   if parser.error?
     if ENV["RUBYFMT_DEBUG"] == "2"
       require "pry"
+
       binding.pry
     end
 

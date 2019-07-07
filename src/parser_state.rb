@@ -62,7 +62,7 @@ class ParserState
     @formatting_context.pop
   end
 
-  def breakable_of(start_delim, end_delim, &blk)
+  def breakable_of(start_delim, end_delim)
     emit_ident(start_delim)
     @breakable_state_stack << BreakableState.new(current_spaces)
 
@@ -72,7 +72,7 @@ class ParserState
     emit_soft_newline
 
     new_block do
-      blk.call
+      yield
     end
 
     emit_soft_indent
@@ -80,18 +80,18 @@ class ParserState
     emit_ident(end_delim)
   end
 
-  def breakable_entry(&blk)
+  def breakable_entry
     render_queue = @render_queue
     be = BreakableEntry.new
     @render_queue = be
-    blk.call
+    yield
     @render_queue = render_queue
     @render_queue << be
   end
 
-  def with_surpress_comments(value, &blk)
+  def with_surpress_comments(value)
     @surpress_comments_stack << value
-    blk.call
+    yield
     @surpress_comments_stack.pop
   end
 
@@ -113,9 +113,9 @@ class ParserState
     end
   end
 
-  def with_start_of_line(value, &blk)
+  def with_start_of_line(value)
     start_of_line << value
-    blk.call
+    yield
     start_of_line.pop
   end
 
@@ -166,6 +166,10 @@ class ParserState
 
   def emit_indent
     @render_queue << Indent.new(current_spaces)
+  end
+
+  def emit_require
+    @render_queue << RequireInStringLiteral.new
   end
 
   def emit_soft_indent
