@@ -1,15 +1,34 @@
 class TokenCollection < SimpleDelegator
   def initialize(parts = [])
     super(parts)
+    @parts = parts
   end
 
   def is_indent?
     false
   end
 
+  def rindex_by(&blk)
+    @parts.reverse_each.each_with_index do |item, idx|
+      if blk.call(item)
+        return @parts.length - idx
+      end
+    end
+
+    nil
+  end
+
+  def last
+    @parts.last
+  end
+
+  def [](arg)
+    @parts[arg]
+  end
+
   def each_flat(&blk)
     e = Enumerator.new do |yielder|
-      each do |item|
+      @parts.each do |item|
         if TokenCollection === item
 
           item.each_flat do |i|
@@ -60,7 +79,7 @@ class TokenCollection < SimpleDelegator
       else
         x.as_single_line
       end
-    }.map(&:to_s).join.length
+    }.map(&:to_s).sum(&:length)
   end
 
   def remove_redundant_indents

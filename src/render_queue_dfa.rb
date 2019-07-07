@@ -101,7 +101,6 @@ class RenderQueueDFA
   end
 
   def render_as(q, target_collection, idx, &blk)
-    q = q.dup
     orig_idx = idx
     breakable_state = target_collection[orig_idx]
     token = target_collection[orig_idx + 1]
@@ -132,7 +131,6 @@ class RenderQueueDFA
   end
 
   def flatten_breakable_state(q, token_collection, idx)
-    q = q.dup
     length = token_collection[idx + 2].single_line_string_length
 
     if length > MAX_WIDTH
