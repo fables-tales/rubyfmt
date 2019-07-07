@@ -43,8 +43,10 @@ def format_def(ps, rest)
   format_params(ps, params, "(", ")")
 
   ps.emit_newline
-  ps.new_block do
-    format_expression(ps, body)
+  ps.with_formatting_context(:def) do
+    ps.new_block do
+      format_expression(ps, body)
+    end
   end
 
   ps.emit_end
@@ -290,7 +292,9 @@ def format_assign_expression(ps, rest)
     ps.emit_op("=")
     ps.emit_space
 
-    format_expression(ps, tail)
+    ps.with_formatting_context(:assign) do
+      format_expression(ps, tail)
+    end
   end
 
   ps.emit_newline if ps.start_of_line.last
@@ -348,10 +352,12 @@ end
 def format_binary(ps, rest)
   ps.emit_indent if ps.start_of_line.last
 
-  ps.with_start_of_line(false) do
-    format_expression(ps, rest[0])
-    ps.emit_binary("#{rest[1].to_s}")
-    format_expression(ps, rest[2])
+  ps.with_formatting_context(:binary) do
+    ps.with_start_of_line(false) do
+      format_expression(ps, rest[0])
+      ps.emit_binary("#{rest[1].to_s}")
+      format_expression(ps, rest[2])
+    end
   end
   ps.emit_newline if ps.start_of_line.last
 end
@@ -502,8 +508,10 @@ def format_module(ps, rest)
   ps.emit_newline
   ps.new_block do
     exprs = rest[1][1]
-    exprs.each do |expr|
-      format_expression(ps, expr)
+    ps.with_formatting_context(:class_or_module) do
+      exprs.each do |expr|
+        format_expression(ps, expr)
+      end
     end
   end
 
@@ -533,8 +541,10 @@ def format_class(ps, rest)
   ps.on_line(ps.current_orig_line_number+1)
   ps.new_block do
     exprs = rest[2][1]
-    exprs.each do |expr|
-      format_expression(ps, expr)
+    ps.with_formatting_context(:class_or_module) do
+      exprs.each do |expr|
+        format_expression(ps, expr)
+      end
     end
   end
 
@@ -745,8 +755,10 @@ def format_defs(ps, rest)
     format_params(ps, params, "(", ")")
     ps.emit_newline
   end
-  ps.new_block do
-    format_expression(ps, body)
+  ps.with_formatting_context(:def) do
+    ps.new_block do
+      format_expression(ps, body)
+    end
   end
 
   ps.emit_end
@@ -1121,8 +1133,10 @@ def format_brace_block(ps, expression)
 
   next_ps = ParserState.with_depth_stack(output, from: ps)
   ps.new_block do
-    body.each do |expr|
-      format_expression(next_ps, expr)
+    ps.with_formatting_context(:curly_block) do
+      body.each do |expr|
+        format_expression(next_ps, expr)
+      end
     end
   end
 
@@ -1849,7 +1863,9 @@ def format_keyword(ps, rest)
   ps.emit_ident(rest[0])
 end
 
-def use_parens_for_method_call(method, args, original_used_parens)
+def use_parens_for_method_call(method, chain, args, original_used_parens, context)
+  return false if method[1].start_with?("attr_") && context == :class_or_module
+
   # Always use parens for the shorthand `foo::()` syntax
   return true if method == :call
 
@@ -1863,6 +1879,10 @@ def use_parens_for_method_call(method, args, original_used_parens)
   # No parens if there are no arguments
   return false if args.empty?
 
+  ci = chain.inspect
+  return true if ci.include?(":@const") && method[1] == "new"
+  return false if context == :class_or_module && !original_used_parens
+
   # If in doubt, use parens
   true
 end
@@ -1874,8 +1894,10 @@ def format_method_call(ps, rest)
 
   use_parens = use_parens_for_method_call(
     method,
+    chain,
     args,
     original_used_parens,
+    ps.formatting_context.last,
   )
 
   ps.with_start_of_line(false) do
@@ -1893,7 +1915,9 @@ def format_method_call(ps, rest)
       ps.emit_ident(" ")
     end
 
-    format_list_like_thing_items(ps, [args], true)
+    ps.with_formatting_context(:args_list) do
+      format_list_like_thing_items(ps, [args], true)
+    end
 
     if use_parens
       ps.emit_ident(")")

@@ -5,6 +5,7 @@ EOD
 b = <<-EOD
 part 1 of heredoc
 EOD
+
 def foo
   c = <<~EOD
 part 1 of heredoc

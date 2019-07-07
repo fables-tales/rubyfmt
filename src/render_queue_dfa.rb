@@ -195,6 +195,8 @@ class RenderQueueDFA
         raise "omg" if !c.is_a_newline?
       when is_non_requirish_and_previous_line_is_requirish(char)
         push_additional_newline
+      when is_def_and_previous_line_is_not_end?(char)
+        push_additional_newline
       when comment_wants_leading_newline?(char)
         push_additional_newline
       when do_block_wants_leading_newline?(char)
@@ -204,6 +206,8 @@ class RenderQueueDFA
       when if_wants_leading_newline?(char)
         push_additional_newline
       when private_wants_trailing_blankline?(pc + [char])
+        push_additional_newline
+      when private_wants_leading_blankline?(pc + [char])
         push_additional_newline
       end
 
@@ -237,6 +241,12 @@ class RenderQueueDFA
     return false unless chars.length == 4
 
     chars[1].is_private? && chars[2].is_a_newline? && !chars[3].is_a_newline?
+  end
+
+  def private_wants_leading_blankline?(chars)
+    return false unless chars.length == 4
+
+    !chars[0].is_a_newline? && chars[1].is_a_newline? && chars[2].is_indent? && chars[3].is_private?
   end
 
   def class_wants_leading_newline?(char)
@@ -296,6 +306,18 @@ class RenderQueueDFA
     return false if chars.length != 4
 
     chars[1].is_a_comment? && chars[2].is_a_newline? && chars[3].is_a_newline?
+  end
+
+  def is_def_and_previous_line_is_not_end?(char)
+    return false unless char.is_def?
+    return false unless prev_line
+
+    prev_line.none? { |x|
+      x.is_end? ||
+        x.declares_class_or_module? ||
+        x.is_a_comment? ||
+        x.to_s == "private"
+    }
   end
 
   def is_end_and_not_end?(chars)

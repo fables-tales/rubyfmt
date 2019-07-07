@@ -16,7 +16,7 @@ module Cat
 
       private
 
-      attr_reader(:target_url)
+      attr_reader :target_url
     end
   end
 end
