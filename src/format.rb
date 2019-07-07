@@ -391,7 +391,13 @@ def format_inner_string(ps, parts, type)
   parts.each_with_index do |part, idx|
     case part[0]
     when :@tstring_content
-      ps.emit_ident(part[1])
+
+      if part[1] == "require"
+        ps.emit_require
+      else
+        ps.emit_ident(part[1])
+      end
+
       ps.on_line(part[2][0])
     when :string_embexpr
       ps.emit_ident("\#{")
