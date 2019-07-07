@@ -56,9 +56,9 @@ class ParserState
     @comments_to_insert.merge(cc)
   end
 
-  def with_formatting_context(context, &blk)
+  def with_formatting_context(context)
     @formatting_context << context
-    blk.call
+    yield
     @formatting_context.pop
   end
 
@@ -135,15 +135,20 @@ class ParserState
     end
 
     build_comments = CommentBlock.new
+    added_comment = false
+
+    # this can be made significantly more performant with a jump array probably
     while !comments_hash.empty? && comments_hash.keys.sort.first <= line_number
       key = comments_hash.keys.sort.first
 
       comment = comments_hash.delete(key)
 
       build_comments.add_comment(Comment.new(comment))
+
+      added_comment = true
     end
 
-    insert_comment_collection(build_comments) if !@surpress_comments_stack.last && !build_comments.empty?
+    insert_comment_collection(build_comments) if !@surpress_comments_stack.last && added_comment
     @current_orig_line_number = line_number
   end
 
