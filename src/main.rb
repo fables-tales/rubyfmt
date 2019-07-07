@@ -9,7 +9,17 @@ def extract_line_metadata(file_data)
 end
 
 def main
-  file_data = ARGF.read
+  if ARGV.first == "-i"
+    output = StringIO.new
+    inline = true
+    file_to_read = File.open(ARGV[1], "r")
+  else
+    output = $stdout
+    inline = false
+    file_to_read = ARGF
+  end
+
+  file_data = file_to_read.read
   file_data = file_data.gsub("\r\n", "\n")
 
   line_metadata = extract_line_metadata(file_data)
@@ -29,10 +39,13 @@ def main
   parser.comments_delete.each do |(start, last)|
     line_metadata.comment_blocks.reject! { |k, v| k >= start && k <= last }
   end
-  format_program(line_metadata, sexp, $stdout)
+
+  format_program(line_metadata, sexp, output)
+
+  if inline
+    output.rewind
+    File.open(ARGV[1], "w").write(output.read)
+  end
 end
 
-#require 'stackprof'
-#StackProf.run(raw: true, mode: :wall, interval: 30, out:'/tmp/stackprof') do
-  main if __FILE__ == $0
-#end
+main if __FILE__ == $0
