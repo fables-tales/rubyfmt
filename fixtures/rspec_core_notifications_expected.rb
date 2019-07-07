@@ -207,7 +207,10 @@ module RSpec::Core
 
       private
 
-      def initialize(example, exception_presenter = Formatters::ExceptionPresenter::Factory.new(example).build)
+      def initialize(
+        example,
+        exception_presenter = Formatters::ExceptionPresenter::Factory.new(example).build
+      )
         @exception_presenter = exception_presenter
         super(example)
       end
@@ -467,12 +470,7 @@ module RSpec::Core
         end
 
         groups = @example_groups.sort_by { |_, hash| -hash[:average] }.first(number_of_examples)
-        groups.map { |group, data|
-          [
-            group.location,
-            data,
-          ]
-        }
+        groups.map { |group, data| [group.location, data] }
       end
     end
 

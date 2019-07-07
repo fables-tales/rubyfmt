@@ -5,6 +5,14 @@ class Intermediary
     @build = []
   end
 
+  def is_indent?
+    false
+  end
+
+  def as_single_line
+    @content.as_single_line
+  end
+
   def <<(x)
     @content << x
     if x.is_a_newline?
@@ -13,6 +21,10 @@ class Intermediary
     else
       @build << x
     end
+  end
+
+  def empty?
+    @content.empty?
   end
 
   def insert_newline_before_last
@@ -64,8 +76,7 @@ class Intermediary
   def pluck_chars(n)
     raise unless n == 3
     (@content[-n..-1] || []).tap { |x|
-      #
-      #raise "omg #{x.inspect}> #{@last_3.inspect}" if @last_3 != x
+      # #raise "omg #{x.inspect}> #{@last_3.inspect}" if @last_3 != x
     }
   end
 
@@ -86,9 +97,72 @@ class RenderQueueDFA
     @render_queue_out = Intermediary.new
   end
 
+  def render_as(q, target_collection, idx, &blk)
+    q = q.dup
+    orig_idx = idx
+    breakable_state = target_collection[orig_idx]
+    token = target_collection[orig_idx + 1]
+
+    q << blk.call(token)
+    nested_tokens = target_collection[orig_idx + 2]
+    nested_index = 0
+    while nested_index < nested_tokens.length
+      t = nested_tokens[nested_index]
+
+      if BreakableState === t
+        q, nested_index = flatten_breakable_state(q, nested_tokens, nested_index)
+      else
+        q << blk.call(t)
+      end
+
+      nested_index += 1
+    end
+
+    idx = orig_idx + 3
+    while target_collection[idx] != breakable_state
+      q << blk.call(target_collection[idx])
+      idx += 1
+    end
+    [q, idx]
+  end
+
+  def flatten_breakable_state(q, token_collection, idx)
+    q = q.dup
+    length = token_collection[idx+2].single_line_string_length
+    if length > MAX_WIDTH
+      q, idx = render_as(q, token_collection, idx, &:as_multi_line)
+    else
+      token_collection[idx+1] = NULL_DIRECT_PART
+      q, idx = render_as(q, token_collection, idx, &:as_single_line)
+      q.pop while [
+        q.last.is_a_comma?,
+        SoftNewLine === q.last,
+        BreakableState === q.last,
+        Space === q.last,
+        NULL_DIRECT_PART == q.last,
+      ].any?
+    end
+
+    [q, idx]
+  end
+
   def call
     i = 0
-    chars = @render_queue_in.each_flat.to_a
+
+    q = TokenCollection.new([])
+    idx = 0
+    while idx < @render_queue_in.length
+      token = @render_queue_in[idx]
+      if BreakableState === token
+        q, idx = flatten_breakable_state(q, @render_queue_in, idx)
+      else
+        q << token
+      end
+
+      idx += 1
+    end
+
+    chars = q.each_flat.to_a
     while i < chars.length
       char = chars[i]
       pc = pluck_chars(3)
@@ -131,41 +205,13 @@ class RenderQueueDFA
         push_additional_newline
       when private_wants_trailing_blankline?(pc + [char])
         push_additional_newline
-      when BreakableState === char
-        ptr = i + 1
-        length = 0
-        while chars[ptr] != char
-          ptr += 1
-          length += chars[ptr].to_s.length unless chars[ptr].is_indent?
-        end
-        # if we don't drop this construct there's a comma and a newline we can
-        # ignore
-        length = length - 2
-
-        current_length = if current_line
-          TokenCollection.new(current_line).string_length
-        else
-          @render_queue_out.string_length
-        end
-
-        if current_length + length < MAX_WIDTH
-          (i+2..ptr-4).each do |idx|
-            @render_queue_out << chars[idx].as_single_line
-          end
-        else
-          (i..ptr).each do |idx|
-            @render_queue_out << chars[idx].as_multi_line
-          end
-        end
-        i = ptr
-        char = DirectPart.new("")
       end
 
       @render_queue_out << char
       i += 1
     end
 
-    while @render_queue_out.last.is_a_newline?
+    while !@render_queue_out.empty? && @render_queue_out.last.is_a_newline?
       @render_queue_out.pop
     end
 

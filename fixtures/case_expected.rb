@@ -11,10 +11,7 @@ class Foo
     end
 
     case
-    when [
-      c,
-      d,
-    ]
+    when [c, d]
     end
   end
 end

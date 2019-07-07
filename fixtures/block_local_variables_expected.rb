@@ -1,5 +1,5 @@
 y = 12
-lambda { |x ;y|
+lambda { |x;y|
   puts(x)
   puts(y)
   y = 19
@@ -7,5 +7,5 @@ lambda { |x ;y|
 }.call(17)
 puts(y)
 
-a do | ;x|
+a do |;x|
 end
