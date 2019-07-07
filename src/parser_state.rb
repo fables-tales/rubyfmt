@@ -19,6 +19,7 @@ class ParserState
   attr_accessor :render_queue
   attr_reader :comments_hash
   attr_reader :depth_stack
+
   def initialize(result, line_metadata)
     @surpress_comments_stack = [false]
     @surpress_one_paren = false
@@ -60,7 +61,9 @@ class ParserState
     # to the formatter where it can consider breaking constructs
     @render_queue << @breakable_state_stack.last
     emit_soft_newline
-    blk.call
+    new_block do
+      blk.call
+    end
     emit_soft_indent
     @render_queue << @breakable_state_stack.pop
     emit_ident(end_delim)
@@ -186,6 +189,10 @@ class ParserState
 
   def emit_comma_space
     @render_queue << CommaSpace.new
+  end
+
+  def emit_trailing_comma_newline
+    @render_queue << TrailingCommaNewline.new
   end
 
   def emit_comma
@@ -324,6 +331,10 @@ class ParserState
     return emit_newline if have_heredocs?
     shift_comments
     @render_queue << SoftNewLine.new
+  end
+
+  def emit_collapsing_newline
+    @render_queue << CollapsingNewLine.new
   end
 
   def emit_dot

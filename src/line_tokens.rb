@@ -3,8 +3,16 @@ module TokenBase
     self
   end
 
+  def is_a_hard_newline?
+    false
+  end
+
   def as_multi_line
     self
+  end
+
+  def is_a_comma?
+    false
   end
 
   def is_a_newline?
@@ -73,6 +81,10 @@ class HardNewLine
   def is_a_newline?
     true
   end
+
+  def is_a_hard_newline?
+    true
+  end
 end
 
 class SoftNewLine
@@ -83,6 +95,21 @@ class SoftNewLine
 
   def as_single_line
     Space.new
+  end
+
+  def is_a_newline?
+    true
+  end
+end
+
+class CollapsingNewLine
+  include TokenBase
+  def to_s
+    "\n"
+  end
+
+  def as_single_line
+    NULL_DIRECT_PART
   end
 
   def is_a_newline?
@@ -121,6 +148,16 @@ class DirectPart
     @part == ""
   end
 end
+
+
+
+class NullDirectPart < DirectPart
+  def initialize
+    super("")
+  end
+end
+
+NULL_DIRECT_PART = NullDirectPart.new
 
 class SingleSlash
   include TokenBase
@@ -275,7 +312,7 @@ class SoftIndent
   end
 
   def as_single_line
-    DirectPart.new("")
+    NULL_DIRECT_PART
   end
 
   def is_indent?
@@ -292,6 +329,10 @@ end
 
 class Comma
   include TokenBase
+  def is_a_comma?
+    true
+  end
+
   def to_s
     ","
   end
