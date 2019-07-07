@@ -11,6 +11,14 @@ module TokenBase
     self
   end
 
+  def is_a_curly?
+    false
+  end
+
+  def is_close_curly?
+    false
+  end
+
   def is_a_comma?
     false
   end
@@ -56,7 +64,6 @@ module TokenBase
   end
 
   def is_require?
-
     false
   end
 
@@ -138,13 +145,12 @@ class DirectPart
 
   def is_require?
     @part == "require"
-
   end
 
   def is_requirish?
-    require_regex = /([^A-Za-z0-9]|^)require([^A-Za-z0-9])?/
-    require_regex === @part
+    require_regex = /([^A-Za-z0-9]|^)require( |\()([^A-Za-z0-9])?/
 
+    require_regex === @part
   end
 
   def is_private?
@@ -153,6 +159,14 @@ class DirectPart
 
   def is_empty_string?
     @part == ""
+  end
+
+  def is_a_curly?
+    @part == "{"
+  end
+
+  def is_close_curly?
+    @part == "}"
   end
 end
 

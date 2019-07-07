@@ -58,14 +58,11 @@ end
 def format_required_params(ps, required_params)
   return if required_params.empty?
 
-
   ps.with_start_of_line(false) do
     required_params.each_with_index do |expr, index|
-
       ps.emit_soft_indent
       format_expression(ps, expr)
       emit_params_separator(ps, index, required_params.length)
-
     end
   end
 end
@@ -204,11 +201,9 @@ def format_params(ps, params, open_delim, close_delim)
       #         |
       #     required params
       required_params = params[1] || []
-
       optional_params = params[2] || []
       rest_params = params[3] || []
       more_required_params = params[4] || []
-
       kwargs = params[5] || []
       kwrest_params = params[6] || []
 
@@ -221,11 +216,9 @@ def format_params(ps, params, open_delim, close_delim)
       block_arg = params[7] || []
       emission_order = [
         [required_params, method(:format_required_params)],
-
         [optional_params, method(:format_optional_params)],
         [rest_params, method(:format_rest_params)],
         [more_required_params, method(:format_required_params)],
-
         [kwargs, method(:format_kwargs)],
         [kwrest_params, method(:format_kwrest_params)],
         [block_arg, method(:format_blockarg)],
@@ -1170,7 +1163,6 @@ def format_brace_block(ps, expression)
   bv, params, _ = params
   raise "got something other than block var" if bv != :block_var && bv != nil
   ps.emit_ident("{")
-
   unless bv.nil?
     ps.emit_space
     format_params(ps, orig_params, "|", "|")
@@ -1923,7 +1915,6 @@ def use_parens_for_method_call(method, chain, args, original_used_parens, contex
   # Follow the original code style for super and yield
   # Note that `super()` has different semantics to `super`
   return original_used_parens if ["super", "yield", "require"].include?(method[1])
-
 
   # No parens if there are no arguments
   return false if args.empty?
