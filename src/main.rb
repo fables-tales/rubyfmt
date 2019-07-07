@@ -21,22 +21,27 @@ def main
 
   file_data = file_to_read.read
   file_data = file_data.gsub("\r\n", "\n")
-
   line_metadata = extract_line_metadata(file_data)
-
   parser = Parser.new(file_data)
   sexp = parser.parse
+
   if ENV["RUBYFMT_DEBUG"] == "2"
-    require 'pry'; binding.pry
+    require "pry"
+
+    binding.pry
   end
+
   if parser.error?
     if ENV["RUBYFMT_DEBUG"] == "2"
-      require 'pry'; binding.pry
+      require "pry"
+
+      binding.pry
     end
-    STDERR.puts "Got a parse error while reading #{file_to_read.to_io.inspect}"
-    STDERR.puts parser.error?.inspect
-    STDERR.puts "bailing with exit code 1"
-    exit 1
+
+    STDERR.puts("Got a parse error while reading #{file_to_read.to_io.inspect}")
+    STDERR.puts(parser.error?.inspect)
+    STDERR.puts("bailing with exit code 1")
+    exit(1)
   end
 
   parser.comments_delete.each do |(start, last)|

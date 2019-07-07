@@ -56,6 +56,7 @@ module TokenBase
   end
 
   def is_require?
+
     false
   end
 
@@ -74,6 +75,7 @@ end
 
 class HardNewLine
   include TokenBase
+
   def to_s
     "\n"
   end
@@ -89,6 +91,7 @@ end
 
 class SoftNewLine
   include TokenBase
+
   def to_s
     "\n"
   end
@@ -104,6 +107,7 @@ end
 
 class CollapsingNewLine
   include TokenBase
+
   def to_s
     "\n"
   end
@@ -119,6 +123,7 @@ end
 
 class DirectPart
   include TokenBase
+
   def initialize(part)
     @part = part
   end
@@ -133,11 +138,13 @@ class DirectPart
 
   def is_require?
     @part == "require"
+
   end
 
   def is_requirish?
     require_regex = /([^A-Za-z0-9]|^)require([^A-Za-z0-9])?/
     require_regex === @part
+
   end
 
   def is_private?
@@ -149,8 +156,6 @@ class DirectPart
   end
 end
 
-
-
 class NullDirectPart < DirectPart
   def initialize
     super("")
@@ -161,6 +166,7 @@ NULL_DIRECT_PART = NullDirectPart.new
 
 class SingleSlash
   include TokenBase
+
   def to_s
     "\\"
   end
@@ -168,6 +174,7 @@ end
 
 class Binary
   include TokenBase
+
   def initialize(symbol)
     @symbol = symbol
   end
@@ -179,6 +186,7 @@ end
 
 class Space
   include TokenBase
+
   def to_s
     " "
   end
@@ -186,6 +194,7 @@ end
 
 class Dot
   include TokenBase
+
   def to_s
     "."
   end
@@ -193,6 +202,7 @@ end
 
 class LonelyOperator
   include TokenBase
+
   def to_s
     "&."
   end
@@ -200,6 +210,7 @@ end
 
 class OpenParen
   include TokenBase
+
   def to_s
     "("
   end
@@ -207,6 +218,7 @@ end
 
 class CloseParen
   include TokenBase
+
   def to_s
     ")"
   end
@@ -214,6 +226,7 @@ end
 
 class OpenArgPipe
   include TokenBase
+
   def to_s
     "|"
   end
@@ -221,6 +234,7 @@ end
 
 class CloseArgPipe
   include TokenBase
+
   def to_s
     "|"
   end
@@ -228,6 +242,7 @@ end
 
 class DoubleQuote
   include TokenBase
+
   def to_s
     "\""
   end
@@ -235,6 +250,7 @@ end
 
 class OpenSquareBracket
   include TokenBase
+
   def to_s
     "["
   end
@@ -242,6 +258,7 @@ end
 
 class CloseSquareBracket
   include TokenBase
+
   def to_s
     "]"
   end
@@ -249,6 +266,7 @@ end
 
 class Keyword
   include TokenBase
+
   def initialize(keyword)
     @keyword = keyword
   end
@@ -288,6 +306,7 @@ end
 
 class Indent
   include TokenBase
+
   def initialize(spaces)
     @spaces = spaces
   end
@@ -303,6 +322,7 @@ end
 
 class SoftIndent
   include TokenBase
+
   def initialize(spaces)
     @spaces = spaces
   end
@@ -322,6 +342,7 @@ end
 
 class CommaSpace
   include TokenBase
+
   def to_s
     ", "
   end
@@ -329,6 +350,7 @@ end
 
 class Comma
   include TokenBase
+
   def is_a_comma?
     true
   end
@@ -340,6 +362,7 @@ end
 
 class Op
   include TokenBase
+
   def initialize(op)
     @op = op
   end
@@ -351,6 +374,7 @@ end
 
 class Comment
   include TokenBase
+
   def initialize(content)
     @content = content
   end
@@ -366,7 +390,6 @@ end
 
 class CommentBlock
   include TokenBase
-
   attr_reader :comments
 
   def initialize

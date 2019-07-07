@@ -65,13 +65,16 @@ class ParserState
   def breakable_of(start_delim, end_delim, &blk)
     emit_ident(start_delim)
     @breakable_state_stack << BreakableState.new(current_spaces)
+
     # we insert breakable state markers in to the render queue indicating
     # to the formatter where it can consider breaking constructs
     @render_queue << @breakable_state_stack.last
     emit_soft_newline
+
     new_block do
       blk.call
     end
+
     emit_soft_indent
     @render_queue << @breakable_state_stack.pop
     emit_ident(end_delim)
@@ -97,15 +100,14 @@ class ParserState
     next_ps = ParserState.new(buf, LineMetadata.new({}))
     next_ps.depth_stack = depth_stack.dup
     format_inner_string(next_ps, inner_string_components, :heredoc)
-
     next_ps.emit_newline
     next_ps.write
     buf.rewind
-
     buf_data = buf.read
 
     # buf gets an extra newline on the end, trim it
     @heredoc_strings << [symbol, indent, buf_data[0...-1]]
+
     next_ps.heredoc_strings.each do |s|
       @heredoc_strings << s
     end
@@ -127,7 +129,7 @@ class ParserState
     pop_conditional_indent if @string_concat_position.empty?
   end
 
-  def on_line(line_number, skip=false)
+  def on_line(line_number, skip = false)
     if line_number != @current_orig_line_number
       @arrays_on_line = -1
     end
@@ -135,23 +137,20 @@ class ParserState
     build_comments = CommentBlock.new
     while !comments_hash.empty? && comments_hash.keys.sort.first <= line_number
       key = comments_hash.keys.sort.first
+
       comment = comments_hash.delete(key)
+
       build_comments.add_comment(Comment.new(comment))
     end
-    insert_comment_collection(build_comments) if !@surpress_comments_stack.last && !build_comments.empty?
 
+    insert_comment_collection(build_comments) if !@surpress_comments_stack.last && !build_comments.empty?
     @current_orig_line_number = line_number
   end
 
   def write
     on_line(100000000000000)
-
     fixup_render_queue
-
-    @render_queue.each { |x|
-      result.write(x)
-    }
-
+    @render_queue.each { |x| result.write(x) }
     result.write("\n")
     result.flush
   end
@@ -178,10 +177,10 @@ class ParserState
 
   def push_conditional_indent(type)
     if start_of_line.last
-      @conditional_indent << 2*@depth_stack.last
+      @conditional_indent << 2 * @depth_stack.last
     else
       if type == :conditional
-        @conditional_indent << 2*@depth_stack.last
+        @conditional_indent << 2 * @depth_stack.last
       elsif type == :string
         @conditional_indent << render_queue_as_lines.last.to_s.length
       end
@@ -209,7 +208,7 @@ class ParserState
 
   def ensure_file_ends_with_exactly_one_newline(lines)
     lines.each_with_index do |line, i|
-      if i == lines.length-1
+      if i == lines.length - 1
         line.strip_trailing_newlines
       end
 
@@ -319,12 +318,14 @@ class ParserState
 
   def shift_comments
     idx_of_prev_hard_newline = @render_queue.rindex_by { |x| x.is_a_newline? }
+
     if !@comments_to_insert.empty?
       if idx_of_prev_hard_newline
         @render_queue.insert(idx_of_prev_hard_newline, @comments_to_insert.to_token_collection)
       else
         @render_queue.insert(0, @comments_to_insert.to_token_collection)
       end
+
       @comments_to_insert = CommentBlock.new
     end
   end
@@ -425,27 +426,37 @@ class ParserState
     !heredoc_strings.empty?
   end
 
-  def render_heredocs(skip=false)
+  def render_heredocs(skip = false)
     while have_heredocs?
       symbol, indent, string = heredoc_strings.pop
+
+
       unless render_queue[-1] && render_queue[-1].is_a_newline?
         @render_queue << HardNewLine.new
       end
 
+
       if string.end_with?("\n")
         string = string[0...-1]
       end
+
 
       if string.end_with?("\n")
         string = string[0...-1]
       end
 
       @render_queue << DirectPart.new(string)
+
       emit_newline
+
+
       if indent
         emit_indent
       end
+
       emit_ident(symbol.to_s.gsub("'", ""))
+
+
       if !skip
         emit_newline
       end

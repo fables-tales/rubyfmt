@@ -3,9 +3,9 @@ require "delegate"
 require "ripper"
 require "stringio"
 
-MAX_WIDTH=100
-
+MAX_WIDTH = 100
 GC.disable
+
 class Array
   def split(&blk)
     chunk(&blk).reject { |sep, _| sep }.map(&:last)
@@ -17,6 +17,7 @@ class Array
         return length - idx
       end
     end
+
     nil
   end
 end
