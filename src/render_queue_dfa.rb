@@ -3,6 +3,7 @@ class Intermediary
     @content = TokenCollection.new([])
     @lines = []
     @build = []
+    @last_3 = []
   end
 
   def is_indent?
@@ -15,6 +16,7 @@ class Intermediary
 
   def <<(x)
     @content << x
+    @last_3 = @content[-3..-1] || []
 
     if x.is_a_newline?
       @lines << TokenCollection.new(@build) unless @build.empty?
@@ -30,6 +32,7 @@ class Intermediary
 
   def insert_newline_before_last
     @content.insert(@content.rindex_by { |x| x.is_a_newline? } - 1, HardNewLine.new)
+    @last_3 = @content[-3..-1]
   end
 
   def string_length
@@ -41,7 +44,9 @@ class Intermediary
   end
 
   def delete_last_newline
-    @content.delete_at(@content.rindex_by { |x| x.is_a_newline? } - 1)
+    res = @content.delete_at(@content.rindex_by { |x| x.is_a_newline? } - 1)
+    @last_3 = @content[-3..-1]
+    res
   end
 
   def prev_line
@@ -79,10 +84,9 @@ class Intermediary
 
   def pluck_chars(n)
     raise unless n == 3
-    (@content[-n..-1] || []).tap { |x|  }
+    @last_3
   end
 
-      # #raise "omg #{x.inspect}> #{@last_3.inspect}" if @last_3 != x
   def each(*args, &blk)
     @content.each(*args, &blk)
   end

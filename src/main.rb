@@ -10,12 +10,10 @@ end
 
 def main
   if ARGV.first == "-i"
-    output = StringIO.new
-    inline = true
+    output_proc = Proc.new { File.open(ARGV[1], "w") }
     file_to_read = File.open(ARGV[1], "r")
   else
-    output = $stdout
-    inline = false
+    output_proc = Proc.new { $stdout }
     file_to_read = ARGF
   end
 
@@ -45,12 +43,16 @@ def main
     line_metadata.comment_blocks.reject! { |k, v| k >= start && k <= last }
   end
 
-  format_program(line_metadata, sexp, output)
+  format_program(line_metadata, sexp, &output_proc)
+end
 
-  if inline
-    output.rewind
-    File.open(ARGV[1], "w").write(output.read)
-  end
+def rubyprof_main
+  require "ruby-prof"
+
+  RubyProf.start
+  main
+  result = RubyProf.stop
+  RubyProf::CallStackPrinter.new(result).print(File.open("out.html", "w"))
 end
 
 main if __FILE__ == $0

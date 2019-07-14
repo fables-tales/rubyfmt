@@ -4,8 +4,16 @@ class TokenCollection < SimpleDelegator
     @parts = parts
   end
 
+  def <<(v)
+    @parts << v
+  end
+
   def is_indent?
     false
+  end
+
+  def any?(&blk)
+    @parts.any?(&blk)
   end
 
   def rindex_by(&blk)
