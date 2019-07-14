@@ -1924,8 +1924,7 @@ def use_parens_for_method_call(method, chain, args, original_used_parens, contex
 
   # No parens if there are no arguments
   return false if args.empty?
-  ci = chain.inspect
-  return true if ci.include?(":@const") && method[1] == "new"
+  return true if method[1] == "new"
   return false if context == :class_or_module && !original_used_parens
 
   # If in doubt, use parens
@@ -1942,7 +1941,11 @@ def format_method_call(ps, rest)
       format_expression(ps, chain_expr)
     end
 
-    if method != :call
+    if method[0] == :keyword
+      format_keyword(ps, method[1..-1])
+    elsif method[0] == :@ident
+      format_ident(ps, method[1..-1])
+    elsif method != :call
       format_expression(ps, method)
     end
 
@@ -2208,9 +2211,12 @@ EXPRESSION_HANDLERS = {
   :keyword => method(:format_keyword),
 }.freeze
 
+#$expr_stack = []
 def format_expression(ps, expression)
   expression = normalize(expression)
   type, rest = expression[0], expression[1...expression.length]
+
+  #$expr_stack << type
   line_re = /(\[\d+, \d+\])/
   line_number = line_re.match(rest.inspect)
 
@@ -2220,15 +2226,18 @@ def format_expression(ps, expression)
   end
 
   EXPRESSION_HANDLERS.fetch(type).call(ps, rest)
+
+  #STDERR.puts(($expr_stack[-2..-1] || []).join(" > "))
+  #$expr_stack.pop
 rescue KeyError => e
   puts(ps.current_orig_line_number)
   puts(ps.line)
   raise e
 end
 
-def format_program(line_metadata, sexp, result)
+def format_program(line_metadata, sexp, &output_proc)
   program, expressions = sexp
-  ps = ParserState.new(result, line_metadata)
+  ps = ParserState.new(line_metadata, &output_proc)
 
   expressions.each do |expression|
     format_expression(ps, expression)

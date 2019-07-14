@@ -21,10 +21,10 @@ class ParserState
   attr_reader :depth_stack
   attr_reader :formatting_context
 
-  def initialize(result, line_metadata)
+  def initialize(line_metadata, &output_proc)
     @surpress_comments_stack = [false]
     @surpress_one_paren = false
-    @result = result
+    @output_proc = output_proc
     @depth_stack = [0]
     @start_of_line = [true]
     @render_queue = []
@@ -39,7 +39,8 @@ class ParserState
   end
 
   def self.with_depth_stack(output, from:)
-    i = new(output, LineMetadata.new({}))
+    op = Proc.new { output }
+    i = new(LineMetadata.new({}), &op)
     i.depth_stack = from.depth_stack.dup
     i
   end
@@ -97,7 +98,8 @@ class ParserState
 
   def push_heredoc_content(symbol, indent, inner_string_components)
     buf = StringIO.new
-    next_ps = ParserState.new(buf, LineMetadata.new({}))
+    buf_proc = Proc.new { buf }
+    next_ps = ParserState.new(LineMetadata.new({}), &buf_proc)
     next_ps.depth_stack = depth_stack.dup
     format_inner_string(next_ps, inner_string_components, :heredoc)
     next_ps.emit_newline
@@ -155,6 +157,7 @@ class ParserState
   def write
     on_line(100000000000000)
     fixup_render_queue
+    result = @output_proc.call
     @render_queue.each { |x| result.write(x) }
     result.write("\n")
     result.flush

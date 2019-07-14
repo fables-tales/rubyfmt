@@ -141,6 +141,7 @@ class DirectPart
 
   def initialize(part)
     @part = part
+    @is_maybe_requirish = part.include?("require")
   end
 
   def to_s
@@ -156,8 +157,9 @@ class DirectPart
   end
 
   def is_requirish?
+    return false unless @is_maybe_requirish
     return true if is_require?
-    require_regex = /([^A-Za-z0-9]|^)require( |\()([^A-Za-z0-9])?/
+    require_regex = /([^A-Za-z0-9]|^)require([^A-Za-z0-9])?/
 
     require_regex === @part
   end
