@@ -1,50 +1,89 @@
-use std::io::{Write, Stdout, self};
+#[macro_use]
+extern crate lazy_static;
+extern crate regex;
+extern crate serde_json;
+
 use std::fs::File;
-use std::slice;
+use std::io::{self, BufReader, Write};
+use std::str;
 
-pub struct Writer<T: Write> {
-    handle: T
+use serde_json::Value;
+
+pub type RawStatus = i64;
+
+mod comment_block;
+mod format;
+mod line_metadata;
+mod line_tokens;
+mod parser_state;
+mod ruby_string_pointer;
+mod types;
+
+use line_metadata::LineMetadata;
+use parser_state::ParserState;
+use ruby_string_pointer::RubyStringPointer;
+
+enum Status {
+    Ok = 0,
+    BadFileName,
+    CouldntCreatefile,
+    BadJson,
 }
 
-type StdoutWriter = Writer<Stdout>;
-type FileWriter = Writer<File>;
+#[no_mangle]
+pub extern "C" fn format_sexp_tree_to_stdout(
+    buf: RubyStringPointer,
+    tree: RubyStringPointer,
+) -> RawStatus {
+    raw_format_program(io::stdout(), buf, tree)
+}
 
-impl <T:Write> Writer<T> {
-    pub fn new(handle: T) -> Self {
-        Writer {
-            handle: handle
-        }
+#[no_mangle]
+pub extern "C" fn format_sexp_tree_to_file(
+    filename: RubyStringPointer,
+    buf: RubyStringPointer,
+    tree: RubyStringPointer,
+) -> RawStatus {
+    let b = filename.as_buf();
+    let filename = match str::from_utf8(b) {
+        Ok(x) => x,
+        Err(_) => return Status::BadFileName as RawStatus,
+    };
+
+    let fp = match File::create(filename) {
+        Ok(x) => x,
+        Err(_) => return Status::CouldntCreatefile as RawStatus,
+    };
+
+    raw_format_program(fp, buf, tree)
+}
+
+fn raw_format_program<T: Write>(
+    writer: T,
+    buf: RubyStringPointer,
+    tree: RubyStringPointer,
+) -> RawStatus {
+    let buf = buf.as_buf();
+    let tree = tree.as_buf();
+
+    let res = match toplevel_format_program(writer, buf, tree) {
+        Ok(()) => Status::Ok,
+        Err(status) => status,
+    };
+
+    return res as RawStatus;
+}
+
+fn toplevel_format_program<W: Write>(writer: W, buf: &[u8], tree: &[u8]) -> Result<(), Status> {
+    let line_metadata = LineMetadata::from_buf(BufReader::new(buf))
+        .expect("failed to load line metadata from memory");
+    let mut ps = ParserState::new(line_metadata);
+    let v: Vec<Value> = serde_json::from_slice(tree).map_err(|e| Status::BadJson)?;
+    match format::format_program(&mut ps, &v) {
+        Ok(_) => Ok(()),
+        Err(e) => {
+            println!("{:?}", e);
+            Err(Status::BadJson)
+        },
     }
-
-    pub fn write_next_bytes(&mut self, bytes: *const u8, length: i64) -> io::Result<usize> {
-        let b = unsafe { slice::from_raw_parts(bytes, length as usize) };
-        let res = self.handle.write(b);
-        self.handle.flush()?;
-        res
-    }
-}
-
-#[no_mangle]
-pub extern fn writer_open_handle_or_panic(name_bytes: *mut u8, name_length: i64) -> *mut FileWriter {
-    let b = unsafe { slice::from_raw_parts(name_bytes, name_length as usize) };
-    let s = std::str::from_utf8(b).expect("couldn't convert filename");
-    let f = File::create(s.clone()).expect(&format!("couldn't open {}", s));
-    Box::into_raw(Box::new(Writer::new(f)))
-}
-
-#[no_mangle]
-pub extern fn writer_open_stdout() -> *mut StdoutWriter {
-    Box::into_raw(Box::new(Writer::new(io::stdout())))
-}
-
-#[no_mangle]
-pub extern fn writer_file_writer_write_bytes_or_panic(writer: *mut FileWriter, bytes: *mut u8, length: i64) {
-    let mw = unsafe { &mut *writer };
-    mw.write_next_bytes(bytes, length).expect("couldn't write data to file");
-}
-
-#[no_mangle]
-pub extern fn writer_stdout_writer_write_bytes_or_panic(writer: *mut StdoutWriter, bytes: *mut u8, length: i64) {
-    let mw = unsafe { &mut *writer };
-    mw.write_next_bytes(bytes, length).expect("couldn't write data to stdout");
 }
