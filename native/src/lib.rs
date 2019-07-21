@@ -1,6 +1,8 @@
 #[macro_use]
 extern crate lazy_static;
 extern crate regex;
+
+extern crate serde;
 extern crate serde_json;
 
 use std::fs::File;
@@ -16,10 +18,12 @@ mod format;
 mod line_metadata;
 mod line_tokens;
 mod parser_state;
+mod ripper_tree_types;
 mod ruby_string_pointer;
 mod types;
 
 use line_metadata::LineMetadata;
+use line_tokens::LineToken;
 use parser_state::ParserState;
 use ruby_string_pointer::RubyStringPointer;
 
@@ -28,6 +32,7 @@ enum Status {
     BadFileName,
     CouldntCreatefile,
     BadJson,
+    CouldntWriteFile,
 }
 
 #[no_mangle]
@@ -74,16 +79,24 @@ fn raw_format_program<T: Write>(
     return res as RawStatus;
 }
 
-fn toplevel_format_program<W: Write>(writer: W, buf: &[u8], tree: &[u8]) -> Result<(), Status> {
+fn toplevel_format_program<W: Write>(mut writer: W, buf: &[u8], tree: &[u8]) -> Result<(), Status> {
     let line_metadata = LineMetadata::from_buf(BufReader::new(buf))
         .expect("failed to load line metadata from memory");
     let mut ps = ParserState::new(line_metadata);
-    let v: Vec<Value> = serde_json::from_slice(tree).map_err(|e| Status::BadJson)?;
-    match format::format_program(&mut ps, &v) {
-        Ok(_) => Ok(()),
-        Err(e) => {
-            println!("{:?}", e);
-            Err(Status::BadJson)
-        },
+    let v: ripper_tree_types::Program =
+        serde_json::from_slice(tree).map_err(|e| Status::BadJson)?;
+
+    format::format_program(&mut ps, v);
+    let render_queue = ps.consume_to_render_queue();
+    write_render_queue_to(render_queue, &mut writer).map_err(|_| Status::CouldntWriteFile)
+}
+
+fn write_render_queue_to<W: Write>(rq: Vec<Box<dyn LineToken>>, writer: &mut W) -> io::Result<()> {
+    for line_token in rq {
+        let s = line_token.consume_to_string();
+        write!(writer, "{}", s)?;
     }
+    write!(writer, "\n")?;
+    writer.flush()?;
+    Ok(())
 }
