@@ -41,7 +41,7 @@ pub struct ParserState {
     start_of_line: Vec<bool>,
     surpress_comments_stack: Vec<bool>,
     surpress_one_paren: bool,
-    render_queue: Vec<Box<LineToken>>,
+    render_queue: Vec<Box<dyn LineToken>>,
     current_orig_line_number: LineNumber,
     comments_hash: LineMetadata,
     heredoc_strings: Vec<String>,
@@ -69,6 +69,10 @@ impl ParserState {
         }
     }
 
+    pub fn consume_to_render_queue(self) -> Vec<Box<dyn LineToken>> {
+        self.render_queue
+    }
+
     pub fn on_line(&mut self, line_number: LineNumber) {
         let mut comments = self.comments_hash.extract_comments_to_line(line_number);
         if !self
@@ -86,12 +90,20 @@ impl ParserState {
     }
 
     pub fn emit_indent(&mut self) {
-        self.render_queue.push(Box::new(Indent::new(
-            self.depth_stack
-                .last()
-                .expect("depth stack is never empty")
-                .get(),
-        )));
+        self.render_queue
+            .push(Box::new(Indent::new(self.current_spaces())));
+    }
+
+    fn current_spaces(&self) -> u16 {
+        2 * self
+            .depth_stack
+            .last()
+            .expect("depth stack is never empty")
+            .get()
+    }
+
+    pub fn emit_ident(&mut self, ident: String) {
+        self.render_queue.push(Box::new(DirectPart::new(ident)));
     }
 
     pub fn emit_def_keyword(&mut self) {
@@ -100,7 +112,8 @@ impl ParserState {
 
     pub fn emit_def(&mut self, def_name: String) {
         self.emit_def_keyword();
-        self.render_queue.push(Box::new(DirectPart::new(def_name)));
+        self.render_queue
+            .push(Box::new(DirectPart::new(format!(" {}", def_name))));
     }
 
     pub fn emit_newline(&mut self) {
@@ -108,16 +121,16 @@ impl ParserState {
     }
 
     pub fn emit_end(&mut self) {
+        self.emit_newline();
+        if self.at_start_of_line() {
+            self.emit_indent();
+        }
         self.render_queue.push(Box::new(Keyword::new("end".into())));
     }
 
-    pub fn with_formatting_context<F>(
-        &mut self,
-        fc: FormattingContext,
-        f: F,
-    ) -> Result<(), FormatStatus>
+    pub fn with_formatting_context<F>(&mut self, fc: FormattingContext, f: F)
     where
-        F: FnOnce(&mut ParserState) -> Result<(), FormatStatus>,
+        F: FnOnce(&mut ParserState),
     {
         self.formatting_context.push(fc);
         let res = f(self);
@@ -125,9 +138,9 @@ impl ParserState {
         res
     }
 
-    pub fn new_block<F>(&mut self, f: F) -> Result<(), FormatStatus>
+    pub fn new_block<F>(&mut self, f: F)
     where
-        F: FnOnce(&mut ParserState) -> Result<(), FormatStatus>,
+        F: FnOnce(&mut ParserState),
     {
         let ds_length = self.depth_stack.len();
         self.depth_stack[ds_length - 1].increment();
@@ -136,9 +149,9 @@ impl ParserState {
         res
     }
 
-    pub fn with_start_of_line<F>(&mut self, start_of_line: bool, f: F) -> Result<(), FormatStatus>
+    pub fn with_start_of_line<F>(&mut self, start_of_line: bool, f: F)
     where
-        F: FnOnce(&mut ParserState) -> Result<(), FormatStatus>,
+        F: FnOnce(&mut ParserState),
     {
         self.start_of_line.push(start_of_line);
         let res = f(self);
@@ -146,13 +159,17 @@ impl ParserState {
         res
     }
 
-
     pub fn at_start_of_line(&self) -> bool {
-        self.start_of_line.last().expect("start of line is never_empty").clone()
+        self.start_of_line
+            .last()
+            .expect("start of line is never_empty")
+            .clone()
     }
 
     pub fn current_formatting_context(&self) -> FormattingContext {
-        self.formatting_context.last().expect("formatting context is never empty").clone()
+        self.formatting_context
+            .last()
+            .expect("formatting context is never empty")
+            .clone()
     }
-
 }

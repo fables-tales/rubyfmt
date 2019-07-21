@@ -1,8 +1,8 @@
 use regex::Regex;
 
 pub trait LineToken {
-    fn as_single_line(self) -> Box<LineToken>;
-    fn as_multi_line(self) -> Box<LineToken>;
+    fn as_single_line(self) -> Box<dyn LineToken>;
+    fn as_multi_line(self) -> Box<dyn LineToken>;
 
     fn is_hard_newline(&self) -> bool {
         false
@@ -75,6 +75,8 @@ pub trait LineToken {
     fn is_empty_string(&self) -> bool {
         false
     }
+
+    fn consume_to_string(self: Box<Self>) -> String;
 }
 
 pub struct BreakableState {
@@ -82,23 +84,16 @@ pub struct BreakableState {
 }
 
 impl LineToken for BreakableState {
-    fn as_single_line(self) -> Box<LineToken> {
+    fn as_single_line(self) -> Box<dyn LineToken> {
         Box::new(self)
     }
 
-    fn as_multi_line(self) -> Box<LineToken> {
-        Box::new(self)
-    }
-}
-
-pub struct Def {}
-impl LineToken for Def {
-    fn as_single_line(self) -> Box<LineToken> {
+    fn as_multi_line(self) -> Box<dyn LineToken> {
         Box::new(self)
     }
 
-    fn as_multi_line(self) -> Box<LineToken> {
-        Box::new(self)
+    fn consume_to_string(self: Box<Self>) -> String {
+        panic!("dont call to_s on BreakableState");
     }
 }
 
@@ -109,12 +104,13 @@ impl HardNewLine {
         HardNewLine {}
     }
 }
+
 impl LineToken for HardNewLine {
-    fn as_single_line(self) -> Box<LineToken> {
+    fn as_single_line(self) -> Box<dyn LineToken> {
         Box::new(self)
     }
 
-    fn as_multi_line(self) -> Box<LineToken> {
+    fn as_multi_line(self) -> Box<dyn LineToken> {
         Box::new(self)
     }
 
@@ -124,6 +120,9 @@ impl LineToken for HardNewLine {
 
     fn is_newline(&self) -> bool {
         true
+    }
+    fn consume_to_string(self: Box<Self>) -> String {
+        "\n".into()
     }
 }
 
@@ -137,16 +136,20 @@ impl Indent {
 }
 
 impl LineToken for Indent {
-    fn as_single_line(self) -> Box<LineToken> {
+    fn as_single_line(self) -> Box<dyn LineToken> {
         Box::new(self)
     }
 
-    fn as_multi_line(self) -> Box<LineToken> {
+    fn as_multi_line(self) -> Box<dyn LineToken> {
         Box::new(self)
     }
 
     fn is_indent(&self) -> bool {
         true
+    }
+
+    fn consume_to_string(self: Box<Self>) -> String {
+        (0..self.depth).map(|_| ' ').collect()
     }
 }
 
@@ -161,11 +164,11 @@ impl Keyword {
 }
 
 impl LineToken for Keyword {
-    fn as_single_line(self) -> Box<LineToken> {
+    fn as_single_line(self) -> Box<dyn LineToken> {
         Box::new(self)
     }
 
-    fn as_multi_line(self) -> Box<LineToken> {
+    fn as_multi_line(self) -> Box<dyn LineToken> {
         Box::new(self)
     }
 
@@ -196,6 +199,10 @@ impl LineToken for Keyword {
     fn is_else(&self) -> bool {
         self.keyword == "else"
     }
+
+    fn consume_to_string(self: Box<Self>) -> String {
+        self.keyword
+    }
 }
 
 pub struct DirectPart {
@@ -209,11 +216,11 @@ impl DirectPart {
 }
 
 impl LineToken for DirectPart {
-    fn as_single_line(self) -> Box<LineToken> {
+    fn as_single_line(self) -> Box<dyn LineToken> {
         Box::new(self)
     }
 
-    fn as_multi_line(self) -> Box<LineToken> {
+    fn as_multi_line(self) -> Box<dyn LineToken> {
         Box::new(self)
     }
 
@@ -226,5 +233,9 @@ impl LineToken for DirectPart {
             static ref RE: Regex = Regex::new("([^A-Za-z0-9]|^)require([^A-Za-z0-9])?").unwrap();
         }
         RE.is_match(&self.part)
+    }
+
+    fn consume_to_string(self: Box<Self>) -> String {
+        self.part
     }
 }
