@@ -3,7 +3,7 @@ use crate::line_metadata::LineMetadata;
 use crate::line_tokens::*;
 use crate::types::{FormatStatus, LineNumber};
 
-#[derive(Clone)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum FormattingContext {
     Main,
     Assign,
@@ -110,10 +110,27 @@ impl ParserState {
         self.render_queue.push(Box::new(Keyword::new("def".into())));
     }
 
+    pub fn emit_soft_indent(&mut self) {
+        self.render_queue
+            .push(Box::new(SoftIndent::new(self.current_spaces())));
+    }
+
+    pub fn emit_comma(&mut self) {
+        self.render_queue.push(Box::new(Comma::new()));
+    }
+
+    pub fn emit_soft_newline(&mut self) {
+        self.render_queue.push(Box::new(SoftNewline::new()));
+    }
+
     pub fn emit_def(&mut self, def_name: String) {
         self.emit_def_keyword();
         self.render_queue
             .push(Box::new(DirectPart::new(format!(" {}", def_name))));
+    }
+
+    pub fn emit_int(&mut self, int: String) {
+        self.render_queue.push(Box::new(DirectPart::new(int)));
     }
 
     pub fn emit_newline(&mut self) {
@@ -126,6 +143,10 @@ impl ParserState {
             self.emit_indent();
         }
         self.render_queue.push(Box::new(Keyword::new("end".into())));
+    }
+
+    pub fn emit_comma_space(&mut self) {
+        self.render_queue.push(Box::new(CommaSpace::new()))
     }
 
     pub fn with_formatting_context<F>(&mut self, fc: FormattingContext, f: F)

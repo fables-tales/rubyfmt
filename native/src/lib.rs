@@ -83,8 +83,10 @@ fn toplevel_format_program<W: Write>(mut writer: W, buf: &[u8], tree: &[u8]) -> 
     let line_metadata = LineMetadata::from_buf(BufReader::new(buf))
         .expect("failed to load line metadata from memory");
     let mut ps = ParserState::new(line_metadata);
-    let v: ripper_tree_types::Program =
-        serde_json::from_slice(tree).map_err(|e| Status::BadJson)?;
+    let v: ripper_tree_types::Program = serde_json::from_slice(tree).map_err(|e| {
+        println!("{:?}", e);
+        Status::BadJson
+    })?;
 
     format::format_program(&mut ps, v);
     let render_queue = ps.consume_to_render_queue();
