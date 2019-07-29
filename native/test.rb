@@ -3,6 +3,7 @@ $: << ".."
 require "rubyfmt.so"
 require "build/rubyfmt"
 require "json"
+require "pp"
 
 
 #start_time = Time.now.to_f
@@ -15,11 +16,8 @@ require "json"
 #p((end_time - start_time) / 100)
 #
 #
-file_data = "def a\n  b\nend\n" * 1000
+file_data = "a(1, 2, 3)"
 start_time = Time.now.to_f
-inspected_parsed = JSON.dump(Parser.new(file_data).parse)
-start_time = Time.now.to_f
+parsed = Parser.new(file_data).parse
+inspected_parsed = JSON.dump(parsed)
 Rubyfmt::format_to_stdout(file_data, inspected_parsed)
-end_time = Time.now.to_f
-p(end_time - start_time)
-File.open("out.rb", "w") { |fp| fp.write(file_data) }

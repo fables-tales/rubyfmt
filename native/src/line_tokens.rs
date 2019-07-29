@@ -1,8 +1,19 @@
 use regex::Regex;
 
 pub trait LineToken {
-    fn as_single_line(self) -> Box<dyn LineToken>;
-    fn as_multi_line(self) -> Box<dyn LineToken>;
+    fn as_single_line(self) -> Box<dyn LineToken>
+    where
+        Self: Sized + 'static,
+    {
+        return Box::new(self);
+    }
+
+    fn as_multi_line(self) -> Box<dyn LineToken>
+    where
+        Self: Sized + 'static,
+    {
+        return Box::new(self);
+    }
 
     fn is_hard_newline(&self) -> bool {
         false
@@ -84,14 +95,6 @@ pub struct BreakableState {
 }
 
 impl LineToken for BreakableState {
-    fn as_single_line(self) -> Box<dyn LineToken> {
-        Box::new(self)
-    }
-
-    fn as_multi_line(self) -> Box<dyn LineToken> {
-        Box::new(self)
-    }
-
     fn consume_to_string(self: Box<Self>) -> String {
         panic!("dont call to_s on BreakableState");
     }
@@ -106,14 +109,6 @@ impl HardNewLine {
 }
 
 impl LineToken for HardNewLine {
-    fn as_single_line(self) -> Box<dyn LineToken> {
-        Box::new(self)
-    }
-
-    fn as_multi_line(self) -> Box<dyn LineToken> {
-        Box::new(self)
-    }
-
     fn is_hard_newline(&self) -> bool {
         true
     }
@@ -136,14 +131,6 @@ impl Indent {
 }
 
 impl LineToken for Indent {
-    fn as_single_line(self) -> Box<dyn LineToken> {
-        Box::new(self)
-    }
-
-    fn as_multi_line(self) -> Box<dyn LineToken> {
-        Box::new(self)
-    }
-
     fn is_indent(&self) -> bool {
         true
     }
@@ -164,14 +151,6 @@ impl Keyword {
 }
 
 impl LineToken for Keyword {
-    fn as_single_line(self) -> Box<dyn LineToken> {
-        Box::new(self)
-    }
-
-    fn as_multi_line(self) -> Box<dyn LineToken> {
-        Box::new(self)
-    }
-
     fn is_keyword(&self) -> bool {
         true
     }
@@ -213,17 +192,15 @@ impl DirectPart {
     pub fn new(part: String) -> Self {
         DirectPart { part: part }
     }
+
+    pub fn null() -> Self {
+        DirectPart {
+            part: "".to_string(),
+        }
+    }
 }
 
 impl LineToken for DirectPart {
-    fn as_single_line(self) -> Box<dyn LineToken> {
-        Box::new(self)
-    }
-
-    fn as_multi_line(self) -> Box<dyn LineToken> {
-        Box::new(self)
-    }
-
     fn is_require(&self) -> bool {
         self.part == "require"
     }
@@ -237,5 +214,96 @@ impl LineToken for DirectPart {
 
     fn consume_to_string(self: Box<Self>) -> String {
         self.part
+    }
+}
+
+pub struct CommaSpace;
+
+impl CommaSpace {
+    pub fn new() -> Self {
+        return CommaSpace;
+    }
+}
+
+impl LineToken for CommaSpace {
+    fn consume_to_string(self: Box<Self>) -> String {
+        ", ".to_string()
+    }
+}
+
+pub struct SoftIndent {
+    depth: u16,
+}
+impl SoftIndent {
+    pub fn new(depth: u16) -> Self {
+        SoftIndent { depth: depth }
+    }
+}
+
+impl LineToken for SoftIndent {
+    fn is_indent(&self) -> bool {
+        true
+    }
+
+    fn consume_to_string(self: Box<Self>) -> String {
+        (0..self.depth).map(|_| ' ').collect()
+    }
+
+    fn as_single_line(self) -> Box<dyn LineToken> {
+        Box::new(DirectPart::null())
+    }
+}
+
+pub struct Comma;
+
+impl Comma {
+    pub fn new() -> Self {
+        Comma
+    }
+}
+
+impl LineToken for Comma {
+    fn consume_to_string(self: Box<Self>) -> String {
+        ",".to_string()
+    }
+
+    fn is_comma(&self) -> bool {
+        true
+    }
+}
+
+pub struct SoftNewline;
+
+impl SoftNewline {
+    pub fn new() -> Self {
+        SoftNewline
+    }
+}
+
+impl LineToken for SoftNewline {
+    fn consume_to_string(self: Box<Self>) -> String {
+        "\n".to_string()
+    }
+
+    fn is_newline(&self) -> bool {
+        true
+    }
+
+    fn as_single_line(self) -> Box<LineToken> {
+        Box::new(Space::new())
+    }
+}
+
+pub struct Space;
+
+impl Space {
+    pub fn new() -> Self {
+        Space
+    }
+}
+
+impl LineToken for Space {
+    fn consume_to_string(self: Box<Self>) -> String {
+        " ".to_string()
     }
 }
