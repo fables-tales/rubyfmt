@@ -307,3 +307,34 @@ impl LineToken for Space {
         " ".to_string()
     }
 }
+
+pub struct Dot;
+
+impl Dot {
+    pub fn new() -> Self {
+        Dot
+    }
+}
+
+impl LineToken for Dot {
+    fn consume_to_string(self: Box<Self>) -> String {
+        ".".to_string()
+    }
+}
+
+pub struct LonelyOperator;
+
+impl LonelyOperator {
+    pub fn new() -> Self {
+        LonelyOperator
+    }
+}
+
+impl LineToken for LonelyOperator {
+    fn consume_to_string(self: Box<Self>) -> String {
+        "&.".to_string()
+    }
+}
+
+
+

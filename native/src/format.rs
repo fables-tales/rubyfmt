@@ -27,7 +27,7 @@ pub fn format_bodystmt(ps: &mut ParserState, bodystmt: BodyStmt) {
 
 pub fn use_parens_for_method_call(
     method: &Box<Expression>,
-    chain: &Vec<Expression>,
+    chain: &Vec<CallChainElement>,
     args: &Vec<Expression>,
     original_used_parens: bool,
     context: &FormattingContext,
@@ -68,6 +68,13 @@ pub fn use_parens_for_method_call(
     };
 }
 
+pub fn format_dot(ps: &mut ParserState, dot: DotType) {
+    match dot {
+        DotType::Dot(_) => ps.emit_dot(),
+        DotType::LonleyOperator(_) => ps.emit_lonely_operator(),
+    }
+}
+
 pub fn format_method_call(ps: &mut ParserState, method_call: MethodCall) {
     if ps.at_start_of_line() {
         ps.emit_indent();
@@ -86,7 +93,10 @@ pub fn format_method_call(ps: &mut ParserState, method_call: MethodCall) {
 
     ps.with_start_of_line(false, |ps| {
         for expr in chain {
-            format_expression(ps, expr);
+            match expr {
+                CallChainElement::Expression(e) => format_expression(ps, *e),
+                CallChainElement::Dot(dot) => format_dot(ps, dot),
+            };
         }
 
         match *method {
@@ -163,6 +173,45 @@ pub fn format_int(ps: &mut ParserState, int: Int) {
     }
 }
 
+pub fn format_bare_assoc_hash(ps: &mut ParserState, bah: BareAssocHash) {
+    format_assocs(ps, bah.1)
+}
+
+pub fn format_assocs(ps: &mut ParserState, assocs: Vec<AssocNewOrAssocSplat>) {
+    for assoc in assocs.into_iter() {
+        ps.emit_soft_indent();
+        ps.with_start_of_line(false, |ps| match assoc {
+            AssocNewOrAssocSplat::AssocNew(new) => {
+                match new.1 {
+                    LabelOrSymbolLiteralOrDynaSymbol::Label(label) => {
+                        ps.emit_ident(label.1);
+                        ps.emit_space();
+                    },
+                    LabelOrSymbolLiteralOrDynaSymbol::SymbolLiteral(symbol) => {
+                        format_expression(ps, Expression::Symbol(symbol.1));
+                        ps.emit_space();
+                        ps.emit_ident("=>".to_string());
+                        ps.emit_space();
+                    },
+                    LabelOrSymbolLiteralOrDynaSymbol::DynaSymbol(dyna_symbol) => {
+                        format_expression(ps, Expression::DynaSymbol(dyna_symbol));
+                        ps.emit_space();
+                        ps.emit_ident("=>".to_string());
+                        ps.emit_space();
+                    }
+                }
+                format_expression(ps, new.2);
+            }
+            AssocNewOrAssocSplat::AssocSplat(splat) => {
+                ps.emit_ident("**".to_string());
+                ps.emit_ident((splat.1).1);
+            }
+        });
+        ps.emit_comma();
+        ps.emit_soft_newline();
+    }
+}
+
 trait ToMethodCall {
     fn to_method_call(self) -> MethodCall;
 }
@@ -179,6 +228,7 @@ pub fn normalize(e: Expression) -> Expression {
         Expression::MethodAddArg(maa) => Expression::MethodCall(maa.to_method_call()),
         //"command" => unimplemented!(),
         //"command_call" => unimplemented!(),
+        Expression::Call(call) => Expression::MethodCall(call.to_method_call()),
         //"call" => unimplemented!(),
         //"zsuper" => unimplemented!(),
         //"super" => unimplemented!(),
@@ -196,6 +246,7 @@ pub fn format_expression(ps: &mut ParserState, expression: Expression) {
         Expression::MethodCall(mc) => format_method_call(ps, mc),
         Expression::Ident(ident) => format_ident(ps, ident),
         Expression::Int(int) => format_int(ps, int),
+        Expression::BareAssocHash(bah) => format_bare_assoc_hash(ps, bah),
         e => {
             panic!("got unknown token: {:?}", e);
         }

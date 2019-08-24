@@ -149,6 +149,18 @@ impl ParserState {
         self.render_queue.push(Box::new(CommaSpace::new()))
     }
 
+    pub fn emit_space(&mut self) {
+        self.render_queue.push(Box::new(Space::new()));
+    }
+
+    pub fn emit_dot(&mut self) {
+        self.render_queue.push(Box::new(Dot::new()));
+    }
+
+    pub fn emit_lonely_operator(&mut self) {
+        self.render_queue.push(Box::new(LonelyOperator::new()));
+    }
+
     pub fn with_formatting_context<F>(&mut self, fc: FormattingContext, f: F)
     where
         F: FnOnce(&mut ParserState),

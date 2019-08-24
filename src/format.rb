@@ -2063,17 +2063,21 @@ def normalize_args_add_star(rest)
 end
 
 def normalize_inner_call(expr)
+  p("_---------")
   type, rest = expr[0], expr[1..-1]
   case type
   when :fcall, :vcall
     [[], rest[0]]
   when :call
+    p(rest)
+    p(rest[0])
     a, b = normalize_inner_call(rest[0])
     [
       a + [b, [:dot, rest[1]]],
       rest[2],
     ]
   else
+    p("else branch")
     [[], expr]
   end
 end
