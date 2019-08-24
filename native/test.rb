@@ -16,8 +16,8 @@ require "pp"
 #p((end_time - start_time) / 100)
 #
 #
-file_data = "a(1, 2, 3)"
-start_time = Time.now.to_f
+file_data = File.read(ARGV[0])
 parsed = Parser.new(file_data).parse
+pp(parsed)
 inspected_parsed = JSON.dump(parsed)
 Rubyfmt::format_to_stdout(file_data, inspected_parsed)

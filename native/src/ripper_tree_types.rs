@@ -65,6 +65,11 @@ pub enum Expression {
     DotCall(DotCall),
     MethodAddArg(MethodAddArg),
     Int(Int),
+    BareAssocHash(BareAssocHash),
+    Symbol(Symbol),
+    DynaSymbol(DynaSymbol),
+    Call(Call),
+    V(Vec<Value>),
 }
 
 // isn't parsable, but we do create it in our "normalized tree"
@@ -72,7 +77,7 @@ def_tag!(method_call_tag, "method_call");
 #[derive(Deserialize, Debug)]
 pub struct MethodCall(
     pub method_call_tag,
-    pub Vec<Expression>,
+    pub Vec<CallChainElement>,
     pub Box<Expression>,
     pub bool,
     pub Vec<Expression>,
@@ -80,7 +85,7 @@ pub struct MethodCall(
 
 impl MethodCall {
     pub fn new(
-        chain: Vec<Expression>,
+        chain: Vec<CallChainElement>,
         method: Box<Expression>,
         use_parens: bool,
         args: Vec<Expression>,
@@ -141,37 +146,56 @@ pub struct DotCall(pub dotCall);
 #[serde(untagged)]
 pub enum CallExpr {
     FCall(FCall),
+    Call(Call),
+    Expression(Box<Expression>),
+}
+
+#[derive(Deserialize, Debug)]
+#[serde(untagged)]
+pub enum CallChainElement {
+    Expression(Box<Expression>),
+    Dot(DotType),
 }
 
 def_tag!(method_add_arg_tag, "method_add_arg");
 #[derive(Deserialize, Debug)]
-pub struct MethodAddArg(pub method_add_arg_tag, pub CallExpr, pub ArgExpr);
+pub struct MethodAddArg(pub method_add_arg_tag, pub CallExpr, pub ArgNode);
 
-pub fn normalize_inner_call(call_expr: CallExpr) -> (Vec<Expression>, Box<Expression>) {
+pub fn normalize_inner_call(call_expr: CallExpr) -> (Vec<CallChainElement>, Box<Expression>) {
     match call_expr {
         CallExpr::FCall(FCall(_, i)) => (vec![], Box::new(Expression::Ident(i))),
+        CallExpr::Call(Call(_, left, dot, right)) => {
+          let (mut chain, method) = normalize_inner_call(CallExpr::Expression(left));
+          chain.push(CallChainElement::Expression(method));
+          chain.push(CallChainElement::Dot(dot));
+          (chain, right)
+        }
+        CallExpr::Expression(e) => {
+          (Vec::new(), e)
+        }
     }
 }
 
 pub fn normalize_arg_paren(ap: ArgParen) -> Vec<Expression> {
     match *ap.1 {
-        ArgExpr::Null(_) => vec![],
+        ArgNode::Null(_) => vec![],
         ae => normalize_args(ae),
     }
 }
 
 pub fn normalize_args_add_block(aab: ArgsAddBlock) -> Vec<Expression> {
+    // .1 is expression list
+    // .2 is block
     match aab.2 {
-        MaybeBlock::NoBlock(_) => normalize_args(*aab.1),
+        MaybeBlock::NoBlock(_) => aab.1,
     }
 }
 
-pub fn normalize_args(arg_expr: ArgExpr) -> Vec<Expression> {
-    match arg_expr {
-        ArgExpr::ArgParen(ap) => normalize_arg_paren(ap),
-        ArgExpr::ArgsAddBlock(aab) => normalize_args_add_block(aab),
-        ArgExpr::ExpressionList(expr) => expr,
-        ArgExpr::Null(_) => panic!("should never be called with null"),
+pub fn normalize_args(arg_node: ArgNode) -> Vec<Expression> {
+    match arg_node {
+        ArgNode::ArgParen(ap) => normalize_arg_paren(ap),
+        ArgNode::ArgsAddBlock(aab) => normalize_args_add_block(aab),
+        ArgNode::Null(_) => panic!("should never be called with null"),
     }
 }
 
@@ -189,16 +213,15 @@ pub struct FCall(pub fcall_tag, pub Ident);
 
 #[derive(Deserialize, Debug)]
 #[serde(untagged)]
-pub enum ArgExpr {
+pub enum ArgNode {
     ArgParen(ArgParen),
     ArgsAddBlock(ArgsAddBlock),
-    ExpressionList(Vec<Expression>),
     Null(Option<String>),
 }
 
 def_tag!(arg_paren_tag, "arg_paren");
 #[derive(Deserialize, Debug)]
-pub struct ArgParen(pub arg_paren_tag, pub Box<ArgExpr>);
+pub struct ArgParen(pub arg_paren_tag, pub Box<ArgNode>);
 
 #[derive(Deserialize, Debug)]
 #[serde(untagged)]
@@ -208,8 +231,105 @@ pub enum MaybeBlock {
 
 def_tag!(args_add_block_tag, "args_add_block");
 #[derive(Deserialize, Debug)]
-pub struct ArgsAddBlock(pub args_add_block_tag, pub Box<ArgExpr>, pub MaybeBlock);
+pub struct ArgsAddBlock(pub args_add_block_tag, pub Vec<Expression>, pub MaybeBlock);
 
 def_tag!(int_tag, "@int");
 #[derive(Deserialize, Debug)]
 pub struct Int(pub int_tag, pub String, pub LineCol);
+
+def_tag!(bare_assoc_hash_tag, "bare_assoc_hash");
+#[derive(Deserialize, Debug)]
+pub struct BareAssocHash(pub bare_assoc_hash_tag, pub Vec<AssocNewOrAssocSplat>);
+
+#[derive(Deserialize, Debug)]
+#[serde(untagged)]
+pub enum AssocNewOrAssocSplat {
+    AssocNew(AssocNew),
+    AssocSplat(AssocSplat),
+}
+
+def_tag!(assoc_new_tag, "assoc_new");
+#[derive(Deserialize, Debug)]
+pub struct AssocNew(
+    pub assoc_new_tag,
+    pub LabelOrSymbolLiteralOrDynaSymbol,
+    pub Expression,
+);
+
+def_tag!(assoc_splat_tag, "assoc_splat");
+#[derive(Deserialize, Debug)]
+pub struct AssocSplat(pub assoc_splat_tag, pub Ident);
+
+#[derive(Deserialize, Debug)]
+#[serde(untagged)]
+pub enum LabelOrSymbolLiteralOrDynaSymbol {
+    Label(Label),
+    SymbolLiteral(SymbolLiteral),
+    DynaSymbol(DynaSymbol),
+}
+
+def_tag!(label_tag, "@label");
+#[derive(Deserialize, Debug)]
+pub struct Label(pub label_tag, pub String, pub LineCol);
+
+def_tag!(symbol_literal_tag, "symbol_literal");
+#[derive(Deserialize, Debug)]
+pub struct SymbolLiteral(pub symbol_literal_tag, pub Symbol);
+
+def_tag!(symbol_tag, "symbol_literal");
+#[derive(Deserialize, Debug)]
+pub struct Symbol(pub symbol_tag, pub Ident);
+
+def_tag!(dyna_symbol_tag, "dyna_symbol");
+#[derive(Deserialize, Debug)]
+pub struct DynaSymbol(pub dyna_symbol_tag, pub StringContent);
+
+def_tag!(string_content_tag, "string_content");
+#[derive(Deserialize, Debug)]
+pub struct StringContent(pub string_content_tag, pub StringContentPart);
+
+#[derive(Deserialize, Debug)]
+#[serde(untagged)]
+pub enum StringContentPart {
+    TStringContent(TStringContent),
+    StringEmbexpr(StringEmbexpr),
+}
+
+def_tag!(tstring_content_tag, "@tstring_content");
+#[derive(Deserialize, Debug)]
+pub struct TStringContent(pub tstring_content_tag, pub String, pub LineCol);
+
+def_tag!(string_embexpr_tag, "string_embexpr");
+#[derive(Deserialize, Debug)]
+pub struct StringEmbexpr(pub string_embexpr_tag, pub Box<Expression>, pub LineCol);
+
+def_tag!(call_tag, "call");
+#[derive(Deserialize, Debug)]
+pub struct Call(pub call_tag, pub Box<Expression>, pub DotType, pub Box<Expression>);
+
+impl Call {
+    pub fn to_method_call(self) -> MethodCall {
+        let (chain, method) = normalize_inner_call(CallExpr::Call(self));
+        MethodCall::new(
+          chain,
+          method,
+          false,
+          Vec::new(),
+        )
+    }
+}
+
+#[derive(Deserialize, Debug)]
+#[serde(untagged)]
+pub enum DotType {
+    Dot(Dot),
+    LonleyOperator(LonelyOperator),
+}
+
+def_tag!(dot_tag, ".");
+#[derive(Deserialize, Debug)]
+pub struct Dot(pub dot_tag);
+
+def_tag!(lonely_operator_tag, "&.");
+#[derive(Deserialize, Debug)]
+pub struct LonelyOperator(pub lonely_operator_tag);
