@@ -56,8 +56,8 @@ pub struct Program(pub program_tag, pub Vec<Expression>);
 #[derive(Deserialize, Debug)]
 #[serde(untagged)]
 pub enum Expression {
+    VoidStmt(VoidStmt),
     Def(Def),
-    BodyStmt(BodyStmt),
     VCall(VCall),
     Ident(Ident),
     Params(Params),
@@ -69,8 +69,12 @@ pub enum Expression {
     Symbol(Symbol),
     DynaSymbol(DynaSymbol),
     Call(Call),
-    V(Vec<Value>),
+    Begin(Begin),
 }
+
+def_tag!(void_stmt_tag, "void_stmt");
+#[derive(Deserialize, Debug)]
+pub struct VoidStmt(pub (void_stmt_tag,));
 
 // isn't parsable, but we do create it in our "normalized tree"
 def_tag!(method_call_tag, "method_call");
@@ -96,7 +100,11 @@ impl MethodCall {
 
 def_tag!(def_tag, "def");
 #[derive(Deserialize, Debug)]
-pub struct Def(pub def_tag, pub Ident, pub Params, pub BodyStmt);
+pub struct Def(pub def_tag, pub Ident, pub ParenOrParams, pub BodyStmt);
+
+def_tag!(begin_tag, "begin");
+#[derive(Deserialize, Debug)]
+pub struct Begin(pub begin_tag, pub BodyStmt);
 
 def_tag!(bodystmt_tag, "bodystmt");
 #[derive(Deserialize, Debug)]
@@ -122,18 +130,48 @@ impl Ident {
     }
 }
 
+#[derive(Deserialize, Debug)]
+#[serde(untagged)]
+pub enum ParenOrParams {
+    Paren(Paren),
+    Params(Params),
+}
+
+def_tag!(paren_tag, "paren");
+#[derive(Deserialize, Debug)]
+pub struct Paren(pub paren_tag, pub Params);
+
 def_tag!(params_tag, "params");
 #[derive(Deserialize, Debug)]
 pub struct Params(
     pub params_tag,
-    pub Value,
-    pub Value,
-    pub Value,
-    pub Value,
-    pub Value,
-    pub Value,
-    pub Value,
+    pub Option<Vec<Ident>>,
+    pub Option<Vec<(Ident, Expression)>>,
+    pub Option<RestParam>,
+    pub Option<Vec<Ident>>,
+    pub Option<Vec<(Label, ExpressionOrFalse)>>,
+    pub Option<KwRestParam>,
+    pub Option<BlockArg>,
 );
+
+#[derive(Deserialize, Debug)]
+#[serde(untagged)]
+pub enum ExpressionOrFalse {
+    Expression(Expression),
+    False(bool),
+}
+
+def_tag!(rest_param_tag, "rest_param");
+#[derive(Deserialize, Debug)]
+pub struct RestParam(pub rest_param_tag, pub Option<Ident>);
+
+def_tag!(kw_rest_param_tag, "kwrest_param");
+#[derive(Deserialize, Debug)]
+pub struct KwRestParam(pub kw_rest_param_tag, pub Option<Ident>);
+
+def_tag!(blockarg_tag, "blockarg");
+#[derive(Deserialize, Debug)]
+pub struct BlockArg(pub blockarg_tag, pub Ident);
 
 #[derive(Deserialize, Debug)]
 pub struct LineCol(pub LineNumber, pub u64);
@@ -165,14 +203,12 @@ pub fn normalize_inner_call(call_expr: CallExpr) -> (Vec<CallChainElement>, Box<
     match call_expr {
         CallExpr::FCall(FCall(_, i)) => (vec![], Box::new(Expression::Ident(i))),
         CallExpr::Call(Call(_, left, dot, right)) => {
-          let (mut chain, method) = normalize_inner_call(CallExpr::Expression(left));
-          chain.push(CallChainElement::Expression(method));
-          chain.push(CallChainElement::Dot(dot));
-          (chain, right)
+            let (mut chain, method) = normalize_inner_call(CallExpr::Expression(left));
+            chain.push(CallChainElement::Expression(method));
+            chain.push(CallChainElement::Dot(dot));
+            (chain, right)
         }
-        CallExpr::Expression(e) => {
-          (Vec::new(), e)
-        }
+        CallExpr::Expression(e) => (Vec::new(), e),
     }
 }
 
@@ -305,17 +341,17 @@ pub struct StringEmbexpr(pub string_embexpr_tag, pub Box<Expression>, pub LineCo
 
 def_tag!(call_tag, "call");
 #[derive(Deserialize, Debug)]
-pub struct Call(pub call_tag, pub Box<Expression>, pub DotType, pub Box<Expression>);
+pub struct Call(
+    pub call_tag,
+    pub Box<Expression>,
+    pub DotType,
+    pub Box<Expression>,
+);
 
 impl Call {
     pub fn to_method_call(self) -> MethodCall {
         let (chain, method) = normalize_inner_call(CallExpr::Call(self));
-        MethodCall::new(
-          chain,
-          method,
-          false,
-          Vec::new(),
-        )
+        MethodCall::new(chain, method, false, Vec::new())
     }
 }
 

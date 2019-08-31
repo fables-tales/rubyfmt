@@ -1,3 +1,4 @@
+use crate::types::ColNumber;
 use regex::Regex;
 
 pub trait LineToken {
@@ -90,13 +91,44 @@ pub trait LineToken {
     fn consume_to_string(self: Box<Self>) -> String;
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct BreakableState {
-    indentation_depth: u32,
+    indentation_depth: ColNumber,
+}
+
+impl BreakableState {
+    pub fn new(indentation_depth: ColNumber) -> Self {
+        BreakableState {
+            indentation_depth: indentation_depth,
+        }
+    }
 }
 
 impl LineToken for BreakableState {
     fn consume_to_string(self: Box<Self>) -> String {
-        panic!("dont call to_s on BreakableState");
+        "".to_string()
+    }
+}
+
+pub struct CollapsingNewLine {}
+
+impl CollapsingNewLine {
+    pub fn new() -> Self {
+        CollapsingNewLine {}
+    }
+}
+
+impl LineToken for CollapsingNewLine {
+    fn consume_to_string(self: Box<Self>) -> String {
+        "\n".to_string()
+    }
+
+    fn as_single_line(self) -> Box<dyn LineToken> {
+        Box::new(DirectPart::new("".to_string()))
+    }
+
+    fn is_newline(&self) -> bool {
+        true
     }
 }
 
@@ -122,10 +154,10 @@ impl LineToken for HardNewLine {
 }
 
 pub struct Indent {
-    depth: u16,
+    depth: ColNumber,
 }
 impl Indent {
-    pub fn new(depth: u16) -> Self {
+    pub fn new(depth: ColNumber) -> Self {
         Indent { depth: depth }
     }
 }
@@ -232,10 +264,10 @@ impl LineToken for CommaSpace {
 }
 
 pub struct SoftIndent {
-    depth: u16,
+    depth: ColNumber,
 }
 impl SoftIndent {
-    pub fn new(depth: u16) -> Self {
+    pub fn new(depth: ColNumber) -> Self {
         SoftIndent { depth: depth }
     }
 }
@@ -336,5 +368,34 @@ impl LineToken for LonelyOperator {
     }
 }
 
+pub struct BreakableEntry {
+    tokens: Vec<Box<dyn LineToken>>,
+    id: u32,
+}
 
+impl BreakableEntry {
+    pub fn new(id: u32) -> Self {
+        BreakableEntry {
+            tokens: vec![],
+            id: id,
+        }
+    }
 
+    pub fn push<T: 'static + LineToken>(&mut self, t: T) {
+        self.tokens.push(Box::new(t));
+    }
+}
+
+impl LineToken for BreakableEntry {
+    fn consume_to_string(self: Box<Self>) -> String {
+        self.tokens.into_iter().fold("".to_string(), |accum, tok| {
+            format!("{}{}", accum, tok.consume_to_string()).to_string()
+        })
+    }
+}
+
+impl PartialEq for BreakableEntry {
+    fn eq(&self, other: &Self) -> bool {
+        self.id == other.id
+    }
+}
