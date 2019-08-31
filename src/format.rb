@@ -11,7 +11,8 @@ def format_until(ps, rest)
   ps.emit_space
 
   ps.with_start_of_line(false) do
-    format_expression(ps, conditional)
+    fo
+    mat_expression(ps, conditional)
   end
 
   ps.emit_newline
@@ -234,8 +235,8 @@ def format_params(ps, params, open_delim, close_delim)
         callable.call(ps, values)
         did_emit = !values.empty?
 
-          # we don't actually have a test case for [:excessed_comma] lmao, but
-          # it's definitely in parse.y
+        # we don't actually have a test case for [:excessed_comma] lmao, but
+        # it's definitely in parse.y
         have_more = emission_order[idx + 1..-1].map { |x| x[0] != 0 && !x[0].empty? && x[0] != [:excessed_comma] }.any?
 
         if did_emit && have_more

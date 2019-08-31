@@ -1,7 +1,7 @@
 use crate::comment_block::CommentBlock;
 use crate::line_metadata::LineMetadata;
 use crate::line_tokens::*;
-use crate::types::{FormatStatus, LineNumber};
+use crate::types::{ColNumber, FormatStatus, LineNumber};
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum FormattingContext {
@@ -15,7 +15,7 @@ pub enum FormattingContext {
 }
 
 struct IndentDepth {
-    depth: u16,
+    depth: ColNumber,
 }
 
 impl IndentDepth {
@@ -31,7 +31,7 @@ impl IndentDepth {
         self.depth -= 1;
     }
 
-    fn get(&self) -> u16 {
+    fn get(&self) -> ColNumber {
         self.depth
     }
 }
@@ -47,7 +47,8 @@ pub struct ParserState {
     heredoc_strings: Vec<String>,
     string_concat_position: Vec<i32>,
     comments_to_insert: CommentBlock,
-    breakable_state_stack: Vec<BreakableState>,
+    breakable_entry_stack: Vec<BreakableEntry>,
+    next_breakable_entry_id: u32,
     formatting_context: Vec<FormattingContext>,
 }
 
@@ -64,7 +65,8 @@ impl ParserState {
             heredoc_strings: vec![],
             string_concat_position: vec![],
             comments_to_insert: CommentBlock::new(vec![]),
-            breakable_state_stack: vec![],
+            breakable_entry_stack: vec![],
+            next_breakable_entry_id: 0,
             formatting_context: vec![FormattingContext::Main],
         }
     }
@@ -90,11 +92,10 @@ impl ParserState {
     }
 
     pub fn emit_indent(&mut self) {
-        self.render_queue
-            .push(Box::new(Indent::new(self.current_spaces())));
+        self.push_token(Indent::new(self.current_spaces()));
     }
 
-    fn current_spaces(&self) -> u16 {
+    fn current_spaces(&self) -> ColNumber {
         2 * self
             .depth_stack
             .last()
@@ -103,38 +104,44 @@ impl ParserState {
     }
 
     pub fn emit_ident(&mut self, ident: String) {
-        self.render_queue.push(Box::new(DirectPart::new(ident)));
+        self.push_token(DirectPart::new(ident));
     }
 
     pub fn emit_def_keyword(&mut self) {
-        self.render_queue.push(Box::new(Keyword::new("def".into())));
+        self.push_token(Keyword::new("def".into()));
+    }
+
+    pub fn emit_begin(&mut self) {
+        self.push_token(Keyword::new("begin".into()));
     }
 
     pub fn emit_soft_indent(&mut self) {
-        self.render_queue
-            .push(Box::new(SoftIndent::new(self.current_spaces())));
+        self.push_token(SoftIndent::new(self.current_spaces()));
     }
 
     pub fn emit_comma(&mut self) {
-        self.render_queue.push(Box::new(Comma::new()));
+        self.push_token(Comma::new());
     }
 
     pub fn emit_soft_newline(&mut self) {
-        self.render_queue.push(Box::new(SoftNewline::new()));
+        self.push_token(SoftNewline::new());
+    }
+
+    pub fn emit_collapsing_newline(&mut self) {
+        self.push_token(CollapsingNewLine::new());
     }
 
     pub fn emit_def(&mut self, def_name: String) {
         self.emit_def_keyword();
-        self.render_queue
-            .push(Box::new(DirectPart::new(format!(" {}", def_name))));
+        self.push_token(DirectPart::new(format!(" {}", def_name)));
     }
 
     pub fn emit_int(&mut self, int: String) {
-        self.render_queue.push(Box::new(DirectPart::new(int)));
+        self.push_token(DirectPart::new(int));
     }
 
     pub fn emit_newline(&mut self) {
-        self.render_queue.push(Box::new(HardNewLine::new()));
+        self.push_token(HardNewLine::new());
     }
 
     pub fn emit_end(&mut self) {
@@ -142,23 +149,23 @@ impl ParserState {
         if self.at_start_of_line() {
             self.emit_indent();
         }
-        self.render_queue.push(Box::new(Keyword::new("end".into())));
+        self.push_token(Keyword::new("end".into()));
     }
 
     pub fn emit_comma_space(&mut self) {
-        self.render_queue.push(Box::new(CommaSpace::new()))
+        self.push_token(CommaSpace::new())
     }
 
     pub fn emit_space(&mut self) {
-        self.render_queue.push(Box::new(Space::new()));
+        self.push_token(Space::new());
     }
 
     pub fn emit_dot(&mut self) {
-        self.render_queue.push(Box::new(Dot::new()));
+        self.push_token(Dot::new());
     }
 
     pub fn emit_lonely_operator(&mut self) {
-        self.render_queue.push(Box::new(LonelyOperator::new()));
+        self.push_token(LonelyOperator::new());
     }
 
     pub fn with_formatting_context<F>(&mut self, fc: FormattingContext, f: F)
@@ -204,5 +211,46 @@ impl ParserState {
             .last()
             .expect("formatting context is never empty")
             .clone()
+    }
+
+    pub fn breakable_of<F>(&mut self, start_delim: String, end_delim: String, f: F)
+    where
+        F: FnOnce(&mut ParserState),
+    {
+        self.emit_ident(start_delim);
+        let breakable_state = BreakableState::new(self.current_spaces());
+        self.push_token(breakable_state);
+
+        self.new_block(|ps| f(ps));
+
+        self.emit_soft_indent();
+        self.push_token(breakable_state);
+        self.emit_ident(end_delim);
+    }
+
+    pub fn breakable_entry<F>(&mut self, f: F)
+    where
+        F: FnOnce(&mut ParserState),
+    {
+        self.next_breakable_entry_id += 1;
+        let be = BreakableEntry::new(self.next_breakable_entry_id);
+        self.breakable_entry_stack.push(be);
+        f(self);
+        let insert_be = self
+            .breakable_entry_stack
+            .pop()
+            .expect("cannot have empty here because we just pushed");
+        self.push_token(insert_be);
+    }
+
+    pub fn push_token<T: 'static + LineToken>(&mut self, t: T) {
+        if self.breakable_entry_stack.is_empty() {
+            self.render_queue.push(Box::new(t));
+        } else {
+            self.breakable_entry_stack
+                .last_mut()
+                .expect("we checked it wasn't empty")
+                .push(t);
+        }
     }
 }
