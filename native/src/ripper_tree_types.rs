@@ -192,7 +192,7 @@ pub enum CallExpr {
 #[serde(untagged)]
 pub enum CallChainElement {
     Expression(Box<Expression>),
-    Dot(DotType),
+    Dot(DotTypeOrOp),
 }
 
 def_tag!(method_add_arg_tag, "method_add_arg");
@@ -344,7 +344,7 @@ def_tag!(call_tag, "call");
 pub struct Call(
     pub call_tag,
     pub Box<Expression>,
-    pub DotType,
+    pub DotTypeOrOp,
     pub Box<Expression>,
 );
 
@@ -359,7 +359,14 @@ impl Call {
 #[serde(untagged)]
 pub enum DotType {
     Dot(Dot),
-    LonleyOperator(LonelyOperator),
+    LonelyOperator(LonelyOperator),
+}
+
+#[derive(Deserialize, Debug)]
+#[serde(untagged)]
+pub enum DotTypeOrOp {
+    DotType(DotType),
+    Op(Op),
 }
 
 def_tag!(dot_tag, ".");
@@ -369,3 +376,7 @@ pub struct Dot(pub dot_tag);
 def_tag!(lonely_operator_tag, "&.");
 #[derive(Deserialize, Debug)]
 pub struct LonelyOperator(pub lonely_operator_tag);
+
+def_tag!(op_tag, "@op");
+#[derive(Deserialize, Debug)]
+pub struct Op(pub op_tag, pub DotType, pub LineCol);

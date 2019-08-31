@@ -295,10 +295,17 @@ pub fn use_parens_for_method_call(
     };
 }
 
-pub fn format_dot(ps: &mut ParserState, dot: DotType) {
-    match dot {
+pub fn format_dot_type(ps: &mut ParserState, dt: DotType) {
+    match dt {
         DotType::Dot(_) => ps.emit_dot(),
-        DotType::LonleyOperator(_) => ps.emit_lonely_operator(),
+        DotType::LonelyOperator(_) => ps.emit_lonely_operator(),
+    }
+}
+
+pub fn format_dot(ps: &mut ParserState, dot: DotTypeOrOp) {
+    match dot {
+        DotTypeOrOp::DotType(dt) => format_dot_type(ps, dt),
+        DotTypeOrOp::Op(op) => format_dot_type(ps, op.1),
     }
 }
 
