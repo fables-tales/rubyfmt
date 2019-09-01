@@ -304,7 +304,11 @@ pub fn format_dot_type(ps: &mut ParserState, dt: DotType) {
 pub fn format_dot(ps: &mut ParserState, dot: DotTypeOrOp) {
     match dot {
         DotTypeOrOp::DotType(dt) => format_dot_type(ps, dt),
-        DotTypeOrOp::Op(op) => format_dot_type(ps, op.1),
+        DotTypeOrOp::Op(op) => match op.1 {
+            Operator::Dot(dot) => format_dot_type(ps, DotType::Dot(dot)),
+            Operator::LonelyOperator(dot) => format_dot_type(ps, DotType::LonelyOperator(dot)),
+            _ => { panic!("should be impossible, dot position operator parsed as not a dot") },
+        }
     }
 }
 
@@ -410,6 +414,55 @@ pub fn format_bare_assoc_hash(ps: &mut ParserState, bah: BareAssocHash) {
     format_assocs(ps, bah.1)
 }
 
+pub fn format_alias(ps: &mut ParserState, alias: Alias) {
+    if ps.at_start_of_line() {
+        ps.emit_indent();
+    }
+
+    ps.emit_ident("alias ".to_string());
+
+    ps.with_start_of_line(false, |ps| {
+        format_symbol_literal(ps, alias.1);
+        ps.emit_space();
+        format_symbol_literal(ps, alias.2);
+    });
+
+    if ps.at_start_of_line() {
+        ps.emit_newline();
+    }
+}
+
+pub fn format_op(ps: &mut ParserState, op: Op) {
+    match op.1 {
+        Operator::Equals(_) => ps.emit_ident("==".to_string()),
+        Operator::Dot(_) => ps.emit_dot(),
+        Operator::LonelyOperator(_) => ps.emit_lonely_operator(),
+    }
+}
+
+pub fn format_symbol(ps: &mut ParserState, symbol: Symbol) {
+    ps.emit_ident(":".to_string());
+    format_ident(ps, symbol.1);
+}
+
+pub fn format_symbol_literal(ps: &mut ParserState, symbol_literal: SymbolLiteral) {
+    if ps.at_start_of_line() {
+        ps.emit_indent();
+    }
+
+    ps.with_start_of_line(false, |ps| {
+        match symbol_literal.1 {
+            SymbolOrBare::Ident(ident) => format_ident(ps, ident),
+            SymbolOrBare::Op(op) => format_op(ps, op),
+            SymbolOrBare::Symbol(symbol) => format_symbol(ps, symbol),
+        }
+    });
+
+    if ps.at_start_of_line() {
+        ps.emit_newline();
+    }
+}
+
 pub fn format_assocs(ps: &mut ParserState, assocs: Vec<AssocNewOrAssocSplat>) {
     for assoc in assocs.into_iter() {
         ps.emit_soft_indent();
@@ -421,7 +474,10 @@ pub fn format_assocs(ps: &mut ParserState, assocs: Vec<AssocNewOrAssocSplat>) {
                         ps.emit_space();
                     }
                     LabelOrSymbolLiteralOrDynaSymbol::SymbolLiteral(symbol) => {
-                        format_expression(ps, Expression::Symbol(symbol.1));
+                        match symbol.1 {
+                            SymbolOrBare::Symbol(symbol) => format_expression(ps, Expression::Symbol(symbol)),
+                            _ => panic!("other symbol variants are not valid in an assoc"),
+                        }
                         ps.emit_space();
                         ps.emit_ident("=>".to_string());
                         ps.emit_space();
@@ -551,6 +607,8 @@ pub fn format_expression(ps: &mut ParserState, expression: Expression) {
         Expression::VoidStmt(void) => format_void_stmt(ps, void),
         Expression::Paren(paren) => format_paren(ps, paren),
         Expression::Dot2(dot2) => format_dot2(ps, dot2),
+        Expression::SymbolLiteral(sl) => format_symbol_literal(ps, sl),
+        Expression::Alias(alias) => format_alias(ps, alias),
         e => {
             panic!("got unknown token: {:?}", e);
         }
