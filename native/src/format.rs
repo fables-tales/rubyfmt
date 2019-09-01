@@ -307,8 +307,8 @@ pub fn format_dot(ps: &mut ParserState, dot: DotTypeOrOp) {
         DotTypeOrOp::Op(op) => match op.1 {
             Operator::Dot(dot) => format_dot_type(ps, DotType::Dot(dot)),
             Operator::LonelyOperator(dot) => format_dot_type(ps, DotType::LonelyOperator(dot)),
-            _ => { panic!("should be impossible, dot position operator parsed as not a dot") },
-        }
+            _ => panic!("should be impossible, dot position operator parsed as not a dot"),
+        },
     }
 }
 
@@ -450,12 +450,10 @@ pub fn format_symbol_literal(ps: &mut ParserState, symbol_literal: SymbolLiteral
         ps.emit_indent();
     }
 
-    ps.with_start_of_line(false, |ps| {
-        match symbol_literal.1 {
-            SymbolOrBare::Ident(ident) => format_ident(ps, ident),
-            SymbolOrBare::Op(op) => format_op(ps, op),
-            SymbolOrBare::Symbol(symbol) => format_symbol(ps, symbol),
-        }
+    ps.with_start_of_line(false, |ps| match symbol_literal.1 {
+        SymbolOrBare::Ident(ident) => format_ident(ps, ident),
+        SymbolOrBare::Op(op) => format_op(ps, op),
+        SymbolOrBare::Symbol(symbol) => format_symbol(ps, symbol),
     });
 
     if ps.at_start_of_line() {
@@ -475,7 +473,9 @@ pub fn format_assocs(ps: &mut ParserState, assocs: Vec<AssocNewOrAssocSplat>) {
                     }
                     LabelOrSymbolLiteralOrDynaSymbol::SymbolLiteral(symbol) => {
                         match symbol.1 {
-                            SymbolOrBare::Symbol(symbol) => format_expression(ps, Expression::Symbol(symbol)),
+                            SymbolOrBare::Symbol(symbol) => {
+                                format_expression(ps, Expression::Symbol(symbol))
+                            }
                             _ => panic!("other symbol variants are not valid in an assoc"),
                         }
                         ps.emit_space();
@@ -533,6 +533,7 @@ pub fn normalize(e: Expression) -> Expression {
         //"command" => unimplemented!(),
         //"command_call" => unimplemented!(),
         Expression::Call(call) => Expression::MethodCall(call.to_method_call()),
+        //"fcall" => unimplemented!(),
         //"zsuper" => unimplemented!(),
         //"super" => unimplemented!(),
         //"return" => unimplemented!(),

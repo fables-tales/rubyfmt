@@ -63,13 +63,13 @@ pub enum Expression {
     Params(Params),
     MethodCall(MethodCall),
     DotCall(DotCall),
+    Call(Call),
     MethodAddArg(MethodAddArg),
     Int(Int),
     BareAssocHash(BareAssocHash),
     Symbol(Symbol),
     SymbolLiteral(SymbolLiteral),
     DynaSymbol(DynaSymbol),
-    Call(Call),
     Begin(Begin),
     Paren(ParenExpr),
     Dot2(Dot2),
@@ -251,6 +251,7 @@ pub fn normalize_args(arg_node: ArgNode) -> Vec<Expression> {
     match arg_node {
         ArgNode::ArgParen(ap) => normalize_arg_paren(ap),
         ArgNode::ArgsAddBlock(aab) => normalize_args_add_block(aab),
+        ArgNode::Exprs(exprs) => exprs,
         ArgNode::Null(_) => panic!("should never be called with null"),
     }
 }
@@ -272,6 +273,7 @@ pub struct FCall(pub fcall_tag, pub Ident);
 pub enum ArgNode {
     ArgParen(ArgParen),
     ArgsAddBlock(ArgsAddBlock),
+    Exprs(Vec<Expression>),
     Null(Option<String>),
 }
 
@@ -342,7 +344,6 @@ pub enum SymbolOrBare {
 def_tag!(symbol_tag, "symbol");
 #[derive(Deserialize, Debug)]
 pub struct Symbol(pub symbol_tag, pub Ident);
-
 
 def_tag!(dyna_symbol_tag, "dyna_symbol");
 #[derive(Deserialize, Debug)]
