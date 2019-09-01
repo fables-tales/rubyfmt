@@ -1,6 +1,5 @@
 use crate::parser_state::{FormattingContext, ParserState};
 use crate::ripper_tree_types::*;
-use crate::types::{FormatStatus, LineNumber};
 use std::borrow::Borrow;
 
 pub fn format_def(ps: &mut ParserState, def: Def) {
@@ -478,7 +477,6 @@ pub fn normalize(e: Expression) -> Expression {
         //"command" => unimplemented!(),
         //"command_call" => unimplemented!(),
         Expression::Call(call) => Expression::MethodCall(call.to_method_call()),
-        //"call" => unimplemented!(),
         //"zsuper" => unimplemented!(),
         //"super" => unimplemented!(),
         //"return" => unimplemented!(),
@@ -487,8 +485,58 @@ pub fn normalize(e: Expression) -> Expression {
     }
 }
 
-pub fn format_void_stmt(ps: &mut ParserState, void: VoidStmt) {
+pub fn format_void_stmt(_ps: &mut ParserState, _void: VoidStmt) {
     // deliberately does nothing
+}
+
+pub fn format_paren(ps: &mut ParserState, paren: ParenExpr) {
+    if ps.at_start_of_line() {
+        ps.emit_indent();
+    }
+    ps.emit_ident("(".to_string());
+
+    if paren.1.len() == 1 {
+        let p = (paren.1)
+            .into_iter()
+            .next()
+            .expect("we know this isn't empty");
+        ps.with_start_of_line(false, |ps| format_expression(ps, p));
+    } else {
+        ps.emit_newline();
+        ps.new_block(|ps| {
+            for expr in (paren.1).into_iter() {
+                format_expression(ps, expr);
+            }
+        });
+    }
+    ps.emit_ident(")".to_string());
+    if ps.at_start_of_line() {
+        ps.emit_newline();
+    }
+}
+
+pub fn format_dot2(ps: &mut ParserState, dot2: Dot2) {
+    if ps.at_start_of_line() {
+        ps.emit_indent();
+    }
+
+    ps.with_start_of_line(false, |ps| {
+        match dot2.1 {
+            Some(expr) => format_expression(ps, *expr),
+            _ => {}
+        }
+
+        ps.emit_ident("..".to_string());
+
+        match dot2.2 {
+            Some(expr) => format_expression(ps, *expr),
+            _ => {}
+        }
+    });
+
+    if ps.at_start_of_line() {
+        ps.emit_newline();
+    }
 }
 
 pub fn format_expression(ps: &mut ParserState, expression: Expression) {
@@ -501,6 +549,8 @@ pub fn format_expression(ps: &mut ParserState, expression: Expression) {
         Expression::BareAssocHash(bah) => format_bare_assoc_hash(ps, bah),
         Expression::Begin(begin) => format_begin(ps, begin),
         Expression::VoidStmt(void) => format_void_stmt(ps, void),
+        Expression::Paren(paren) => format_paren(ps, paren),
+        Expression::Dot2(dot2) => format_dot2(ps, dot2),
         e => {
             panic!("got unknown token: {:?}", e);
         }

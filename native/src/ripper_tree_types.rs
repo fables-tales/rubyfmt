@@ -70,7 +70,21 @@ pub enum Expression {
     DynaSymbol(DynaSymbol),
     Call(Call),
     Begin(Begin),
+    Paren(ParenExpr),
+    Dot2(Dot2),
 }
+
+def_tag!(paren_expr_tag, "paren");
+#[derive(Deserialize, Debug)]
+pub struct ParenExpr(pub paren_expr_tag, pub Vec<Expression>);
+
+def_tag!(dot2_tag, "dot2");
+#[derive(Deserialize, Debug)]
+pub struct Dot2(
+    pub dot2_tag,
+    pub Option<Box<Expression>>,
+    pub Option<Box<Expression>>,
+);
 
 def_tag!(void_stmt_tag, "void_stmt");
 #[derive(Deserialize, Debug)]
