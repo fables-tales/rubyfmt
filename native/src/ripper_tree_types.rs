@@ -67,12 +67,18 @@ pub enum Expression {
     Int(Int),
     BareAssocHash(BareAssocHash),
     Symbol(Symbol),
+    SymbolLiteral(SymbolLiteral),
     DynaSymbol(DynaSymbol),
     Call(Call),
     Begin(Begin),
     Paren(ParenExpr),
     Dot2(Dot2),
+    Alias(Alias),
 }
+
+def_tag!(alias_tag, "alias");
+#[derive(Deserialize, Debug)]
+pub struct Alias(pub alias_tag, pub SymbolLiteral, pub SymbolLiteral);
 
 def_tag!(paren_expr_tag, "paren");
 #[derive(Deserialize, Debug)]
@@ -324,11 +330,19 @@ pub struct Label(pub label_tag, pub String, pub LineCol);
 
 def_tag!(symbol_literal_tag, "symbol_literal");
 #[derive(Deserialize, Debug)]
-pub struct SymbolLiteral(pub symbol_literal_tag, pub Symbol);
+pub struct SymbolLiteral(pub symbol_literal_tag, pub SymbolOrBare);
 
-def_tag!(symbol_tag, "symbol_literal");
+#[derive(Deserialize, Debug)]
+#[serde(untagged)]
+pub enum SymbolOrBare {
+    Ident(Ident),
+    Op(Op),
+    Symbol(Symbol),
+}
+def_tag!(symbol_tag, "symbol");
 #[derive(Deserialize, Debug)]
 pub struct Symbol(pub symbol_tag, pub Ident);
+
 
 def_tag!(dyna_symbol_tag, "dyna_symbol");
 #[derive(Deserialize, Debug)]
@@ -371,6 +385,14 @@ impl Call {
 
 #[derive(Deserialize, Debug)]
 #[serde(untagged)]
+pub enum Operator {
+    Equals(Equals),
+    Dot(Dot),
+    LonelyOperator(LonelyOperator),
+}
+
+#[derive(Deserialize, Debug)]
+#[serde(untagged)]
 pub enum DotType {
     Dot(Dot),
     LonelyOperator(LonelyOperator),
@@ -383,6 +405,10 @@ pub enum DotTypeOrOp {
     Op(Op),
 }
 
+def_tag!(equals_tag, "==");
+#[derive(Deserialize, Debug)]
+pub struct Equals(pub equals_tag);
+
 def_tag!(dot_tag, ".");
 #[derive(Deserialize, Debug)]
 pub struct Dot(pub dot_tag);
@@ -393,4 +419,4 @@ pub struct LonelyOperator(pub lonely_operator_tag);
 
 def_tag!(op_tag, "@op");
 #[derive(Deserialize, Debug)]
-pub struct Op(pub op_tag, pub DotType, pub LineCol);
+pub struct Op(pub op_tag, pub Operator, pub LineCol);
