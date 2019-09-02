@@ -485,8 +485,13 @@ pub enum DotType {
 #[serde(untagged)]
 pub enum DotTypeOrOp {
     DotType(DotType),
+    Period(Period),
     Op(Op),
 }
+
+def_tag!(period_tag, "@period");
+#[derive(Deserialize, Debug)]
+pub struct Period(pub period_tag, pub String, pub LineCol);
 
 def_tag!(equals_tag, "==");
 #[derive(Deserialize, Debug)]
