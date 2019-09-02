@@ -596,6 +596,91 @@ pub fn format_dot2(ps: &mut ParserState, dot2: Dot2) {
     }
 }
 
+pub fn format_array(ps: &mut ParserState, array: Array) {
+    if ps.at_start_of_line() {
+        ps.emit_indent();
+    }
+
+    match array.1 {
+        SimpleArrayOrPercentArray::SimpleArray(a) => format_array_fast_path(ps, a),
+        _ => {
+            unimplemented!();
+        }
+    }
+
+    if ps.at_start_of_line() {
+        ps.emit_newline();
+    }
+}
+
+pub fn format_array_fast_path(ps: &mut ParserState, a: Option<ArgsAddStarOrExpressionList>) {
+    match a {
+        None => {
+            ps.emit_open_square_bracket();
+            ps.emit_close_square_bracket();
+        }
+        Some(a) => {
+            ps.breakable_of("[".to_string(), "]".to_string(), |ps| {
+                ps.breakable_entry(|ps| {
+                    format_list_like_thing(ps, a, false);
+                });
+            });
+        }
+    }
+}
+
+pub fn format_list_like_thing(
+    ps: &mut ParserState,
+    a: ArgsAddStarOrExpressionList,
+    single_line: bool,
+) -> bool {
+    match a {
+        ArgsAddStarOrExpressionList::ArgsAddStar(aas) => {
+            let left = aas.1;
+            let star = aas.2;
+            let right = aas.3;
+            let mut emitted_args = format_list_like_thing(ps, *left, single_line);
+            if single_line {
+                // if we're single line, our predecessor didn't emit a trailing comma
+                // space because rubyfmt terminates single line arg lists without the
+                // trailer so emit one here
+                if emitted_args {
+                    ps.emit_comma_space();
+                }
+            } else {
+                // similarly if we're multi line, we emit a newline but not an indent
+                // at the end our formatting spree, because we might be at a terminator
+                // so fix up the indent
+                ps.emit_soft_indent();
+            }
+
+            emitted_args = true;
+
+            ps.with_start_of_line(false, |ps| {
+                ps.emit_ident("*".to_string());
+                format_expression(ps, *star);
+
+                for expr in right {
+                    emit_intermediate_array_separator(ps);
+                    format_expression(ps, expr);
+                }
+
+                ps.emit_comma();
+                ps.emit_soft_newline();
+            });
+
+            emitted_args
+        },
+        ArgsAddStarOrExpressionList::ExpressionList(el) => format_list_like_thing_items(ps, el, single_line),
+    }
+}
+
+pub fn emit_intermediate_array_separator(ps: &mut ParserState) {
+  ps.emit_comma();
+  ps.emit_soft_newline();
+  ps.emit_soft_indent();
+}
+
 pub fn format_expression(ps: &mut ParserState, expression: Expression) {
     let expression = normalize(expression);
     match expression {
@@ -610,6 +695,7 @@ pub fn format_expression(ps: &mut ParserState, expression: Expression) {
         Expression::Dot2(dot2) => format_dot2(ps, dot2),
         Expression::SymbolLiteral(sl) => format_symbol_literal(ps, sl),
         Expression::Alias(alias) => format_alias(ps, alias),
+        Expression::Array(array) => format_array(ps, array),
         e => {
             panic!("got unknown token: {:?}", e);
         }

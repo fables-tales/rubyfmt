@@ -368,6 +368,34 @@ impl LineToken for LonelyOperator {
     }
 }
 
+pub struct OpenSquareBracket;
+
+impl OpenSquareBracket {
+    pub fn new() -> Self {
+        OpenSquareBracket
+    }
+}
+
+impl LineToken for OpenSquareBracket {
+    fn consume_to_string(self: Box<Self>) -> String {
+        "[".to_string()
+    }
+}
+
+pub struct CloseSquareBracket;
+
+impl CloseSquareBracket {
+    pub fn new() -> Self {
+        CloseSquareBracket
+    }
+}
+
+impl LineToken for CloseSquareBracket {
+    fn consume_to_string(self: Box<Self>) -> String {
+        "]".to_string()
+    }
+}
+
 pub struct BreakableEntry {
     tokens: Vec<Box<dyn LineToken>>,
     id: u32,

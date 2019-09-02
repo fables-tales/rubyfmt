@@ -243,6 +243,14 @@ impl ParserState {
         self.push_token(insert_be);
     }
 
+    pub fn emit_open_square_bracket(&mut self) {
+        self.push_token(OpenSquareBracket::new());
+    }
+
+    pub fn emit_close_square_bracket(&mut self) {
+        self.push_token(CloseSquareBracket::new());
+    }
+
     pub fn push_token<T: 'static + LineToken>(&mut self, t: T) {
         if self.breakable_entry_stack.is_empty() {
             self.render_queue.push(Box::new(t));
