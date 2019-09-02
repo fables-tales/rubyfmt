@@ -309,6 +309,9 @@ pub fn format_dot(ps: &mut ParserState, dot: DotTypeOrOp) {
             Operator::LonelyOperator(dot) => format_dot_type(ps, DotType::LonelyOperator(dot)),
             _ => panic!("should be impossible, dot position operator parsed as not a dot"),
         },
+        DotTypeOrOp::Period(_) => {
+            ps.emit_dot();
+        }
     }
 }
 
