@@ -74,6 +74,88 @@ pub enum Expression {
     Paren(ParenExpr),
     Dot2(Dot2),
     Alias(Alias),
+    Array(Array),
+}
+
+def_tag!(array_tag, "array");
+#[derive(Deserialize, Debug)]
+pub struct Array(pub array_tag, pub SimpleArrayOrPercentArray);
+
+#[derive(Deserialize, Debug)]
+#[serde(untagged)]
+pub enum SimpleArrayOrPercentArray {
+    SimpleArray(Option<ArgsAddStarOrExpressionList>),
+    PercentArray((String, Vec<TStringContent>)),
+}
+
+#[derive(Deserialize, Debug)]
+#[serde(untagged)]
+pub enum ArgsAddStarOrExpressionList {
+    ExpressionList(Vec<Expression>),
+    ArgsAddStar(ArgsAddStar),
+}
+
+def_tag!(args_add_star_tag, "args_add_star");
+#[derive(Debug)]
+pub struct ArgsAddStar(
+    pub args_add_star_tag,
+    pub Box<ArgsAddStarOrExpressionList>,
+    pub Box<Expression>,
+    pub Vec<Expression>,
+);
+
+impl<'de> Deserialize<'de> for ArgsAddStar {
+    fn deserialize<D>(deserializer: D) -> Result<ArgsAddStar, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        struct ArgsAddStarVisitor;
+
+        impl<'de> de::Visitor<'de> for ArgsAddStarVisitor {
+            type Value = ArgsAddStar;
+
+            fn expecting(&self, f: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
+                write!(
+                    f,
+                    "[args_add_star, [expression*], expression, expression*] or [args_add_star, [args_add_star, ...], expression, expression*"
+                )
+            }
+
+            fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
+            where
+                A: de::SeqAccess<'de>,
+            {
+                let tag: &str = seq.next_element()?.ok_or_else(|| panic!("what"))?;
+                if tag != "args_add_star" {
+                    return Err(de::Error::custom("didn't get right tag"));
+                }
+
+                let left_expressions: ArgsAddStarOrExpressionList = seq
+                    .next_element()?
+                    .ok_or_else(|| de::Error::custom("didn't get array of expressions"))?;
+
+                let star_expression: Expression = seq
+                    .next_element()?
+                    .ok_or_else(|| de::Error::custom("didn't get single star expression"))?;
+
+                let mut right_expressions = vec![];
+                let mut next_expression: Option<Expression> = seq.next_element()?;
+                while next_expression.is_some() {
+                    right_expressions.push(next_expression.expect("we checked it's some"));
+                    next_expression = seq.next_element()?;
+                }
+
+                Ok(ArgsAddStar(
+                    args_add_star_tag,
+                    Box::new(left_expressions),
+                    Box::new(star_expression),
+                    right_expressions,
+                ))
+            }
+        }
+
+        deserializer.deserialize_seq(ArgsAddStarVisitor)
+    }
 }
 
 def_tag!(alias_tag, "alias");
