@@ -75,6 +75,117 @@ pub enum Expression {
     Dot2(Dot2),
     Alias(Alias),
     Array(Array),
+    StringLiteral(StringLiteral),
+    VarRef(VarRef),
+    Assign(Assign),
+}
+
+def_tag!(assign_tag, "assign");
+#[derive(Deserialize, Debug)]
+pub struct Assign(pub assign_tag, pub VarField, pub Box<Expression>);
+
+def_tag!(var_field_tag, "var_field");
+#[derive(Deserialize, Debug)]
+pub struct VarField(pub var_field_tag, pub VarRefType);
+
+def_tag!(var_ref_tag, "var_ref");
+#[derive(Deserialize, Debug)]
+pub struct VarRef(pub var_ref_tag, pub VarRefType);
+
+#[derive(Deserialize, Debug)]
+#[serde(untagged)]
+pub enum VarRefType {
+    GVar(GVar),
+    IVar(IVar),
+    CVar(CVar),
+    Ident(Ident),
+}
+
+def_tag!(gvar_tag, "@gvar");
+#[derive(Deserialize, Debug)]
+pub struct GVar(pub gvar_tag, pub String, pub LineCol);
+
+def_tag!(ivar_tag, "@ivar");
+#[derive(Deserialize, Debug)]
+pub struct IVar(pub ivar_tag, pub String, pub LineCol);
+
+def_tag!(cvar_tag, "@cvar");
+#[derive(Deserialize, Debug)]
+pub struct CVar(pub cvar_tag, pub String, pub LineCol);
+
+def_tag!(string_literal_tag, "string_literal");
+#[derive(Deserialize, Debug)]
+pub struct StringLiteral(pub string_literal_tag, pub StringContent);
+
+def_tag!(dyna_symbol_tag, "dyna_symbol");
+#[derive(Deserialize, Debug)]
+pub struct DynaSymbol(pub dyna_symbol_tag, pub StringContent);
+
+def_tag!(tstring_content_tag, "@tstring_content");
+#[derive(Deserialize, Debug)]
+pub struct TStringContent(pub tstring_content_tag, pub String, pub LineCol);
+
+def_tag!(string_embexpr_tag, "string_embexpr");
+#[derive(Deserialize, Debug)]
+pub struct StringEmbexpr(pub string_embexpr_tag, pub Vec<Expression>);
+
+def_tag!(string_dvar_tag, "string_dvar");
+#[derive(Deserialize, Debug)]
+pub struct StringDVar(pub string_dvar_tag, pub Box<Expression>);
+
+#[derive(Deserialize, Debug)]
+#[serde(untagged)]
+pub enum StringContentPart {
+    TStringContent(TStringContent),
+    StringEmbexpr(StringEmbexpr),
+    StringDVar(StringDVar),
+}
+
+def_tag!(string_content_tag, "string_content");
+#[derive(Debug)]
+pub struct StringContent(pub string_content_tag, pub Vec<StringContentPart>);
+
+impl<'de> Deserialize<'de> for StringContent {
+    fn deserialize<D>(deserializer: D) -> Result<StringContent, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        struct StringContentVisitor;
+
+        impl<'de> de::Visitor<'de> for StringContentVisitor {
+            type Value = StringContent;
+
+            fn expecting(&self, f: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
+                write!(
+                    f,
+                    "[string_content, (tstring_content, string_embexpr, string_dvar)*]"
+                )
+            }
+
+            fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
+            where
+                A: de::SeqAccess<'de>,
+            {
+                let tag: &str = seq.next_element()?.ok_or_else(|| panic!("what"))?;
+                if tag != "string_content" {
+                    return Err(de::Error::custom("didn't get right tag"));
+                }
+
+                let mut elements = vec![];
+                let mut t_or_e: Option<StringContentPart> = seq.next_element()?;
+                println!("{:?}", t_or_e);
+                while t_or_e.is_some() {
+                    elements.push(t_or_e.expect("we checked it's some"));
+                    t_or_e = seq.next_element()?;
+                    println!("{:?}", t_or_e);
+                }
+
+                Ok(StringContent(string_content_tag, elements))
+            }
+        }
+
+        deserializer.deserialize_seq(StringContentVisitor)
+    }
 }
 
 def_tag!(array_tag, "array");
@@ -426,29 +537,6 @@ pub enum SymbolOrBare {
 def_tag!(symbol_tag, "symbol");
 #[derive(Deserialize, Debug)]
 pub struct Symbol(pub symbol_tag, pub Ident);
-
-def_tag!(dyna_symbol_tag, "dyna_symbol");
-#[derive(Deserialize, Debug)]
-pub struct DynaSymbol(pub dyna_symbol_tag, pub StringContent);
-
-def_tag!(string_content_tag, "string_content");
-#[derive(Deserialize, Debug)]
-pub struct StringContent(pub string_content_tag, pub StringContentPart);
-
-#[derive(Deserialize, Debug)]
-#[serde(untagged)]
-pub enum StringContentPart {
-    TStringContent(TStringContent),
-    StringEmbexpr(StringEmbexpr),
-}
-
-def_tag!(tstring_content_tag, "@tstring_content");
-#[derive(Deserialize, Debug)]
-pub struct TStringContent(pub tstring_content_tag, pub String, pub LineCol);
-
-def_tag!(string_embexpr_tag, "string_embexpr");
-#[derive(Deserialize, Debug)]
-pub struct StringEmbexpr(pub string_embexpr_tag, pub Box<Expression>, pub LineCol);
 
 def_tag!(call_tag, "call");
 #[derive(Deserialize, Debug)]

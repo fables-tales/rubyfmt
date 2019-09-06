@@ -95,6 +95,18 @@ impl ParserState {
         self.push_token(Indent::new(self.current_spaces()));
     }
 
+    pub fn emit_op(&mut self, op: String) {
+        self.push_token(Op::new(op));
+    }
+
+    pub fn emit_double_quote(&mut self) {
+        self.push_token(DoubleQuote::new());
+    }
+
+    pub fn emit_string_content(&mut self, s: String) {
+        self.push_token(LTStringContent::new(s));
+    }
+
     fn current_spaces(&self) -> ColNumber {
         2 * self
             .depth_stack

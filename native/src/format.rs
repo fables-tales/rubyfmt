@@ -673,15 +673,114 @@ pub fn format_list_like_thing(
             });
 
             emitted_args
-        },
-        ArgsAddStarOrExpressionList::ExpressionList(el) => format_list_like_thing_items(ps, el, single_line),
+        }
+        ArgsAddStarOrExpressionList::ExpressionList(el) => {
+            format_list_like_thing_items(ps, el, single_line)
+        }
     }
 }
 
 pub fn emit_intermediate_array_separator(ps: &mut ParserState) {
-  ps.emit_comma();
-  ps.emit_soft_newline();
-  ps.emit_soft_indent();
+    ps.emit_comma();
+    ps.emit_soft_newline();
+    ps.emit_soft_indent();
+}
+
+#[derive(PartialEq, Debug)]
+pub enum StringType {
+    Quoted,
+    Heredoc,
+}
+
+pub fn format_inner_string(ps: &mut ParserState, parts: Vec<StringContentPart>, tipe: StringType) {
+    if tipe == StringType::Heredoc {
+        panic!("heredocs aren't supported yet");
+    }
+    for (idx, part) in parts.into_iter().enumerate() {
+        match part {
+            StringContentPart::TStringContent(t) => {
+                ps.emit_string_content(t.1)
+            },
+            StringContentPart::StringEmbexpr(e) => {
+                ps.emit_string_content("#{".to_string());
+                ps.with_start_of_line(false, |ps| {
+                    let expr = ((e.1).into_iter()).next().expect("should not be empty");
+                    format_expression(ps, expr);
+                });
+                ps.emit_string_content("}".to_string());
+            },
+            StringContentPart::StringDVar(dv) => {
+                ps.emit_string_content("#{".to_string());
+                ps.with_start_of_line(false, |ps| {
+                    let expr = *(dv.1);
+                    format_expression(ps, expr);
+                });
+                ps.emit_string_content("}".to_string());
+            }
+        }
+    }
+}
+
+pub fn format_string_literal(ps: &mut ParserState, sl: StringLiteral) {
+    let parts = (sl.1).1;
+
+    if ps.at_start_of_line() {
+        ps.emit_indent();
+    }
+
+    ps.emit_double_quote();
+    format_inner_string(ps, parts, StringType::Quoted);
+    ps.emit_double_quote();
+
+    if ps.at_start_of_line() {
+        ps.emit_newline();
+    }
+}
+
+pub fn format_assign(ps: &mut ParserState, assign: Assign) {
+    if ps.at_start_of_line() {
+        ps.emit_indent();
+    }
+
+    ps.with_start_of_line(false, |ps| {
+        let left = (assign.1).1;
+        let right = assign.2;
+
+        format_var_ref_type(ps, left);
+
+        ps.emit_space();
+        ps.emit_op("=".to_string());
+        ps.emit_space();
+
+        ps.with_formatting_context(FormattingContext::Assign, |ps| {
+            format_expression(ps, *right);
+        });
+    });
+
+    if ps.at_start_of_line() {
+        ps.emit_newline();
+    }
+}
+
+pub fn format_var_ref_type(ps: &mut ParserState, vr: VarRefType) {
+    if ps.at_start_of_line() {
+        ps.emit_indent();
+    }
+
+    match vr {
+        VarRefType::CVar(c) => ps.emit_ident(c.1),
+        VarRefType::GVar(g) => ps.emit_ident(g.1),
+        VarRefType::IVar(i) => ps.emit_ident(i.1),
+        VarRefType::Ident(i) => ps.emit_ident(i.1),
+    }
+
+    if ps.at_start_of_line() {
+        ps.emit_newline();
+    }
+}
+
+pub fn format_var_ref(ps: &mut ParserState, vr: VarRef) {
+    format_var_ref_type(ps, vr.1);
 }
 
 pub fn format_expression(ps: &mut ParserState, expression: Expression) {
@@ -699,6 +798,9 @@ pub fn format_expression(ps: &mut ParserState, expression: Expression) {
         Expression::SymbolLiteral(sl) => format_symbol_literal(ps, sl),
         Expression::Alias(alias) => format_alias(ps, alias),
         Expression::Array(array) => format_array(ps, array),
+        Expression::StringLiteral(sl) => format_string_literal(ps, sl),
+        Expression::Assign(assign) => format_assign(ps, assign),
+        Expression::VarRef(vr) => format_var_ref(ps, vr),
         e => {
             panic!("got unknown token: {:?}", e);
         }

@@ -427,3 +427,51 @@ impl PartialEq for BreakableEntry {
         self.id == other.id
     }
 }
+
+pub struct Op {
+    op: String,
+}
+
+impl Op {
+    pub fn new(op: String) -> Self {
+        Op { op: op }
+    }
+}
+
+impl LineToken for Op {
+    fn consume_to_string(self: Box<Self>) -> String {
+        self.op
+    }
+}
+
+pub struct DoubleQuote;
+
+impl DoubleQuote {
+    pub fn new() -> Self {
+        DoubleQuote
+    }
+}
+
+impl LineToken for DoubleQuote {
+    fn consume_to_string(self: Box<Self>) -> String {
+        "\"".to_string()
+    }
+}
+
+pub struct LTStringContent {
+    content: String,
+}
+
+impl LTStringContent {
+    pub fn new(s: String) -> Self {
+        LTStringContent {
+            content: s
+        }
+    }
+}
+
+impl LineToken for LTStringContent {
+    fn consume_to_string(self: Box<Self>) -> String {
+        self.content
+    }
+}
