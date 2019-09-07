@@ -464,9 +464,7 @@ pub struct LTStringContent {
 
 impl LTStringContent {
     pub fn new(s: String) -> Self {
-        LTStringContent {
-            content: s
-        }
+        LTStringContent { content: s }
     }
 }
 

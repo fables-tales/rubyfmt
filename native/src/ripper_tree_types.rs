@@ -35,8 +35,10 @@ macro_rules! def_tag {
                         E: de::Error,
                     {
                         if s == $tag {
+                            println!("accepgted at {}", s);
                             Ok(())
                         } else {
+                            println!("rejected at {}", s);
                             Err(E::custom("mismatched tag"))
                         }
                     }
@@ -64,6 +66,7 @@ pub enum Expression {
     MethodCall(MethodCall),
     DotCall(DotCall),
     Call(Call),
+    CommandCall(CommandCall),
     MethodAddArg(MethodAddArg),
     Int(Int),
     BareAssocHash(BareAssocHash),
@@ -100,6 +103,7 @@ pub enum VarRefType {
     IVar(IVar),
     CVar(CVar),
     Ident(Ident),
+    Const(Const),
 }
 
 def_tag!(gvar_tag, "@gvar");
@@ -338,6 +342,30 @@ def_tag!(vcall);
 #[derive(Deserialize, Debug)]
 pub struct VCall(vcall, pub Box<Expression>);
 
+def_tag!(command_call_tag, "command_call");
+#[derive(Deserialize, Debug)]
+pub struct CommandCall(
+    command_call_tag,
+    pub Box<Expression>,
+    pub DotTypeOrOp,
+    pub Ident,
+    pub ArgNode,
+);
+
+impl CommandCall {
+    pub fn to_method_call(self) -> MethodCall {
+        MethodCall::new(
+            vec![
+                CallChainElement::Expression(self.1),
+                CallChainElement::Dot(self.2),
+            ],
+            Box::new(Expression::Ident(self.3)),
+            false,
+            normalize_args(self.4),
+        )
+    }
+}
+
 def_tag!(const_tag, "@const");
 #[derive(Deserialize, Debug)]
 pub struct Const(pub const_tag, pub String, pub LineCol);
@@ -452,7 +480,7 @@ pub fn normalize_args_add_block(aab: ArgsAddBlock) -> Vec<Expression> {
     // .2 is block
     match aab.2 {
         MaybeBlock::NoBlock(_) => aab.1,
-        MaybeBlock::ToProcExpr(e) => vec!(*e),
+        MaybeBlock::ToProcExpr(e) => vec![*e],
     }
 }
 
