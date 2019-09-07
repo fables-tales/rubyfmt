@@ -333,6 +333,16 @@ def_tag!(vcall);
 #[derive(Deserialize, Debug)]
 pub struct VCall(vcall, pub Box<Expression>);
 
+def_tag!(const_tag, "@const");
+#[derive(Deserialize, Debug)]
+pub struct Const(pub const_tag, pub String, pub LineCol);
+
+impl Const {
+    pub fn line_number(&self) -> LineNumber {
+        (self.2).0
+    }
+}
+
 def_tag!(ident_tag, "@ident");
 #[derive(Deserialize, Debug)]
 pub struct Ident(pub ident_tag, pub String, pub LineCol);
@@ -437,6 +447,7 @@ pub fn normalize_args_add_block(aab: ArgsAddBlock) -> Vec<Expression> {
     // .2 is block
     match aab.2 {
         MaybeBlock::NoBlock(_) => aab.1,
+        MaybeBlock::ToProcExpr(e) => vec!(*e),
     }
 }
 
@@ -478,6 +489,7 @@ pub struct ArgParen(pub arg_paren_tag, pub Box<ArgNode>);
 #[serde(untagged)]
 pub enum MaybeBlock {
     NoBlock(bool),
+    ToProcExpr(Box<Expression>),
 }
 
 def_tag!(args_add_block_tag, "args_add_block");
@@ -534,9 +546,17 @@ pub enum SymbolOrBare {
     Op(Op),
     Symbol(Symbol),
 }
+
+#[derive(Deserialize, Debug)]
+#[serde(untagged)]
+pub enum IdentOrConst {
+    Ident(Ident),
+    Const(Const),
+}
+
 def_tag!(symbol_tag, "symbol");
 #[derive(Deserialize, Debug)]
-pub struct Symbol(pub symbol_tag, pub Ident);
+pub struct Symbol(pub symbol_tag, pub IdentOrConst);
 
 def_tag!(call_tag, "call");
 #[derive(Deserialize, Debug)]
