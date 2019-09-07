@@ -546,7 +546,7 @@ pub fn normalize(e: Expression) -> Expression {
         Expression::VCall(v) => Expression::MethodCall(v.to_method_call()),
         Expression::MethodAddArg(maa) => Expression::MethodCall(maa.to_method_call()),
         //"command" => unimplemented!(),
-        //"command_call" => unimplemented!(),
+        Expression::CommandCall(call) => Expression::MethodCall(call.to_method_call()),
         Expression::Call(call) => Expression::MethodCall(call.to_method_call()),
         //"fcall" => unimplemented!(),
         //"zsuper" => unimplemented!(),
@@ -710,9 +710,7 @@ pub fn format_inner_string(ps: &mut ParserState, parts: Vec<StringContentPart>, 
     }
     for (idx, part) in parts.into_iter().enumerate() {
         match part {
-            StringContentPart::TStringContent(t) => {
-                ps.emit_string_content(t.1)
-            },
+            StringContentPart::TStringContent(t) => ps.emit_string_content(t.1),
             StringContentPart::StringEmbexpr(e) => {
                 ps.emit_string_content("#{".to_string());
                 ps.with_start_of_line(false, |ps| {
@@ -720,7 +718,7 @@ pub fn format_inner_string(ps: &mut ParserState, parts: Vec<StringContentPart>, 
                     format_expression(ps, expr);
                 });
                 ps.emit_string_content("}".to_string());
-            },
+            }
             StringContentPart::StringDVar(dv) => {
                 ps.emit_string_content("#{".to_string());
                 ps.with_start_of_line(false, |ps| {
@@ -800,6 +798,7 @@ pub fn format_var_ref_type(ps: &mut ParserState, vr: VarRefType) {
         VarRefType::GVar(g) => ps.emit_ident(g.1),
         VarRefType::IVar(i) => ps.emit_ident(i.1),
         VarRefType::Ident(i) => ps.emit_ident(i.1),
+        VarRefType::Const(c) => ps.emit_ident(c.1),
     }
 
     if ps.at_start_of_line() {
