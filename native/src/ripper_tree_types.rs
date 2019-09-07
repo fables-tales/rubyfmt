@@ -521,7 +521,7 @@ pub struct AssocNew(
 
 def_tag!(assoc_splat_tag, "assoc_splat");
 #[derive(Deserialize, Debug)]
-pub struct AssocSplat(pub assoc_splat_tag, pub Ident);
+pub struct AssocSplat(pub assoc_splat_tag, pub Expression);
 
 #[derive(Deserialize, Debug)]
 #[serde(untagged)]
