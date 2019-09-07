@@ -508,7 +508,7 @@ pub fn format_assocs(ps: &mut ParserState, assocs: Vec<AssocNewOrAssocSplat>) {
             }
             AssocNewOrAssocSplat::AssocSplat(splat) => {
                 ps.emit_ident("**".to_string());
-                ps.emit_ident((splat.1).1);
+                format_expression(ps, splat.1);
             }
         });
         ps.emit_comma();
