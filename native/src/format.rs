@@ -749,6 +749,22 @@ pub fn format_string_literal(ps: &mut ParserState, sl: StringLiteral) {
     }
 }
 
+pub fn format_xstring_literal(ps: &mut ParserState, xsl: XStringLiteral) {
+    let parts = xsl.1;
+
+    if ps.at_start_of_line() {
+        ps.emit_indent();
+    }
+
+    ps.emit_ident("`".to_string());
+    format_inner_string(ps, parts, StringType::Quoted);
+    ps.emit_ident("`".to_string());
+
+    if ps.at_start_of_line() {
+        ps.emit_newline();
+    }
+}
+
 pub fn format_assign(ps: &mut ParserState, assign: Assign) {
     if ps.at_start_of_line() {
         ps.emit_indent();
@@ -811,6 +827,7 @@ pub fn format_expression(ps: &mut ParserState, expression: Expression) {
         Expression::Alias(alias) => format_alias(ps, alias),
         Expression::Array(array) => format_array(ps, array),
         Expression::StringLiteral(sl) => format_string_literal(ps, sl),
+        Expression::XStringLiteral(xsl) => format_xstring_literal(ps, xsl),
         Expression::Assign(assign) => format_assign(ps, assign),
         Expression::VarRef(vr) => format_var_ref(ps, vr),
         e => {
