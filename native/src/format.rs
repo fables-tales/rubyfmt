@@ -401,6 +401,15 @@ pub fn format_ident(ps: &mut ParserState, ident: Ident) {
     ps.emit_ident(ident.1);
 }
 
+pub fn format_const(ps: &mut ParserState, c: Const) {
+    ps.on_line(c.line_number());
+    if ps.at_start_of_line() {
+        ps.emit_indent();
+    }
+
+    ps.emit_ident(c.1);
+}
+
 pub fn format_int(ps: &mut ParserState, int: Int) {
     if ps.at_start_of_line() {
         ps.emit_indent();
@@ -445,7 +454,10 @@ pub fn format_op(ps: &mut ParserState, op: Op) {
 
 pub fn format_symbol(ps: &mut ParserState, symbol: Symbol) {
     ps.emit_ident(":".to_string());
-    format_ident(ps, symbol.1);
+    match symbol.1 {
+        IdentOrConst::Ident(i) => format_ident(ps, i),
+        IdentOrConst::Const(c) => format_const(ps, c),
+    }
 }
 
 pub fn format_symbol_literal(ps: &mut ParserState, symbol_literal: SymbolLiteral) {
