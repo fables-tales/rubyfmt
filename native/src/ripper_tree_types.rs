@@ -76,6 +76,7 @@ pub enum Expression {
     Alias(Alias),
     Array(Array),
     StringLiteral(StringLiteral),
+    XStringLiteral(XStringLiteral),
     VarRef(VarRef),
     Assign(Assign),
 }
@@ -116,6 +117,10 @@ pub struct CVar(pub cvar_tag, pub String, pub LineCol);
 def_tag!(string_literal_tag, "string_literal");
 #[derive(Deserialize, Debug)]
 pub struct StringLiteral(pub string_literal_tag, pub StringContent);
+
+def_tag!(xstring_literal_tag, "xstring_literal");
+#[derive(Deserialize, Debug)]
+pub struct XStringLiteral(pub xstring_literal_tag, pub Vec<StringContentPart>);
 
 def_tag!(dyna_symbol_tag, "dyna_symbol");
 #[derive(Deserialize, Debug)]
