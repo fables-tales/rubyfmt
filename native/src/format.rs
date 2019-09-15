@@ -258,40 +258,44 @@ pub fn use_parens_for_method_call(
     original_used_parens: bool,
     context: &FormattingContext,
 ) -> bool {
-    match method.borrow() {
+    let name = match method.borrow() {
         Expression::DotCall(_) => return true,
         Expression::Ident(Ident(_, name, _)) => {
-            if name.starts_with("attr_") && context == &FormattingContext::ClassOrModule {
-                return false;
-            }
-
-            if name == "return" || name == "raise" {
-                return false;
-            }
-
-            if name == "super" || name == "yield" || name == "require" {
-                return original_used_parens;
-            }
-
-            if name == "new" {
-                return true;
-            }
-
-            if args.is_empty() {
-                return false;
-            }
-
-            if context == &FormattingContext::ClassOrModule && !original_used_parens {
-                return false;
-            }
-
-            return true;
-        }
+            name
+        },
+        Expression::Const(Const(_, name, _)) => {
+            name
+        },
         _ => panic!(
             "method should always be ident or dotcall, got: {:?}",
             method
         ),
     };
+    if name.starts_with("attr_") && context == &FormattingContext::ClassOrModule {
+        return false;
+    }
+
+    if name == "return" || name == "raise" {
+        return false;
+    }
+
+    if name == "super" || name == "yield" || name == "require" {
+        return original_used_parens;
+    }
+
+    if name == "new" {
+        return true;
+    }
+
+    if args.is_empty() {
+        return false;
+    }
+
+    if context == &FormattingContext::ClassOrModule && !original_used_parens {
+        return false;
+    }
+
+    return true;
 }
 
 pub fn format_dot_type(ps: &mut ParserState, dt: DotType) {
@@ -311,6 +315,9 @@ pub fn format_dot(ps: &mut ParserState, dot: DotTypeOrOp) {
         },
         DotTypeOrOp::Period(_) => {
             ps.emit_dot();
+        }
+        DotTypeOrOp::ColonColon(_) => {
+            ps.emit_colon_colon();
         }
     }
 }
@@ -341,7 +348,8 @@ pub fn format_method_call(ps: &mut ParserState, method_call: MethodCall) {
 
         match *method {
             Expression::Ident(i) => format_ident(ps, i),
-            _ => unimplemented!(),
+            Expression::Const(c) => format_const(ps, c),
+            x => panic!("got unexpecxted struct {:?}", x),
         };
         if use_parens {
             ps.emit_ident("(".to_string());

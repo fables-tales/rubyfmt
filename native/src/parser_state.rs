@@ -176,6 +176,10 @@ impl ParserState {
         self.push_token(Dot::new());
     }
 
+    pub fn emit_colon_colon(&mut self) {
+        self.push_token(ColonColon::new());
+    }
+
     pub fn emit_lonely_operator(&mut self) {
         self.push_token(LonelyOperator::new());
     }

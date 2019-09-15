@@ -354,6 +354,20 @@ impl LineToken for Dot {
     }
 }
 
+pub struct ColonColon;
+
+impl ColonColon {
+    pub fn new() -> Self {
+        ColonColon
+    }
+}
+
+impl LineToken for ColonColon {
+    fn consume_to_string(self: Box<Self>) -> String {
+        "::".to_string()
+    }
+}
+
 pub struct LonelyOperator;
 
 impl LonelyOperator {
