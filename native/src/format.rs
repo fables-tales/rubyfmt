@@ -553,7 +553,7 @@ pub fn normalize(e: Expression) -> Expression {
     match e {
         Expression::VCall(v) => Expression::MethodCall(v.to_method_call()),
         Expression::MethodAddArg(maa) => Expression::MethodCall(maa.to_method_call()),
-        //"command" => unimplemented!(),
+        Expression::Command(command) => Expression::MethodCall(command.to_method_call()),
         Expression::CommandCall(call) => Expression::MethodCall(call.to_method_call()),
         Expression::Call(call) => Expression::MethodCall(call.to_method_call()),
         //"fcall" => unimplemented!(),
