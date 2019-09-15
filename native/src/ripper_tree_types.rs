@@ -108,7 +108,22 @@ impl Command {
 
 def_tag!(assign_tag, "assign");
 #[derive(Deserialize, Debug)]
-pub struct Assign(pub assign_tag, pub VarField, pub Box<Expression>);
+pub struct Assign(
+    pub assign_tag,
+    pub VarFieldOrConstField,
+    pub Box<Expression>,
+);
+
+#[derive(Deserialize, Debug)]
+#[serde(untagged)]
+pub enum VarFieldOrConstField {
+    VarField(VarField),
+    ConstPathField(ConstPathField),
+}
+
+def_tag!(const_path_field_tag, "const_path_field");
+#[derive(Deserialize, Debug)]
+pub struct ConstPathField(pub const_path_field_tag, pub Box<Expression>, pub Const);
 
 def_tag!(var_field_tag, "var_field");
 #[derive(Deserialize, Debug)]
