@@ -83,6 +83,22 @@ pub enum Expression {
     VarRef(VarRef),
     Assign(Assign),
     Const(Const),
+    Command(Command),
+}
+
+def_tag!(command_tag, "command");
+#[derive(Deserialize, Debug)]
+pub struct Command(pub command_tag, pub Ident, pub ArgsAddBlock);
+
+impl Command {
+    pub fn to_method_call(self) -> MethodCall {
+        MethodCall::new(
+            vec![],
+            Box::new(Expression::Ident(self.1)),
+            false,
+            normalize_args(ArgNode::ArgsAddBlock(self.2)),
+        )
+    }
 }
 
 def_tag!(assign_tag, "assign");
@@ -491,6 +507,7 @@ pub fn normalize_args(arg_node: ArgNode) -> Vec<Expression> {
         ArgNode::ArgsAddBlock(aab) => normalize_args_add_block(aab),
         ArgNode::Exprs(exprs) => exprs,
         ArgNode::Const(c) => vec!(Expression::Const(c)),
+        ArgNode::Ident(c) => vec!(Expression::Ident(c)),
         ArgNode::Null(_) => panic!("should never be called with null"),
     }
 }
@@ -514,6 +531,7 @@ pub enum ArgNode {
     ArgsAddBlock(ArgsAddBlock),
     Exprs(Vec<Expression>),
     Const(Const),
+    Ident(Ident),
     Null(Option<String>),
 }
 
