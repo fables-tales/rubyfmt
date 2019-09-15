@@ -82,6 +82,7 @@ pub enum Expression {
     XStringLiteral(XStringLiteral),
     VarRef(VarRef),
     Assign(Assign),
+    Const(Const),
 }
 
 def_tag!(assign_tag, "assign");
@@ -489,6 +490,7 @@ pub fn normalize_args(arg_node: ArgNode) -> Vec<Expression> {
         ArgNode::ArgParen(ap) => normalize_arg_paren(ap),
         ArgNode::ArgsAddBlock(aab) => normalize_args_add_block(aab),
         ArgNode::Exprs(exprs) => exprs,
+        ArgNode::Const(c) => vec!(Expression::Const(c)),
         ArgNode::Null(_) => panic!("should never be called with null"),
     }
 }
@@ -511,6 +513,7 @@ pub enum ArgNode {
     ArgParen(ArgParen),
     ArgsAddBlock(ArgsAddBlock),
     Exprs(Vec<Expression>),
+    Const(Const),
     Null(Option<String>),
 }
 
@@ -627,6 +630,7 @@ pub enum DotType {
 pub enum DotTypeOrOp {
     DotType(DotType),
     Period(Period),
+    ColonColon(ColonColon),
     Op(Op),
 }
 
@@ -641,6 +645,10 @@ pub struct Equals(pub equals_tag);
 def_tag!(dot_tag, ".");
 #[derive(Deserialize, Debug)]
 pub struct Dot(pub dot_tag);
+
+def_tag!(colon_colon_tag, "::");
+#[derive(Deserialize, Debug)]
+pub struct ColonColon(pub colon_colon_tag);
 
 def_tag!(lonely_operator_tag, "&.");
 #[derive(Deserialize, Debug)]
