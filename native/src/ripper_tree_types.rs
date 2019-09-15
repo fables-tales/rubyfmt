@@ -506,8 +506,8 @@ pub fn normalize_args(arg_node: ArgNode) -> Vec<Expression> {
         ArgNode::ArgParen(ap) => normalize_arg_paren(ap),
         ArgNode::ArgsAddBlock(aab) => normalize_args_add_block(aab),
         ArgNode::Exprs(exprs) => exprs,
-        ArgNode::Const(c) => vec!(Expression::Const(c)),
-        ArgNode::Ident(c) => vec!(Expression::Ident(c)),
+        ArgNode::Const(c) => vec![Expression::Const(c)],
+        ArgNode::Ident(c) => vec![Expression::Ident(c)],
         ArgNode::Null(_) => panic!("should never be called with null"),
     }
 }

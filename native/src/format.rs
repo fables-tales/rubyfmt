@@ -260,12 +260,8 @@ pub fn use_parens_for_method_call(
 ) -> bool {
     let name = match method.borrow() {
         Expression::DotCall(_) => return true,
-        Expression::Ident(Ident(_, name, _)) => {
-            name
-        },
-        Expression::Const(Const(_, name, _)) => {
-            name
-        },
+        Expression::Ident(Ident(_, name, _)) => name,
+        Expression::Const(Const(_, name, _)) => name,
         _ => panic!(
             "method should always be ident or dotcall, got: {:?}",
             method
