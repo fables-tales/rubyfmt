@@ -767,16 +767,38 @@ pub fn format_xstring_literal(ps: &mut ParserState, xsl: XStringLiteral) {
     }
 }
 
+pub fn format_const_path_field(ps: &mut ParserState, cf: ConstPathField) {
+    if ps.at_start_of_line() {
+        ps.emit_indent();
+    }
+
+    ps.with_start_of_line(false, |ps| {
+        format_expression(ps, *cf.1);
+        ps.emit_colon_colon();
+        format_const(ps, cf.2);
+    });
+
+    if ps.at_start_of_line() {
+        ps.emit_newline();
+    }
+}
+
 pub fn format_assign(ps: &mut ParserState, assign: Assign) {
     if ps.at_start_of_line() {
         ps.emit_indent();
     }
 
     ps.with_start_of_line(false, |ps| {
-        let left = (assign.1).1;
+        match assign.1 {
+            VarFieldOrConstField::VarField(vr) => {
+                let left = vr.1;
+                format_var_ref_type(ps, left);
+            }
+            VarFieldOrConstField::ConstPathField(cf) => {
+                format_const_path_field(ps, cf);
+            }
+        }
         let right = assign.2;
-
-        format_var_ref_type(ps, left);
 
         ps.emit_space();
         ps.emit_op("=".to_string());
