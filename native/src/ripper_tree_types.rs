@@ -84,7 +84,12 @@ pub enum Expression {
     Assign(Assign),
     Const(Const),
     Command(Command),
+    ConstPathRef(ConstPathRef),
 }
+
+def_tag!(const_path_ref_tag, "const_path_ref");
+#[derive(Deserialize, Debug)]
+pub struct ConstPathRef(pub const_path_ref_tag, pub Box<Expression>, pub Const);
 
 def_tag!(command_tag, "command");
 #[derive(Deserialize, Debug)]

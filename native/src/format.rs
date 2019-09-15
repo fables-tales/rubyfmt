@@ -814,6 +814,21 @@ pub fn format_var_ref(ps: &mut ParserState, vr: VarRef) {
     format_var_ref_type(ps, vr.1);
 }
 
+pub fn format_const_path_ref(ps: &mut ParserState, cpr: ConstPathRef) {
+    if ps.at_start_of_line() {
+        ps.emit_indent();
+    }
+    ps.with_start_of_line(false, |ps| {
+        format_expression(ps, *cpr.1);
+        ps.emit_colon_colon();
+        format_const(ps, cpr.2);
+    });
+
+    if ps.at_start_of_line() {
+        ps.emit_newline();
+    }
+}
+
 pub fn format_expression(ps: &mut ParserState, expression: Expression) {
     let expression = normalize(expression);
     match expression {
@@ -833,6 +848,7 @@ pub fn format_expression(ps: &mut ParserState, expression: Expression) {
         Expression::XStringLiteral(xsl) => format_xstring_literal(ps, xsl),
         Expression::Assign(assign) => format_assign(ps, assign),
         Expression::VarRef(vr) => format_var_ref(ps, vr),
+        Expression::ConstPathRef(cpr) => format_const_path_ref(ps, cpr),
         e => {
             panic!("got unknown token: {:?}", e);
         }
