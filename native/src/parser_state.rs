@@ -120,11 +120,15 @@ impl ParserState {
     }
 
     pub fn emit_def_keyword(&mut self) {
-        self.push_token(Keyword::new("def".into()));
+        self.push_token(Keyword::new("def".to_string()));
+    }
+
+    pub fn emit_rescue(&mut self) {
+        self.push_token(Keyword::new("rescue".to_string()));
     }
 
     pub fn emit_begin(&mut self) {
-        self.push_token(Keyword::new("begin".into()));
+        self.push_token(Keyword::new("begin".to_string()));
     }
 
     pub fn emit_soft_indent(&mut self) {

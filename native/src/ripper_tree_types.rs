@@ -88,7 +88,12 @@ pub enum Expression {
     ConstPathRef(ConstPathRef),
     Defined(Defined),
     TopConstRef(TopConstRef),
+    RescueMod(RescueMod),
 }
+
+def_tag!(rescue_mod_tag, "rescue_mod");
+#[derive(Deserialize, Debug)]
+pub struct RescueMod(pub rescue_mod_tag, pub Box<Expression>, pub Box<Expression>);
 
 def_tag!(defined_tag, "defined");
 #[derive(Deserialize, Debug)]

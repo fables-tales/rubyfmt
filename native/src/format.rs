@@ -600,7 +600,12 @@ pub fn format_dot3(ps: &mut ParserState, dot3: Dot3) {
     format_dot2_or_3(ps, "...".to_string(), dot3.1, dot3.2);
 }
 
-pub fn format_dot2_or_3(ps: &mut ParserState, dots: String, left: Option<Box<Expression>>, right: Option<Box<Expression>>) {
+pub fn format_dot2_or_3(
+    ps: &mut ParserState,
+    dots: String,
+    left: Option<Box<Expression>>,
+    right: Option<Box<Expression>>,
+) {
     if ps.at_start_of_line() {
         ps.emit_indent();
     }
@@ -893,6 +898,24 @@ pub fn format_defined(ps: &mut ParserState, defined: Defined) {
     }
 }
 
+pub fn format_rescue_mod(ps: &mut ParserState, rescue_mod: RescueMod) {
+    if ps.at_start_of_line() {
+        ps.emit_indent();
+    }
+
+    ps.with_start_of_line(false, |ps| {
+        format_expression(ps, *rescue_mod.1);
+        ps.emit_space();
+        ps.emit_rescue();
+        ps.emit_space();
+        format_expression(ps, *rescue_mod.2);
+    });
+
+    if ps.at_start_of_line() {
+        ps.emit_newline();
+    }
+}
+
 pub fn format_expression(ps: &mut ParserState, expression: Expression) {
     let expression = normalize(expression);
     match expression {
@@ -916,6 +939,7 @@ pub fn format_expression(ps: &mut ParserState, expression: Expression) {
         Expression::ConstPathRef(cpr) => format_const_path_ref(ps, cpr),
         Expression::TopConstRef(tcr) => format_top_const_ref(ps, tcr),
         Expression::Defined(defined) => format_defined(ps, defined),
+        Expression::RescueMod(rescue_mod) => format_rescue_mod(ps, rescue_mod),
         e => {
             panic!("got unknown token: {:?}", e);
         }
