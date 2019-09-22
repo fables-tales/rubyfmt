@@ -85,7 +85,17 @@ pub enum Expression {
     Const(Const),
     Command(Command),
     ConstPathRef(ConstPathRef),
+    Defined(Defined),
+    TopConstRef(TopConstRef),
 }
+
+def_tag!(defined_tag, "defined");
+#[derive(Deserialize, Debug)]
+pub struct Defined(pub defined_tag, pub Box<Expression>);
+
+def_tag!(top_const_ref_tag, "top_const_ref");
+#[derive(Deserialize, Debug)]
+pub struct TopConstRef(pub top_const_ref_tag, pub Const);
 
 def_tag!(const_path_ref_tag, "const_path_ref");
 #[derive(Deserialize, Debug)]

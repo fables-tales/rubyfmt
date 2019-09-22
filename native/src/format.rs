@@ -348,7 +348,7 @@ pub fn format_method_call(ps: &mut ParserState, method_call: MethodCall) {
             x => panic!("got unexpecxted struct {:?}", x),
         };
         if use_parens {
-            ps.emit_ident("(".to_string());
+            ps.emit_open_paren();
         } else if !args.is_empty() {
             ps.emit_ident(" ".to_string());
         }
@@ -358,7 +358,7 @@ pub fn format_method_call(ps: &mut ParserState, method_call: MethodCall) {
         });
 
         if use_parens {
-            ps.emit_ident(")".to_string());
+            ps.emit_close_paren();
         }
     });
 }
@@ -569,7 +569,7 @@ pub fn format_paren(ps: &mut ParserState, paren: ParenExpr) {
     if ps.at_start_of_line() {
         ps.emit_indent();
     }
-    ps.emit_ident("(".to_string());
+    ps.emit_open_paren();
 
     if paren.1.len() == 1 {
         let p = (paren.1)
@@ -585,7 +585,8 @@ pub fn format_paren(ps: &mut ParserState, paren: ParenExpr) {
             }
         });
     }
-    ps.emit_ident(")".to_string());
+
+    ps.emit_close_paren();
     if ps.at_start_of_line() {
         ps.emit_newline();
     }
@@ -840,10 +841,43 @@ pub fn format_const_path_ref(ps: &mut ParserState, cpr: ConstPathRef) {
     if ps.at_start_of_line() {
         ps.emit_indent();
     }
+
     ps.with_start_of_line(false, |ps| {
         format_expression(ps, *cpr.1);
         ps.emit_colon_colon();
         format_const(ps, cpr.2);
+    });
+
+    if ps.at_start_of_line() {
+        ps.emit_newline();
+    }
+}
+
+pub fn format_top_const_ref(ps: &mut ParserState, tcr: TopConstRef) {
+    if ps.at_start_of_line() {
+        ps.emit_indent();
+    }
+
+    ps.with_start_of_line(false, |ps| {
+        ps.emit_colon_colon();
+        format_const(ps, tcr.1);
+    });
+
+    if ps.at_start_of_line() {
+        ps.emit_newline();
+    }
+}
+
+pub fn format_defined(ps: &mut ParserState, defined: Defined) {
+    if ps.at_start_of_line() {
+        ps.emit_indent();
+    }
+
+    ps.with_start_of_line(false, |ps| {
+        ps.emit_ident("defined?".to_string());
+        ps.emit_open_paren();
+        format_expression(ps, *defined.1);
+        ps.emit_close_paren();
     });
 
     if ps.at_start_of_line() {
@@ -871,6 +905,8 @@ pub fn format_expression(ps: &mut ParserState, expression: Expression) {
         Expression::Assign(assign) => format_assign(ps, assign),
         Expression::VarRef(vr) => format_var_ref(ps, vr),
         Expression::ConstPathRef(cpr) => format_const_path_ref(ps, cpr),
+        Expression::TopConstRef(tcr) => format_top_const_ref(ps, tcr),
+        Expression::Defined(defined) => format_defined(ps, defined),
         e => {
             panic!("got unknown token: {:?}", e);
         }
