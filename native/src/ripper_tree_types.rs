@@ -76,6 +76,7 @@ pub enum Expression {
     Begin(Begin),
     Paren(ParenExpr),
     Dot2(Dot2),
+    Dot3(Dot3),
     Alias(Alias),
     Array(Array),
     StringLiteral(StringLiteral),
@@ -337,6 +338,14 @@ def_tag!(dot2_tag, "dot2");
 #[derive(Deserialize, Debug)]
 pub struct Dot2(
     pub dot2_tag,
+    pub Option<Box<Expression>>,
+    pub Option<Box<Expression>>,
+);
+
+def_tag!(dot3_tag, "dot3");
+#[derive(Deserialize, Debug)]
+pub struct Dot3(
+    pub dot3_tag,
     pub Option<Box<Expression>>,
     pub Option<Box<Expression>>,
 );

@@ -593,19 +593,27 @@ pub fn format_paren(ps: &mut ParserState, paren: ParenExpr) {
 }
 
 pub fn format_dot2(ps: &mut ParserState, dot2: Dot2) {
+    format_dot2_or_3(ps, "..".to_string(), dot2.1, dot2.2);
+}
+
+pub fn format_dot3(ps: &mut ParserState, dot3: Dot3) {
+    format_dot2_or_3(ps, "...".to_string(), dot3.1, dot3.2);
+}
+
+pub fn format_dot2_or_3(ps: &mut ParserState, dots: String, left: Option<Box<Expression>>, right: Option<Box<Expression>>) {
     if ps.at_start_of_line() {
         ps.emit_indent();
     }
 
     ps.with_start_of_line(false, |ps| {
-        match dot2.1 {
+        match left {
             Some(expr) => format_expression(ps, *expr),
             _ => {}
         }
 
-        ps.emit_ident("..".to_string());
+        ps.emit_ident(dots);
 
-        match dot2.2 {
+        match right {
             Some(expr) => format_expression(ps, *expr),
             _ => {}
         }
@@ -897,6 +905,7 @@ pub fn format_expression(ps: &mut ParserState, expression: Expression) {
         Expression::VoidStmt(void) => format_void_stmt(ps, void),
         Expression::Paren(paren) => format_paren(ps, paren),
         Expression::Dot2(dot2) => format_dot2(ps, dot2),
+        Expression::Dot3(dot3) => format_dot3(ps, dot3),
         Expression::SymbolLiteral(sl) => format_symbol_literal(ps, sl),
         Expression::Alias(alias) => format_alias(ps, alias),
         Expression::Array(array) => format_array(ps, array),
