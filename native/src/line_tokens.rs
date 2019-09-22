@@ -410,6 +410,34 @@ impl LineToken for CloseSquareBracket {
     }
 }
 
+pub struct OpenParen;
+
+impl OpenParen {
+    pub fn new() -> Self {
+        OpenParen
+    }
+}
+
+impl LineToken for OpenParen {
+    fn consume_to_string(self: Box<Self>) -> String {
+        "(".to_string()
+    }
+}
+
+pub struct CloseParen;
+
+impl CloseParen {
+    pub fn new() -> Self {
+        CloseParen
+    }
+}
+
+impl LineToken for CloseParen {
+    fn consume_to_string(self: Box<Self>) -> String {
+        ")".to_string()
+    }
+}
+
 pub struct BreakableEntry {
     tokens: Vec<Box<dyn LineToken>>,
     id: u32,
