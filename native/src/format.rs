@@ -161,9 +161,23 @@ pub fn format_rest_param(ps: &mut ParserState, rest_param: Option<RestParam>) ->
     ps.emit_soft_indent();
     ps.emit_ident("*".to_string());
     ps.with_start_of_line(false, |ps| {
-        let ident = (rest_param.unwrap()).1;
-        if ident.is_some() {
-            format_ident(ps, ident.unwrap());
+        match rest_param {
+            Some(rp) => {
+                match rp.1 {
+                    Some(IdentOrVarField::Ident(i)) => {
+                        format_ident(ps, i);
+                    },
+                    Some(IdentOrVarField::VarField(vf)) => {
+                        format_var_field(ps, vf);
+                    },
+                    None => {
+                        // deliberately do nothing
+                    },
+                }
+            }
+            None => {
+                panic!("format_rest_param was called with none");
+            }
         }
     });
 
@@ -797,21 +811,32 @@ pub fn format_const_path_field(ps: &mut ParserState, cf: ConstPathField) {
     }
 }
 
+pub fn format_var_field(ps: &mut ParserState, vf: VarField) {
+    let left = vf.1;
+    format_var_ref_type(ps, left);
+}
+
+pub fn format_var_field_or_const_field_or_rest_param(ps: &mut ParserState, v: VarFieldOrConstFieldOrRestParam) {
+    match v {
+        VarFieldOrConstFieldOrRestParam::VarField(vf) => {
+            format_var_field(ps, vf);
+        }
+        VarFieldOrConstFieldOrRestParam::ConstPathField(cf) => {
+            format_const_path_field(ps, cf);
+        }
+        VarFieldOrConstFieldOrRestParam::RestParam(rp) => {
+            format_rest_param(ps, Some(rp));
+        }
+    }
+}
+
 pub fn format_assign(ps: &mut ParserState, assign: Assign) {
     if ps.at_start_of_line() {
         ps.emit_indent();
     }
 
     ps.with_start_of_line(false, |ps| {
-        match assign.1 {
-            VarFieldOrConstField::VarField(vr) => {
-                let left = vr.1;
-                format_var_ref_type(ps, left);
-            }
-            VarFieldOrConstField::ConstPathField(cf) => {
-                format_const_path_field(ps, cf);
-            }
-        }
+        format_var_field_or_const_field_or_rest_param(ps, assign.1);
         let right = assign.2;
 
         ps.emit_space();
@@ -827,6 +852,31 @@ pub fn format_assign(ps: &mut ParserState, assign: Assign) {
         ps.emit_newline();
     }
 }
+
+pub fn format_massign(ps: &mut ParserState, massign: MAssign) {
+    if ps.at_start_of_line() {
+        ps.emit_indent();
+    }
+
+    ps.with_start_of_line(false, |ps| {
+        let length = massign.1.len();
+        for (idx, v) in massign.1.into_iter().enumerate() {
+            format_var_field_or_const_field_or_rest_param(ps, v);
+            if idx != length - 1 {
+                ps.emit_comma_space();
+            }
+        }
+        ps.emit_space();
+        ps.emit_ident("=".to_string());
+        ps.emit_space();
+        format_expression(ps, *massign.2);
+    });
+
+    if ps.at_start_of_line() {
+        ps.emit_newline();
+    }
+}
+
 
 pub fn format_var_ref_type(ps: &mut ParserState, vr: VarRefType) {
     if ps.at_start_of_line() {
@@ -916,6 +966,23 @@ pub fn format_rescue_mod(ps: &mut ParserState, rescue_mod: RescueMod) {
     }
 }
 
+pub fn format_mrhs_add_star(ps: &mut ParserState, mrhs: MRHSAddStar) {
+    ps.with_start_of_line(false, |ps| {
+        match mrhs.1 {
+            MRHSNewFromArgsOrEmpty::Empty(e) => {
+                if !e.is_empty() {
+                    panic!("this should be impossible, got non-empty mrhs empty");
+                }
+            },
+            MRHSNewFromArgsOrEmpty::MRHSNewFromArgs(mnfa) => {
+                format_list_like_thing(ps, mnfa.1, true);
+            }
+        }
+        ps.emit_ident("*".to_string());
+        format_expression(ps, *mrhs.2);
+    });
+}
+
 pub fn format_expression(ps: &mut ParserState, expression: Expression) {
     let expression = normalize(expression);
     match expression {
@@ -940,6 +1007,8 @@ pub fn format_expression(ps: &mut ParserState, expression: Expression) {
         Expression::TopConstRef(tcr) => format_top_const_ref(ps, tcr),
         Expression::Defined(defined) => format_defined(ps, defined),
         Expression::RescueMod(rescue_mod) => format_rescue_mod(ps, rescue_mod),
+        Expression::MRHSAddStar(mrhs) => format_mrhs_add_star(ps, mrhs),
+        Expression::MAssign(massign) => format_massign(ps, massign),
         e => {
             panic!("got unknown token: {:?}", e);
         }

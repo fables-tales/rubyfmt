@@ -38,7 +38,11 @@ impl LineMetadata {
         Ok(res)
     }
 
-    pub fn extract_comments_to_line(&mut self, line_number: LineNumber) -> CommentBlock {
+    pub fn extract_comments_to_line(&mut self, line_number: LineNumber) -> Option<CommentBlock> {
+        if line_number < self.lowest_key {
+            return None;
+        }
+
         let mut values = Vec::new();
         let keys: Vec<_> = self
             .comment_blocks
@@ -50,7 +54,7 @@ impl LineMetadata {
             values.push(v);
         }
 
-        CommentBlock::new(values)
+        Some(CommentBlock::new(values))
     }
 }
 
@@ -74,8 +78,15 @@ mod tests {
     fn test_extract_to_line() {
         let data = "# foo\ndef bees\n  # comment 2";
         let mut parsed = LineMetadata::from_buf(io::BufReader::new(data.as_bytes())).expect("ok");
-        let res = parsed.extract_comments_to_line(1);
+        let res = parsed.extract_comments_to_line(1).expect("the comments");
         assert_eq!(res.get_comments()[0], "# foo");
     }
 
+    #[test]
+    fn text_extract_to_line_before() {
+        let data = "a\nb\n# foo\n";
+        let mut parsed = LineMetadata::from_buf(io::BufReader::new(data.as_bytes())).expect("ok");
+        let res = parsed.extract_comments_to_line(1);
+        assert!(res.is_none());
+    }
 }
