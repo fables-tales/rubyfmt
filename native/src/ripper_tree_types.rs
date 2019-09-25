@@ -83,13 +83,30 @@ pub enum Expression {
     XStringLiteral(XStringLiteral),
     VarRef(VarRef),
     Assign(Assign),
+    MAssign(MAssign),
     Const(Const),
     Command(Command),
     ConstPathRef(ConstPathRef),
     Defined(Defined),
     TopConstRef(TopConstRef),
     RescueMod(RescueMod),
+    MRHSAddStar(MRHSAddStar),
 }
+
+def_tag!(mrhs_add_star_tag, "mrhs_add_star");
+#[derive(Deserialize, Debug)]
+pub struct MRHSAddStar(pub mrhs_add_star_tag, pub MRHSNewFromArgsOrEmpty, pub Box<Expression>);
+
+#[derive(Deserialize, Debug)]
+#[serde(untagged)]
+pub enum MRHSNewFromArgsOrEmpty {
+    MRHSNewFromArgs(MRHSNewFromArgs),
+    Empty(Vec<Expression>),
+}
+
+def_tag!(mrhs_new_from_args_tag, "mrhs_new_from_args");
+#[derive(Deserialize, Debug)]
+pub struct MRHSNewFromArgs(pub mrhs_new_from_args_tag, pub ArgsAddStarOrExpressionList);
 
 def_tag!(rescue_mod_tag, "rescue_mod");
 #[derive(Deserialize, Debug)]
@@ -126,15 +143,31 @@ def_tag!(assign_tag, "assign");
 #[derive(Deserialize, Debug)]
 pub struct Assign(
     pub assign_tag,
-    pub VarFieldOrConstField,
+    pub VarFieldOrConstFieldOrRestParam,
+    pub Box<Expression>,
+);
+
+def_tag!(massign_tag, "massign");
+#[derive(Deserialize, Debug)]
+pub struct MAssign(
+    pub massign_tag,
+    pub Vec<VarFieldOrConstFieldOrRestParam>,
     pub Box<Expression>,
 );
 
 #[derive(Deserialize, Debug)]
 #[serde(untagged)]
-pub enum VarFieldOrConstField {
+pub enum IdentOrVarField {
+    Ident(Ident),
+    VarField(VarField),
+}
+
+#[derive(Deserialize, Debug)]
+#[serde(untagged)]
+pub enum VarFieldOrConstFieldOrRestParam {
     VarField(VarField),
     ConstPathField(ConstPathField),
+    RestParam(RestParam),
 }
 
 def_tag!(const_path_field_tag, "const_path_field");
@@ -480,7 +513,7 @@ pub enum ExpressionOrFalse {
 
 def_tag!(rest_param_tag, "rest_param");
 #[derive(Deserialize, Debug)]
-pub struct RestParam(pub rest_param_tag, pub Option<Ident>);
+pub struct RestParam(pub rest_param_tag, pub Option<IdentOrVarField>);
 
 def_tag!(kw_rest_param_tag, "kwrest_param");
 #[derive(Deserialize, Debug)]

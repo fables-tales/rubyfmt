@@ -76,13 +76,17 @@ impl ParserState {
     }
 
     pub fn on_line(&mut self, line_number: LineNumber) {
-        let mut comments = self.comments_hash.extract_comments_to_line(line_number);
+        let comments = self.comments_hash.extract_comments_to_line(line_number);
+        if comments.is_none() {
+            return;
+        }
+
         if !self
             .surpress_comments_stack
             .last()
             .expect("comments stack is never empty")
         {
-            self.insert_comment_collection(comments)
+            self.insert_comment_collection(comments.expect("we checked it was none at the top of the function"))
         }
         self.current_orig_line_number = line_number;
     }
