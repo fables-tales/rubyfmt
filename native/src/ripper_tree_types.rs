@@ -95,7 +95,11 @@ pub enum Expression {
 
 def_tag!(mrhs_add_star_tag, "mrhs_add_star");
 #[derive(Deserialize, Debug)]
-pub struct MRHSAddStar(pub mrhs_add_star_tag, pub MRHSNewFromArgsOrEmpty, pub Box<Expression>);
+pub struct MRHSAddStar(
+    pub mrhs_add_star_tag,
+    pub MRHSNewFromArgsOrEmpty,
+    pub Box<Expression>,
+);
 
 #[derive(Deserialize, Debug)]
 #[serde(untagged)]
@@ -126,22 +130,27 @@ pub struct ConstPathRef(pub const_path_ref_tag, pub Box<Expression>, pub Const);
 
 def_tag!(command_tag, "command");
 #[derive(Deserialize, Debug)]
-pub struct Command(pub command_tag, pub Ident, pub ArgsAddBlockOrExpression);
+pub struct Command(pub command_tag, pub Ident, pub ArgsAddBlockOrExpressionList);
 
 #[derive(Deserialize, Debug)]
 #[serde(untagged)]
-pub enum ArgsAddBlockOrExpression {
+pub enum ArgsAddBlockOrExpressionList {
     ArgsAddBlock(ArgsAddBlock),
-    Expression(Box<Expression>),
+    ExpressionList(Vec<Expression>),
 }
 
 impl Command {
     pub fn to_method_call(self) -> MethodCall {
+        let arg_node = match self.2 {
+            ArgsAddBlockOrExpressionList::ArgsAddBlock(n) => ArgNode::ArgsAddBlock(n),
+            ArgsAddBlockOrExpressionList::ExpressionList(es) => ArgNode::Exprs(es),
+        };
+
         MethodCall::new(
             vec![],
             Box::new(Expression::Ident(self.1)),
             false,
-            normalize_args(ArgNode::ArgsAddBlock(self.2)),
+            normalize_args(arg_node),
         )
     }
 }
