@@ -126,7 +126,14 @@ pub struct ConstPathRef(pub const_path_ref_tag, pub Box<Expression>, pub Const);
 
 def_tag!(command_tag, "command");
 #[derive(Deserialize, Debug)]
-pub struct Command(pub command_tag, pub Ident, pub ArgsAddBlock);
+pub struct Command(pub command_tag, pub Ident, pub ArgsAddBlockOrExpression);
+
+#[derive(Deserialize, Debug)]
+#[serde(untagged)]
+pub enum ArgsAddBlockOrExpression {
+    ArgsAddBlock(ArgsAddBlock),
+    Expression(Box<Expression>),
+}
 
 impl Command {
     pub fn to_method_call(self) -> MethodCall {
