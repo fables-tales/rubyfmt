@@ -353,7 +353,6 @@ class ParserState
     shift_comments
     @render_queue << SoftNewLine.new
   end
-  self.shift_comments();
 
   def emit_collapsing_newline
     @render_queue << CollapsingNewLine.new
