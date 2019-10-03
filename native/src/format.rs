@@ -1016,6 +1016,54 @@ pub fn format_next(ps: &mut ParserState, next: Next) {
     }
 }
 
+pub fn format_conditional_mod(
+    ps: &mut ParserState,
+    right: Expression,
+    left: Expression,
+    conditional: String,
+) {
+    if ps.at_start_of_line() {
+        ps.emit_indent();
+    }
+
+    ps.with_start_of_line(false, |ps| {
+        format_expression(ps, left);
+        ps.emit_space();
+        ps.emit_ident(conditional);
+        ps.emit_space();
+        format_expression(ps, right);
+    });
+
+    if ps.at_start_of_line() {
+        ps.emit_newline();
+    }
+}
+
+pub fn format_if_mod(ps: &mut ParserState, if_mod: IfMod) {
+    format_conditional_mod(ps, *if_mod.1, *if_mod.2, "if".to_string());
+}
+
+pub fn format_unary(ps: &mut ParserState, unary: Unary) {
+    if ps.at_start_of_line() {
+        ps.emit_indent();
+    }
+
+    ps.with_start_of_line(false, |ps| {
+        match unary.1 {
+            UnaryType::Not => {
+                ps.emit_ident("not".to_string());
+                ps.emit_space();
+            }
+        }
+
+        format_expression(ps, *unary.2);
+    });
+
+    if ps.at_start_of_line() {
+        ps.emit_newline();
+    }
+}
+
 pub fn format_expression(ps: &mut ParserState, expression: Expression) {
     let expression = normalize(expression);
     match expression {
@@ -1043,6 +1091,8 @@ pub fn format_expression(ps: &mut ParserState, expression: Expression) {
         Expression::MRHSAddStar(mrhs) => format_mrhs_add_star(ps, mrhs),
         Expression::MAssign(massign) => format_massign(ps, massign),
         Expression::Next(next) => format_next(ps, next),
+        Expression::IfMod(if_mod) => format_if_mod(ps, if_mod),
+        Expression::Unary(unary) => format_unary(ps, unary),
         e => {
             panic!("got unknown token: {:?}", e);
         }
