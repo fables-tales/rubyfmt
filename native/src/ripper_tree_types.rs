@@ -58,6 +58,8 @@ pub struct Program(pub program_tag, pub Vec<Expression>);
 #[derive(Deserialize, Debug)]
 #[serde(untagged)]
 pub enum Expression {
+    IfMod(IfMod),
+    Unary(Unary),
     VoidStmt(VoidStmt),
     Def(Def),
     VCall(VCall),
@@ -773,3 +775,59 @@ pub struct Op(pub op_tag, pub Operator, pub LineCol);
 def_tag!(next_tag, "next");
 #[derive(Deserialize, Debug)]
 pub struct Next(pub next_tag, pub ArgsAddBlockOrExpressionList);
+
+def_tag!(if_mod_tag, "if_mod");
+#[derive(Deserialize, Debug)]
+pub struct IfMod(pub if_mod_tag, pub Box<Expression>, pub Box<Expression>);
+
+#[derive(Debug)]
+pub enum UnaryType {
+    Not,
+}
+
+def_tag!(unary_tag, "unary");
+#[derive(Debug)]
+pub struct Unary(pub unary_tag, pub UnaryType, pub Box<Expression>);
+
+impl<'de> Deserialize<'de> for Unary {
+    fn deserialize<D>(deserializer: D) -> Result<Unary, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        struct UnaryVisitor;
+
+        impl<'de> de::Visitor<'de> for UnaryVisitor {
+            type Value = Unary;
+            fn expecting(&self, f: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
+                write!(f, "a unary operation")
+            }
+
+            fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
+            where
+                A: de::SeqAccess<'de>,
+            {
+                let tag: &str = seq
+                    .next_element()?
+                    .ok_or_else(|| de::Error::custom("didn't get array of expressions"))?;
+                if tag != "unary" {
+                    return Err(de::Error::custom("didn't get right tag"));
+                }
+
+                let unary_type_string: &str = seq
+                    .next_element()?
+                    .ok_or_else(|| de::Error::custom("didn't get array of expressions"))?;
+                let unary_type = match unary_type_string {
+                    "not" => UnaryType::Not,
+                    _ => panic!("got unknown unary type {}", unary_type_string),
+                };
+
+                let expression: Expression = seq
+                    .next_element()?
+                    .ok_or_else(|| de::Error::custom("didn't get array of expressions"))?;
+                Ok(Unary(unary_tag, unary_type, Box::new(expression)))
+            }
+        }
+
+        deserializer.deserialize_seq(UnaryVisitor)
+    }
+}
