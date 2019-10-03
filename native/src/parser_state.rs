@@ -86,7 +86,9 @@ impl ParserState {
             .last()
             .expect("comments stack is never empty")
         {
-            self.insert_comment_collection(comments.expect("we checked it was none at the top of the function"))
+            self.insert_comment_collection(
+                comments.expect("we checked it was none at the top of the function"),
+            )
         }
         self.current_orig_line_number = line_number;
     }

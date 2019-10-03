@@ -91,6 +91,7 @@ pub enum Expression {
     TopConstRef(TopConstRef),
     RescueMod(RescueMod),
     MRHSAddStar(MRHSAddStar),
+    Next(Next),
 }
 
 def_tag!(mrhs_add_star_tag, "mrhs_add_star");
@@ -768,3 +769,7 @@ pub struct LonelyOperator(pub lonely_operator_tag);
 def_tag!(op_tag, "@op");
 #[derive(Deserialize, Debug)]
 pub struct Op(pub op_tag, pub Operator, pub LineCol);
+
+def_tag!(next_tag, "next");
+#[derive(Deserialize, Debug)]
+pub struct Next(pub next_tag, pub ArgsAddBlockOrExpressionList);

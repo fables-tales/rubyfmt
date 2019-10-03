@@ -166,13 +166,13 @@ pub fn format_rest_param(ps: &mut ParserState, rest_param: Option<RestParam>) ->
                 match rp.1 {
                     Some(IdentOrVarField::Ident(i)) => {
                         format_ident(ps, i);
-                    },
+                    }
                     Some(IdentOrVarField::VarField(vf)) => {
                         format_var_field(ps, vf);
-                    },
+                    }
                     None => {
                         // deliberately do nothing
-                    },
+                    }
                 }
             }
             None => {
@@ -816,7 +816,10 @@ pub fn format_var_field(ps: &mut ParserState, vf: VarField) {
     format_var_ref_type(ps, left);
 }
 
-pub fn format_var_field_or_const_field_or_rest_param(ps: &mut ParserState, v: VarFieldOrConstFieldOrRestParam) {
+pub fn format_var_field_or_const_field_or_rest_param(
+    ps: &mut ParserState,
+    v: VarFieldOrConstFieldOrRestParam,
+) {
     match v {
         VarFieldOrConstFieldOrRestParam::VarField(vf) => {
             format_var_field(ps, vf);
@@ -876,7 +879,6 @@ pub fn format_massign(ps: &mut ParserState, massign: MAssign) {
         ps.emit_newline();
     }
 }
-
 
 pub fn format_var_ref_type(ps: &mut ParserState, vr: VarRefType) {
     if ps.at_start_of_line() {
@@ -973,7 +975,7 @@ pub fn format_mrhs_add_star(ps: &mut ParserState, mrhs: MRHSAddStar) {
                 if !e.is_empty() {
                     panic!("this should be impossible, got non-empty mrhs empty");
                 }
-            },
+            }
             MRHSNewFromArgsOrEmpty::MRHSNewFromArgs(mnfa) => {
                 format_list_like_thing(ps, mnfa.1, true);
             }
@@ -981,6 +983,37 @@ pub fn format_mrhs_add_star(ps: &mut ParserState, mrhs: MRHSAddStar) {
         ps.emit_ident("*".to_string());
         format_expression(ps, *mrhs.2);
     });
+}
+
+pub fn format_next(ps: &mut ParserState, next: Next) {
+    if ps.at_start_of_line() {
+        ps.emit_indent();
+    }
+
+    ps.with_start_of_line(false, |ps| {
+        ps.emit_ident("next".to_string());
+        match next.1 {
+            ArgsAddBlockOrExpressionList::ExpressionList(e) => {
+                if e.len() != 0 {
+                    panic!("got non empty next expression list, should be impossible");
+                }
+            }
+            ArgsAddBlockOrExpressionList::ArgsAddBlock(aab) => match aab.2 {
+                MaybeBlock::ToProcExpr(_) => {
+                    panic!("got a block in a next, should be impossible");
+                }
+                MaybeBlock::NoBlock(_) => {
+                    ps.emit_space();
+                    format_list_like_thing_items(ps, aab.1, true);
+                }
+            },
+        }
+        ps.emit_space();
+    });
+
+    if ps.at_start_of_line() {
+        ps.emit_newline();
+    }
 }
 
 pub fn format_expression(ps: &mut ParserState, expression: Expression) {
@@ -1009,6 +1042,7 @@ pub fn format_expression(ps: &mut ParserState, expression: Expression) {
         Expression::RescueMod(rescue_mod) => format_rescue_mod(ps, rescue_mod),
         Expression::MRHSAddStar(mrhs) => format_mrhs_add_star(ps, mrhs),
         Expression::MAssign(massign) => format_massign(ps, massign),
+        Expression::Next(next) => format_next(ps, next),
         e => {
             panic!("got unknown token: {:?}", e);
         }
