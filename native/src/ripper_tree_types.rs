@@ -320,6 +320,21 @@ pub enum ArgsAddStarOrExpressionList {
     ArgsAddStar(ArgsAddStar),
 }
 
+impl ArgsAddStarOrExpressionList {
+    pub fn is_empty(&self) -> bool {
+        match self {
+            ArgsAddStarOrExpressionList::ExpressionList(el) => {
+                if el.is_empty() {
+                    return true;
+                }
+            },
+            _ => {},
+        };
+
+        false
+    }
+}
+
 def_tag!(args_add_star_tag, "args_add_star");
 #[derive(Debug)]
 pub struct ArgsAddStar(
@@ -419,7 +434,7 @@ pub struct MethodCall(
     pub Vec<CallChainElement>,
     pub Box<Expression>,
     pub bool,
-    pub Vec<Expression>,
+    pub ArgsAddStarOrExpressionList,
 );
 
 impl MethodCall {
@@ -427,7 +442,7 @@ impl MethodCall {
         chain: Vec<CallChainElement>,
         method: Box<Expression>,
         use_parens: bool,
-        args: Vec<Expression>,
+        args: ArgsAddStarOrExpressionList,
     ) -> Self {
         MethodCall(method_call_tag, chain, method, use_parens, args)
     }
@@ -581,29 +596,29 @@ pub fn normalize_inner_call(call_expr: CallExpr) -> (Vec<CallChainElement>, Box<
     }
 }
 
-pub fn normalize_arg_paren(ap: ArgParen) -> Vec<Expression> {
+pub fn normalize_arg_paren(ap: ArgParen) -> ArgsAddStarOrExpressionList {
     match *ap.1 {
-        ArgNode::Null(_) => vec![],
+        ArgNode::Null(_) => ArgsAddStarOrExpressionList::ExpressionList(vec![]),
         ae => normalize_args(ae),
     }
 }
 
-pub fn normalize_args_add_block(aab: ArgsAddBlock) -> Vec<Expression> {
+pub fn normalize_args_add_block(aab: ArgsAddBlock) -> ArgsAddStarOrExpressionList {
     // .1 is expression list
     // .2 is block
     match aab.2 {
         MaybeBlock::NoBlock(_) => aab.1,
-        MaybeBlock::ToProcExpr(e) => vec![*e],
+        MaybeBlock::ToProcExpr(e) => ArgsAddStarOrExpressionList::ExpressionList(vec![*e]),
     }
 }
 
-pub fn normalize_args(arg_node: ArgNode) -> Vec<Expression> {
+pub fn normalize_args(arg_node: ArgNode) -> ArgsAddStarOrExpressionList {
     match arg_node {
         ArgNode::ArgParen(ap) => normalize_arg_paren(ap),
         ArgNode::ArgsAddBlock(aab) => normalize_args_add_block(aab),
-        ArgNode::Exprs(exprs) => exprs,
-        ArgNode::Const(c) => vec![Expression::Const(c)],
-        ArgNode::Ident(c) => vec![Expression::Ident(c)],
+        ArgNode::Exprs(exprs) => ArgsAddStarOrExpressionList::ExpressionList(exprs),
+        ArgNode::Const(c) => ArgsAddStarOrExpressionList::ExpressionList(vec![Expression::Const(c)]),
+        ArgNode::Ident(c) => ArgsAddStarOrExpressionList::ExpressionList(vec![Expression::Ident(c)]),
         ArgNode::Null(_) => panic!("should never be called with null"),
     }
 }
@@ -644,7 +659,7 @@ pub enum MaybeBlock {
 
 def_tag!(args_add_block_tag, "args_add_block");
 #[derive(Deserialize, Debug)]
-pub struct ArgsAddBlock(pub args_add_block_tag, pub Vec<Expression>, pub MaybeBlock);
+pub struct ArgsAddBlock(pub args_add_block_tag, pub ArgsAddStarOrExpressionList, pub MaybeBlock);
 
 def_tag!(int_tag, "@int");
 #[derive(Deserialize, Debug)]
@@ -720,7 +735,7 @@ pub struct Call(
 impl Call {
     pub fn to_method_call(self) -> MethodCall {
         let (chain, method) = normalize_inner_call(CallExpr::Call(self));
-        MethodCall::new(chain, method, false, Vec::new())
+        MethodCall::new(chain, method, false, ArgsAddStarOrExpressionList::ExpressionList(Vec::new()))
     }
 }
 

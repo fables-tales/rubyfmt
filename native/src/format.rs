@@ -268,7 +268,7 @@ pub fn format_ensure(ps: &mut ParserState, ensure_part: Option<Box<Expression>>)
 pub fn use_parens_for_method_call(
     method: &Box<Expression>,
     chain: &Vec<CallChainElement>,
-    args: &Vec<Expression>,
+    args: &ArgsAddStarOrExpressionList,
     original_used_parens: bool,
     context: &FormattingContext,
 ) -> bool {
@@ -368,7 +368,7 @@ pub fn format_method_call(ps: &mut ParserState, method_call: MethodCall) {
         }
 
         ps.with_formatting_context(FormattingContext::ArgsList, |ps| {
-            format_list_like_thing_items(ps, args, true);
+            format_list_like_thing(ps, args, true);
         });
 
         if use_parens {
@@ -406,7 +406,6 @@ pub fn format_list_like_thing_items(
         };
         emitted_args = true;
     }
-
     emitted_args
 }
 
@@ -555,7 +554,7 @@ trait ToMethodCall {
 
 impl ToMethodCall for VCall {
     fn to_method_call(self) -> MethodCall {
-        MethodCall::new(vec![], self.1, false, vec![])
+        MethodCall::new(vec![], self.1, false, ArgsAddStarOrExpressionList::ExpressionList(vec![]))
     }
 }
 
@@ -1004,7 +1003,7 @@ pub fn format_next(ps: &mut ParserState, next: Next) {
                 }
                 MaybeBlock::NoBlock(_) => {
                     ps.emit_space();
-                    format_list_like_thing_items(ps, aab.1, true);
+                    format_list_like_thing(ps, aab.1, true);
                 }
             },
         }
