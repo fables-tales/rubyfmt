@@ -1063,6 +1063,34 @@ pub fn format_unary(ps: &mut ParserState, unary: Unary) {
     }
 }
 
+pub fn format_string_concat(ps: &mut ParserState, sc: StringConcat) {
+    let nested = sc.1;
+    let sl = sc.2;
+
+    if ps.at_start_of_line() {
+        ps.emit_indent();
+    }
+
+    match nested {
+        StringConcatOrStringLiteral::StringConcat(sc) => format_string_concat(ps, *sc),
+        StringConcatOrStringLiteral::StringLiteral(sl) => format_string_literal(ps, sl),
+    }
+
+    ps.emit_space();
+    ps.emit_slash();
+    ps.emit_newline();
+
+    ps.with_absorbing_indent_block(|ps| {
+        ps.with_start_of_line(true, |ps| {
+            format_string_literal(ps, sl);
+        });
+    });
+
+    if ps.at_start_of_line() {
+        ps.emit_newline();
+    }
+}
+
 pub fn format_expression(ps: &mut ParserState, expression: Expression) {
     let expression = normalize(expression);
     match expression {
@@ -1092,6 +1120,7 @@ pub fn format_expression(ps: &mut ParserState, expression: Expression) {
         Expression::Next(next) => format_next(ps, next),
         Expression::IfMod(if_mod) => format_if_mod(ps, if_mod),
         Expression::Unary(unary) => format_unary(ps, unary),
+        Expression::StringConcat(sc) => format_string_concat(ps, sc),
         e => {
             panic!("got unknown token: {:?}", e);
         }
