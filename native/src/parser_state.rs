@@ -49,7 +49,7 @@ pub struct ParserState {
     breakable_entry_stack: Vec<BreakableEntry>,
     next_breakable_entry_id: u32,
     formatting_context: Vec<FormattingContext>,
-    absorbing_indents: bool,
+    absorbing_indents: i32,
 }
 
 impl ParserState {
@@ -67,7 +67,7 @@ impl ParserState {
             breakable_entry_stack: vec![],
             next_breakable_entry_id: 0,
             formatting_context: vec![FormattingContext::Main],
-            absorbing_indents: false,
+            absorbing_indents: 0,
         }
     }
 
@@ -205,16 +205,17 @@ impl ParserState {
     }
 
     pub fn with_absorbing_indent_block<F>(&mut self, f: F)
-        where F: FnOnce(&mut ParserState),
+    where
+        F: FnOnce(&mut ParserState),
     {
-        let was_absorbing = self.absorbing_indents;
-        self.absorbing_indents = true;
-        if was_absorbing {
+        let was_absorving = self.absorbing_indents != 0;
+        self.absorbing_indents += 1;
+        if was_absorving {
             f(self);
         } else {
             self.new_block(f);
         }
-        self.absorbing_indents = false;
+        self.absorbing_indents -= 1;
     }
 
     pub fn new_block<F>(&mut self, f: F)
@@ -311,5 +312,9 @@ impl ParserState {
                 .expect("we checked it wasn't empty")
                 .push(t);
         }
+    }
+
+    pub fn is_absorbing_indents(&self) -> bool {
+        self.absorbing_indents >= 1
     }
 }

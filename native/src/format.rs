@@ -554,7 +554,12 @@ trait ToMethodCall {
 
 impl ToMethodCall for VCall {
     fn to_method_call(self) -> MethodCall {
-        MethodCall::new(vec![], self.1, false, ArgsAddStarOrExpressionList::ExpressionList(vec![]))
+        MethodCall::new(
+            vec![],
+            self.1,
+            false,
+            ArgsAddStarOrExpressionList::ExpressionList(vec![]),
+        )
     }
 }
 
@@ -773,7 +778,7 @@ pub fn format_string_literal(ps: &mut ParserState, sl: StringLiteral) {
     format_inner_string(ps, parts, StringType::Quoted);
     ps.emit_double_quote();
 
-    if ps.at_start_of_line() {
+    if ps.at_start_of_line() && !ps.is_absorbing_indents() {
         ps.emit_newline();
     }
 }
@@ -1064,29 +1069,28 @@ pub fn format_unary(ps: &mut ParserState, unary: Unary) {
 }
 
 pub fn format_string_concat(ps: &mut ParserState, sc: StringConcat) {
-    let nested = sc.1;
-    let sl = sc.2;
-
-    if ps.at_start_of_line() {
-        ps.emit_indent();
-    }
-
-    match nested {
-        StringConcatOrStringLiteral::StringConcat(sc) => format_string_concat(ps, *sc),
-        StringConcatOrStringLiteral::StringLiteral(sl) => format_string_literal(ps, sl),
-    }
-
-    ps.emit_space();
-    ps.emit_slash();
-    ps.emit_newline();
-
     ps.with_absorbing_indent_block(|ps| {
+        let nested = sc.1;
+        let sl = sc.2;
+        if ps.at_start_of_line() {
+            ps.emit_indent();
+        }
+
+        match nested {
+            StringConcatOrStringLiteral::StringConcat(sc) => format_string_concat(ps, *sc),
+            StringConcatOrStringLiteral::StringLiteral(sl) => format_string_literal(ps, sl),
+        }
+
+        ps.emit_space();
+        ps.emit_slash();
+        ps.emit_newline();
+
         ps.with_start_of_line(true, |ps| {
             format_string_literal(ps, sl);
         });
     });
-
-    if ps.at_start_of_line() {
+    println!("absorbing: {}", ps.is_absorbing_indents());
+    if ps.at_start_of_line() && !ps.is_absorbing_indents() {
         ps.emit_newline();
     }
 }
