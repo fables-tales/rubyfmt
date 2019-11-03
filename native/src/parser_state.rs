@@ -45,11 +45,11 @@ pub struct ParserState {
     current_orig_line_number: LineNumber,
     comments_hash: LineMetadata,
     heredoc_strings: Vec<String>,
-    string_concat_position: Vec<i32>,
     comments_to_insert: CommentBlock,
     breakable_entry_stack: Vec<BreakableEntry>,
     next_breakable_entry_id: u32,
     formatting_context: Vec<FormattingContext>,
+    absorbing_indents: bool,
 }
 
 impl ParserState {
@@ -63,11 +63,11 @@ impl ParserState {
             current_orig_line_number: 0,
             comments_hash: lm,
             heredoc_strings: vec![],
-            string_concat_position: vec![],
             comments_to_insert: CommentBlock::new(vec![]),
             breakable_entry_stack: vec![],
             next_breakable_entry_id: 0,
             formatting_context: vec![FormattingContext::Main],
+            absorbing_indents: false,
         }
     }
 
@@ -204,6 +204,19 @@ impl ParserState {
         res
     }
 
+    pub fn with_absorbing_indent_block<F>(&mut self, f: F)
+        where F: FnOnce(&mut ParserState),
+    {
+        let was_absorbing = self.absorbing_indents;
+        self.absorbing_indents = true;
+        if was_absorbing {
+            f(self);
+        } else {
+            self.new_block(f);
+        }
+        self.absorbing_indents = false;
+    }
+
     pub fn new_block<F>(&mut self, f: F)
     where
         F: FnOnce(&mut ParserState),
@@ -275,6 +288,10 @@ impl ParserState {
 
     pub fn emit_close_square_bracket(&mut self) {
         self.push_token(CloseSquareBracket::new());
+    }
+
+    pub fn emit_slash(&mut self) {
+        self.push_token(SingleSlash::new());
     }
 
     pub fn emit_open_paren(&mut self) {

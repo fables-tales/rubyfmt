@@ -515,3 +515,17 @@ impl LineToken for LTStringContent {
         self.content
     }
 }
+
+pub struct SingleSlash;
+
+impl SingleSlash {
+    pub fn new() -> Self {
+        SingleSlash
+    }
+}
+
+impl LineToken for SingleSlash {
+    fn consume_to_string(self: Box<Self>) -> String {
+        "\\".to_string()
+    }
+}

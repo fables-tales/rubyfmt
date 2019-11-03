@@ -94,6 +94,22 @@ pub enum Expression {
     RescueMod(RescueMod),
     MRHSAddStar(MRHSAddStar),
     Next(Next),
+    StringConcat(StringConcat),
+}
+
+def_tag!(string_concat_tag, "string_concat");
+#[derive(Deserialize, Debug)]
+pub struct StringConcat(
+    pub string_concat_tag,
+    pub StringConcatOrStringLiteral,
+    pub StringLiteral,
+);
+
+#[derive(Deserialize, Debug)]
+#[serde(untagged)]
+pub enum StringConcatOrStringLiteral {
+    StringConcat(Box<StringConcat>),
+    StringLiteral(StringLiteral),
 }
 
 def_tag!(mrhs_add_star_tag, "mrhs_add_star");
