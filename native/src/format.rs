@@ -1095,6 +1095,21 @@ pub fn format_string_concat(ps: &mut ParserState, sc: StringConcat) {
     }
 }
 
+pub fn format_dyna_symbol(ps: &mut ParserState, ds: DynaSymbol) {
+    if ps.at_start_of_line() {
+        ps.emit_indent();
+    }
+
+    ps.emit_ident(":".to_string());
+    ps.with_start_of_line(false, |ps| {
+        format_string_literal(ps, ds.to_string_literal());
+    });
+
+    if ps.at_start_of_line() {
+        ps.emit_newline();
+    }
+}
+
 pub fn format_expression(ps: &mut ParserState, expression: Expression) {
     let expression = normalize(expression);
     match expression {
@@ -1125,6 +1140,7 @@ pub fn format_expression(ps: &mut ParserState, expression: Expression) {
         Expression::IfMod(if_mod) => format_if_mod(ps, if_mod),
         Expression::Unary(unary) => format_unary(ps, unary),
         Expression::StringConcat(sc) => format_string_concat(ps, sc),
+        Expression::DynaSymbol(ds) => format_dyna_symbol(ps, ds),
         e => {
             panic!("got unknown token: {:?}", e);
         }
