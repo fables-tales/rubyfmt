@@ -249,7 +249,27 @@ pub struct XStringLiteral(pub xstring_literal_tag, pub Vec<StringContentPart>);
 
 def_tag!(dyna_symbol_tag, "dyna_symbol");
 #[derive(Deserialize, Debug)]
-pub struct DynaSymbol(pub dyna_symbol_tag, pub StringContent);
+pub struct DynaSymbol(pub dyna_symbol_tag, pub StringContentOrStringContentParts);
+
+impl DynaSymbol {
+    pub fn to_string_literal(self) -> StringLiteral {
+        match self.1 {
+            StringContentOrStringContentParts::StringContent(sc) => {
+                StringLiteral(string_literal_tag, sc)
+            }
+            StringContentOrStringContentParts::StringContentParts(scp) => {
+                StringLiteral(string_literal_tag, StringContent(string_content_tag, scp))
+            }
+        }
+    }
+}
+
+#[derive(Deserialize, Debug)]
+#[serde(untagged)]
+pub enum StringContentOrStringContentParts {
+    StringContent(StringContent),
+    StringContentParts(Vec<StringContentPart>),
+}
 
 def_tag!(tstring_content_tag, "@tstring_content");
 #[derive(Deserialize, Debug)]
