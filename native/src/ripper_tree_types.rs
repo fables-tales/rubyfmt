@@ -95,6 +95,7 @@ pub enum Expression {
     MRHSAddStar(MRHSAddStar),
     Next(Next),
     StringConcat(StringConcat),
+    Super(Super),
 }
 
 def_tag!(string_concat_tag, "string_concat");
@@ -545,6 +546,9 @@ def_tag!(ident_tag, "@ident");
 pub struct Ident(pub ident_tag, pub String, pub LineCol);
 
 impl Ident {
+    pub fn new(s: String) -> Self {
+        Ident(ident_tag, s, LineCol(0, 0))
+    }
     pub fn line_number(&self) -> LineNumber {
         (self.2).0
     }
@@ -893,5 +897,20 @@ impl<'de> Deserialize<'de> for Unary {
         }
 
         deserializer.deserialize_seq(UnaryVisitor)
+    }
+}
+
+def_tag!(super_tag, "super");
+#[derive(Deserialize, Debug)]
+pub struct Super(pub super_tag, pub ArgNode);
+
+impl Super {
+    pub fn to_method_call(self) -> MethodCall {
+        MethodCall::new(
+            vec![],
+            Box::new(Expression::Ident(Ident::new("super".to_string()))),
+            true,
+            normalize_args(self.1),
+        )
     }
 }
