@@ -239,9 +239,68 @@ def_tag!(cvar_tag, "@cvar");
 #[derive(Deserialize, Debug)]
 pub struct CVar(pub cvar_tag, pub String, pub LineCol);
 
-def_tag!(string_literal_tag, "string_literal");
+def_tag!(heredoc_string_literal_tag, "heredoc_string_literal");
 #[derive(Deserialize, Debug)]
-pub struct StringLiteral(pub string_literal_tag, pub StringContent);
+pub struct HeredocStringLiteral(pub heredoc_string_literal_tag, pub (String, String));
+
+def_tag!(string_literal_tag, "string_literal");
+#[derive(Debug)]
+pub struct StringLiteral(pub string_literal_tag, Option<HeredocStringLiteral>, pub StringContent);
+
+impl<'de> Deserialize<'de> for StringLiteral {
+    fn deserialize<D>(deserializer: D) -> Result<StringLiteral, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        struct StringLiteralVisitor;
+
+        #[derive(Deserialize, Debug)]
+        #[serde(untagged)]
+        enum HeredocOrStringContent {
+            Heredoc(HeredocStringLiteral),
+            StringContent(StringContent),
+        };
+
+        impl<'de> de::Visitor<'de> for StringLiteralVisitor {
+            type Value = StringLiteral;
+
+            fn expecting(&self, f: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
+                write!(
+                    f,
+                    "[string_literal, [heredoc]?, string_content]"
+                )
+            }
+
+            fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
+            where
+                A: de::SeqAccess<'de>,
+            {
+                let tag: &str = seq.next_element()?.ok_or_else(|| panic!("what"))?;
+                if tag != "string_literal" {
+                    return Err(de::Error::custom("didn't get right tag"));
+                }
+
+                let mut h_or_sc: Option<HeredocOrStringContent> = seq.next_element()?;
+                let h_or_sc = h_or_sc.expect("didn't get either string content or heredoc in string literal");
+
+                let sl = match h_or_sc {
+                    HeredocOrStringContent::Heredoc(hd) => {
+                        let sc: Option<StringContent> = seq.next_element()?;
+                        let sc = sc.expect("didn't get string content in heredoc");
+                        StringLiteral(string_literal_tag, Some(hd), sc)
+                    },
+                    HeredocOrStringContent::StringContent(sc) => {
+                        StringLiteral(string_literal_tag, None, sc)
+                    }
+                };
+
+                Ok(sl)
+            }
+        }
+
+        deserializer.deserialize_seq(StringLiteralVisitor)
+    }
+}
 
 def_tag!(xstring_literal_tag, "xstring_literal");
 #[derive(Deserialize, Debug)]
@@ -303,11 +362,9 @@ impl<'de> Deserialize<'de> for StringContent {
 
                 let mut elements = vec![];
                 let mut t_or_e: Option<StringContentPart> = seq.next_element()?;
-                println!("{:?}", t_or_e);
                 while t_or_e.is_some() {
                     elements.push(t_or_e.expect("we checked it's some"));
                     t_or_e = seq.next_element()?;
-                    println!("{:?}", t_or_e);
                 }
 
                 Ok(StringContent(string_content_tag, elements))

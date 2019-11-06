@@ -763,7 +763,8 @@ pub fn format_inner_string(ps: &mut ParserState, parts: Vec<StringContentPart>, 
 }
 
 pub fn format_string_literal(ps: &mut ParserState, sl: StringLiteral) {
-    let parts = (sl.1).1;
+    unimplemented!("heredocs");
+    let parts = (sl.2).1;
 
     if ps.at_start_of_line() {
         ps.emit_indent();
@@ -1128,6 +1129,7 @@ pub fn format_expression(ps: &mut ParserState, expression: Expression) {
 }
 
 pub fn format_program(ps: &mut ParserState, program: Program) {
+    println!("{:?}", program);
     for expression in program.1 {
         format_expression(ps, expression);
     }
