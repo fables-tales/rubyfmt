@@ -1,0 +1,18 @@
+#!/bin/bash
+set -euxo pipefail
+
+FAIL=0
+SUCCESS=0
+while IFS= read -r -d '' FN
+do
+    set +e
+    if ruby test.rb "$FN"
+    then
+        SUCCESS=$((SUCCESS+1))
+    else
+        FAIL=$((FAIL+1))
+    fi
+    set -e
+done <   <(find ../fixtures -type f -print0 \! -name "*2.6*")
+echo $SUCCESS
+echo $FAIL
