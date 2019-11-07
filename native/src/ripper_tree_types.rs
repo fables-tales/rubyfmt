@@ -95,6 +95,7 @@ pub enum Expression {
     MRHSAddStar(MRHSAddStar),
     Next(Next),
     StringConcat(StringConcat),
+    Kw(Kw),
 }
 
 def_tag!(string_concat_tag, "string_concat");
@@ -222,6 +223,7 @@ pub enum VarRefType {
     CVar(CVar),
     Ident(Ident),
     Const(Const),
+    Kw(Kw),
 }
 
 def_tag!(gvar_tag, "@gvar");
@@ -931,3 +933,7 @@ impl<'de> Deserialize<'de> for Unary {
         deserializer.deserialize_seq(UnaryVisitor)
     }
 }
+
+def_tag!(kw_tag, "@kw");
+#[derive(Deserialize, Debug)]
+pub struct Kw(pub kw_tag, pub String, pub LineCol);
