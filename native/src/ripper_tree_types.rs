@@ -245,7 +245,11 @@ pub struct HeredocStringLiteral(pub heredoc_string_literal_tag, pub (String, Str
 
 def_tag!(string_literal_tag, "string_literal");
 #[derive(Debug)]
-pub struct StringLiteral(pub string_literal_tag, Option<HeredocStringLiteral>, pub StringContent);
+pub struct StringLiteral(
+    pub string_literal_tag,
+    pub Option<HeredocStringLiteral>,
+    pub StringContent,
+);
 
 impl<'de> Deserialize<'de> for StringLiteral {
     fn deserialize<D>(deserializer: D) -> Result<StringLiteral, D::Error>
@@ -265,10 +269,7 @@ impl<'de> Deserialize<'de> for StringLiteral {
             type Value = StringLiteral;
 
             fn expecting(&self, f: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
-                write!(
-                    f,
-                    "[string_literal, [heredoc]?, string_content]"
-                )
+                write!(f, "[string_literal, [heredoc]?, string_content]")
             }
 
             fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
@@ -281,14 +282,15 @@ impl<'de> Deserialize<'de> for StringLiteral {
                 }
 
                 let mut h_or_sc: Option<HeredocOrStringContent> = seq.next_element()?;
-                let h_or_sc = h_or_sc.expect("didn't get either string content or heredoc in string literal");
+                let h_or_sc =
+                    h_or_sc.expect("didn't get either string content or heredoc in string literal");
 
                 let sl = match h_or_sc {
                     HeredocOrStringContent::Heredoc(hd) => {
                         let sc: Option<StringContent> = seq.next_element()?;
                         let sc = sc.expect("didn't get string content in heredoc");
                         StringLiteral(string_literal_tag, Some(hd), sc)
-                    },
+                    }
                     HeredocOrStringContent::StringContent(sc) => {
                         StringLiteral(string_literal_tag, None, sc)
                     }
@@ -400,8 +402,8 @@ impl ArgsAddStarOrExpressionList {
                 if el.is_empty() {
                     return true;
                 }
-            },
-            _ => {},
+            }
+            _ => {}
         };
 
         false
@@ -690,8 +692,12 @@ pub fn normalize_args(arg_node: ArgNode) -> ArgsAddStarOrExpressionList {
         ArgNode::ArgParen(ap) => normalize_arg_paren(ap),
         ArgNode::ArgsAddBlock(aab) => normalize_args_add_block(aab),
         ArgNode::Exprs(exprs) => ArgsAddStarOrExpressionList::ExpressionList(exprs),
-        ArgNode::Const(c) => ArgsAddStarOrExpressionList::ExpressionList(vec![Expression::Const(c)]),
-        ArgNode::Ident(c) => ArgsAddStarOrExpressionList::ExpressionList(vec![Expression::Ident(c)]),
+        ArgNode::Const(c) => {
+            ArgsAddStarOrExpressionList::ExpressionList(vec![Expression::Const(c)])
+        }
+        ArgNode::Ident(c) => {
+            ArgsAddStarOrExpressionList::ExpressionList(vec![Expression::Ident(c)])
+        }
         ArgNode::Null(_) => panic!("should never be called with null"),
     }
 }
@@ -732,7 +738,11 @@ pub enum MaybeBlock {
 
 def_tag!(args_add_block_tag, "args_add_block");
 #[derive(Deserialize, Debug)]
-pub struct ArgsAddBlock(pub args_add_block_tag, pub ArgsAddStarOrExpressionList, pub MaybeBlock);
+pub struct ArgsAddBlock(
+    pub args_add_block_tag,
+    pub ArgsAddStarOrExpressionList,
+    pub MaybeBlock,
+);
 
 def_tag!(int_tag, "@int");
 #[derive(Deserialize, Debug)]
@@ -808,7 +818,12 @@ pub struct Call(
 impl Call {
     pub fn to_method_call(self) -> MethodCall {
         let (chain, method) = normalize_inner_call(CallExpr::Call(self));
-        MethodCall::new(chain, method, false, ArgsAddStarOrExpressionList::ExpressionList(Vec::new()))
+        MethodCall::new(
+            chain,
+            method,
+            false,
+            ArgsAddStarOrExpressionList::ExpressionList(Vec::new()),
+        )
     }
 }
 

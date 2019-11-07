@@ -554,7 +554,12 @@ trait ToMethodCall {
 
 impl ToMethodCall for VCall {
     fn to_method_call(self) -> MethodCall {
-        MethodCall::new(vec![], self.1, false, ArgsAddStarOrExpressionList::ExpressionList(vec![]))
+        MethodCall::new(
+            vec![],
+            self.1,
+            false,
+            ArgsAddStarOrExpressionList::ExpressionList(vec![]),
+        )
     }
 }
 
@@ -736,10 +741,9 @@ pub enum StringType {
 }
 
 pub fn format_inner_string(ps: &mut ParserState, parts: Vec<StringContentPart>, tipe: StringType) {
-    if tipe == StringType::Heredoc {
-        panic!("heredocs aren't supported yet");
-    }
-    for (idx, part) in parts.into_iter().enumerate() {
+    let mut peekable = parts.into_iter().peekable();
+    while peekable.peek().is_some() {
+        let part = peekable.next().expect("we peeked");
         match part {
             StringContentPart::TStringContent(t) => ps.emit_string_content(t.1),
             StringContentPart::StringEmbexpr(e) => {
@@ -749,6 +753,17 @@ pub fn format_inner_string(ps: &mut ParserState, parts: Vec<StringContentPart>, 
                     format_expression(ps, expr);
                 });
                 ps.emit_string_content("}".to_string());
+
+                let on_line_skip = tipe == StringType::Heredoc
+                    && match peekable.peek() {
+                        Some(StringContentPart::TStringContent(TStringContent(_, s, _))) => {
+                            s.starts_with("\n")
+                        }
+                        _ => false,
+                    };
+                if on_line_skip {
+                    ps.render_heredocs(true)
+                }
             }
             StringContentPart::StringDVar(dv) => {
                 ps.emit_string_content("#{".to_string());
@@ -762,20 +777,49 @@ pub fn format_inner_string(ps: &mut ParserState, parts: Vec<StringContentPart>, 
     }
 }
 
-pub fn format_string_literal(ps: &mut ParserState, sl: StringLiteral) {
-    unimplemented!("heredocs");
-    let parts = (sl.2).1;
-
+pub fn format_heredoc_string_literal(
+    ps: &mut ParserState,
+    hd: HeredocStringLiteral,
+    parts: Vec<StringContentPart>,
+) {
     if ps.at_start_of_line() {
         ps.emit_indent();
     }
 
-    ps.emit_double_quote();
-    format_inner_string(ps, parts, StringType::Quoted);
-    ps.emit_double_quote();
+    ps.with_surpress_comments(true, |ps| {
+        let heredoc_type = (hd.1).0;
+        let heredoc_symbol = (hd.1).1;
+        ps.emit_ident(heredoc_type.clone());
+        ps.emit_ident(heredoc_symbol.clone());
+
+        ps.push_heredoc_content(heredoc_symbol, heredoc_type.contains("~"), parts);
+    });
 
     if ps.at_start_of_line() {
         ps.emit_newline();
+    }
+}
+
+pub fn format_string_literal(ps: &mut ParserState, sl: StringLiteral) {
+    let parts = (sl.2).1;
+    // some(hd) if we have a heredoc
+    match sl.1 {
+        Some(hd) => {
+            format_heredoc_string_literal(ps, hd, parts);
+        }
+        None => {
+            if ps.at_start_of_line() {
+                ps.emit_indent();
+            }
+
+            ps.emit_double_quote();
+            format_inner_string(ps, parts, StringType::Quoted);
+            ps.emit_double_quote();
+
+            if ps.at_start_of_line() {
+                ps.emit_newline();
+            }
+        }
     }
 }
 

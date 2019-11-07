@@ -89,16 +89,6 @@ fn toplevel_format_program<W: Write>(mut writer: W, buf: &[u8], tree: &[u8]) -> 
     })?;
 
     format::format_program(&mut ps, v);
-    let render_queue = ps.consume_to_render_queue();
-    write_render_queue_to(render_queue, &mut writer).map_err(|_| Status::CouldntWriteFile)
-}
 
-fn write_render_queue_to<W: Write>(rq: Vec<Box<dyn LineToken>>, writer: &mut W) -> io::Result<()> {
-    for line_token in rq {
-        let s = line_token.consume_to_string();
-        write!(writer, "{}", s)?;
-    }
-    write!(writer, "\n")?;
-    writer.flush()?;
-    Ok(())
+    ps.write(&mut writer).map_err(|_| Status::CouldntWriteFile)
 }
