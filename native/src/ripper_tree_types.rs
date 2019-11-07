@@ -57,10 +57,12 @@ pub struct Program(pub program_tag, pub Vec<Expression>);
 #[derive(Deserialize, Debug)]
 #[serde(untagged)]
 pub enum Expression {
+    Class(Class),
     IfMod(IfMod),
     Unary(Unary),
     VoidStmt(VoidStmt),
     Def(Def),
+    Defs(Defs),
     VCall(VCall),
     Ident(Ident),
     Params(Params),
@@ -155,6 +157,10 @@ pub struct TopConstField(pub top_const_field_tag, pub Const);
 def_tag!(const_path_ref_tag, "const_path_ref");
 #[derive(Deserialize, Debug)]
 pub struct ConstPathRef(pub const_path_ref_tag, pub Box<Expression>, pub Const);
+
+def_tag!(const_ref_tag, "const_ref");
+#[derive(Deserialize, Debug)]
+pub struct ConstRef(pub const_ref_tag, pub Const);
 
 def_tag!(command_tag, "command");
 #[derive(Deserialize, Debug)]
@@ -941,3 +947,16 @@ impl<'de> Deserialize<'de> for Unary {
 def_tag!(kw_tag, "@kw");
 #[derive(Deserialize, Debug)]
 pub struct Kw(pub kw_tag, pub String, pub LineCol);
+
+#[derive(Deserialize, Debug)]
+#[serde(untagged)]
+pub enum ConstPathRefOrConstRef {
+    ConstPathRef(ConstPathRef),
+    ConstRef(ConstRef),
+}
+
+def_tag!(class_tag, "class");
+#[derive(Deserialize, Debug)]
+pub struct Class(pub class_tag, pub ConstPathRefOrConstRef, pub Option<Box<Expression>>, pub BodyStmt);
+
+
