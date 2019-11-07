@@ -13,7 +13,7 @@ pub struct LineMetadata {
 }
 
 impl LineMetadata {
-    fn new() -> Self {
+    pub fn new() -> Self {
         LineMetadata {
             comment_blocks: BTreeMap::new(),
             lowest_key: 0,
