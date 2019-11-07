@@ -875,10 +875,7 @@ pub fn format_var_field(ps: &mut ParserState, vf: VarField) {
     format_var_ref_type(ps, left);
 }
 
-pub fn format_var_field_or_const_field_or_rest_param(
-    ps: &mut ParserState,
-    v: Assignable,
-) {
+pub fn format_var_field_or_const_field_or_rest_param(ps: &mut ParserState, v: Assignable) {
     match v {
         Assignable::VarField(vf) => {
             format_var_field(ps, vf);
@@ -953,6 +950,7 @@ pub fn format_var_ref_type(ps: &mut ParserState, vr: VarRefType) {
         VarRefType::IVar(i) => ps.emit_ident(i.1),
         VarRefType::Ident(i) => ps.emit_ident(i.1),
         VarRefType::Const(c) => ps.emit_ident(c.1),
+        VarRefType::Kw(kw) => ps.emit_ident(kw.1),
     }
 
     if ps.at_start_of_line() {
