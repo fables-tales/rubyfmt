@@ -143,6 +143,10 @@ def_tag!(top_const_ref_tag, "top_const_ref");
 #[derive(Deserialize, Debug)]
 pub struct TopConstRef(pub top_const_ref_tag, pub Const);
 
+def_tag!(top_const_field_tag, "top_const_field");
+#[derive(Deserialize, Debug)]
+pub struct TopConstField(pub top_const_field_tag, pub Const);
+
 def_tag!(const_path_ref_tag, "const_path_ref");
 #[derive(Deserialize, Debug)]
 pub struct ConstPathRef(pub const_path_ref_tag, pub Box<Expression>, pub Const);
@@ -176,19 +180,11 @@ impl Command {
 
 def_tag!(assign_tag, "assign");
 #[derive(Deserialize, Debug)]
-pub struct Assign(
-    pub assign_tag,
-    pub VarFieldOrConstFieldOrRestParam,
-    pub Box<Expression>,
-);
+pub struct Assign(pub assign_tag, pub Assignable, pub Box<Expression>);
 
 def_tag!(massign_tag, "massign");
 #[derive(Deserialize, Debug)]
-pub struct MAssign(
-    pub massign_tag,
-    pub Vec<VarFieldOrConstFieldOrRestParam>,
-    pub Box<Expression>,
-);
+pub struct MAssign(pub massign_tag, pub Vec<Assignable>, pub Box<Expression>);
 
 #[derive(Deserialize, Debug)]
 #[serde(untagged)]
@@ -199,10 +195,11 @@ pub enum IdentOrVarField {
 
 #[derive(Deserialize, Debug)]
 #[serde(untagged)]
-pub enum VarFieldOrConstFieldOrRestParam {
+pub enum Assignable {
     VarField(VarField),
     ConstPathField(ConstPathField),
     RestParam(RestParam),
+    TopConstField(TopConstField),
 }
 
 def_tag!(const_path_field_tag, "const_path_field");

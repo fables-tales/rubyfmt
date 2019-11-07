@@ -855,6 +855,21 @@ pub fn format_const_path_field(ps: &mut ParserState, cf: ConstPathField) {
     }
 }
 
+pub fn format_top_const_field(ps: &mut ParserState, tcf: TopConstField) {
+    if ps.at_start_of_line() {
+        ps.emit_indent();
+    }
+
+    ps.with_start_of_line(false, |ps| {
+        ps.emit_colon_colon();
+        format_const(ps, tcf.1);
+    });
+
+    if ps.at_start_of_line() {
+        ps.emit_newline();
+    }
+}
+
 pub fn format_var_field(ps: &mut ParserState, vf: VarField) {
     let left = vf.1;
     format_var_ref_type(ps, left);
@@ -862,17 +877,20 @@ pub fn format_var_field(ps: &mut ParserState, vf: VarField) {
 
 pub fn format_var_field_or_const_field_or_rest_param(
     ps: &mut ParserState,
-    v: VarFieldOrConstFieldOrRestParam,
+    v: Assignable,
 ) {
     match v {
-        VarFieldOrConstFieldOrRestParam::VarField(vf) => {
+        Assignable::VarField(vf) => {
             format_var_field(ps, vf);
         }
-        VarFieldOrConstFieldOrRestParam::ConstPathField(cf) => {
+        Assignable::ConstPathField(cf) => {
             format_const_path_field(ps, cf);
         }
-        VarFieldOrConstFieldOrRestParam::RestParam(rp) => {
+        Assignable::RestParam(rp) => {
             format_rest_param(ps, Some(rp));
+        }
+        Assignable::TopConstField(tcf) => {
+            format_top_const_field(ps, tcf);
         }
     }
 }
