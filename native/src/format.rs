@@ -1152,6 +1152,25 @@ pub fn format_string_concat(ps: &mut ParserState, sc: StringConcat) {
     }
 }
 
+pub fn format_undef(ps: &mut ParserState, undef: Undef) {
+    if ps.at_start_of_line() {
+        ps.emit_indent();
+    }
+
+    ps.emit_ident("undef ".to_string());
+    let length = undef.1.len();
+    for (idx, literal) in undef.1.into_iter().enumerate() {
+        ps.with_start_of_line(false, |ps| format_symbol_literal(ps, literal));
+        if idx != length-1 {
+            ps.emit_comma_space();
+        }
+    }
+
+    if ps.at_start_of_line() {
+        ps.emit_newline();
+    }
+}
+
 pub fn format_expression(ps: &mut ParserState, expression: Expression) {
     let expression = normalize(expression);
     match expression {
@@ -1182,6 +1201,7 @@ pub fn format_expression(ps: &mut ParserState, expression: Expression) {
         Expression::IfMod(if_mod) => format_if_mod(ps, if_mod),
         Expression::Unary(unary) => format_unary(ps, unary),
         Expression::StringConcat(sc) => format_string_concat(ps, sc),
+        Expression::Undef(undef) => format_undef(ps, undef),
         e => {
             panic!("got unknown token: {:?}", e);
         }

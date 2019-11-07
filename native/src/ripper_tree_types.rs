@@ -12,7 +12,6 @@ macro_rules! def_tag {
     ($tag_name:ident, $tag:expr) => {
         #[derive(Serialize, Debug)]
         pub struct $tag_name;
-
         impl<'de> Deserialize<'de> for $tag_name {
             fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
             where
@@ -96,7 +95,12 @@ pub enum Expression {
     Next(Next),
     StringConcat(StringConcat),
     Kw(Kw),
+    Undef(Undef),
 }
+
+def_tag!(undef_tag, "undef");
+#[derive(Deserialize, Debug)]
+pub struct Undef(pub undef_tag, pub Vec<SymbolLiteral>);
 
 def_tag!(string_concat_tag, "string_concat");
 #[derive(Deserialize, Debug)]
