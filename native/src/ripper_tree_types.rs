@@ -959,4 +959,21 @@ def_tag!(class_tag, "class");
 #[derive(Deserialize, Debug)]
 pub struct Class(pub class_tag, pub ConstPathRefOrConstRef, pub Option<Box<Expression>>, pub BodyStmt);
 
+def_tag!(defs_tag, "defs");
+#[derive(Deserialize, Debug)]
+pub struct Defs(pub defs_tag, pub Singleton, pub DotOrColon, pub Ident, pub ParenOrParams, pub BodyStmt);
 
+#[derive(Deserialize, Debug)]
+#[serde(untagged)]
+pub enum Singleton {
+    VarRef(VarRef),
+    Paren(ParenExpr),
+}
+
+// can only occur in defs, Op is always `::`
+#[derive(Deserialize, Debug)]
+#[serde(untagged)]
+pub enum DotOrColon {
+    Period(Period),
+    Op(Operator),
+}

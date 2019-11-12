@@ -4,16 +4,12 @@ use std::borrow::Borrow;
 
 pub fn format_def(ps: &mut ParserState, def: Def) {
     let def_expression = def.1;
-    let params = match def.2 {
-        ParenOrParams::Paren(p) => p.1,
-        ParenOrParams::Params(p) => p,
-    };
 
     let body = def.3;
     ps.on_line((def_expression.2).0);
     ps.emit_indent();
     ps.emit_def(def_expression.1);
-    format_params(ps, params, "(".to_string(), ")".to_string());
+    format_paren_or_params(ps, def.2);
     ps.emit_newline();
 
     ps.with_formatting_context(FormattingContext::Def, |ps| {
@@ -1171,6 +1167,98 @@ pub fn format_undef(ps: &mut ParserState, undef: Undef) {
     }
 }
 
+pub fn format_defs(ps: &mut ParserState, defs: Defs) {
+    if ps.at_start_of_line() {
+        ps.emit_indent();
+    }
+
+    let singleton = defs.1;
+    let ident = defs.3;
+    let paren_or_params = defs.4;
+    let bodystmt = defs.5;
+
+    ps.emit_def_keyword();
+    ps.emit_space();
+
+    ps.with_start_of_line(false, |ps| {
+        match singleton {
+            Singleton::VarRef(vr) => {
+                format_var_ref(ps, vr);
+            },
+            Singleton::Paren(pe) => {
+                format_paren(ps, pe);
+            }
+        }
+
+        ps.emit_dot();
+        format_ident(ps, ident);
+        format_paren_or_params(ps, paren_or_params);
+        ps.emit_newline();
+    });
+
+    ps.with_formatting_context(FormattingContext::Def, |ps| {
+        ps.new_block(|ps| {
+            format_bodystmt(ps, bodystmt, false);
+        });
+    });
+
+    ps.emit_end();
+
+    if ps.at_start_of_line() {
+        ps.emit_newline();
+    }
+}
+
+pub fn format_paren_or_params(ps: &mut ParserState, pp: ParenOrParams) {
+    let params = match pp {
+        ParenOrParams::Paren(p) => p.1,
+        ParenOrParams::Params(p) => p,
+    };
+    format_params(ps, params, "(".to_string(), ")".to_string());
+}
+
+pub fn format_class(ps: &mut ParserState, class: Class) {
+    if ps.at_start_of_line() {
+        ps.emit_indent();
+    }
+
+    let class_name = class.1;
+    let inherit = class.2;
+    let bodystmt = class.3;
+
+    ps.emit_class_keyword();
+    ps.with_start_of_line(false, |ps| {
+        ps.emit_space();
+
+        match class_name {
+            ConstPathRefOrConstRef::ConstPathRef(cpr) => {
+                format_const_path_ref(ps, cpr);
+            },
+            ConstPathRefOrConstRef::ConstRef(cr) => {
+                ps.on_line(((cr.1).2).0);
+                ps.emit_ident((cr.1).1);
+            }
+        }
+
+        if inherit.is_some() {
+            let inherit_expression = *(inherit.expect("We checked it is some"));
+            ps.emit_ident(" < ".to_string());
+            format_expression(ps, inherit_expression);
+        }
+    });
+
+    ps.emit_newline();
+    ps.new_block(|ps| {
+        ps.with_formatting_context(FormattingContext::ClassOrModule, |ps| {
+            format_bodystmt(ps, bodystmt, false);
+        });
+    });
+
+    if ps.at_start_of_line() {
+        ps.emit_newline();
+    }
+}
+
 pub fn format_expression(ps: &mut ParserState, expression: Expression) {
     let expression = normalize(expression);
     match expression {
@@ -1202,6 +1290,8 @@ pub fn format_expression(ps: &mut ParserState, expression: Expression) {
         Expression::Unary(unary) => format_unary(ps, unary),
         Expression::StringConcat(sc) => format_string_concat(ps, sc),
         Expression::Undef(undef) => format_undef(ps, undef),
+        Expression::Class(class) => format_class(ps, class),
+        Expression::Defs(defs) => format_defs(ps, defs),
         e => {
             panic!("got unknown token: {:?}", e);
         }
