@@ -58,6 +58,7 @@ pub struct Program(pub program_tag, pub Vec<Expression>);
 #[serde(untagged)]
 pub enum Expression {
     Class(Class),
+    If(If),
     IfMod(IfMod),
     Unary(Unary),
     VoidStmt(VoidStmt),
@@ -99,6 +100,25 @@ pub enum Expression {
     Kw(Kw),
     Undef(Undef),
 }
+
+def_tag!(if_tag, "if");
+#[derive(Deserialize, Debug)]
+pub struct If(pub if_tag, pub Box<Expression>, pub Vec<Expression>, pub Option<ElsifOrElse>);
+
+#[derive(Deserialize, Debug)]
+#[serde(untagged)]
+pub enum ElsifOrElse {
+    Elsif(Elsif),
+    Else(Else),
+}
+
+def_tag!(elsif_tag, "elsif");
+#[derive(Deserialize, Debug)]
+pub struct Elsif(pub elsif_tag, pub Box<Expression>, pub Vec<Expression>, pub Option<Box<ElsifOrElse>>);
+
+def_tag!(else_tag, "else");
+#[derive(Deserialize, Debug)]
+pub struct Else(pub else_tag, pub Vec<Expression>);
 
 def_tag!(undef_tag, "undef");
 #[derive(Deserialize, Debug)]

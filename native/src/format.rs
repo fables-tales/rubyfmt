@@ -1287,6 +1287,15 @@ pub fn format_class(ps: &mut ParserState, class: Class) {
     }
 }
 
+pub fn format_conditional(ps: &mut ParserState, cond_expr: Expression, body: Vec<Expression>, kw: String, tail: EslifOrElse) {
+    ps.emit_keyword(kw);
+    ps.emit_space();
+    ps.with_start_of_line(false, |ps| {
+        format_expression(ps, cond_expr);
+        ps.emit_newline();
+    });
+}
+
 pub fn format_expression(ps: &mut ParserState, expression: Expression) {
     let expression = normalize(expression);
     match expression {
