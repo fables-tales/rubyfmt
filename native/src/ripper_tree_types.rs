@@ -394,7 +394,7 @@ pub struct Array(pub array_tag, pub SimpleArrayOrPercentArray);
 #[serde(untagged)]
 pub enum SimpleArrayOrPercentArray {
     SimpleArray(Option<ArgsAddStarOrExpressionList>),
-    PercentArray((String, Vec<TStringContent>)),
+    PercentArray((String, Vec<StringContentPart>, LineCol)),
 }
 
 #[derive(Deserialize, Debug)]
