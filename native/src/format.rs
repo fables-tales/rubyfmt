@@ -643,6 +643,31 @@ pub fn format_dot2_or_3(
     }
 }
 
+pub fn percent_symbol_for(tag: String) -> String {
+    match tag.as_ref() {
+        "qsymbols" => "%i".to_string(),
+        "qwords" => "%w".to_string(),
+        "symbols" => "%I".to_string(),
+        "words" => "%W".to_string(),
+        _ => panic!("got invalid percent symbol"),
+    }
+}
+
+pub fn format_percent_array(ps: &mut ParserState, tag: String, parts: Vec<StringContentPart>) {
+    ps.emit_ident(percent_symbol_for(tag));
+    ps.emit_open_square_bracket();
+    ps.with_start_of_line(false, |ps| {
+        let parts_length = parts.len();
+        for (idx, part) in parts.into_iter().enumerate() {
+            format_inner_string(ps, vec![part], StringType::Array);
+            if idx != parts_length - 1 {
+                ps.emit_space();
+            }
+        }
+    });
+    ps.emit_close_square_bracket();
+}
+
 pub fn format_array(ps: &mut ParserState, array: Array) {
     if ps.at_start_of_line() {
         ps.emit_indent();
@@ -650,9 +675,10 @@ pub fn format_array(ps: &mut ParserState, array: Array) {
 
     match array.1 {
         SimpleArrayOrPercentArray::SimpleArray(a) => format_array_fast_path(ps, a),
-        _ => {
-            unimplemented!();
-        }
+        SimpleArrayOrPercentArray::PercentArray(pa) => {
+            ps.on_line((pa.2).0);
+            format_percent_array(ps, pa.0, pa.1);
+        },
     }
 
     if ps.at_start_of_line() {
@@ -734,6 +760,7 @@ pub fn emit_intermediate_array_separator(ps: &mut ParserState) {
 pub enum StringType {
     Quoted,
     Heredoc,
+    Array,
 }
 
 pub fn format_inner_string(ps: &mut ParserState, parts: Vec<StringContentPart>, tipe: StringType) {
@@ -1254,6 +1281,7 @@ pub fn format_class(ps: &mut ParserState, class: Class) {
         });
     });
 
+    ps.emit_end();
     if ps.at_start_of_line() {
         ps.emit_newline();
     }
