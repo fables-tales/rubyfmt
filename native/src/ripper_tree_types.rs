@@ -103,7 +103,12 @@ pub enum Expression {
 
 def_tag!(if_tag, "if");
 #[derive(Deserialize, Debug)]
-pub struct If(pub if_tag, pub Box<Expression>, pub Vec<Expression>, pub Option<ElsifOrElse>);
+pub struct If(
+    pub if_tag,
+    pub Box<Expression>,
+    pub Vec<Expression>,
+    pub Option<ElsifOrElse>,
+);
 
 #[derive(Deserialize, Debug)]
 #[serde(untagged)]
@@ -114,7 +119,12 @@ pub enum ElsifOrElse {
 
 def_tag!(elsif_tag, "elsif");
 #[derive(Deserialize, Debug)]
-pub struct Elsif(pub elsif_tag, pub Box<Expression>, pub Vec<Expression>, pub Option<Box<ElsifOrElse>>);
+pub struct Elsif(
+    pub elsif_tag,
+    pub Box<Expression>,
+    pub Vec<Expression>,
+    pub Option<Box<ElsifOrElse>>,
+);
 
 def_tag!(else_tag, "else");
 #[derive(Deserialize, Debug)]
@@ -977,11 +987,23 @@ pub enum ConstPathRefOrConstRef {
 
 def_tag!(class_tag, "class");
 #[derive(Deserialize, Debug)]
-pub struct Class(pub class_tag, pub ConstPathRefOrConstRef, pub Option<Box<Expression>>, pub BodyStmt);
+pub struct Class(
+    pub class_tag,
+    pub ConstPathRefOrConstRef,
+    pub Option<Box<Expression>>,
+    pub BodyStmt,
+);
 
 def_tag!(defs_tag, "defs");
 #[derive(Deserialize, Debug)]
-pub struct Defs(pub defs_tag, pub Singleton, pub DotOrColon, pub Ident, pub ParenOrParams, pub BodyStmt);
+pub struct Defs(
+    pub defs_tag,
+    pub Singleton,
+    pub DotOrColon,
+    pub Ident,
+    pub ParenOrParams,
+    pub BodyStmt,
+);
 
 #[derive(Deserialize, Debug)]
 #[serde(untagged)]

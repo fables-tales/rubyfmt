@@ -678,7 +678,7 @@ pub fn format_array(ps: &mut ParserState, array: Array) {
         SimpleArrayOrPercentArray::PercentArray(pa) => {
             ps.on_line((pa.2).0);
             format_percent_array(ps, pa.0, pa.1);
-        },
+        }
     }
 
     if ps.at_start_of_line() {
@@ -1184,7 +1184,7 @@ pub fn format_undef(ps: &mut ParserState, undef: Undef) {
     let length = undef.1.len();
     for (idx, literal) in undef.1.into_iter().enumerate() {
         ps.with_start_of_line(false, |ps| format_symbol_literal(ps, literal));
-        if idx != length-1 {
+        if idx != length - 1 {
             ps.emit_comma_space();
         }
     }
@@ -1211,7 +1211,7 @@ pub fn format_defs(ps: &mut ParserState, defs: Defs) {
         match singleton {
             Singleton::VarRef(vr) => {
                 format_var_ref(ps, vr);
-            },
+            }
             Singleton::Paren(pe) => {
                 format_paren(ps, pe);
             }
@@ -1260,7 +1260,7 @@ pub fn format_class(ps: &mut ParserState, class: Class) {
         match class_name {
             ConstPathRefOrConstRef::ConstPathRef(cpr) => {
                 format_const_path_ref(ps, cpr);
-            },
+            }
             ConstPathRefOrConstRef::ConstRef(cr) => {
                 ps.on_line(((cr.1).2).0);
                 ps.emit_ident((cr.1).1);
@@ -1287,7 +1287,13 @@ pub fn format_class(ps: &mut ParserState, class: Class) {
     }
 }
 
-pub fn format_conditional(ps: &mut ParserState, cond_expr: Expression, body: Vec<Expression>, kw: String, tail: Option<ElsifOrElse>) {
+pub fn format_conditional(
+    ps: &mut ParserState,
+    cond_expr: Expression,
+    body: Vec<Expression>,
+    kw: String,
+    tail: Option<ElsifOrElse>,
+) {
     if ps.at_start_of_line() {
         ps.emit_indent();
     }
@@ -1305,26 +1311,30 @@ pub fn format_conditional(ps: &mut ParserState, cond_expr: Expression, body: Vec
             }
         });
     });
-    ps.with_start_of_line(true, |ps| {
-        match tail {
-            None => {},
-            Some(ElsifOrElse::Elsif(elsif)) => {
-                ps.emit_newline();
-                format_conditional(ps, *elsif.1, elsif.2, "elsif".to_string(), (elsif.3).map(|v| *v));
-            },
-            Some(ElsifOrElse::Else(els)) => {
-                ps.emit_newline();
-                ps.emit_indent();
-                ps.emit_else();
-                ps.emit_newline();
-                ps.with_start_of_line(true, |ps| {
-                    ps.new_block(|ps| {
-                        for expr in els.1 {
-                            format_expression(ps, expr);
-                        }
-                    });
+    ps.with_start_of_line(true, |ps| match tail {
+        None => {}
+        Some(ElsifOrElse::Elsif(elsif)) => {
+            ps.emit_newline();
+            format_conditional(
+                ps,
+                *elsif.1,
+                elsif.2,
+                "elsif".to_string(),
+                (elsif.3).map(|v| *v),
+            );
+        }
+        Some(ElsifOrElse::Else(els)) => {
+            ps.emit_newline();
+            ps.emit_indent();
+            ps.emit_else();
+            ps.emit_newline();
+            ps.with_start_of_line(true, |ps| {
+                ps.new_block(|ps| {
+                    for expr in els.1 {
+                        format_expression(ps, expr);
+                    }
                 });
-            }
+            });
         }
     });
 }
