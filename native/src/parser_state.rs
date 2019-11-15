@@ -145,6 +145,10 @@ impl ParserState {
         self.push_token(DirectPart::new(ident));
     }
 
+    pub fn emit_keyword(&mut self, kw: String) {
+        self.push_token(Keyword::new(kw));
+    }
+
     pub fn emit_def_keyword(&mut self) {
         self.push_token(Keyword::new("def".to_string()));
     }
@@ -197,6 +201,10 @@ impl ParserState {
             self.emit_indent();
         }
         self.push_token(Keyword::new("end".into()));
+    }
+
+    pub fn emit_else(&mut self) {
+        self.push_token(Keyword::new("else".into()));
     }
 
     pub fn emit_comma_space(&mut self) {

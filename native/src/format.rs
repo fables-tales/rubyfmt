@@ -1287,13 +1287,54 @@ pub fn format_class(ps: &mut ParserState, class: Class) {
     }
 }
 
-pub fn format_conditional(ps: &mut ParserState, cond_expr: Expression, body: Vec<Expression>, kw: String, tail: EslifOrElse) {
+pub fn format_conditional(ps: &mut ParserState, cond_expr: Expression, body: Vec<Expression>, kw: String, tail: Option<ElsifOrElse>) {
+    if ps.at_start_of_line() {
+        ps.emit_indent();
+    }
     ps.emit_keyword(kw);
     ps.emit_space();
     ps.with_start_of_line(false, |ps| {
         format_expression(ps, cond_expr);
-        ps.emit_newline();
     });
+    ps.emit_newline();
+
+    ps.with_start_of_line(true, |ps| {
+        ps.new_block(|ps| {
+            for expr in body.into_iter() {
+                format_expression(ps, expr);
+            }
+        });
+    });
+    ps.with_start_of_line(true, |ps| {
+        match tail {
+            None => {},
+            Some(ElsifOrElse::Elsif(elsif)) => {
+                ps.emit_newline();
+                format_conditional(ps, *elsif.1, elsif.2, "elsif".to_string(), (elsif.3).map(|v| *v));
+            },
+            Some(ElsifOrElse::Else(els)) => {
+                ps.emit_newline();
+                ps.emit_indent();
+                ps.emit_else();
+                ps.emit_newline();
+                ps.with_start_of_line(true, |ps| {
+                    ps.new_block(|ps| {
+                        for expr in els.1 {
+                            format_expression(ps, expr);
+                        }
+                    });
+                });
+            }
+        }
+    });
+}
+
+pub fn format_if(ps: &mut ParserState, ifs: If) {
+    format_conditional(ps, *ifs.1, ifs.2, "if".to_string(), ifs.3);
+    ps.emit_end();
+    if ps.at_start_of_line() {
+        ps.emit_newline();
+    }
 }
 
 pub fn format_expression(ps: &mut ParserState, expression: Expression) {
@@ -1329,6 +1370,7 @@ pub fn format_expression(ps: &mut ParserState, expression: Expression) {
         Expression::Undef(undef) => format_undef(ps, undef),
         Expression::Class(class) => format_class(ps, class),
         Expression::Defs(defs) => format_defs(ps, defs),
+        Expression::If(ifs) => format_if(ps, ifs),
         e => {
             panic!("got unknown token: {:?}", e);
         }
