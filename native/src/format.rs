@@ -1341,7 +1341,28 @@ pub fn format_conditional(
 
 pub fn format_if(ps: &mut ParserState, ifs: If) {
     format_conditional(ps, *ifs.1, ifs.2, "if".to_string(), ifs.3);
-    ps.emit_end();
+    ps.with_start_of_line(true, |ps| {
+        ps.emit_end();
+    });
+
+    if ps.at_start_of_line() {
+        ps.emit_newline();
+    }
+}
+
+pub fn format_binary(ps: &mut ParserState, binary: Binary) {
+    if ps.at_start_of_line() {
+        ps.emit_indent();
+    }
+
+    ps.with_start_of_line(false, |ps| {
+        format_expression(ps, *binary.1);
+        ps.emit_space();
+        ps.emit_ident(binary.2);
+        ps.emit_space();
+        format_expression(ps, *binary.3);
+    });
+
     if ps.at_start_of_line() {
         ps.emit_newline();
     }
@@ -1381,6 +1402,7 @@ pub fn format_expression(ps: &mut ParserState, expression: Expression) {
         Expression::Class(class) => format_class(ps, class),
         Expression::Defs(defs) => format_defs(ps, defs),
         Expression::If(ifs) => format_if(ps, ifs),
+        Expression::Binary(binary) => format_binary(ps, binary),
         e => {
             panic!("got unknown token: {:?}", e);
         }
