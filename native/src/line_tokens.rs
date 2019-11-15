@@ -321,7 +321,7 @@ impl LineToken for SoftNewline {
         true
     }
 
-    fn as_single_line(self) -> Box<LineToken> {
+    fn as_single_line(self) -> Box<dyn LineToken> {
         Box::new(Space::new())
     }
 }

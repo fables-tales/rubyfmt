@@ -100,6 +100,7 @@ pub enum Expression {
     Kw(Kw),
     Undef(Undef),
     Binary(Binary),
+    Float(Float),
 }
 
 def_tag!(if_tag, "if");
@@ -576,14 +577,40 @@ def_tag!(bodystmt_tag, "bodystmt");
 pub struct BodyStmt(
     pub bodystmt_tag,
     pub Vec<Expression>,
-    pub Option<Box<Expression>>,
-    pub Option<Box<Expression>>,
-    pub Option<Box<Expression>>,
+    pub Option<Rescue>,
+    pub Option<RescueElse>,
+    pub Option<Ensure>,
 );
+
+def_tag!(rescue_tag, "rescue");
+#[derive(Deserialize, Debug)]
+pub struct Rescue(
+    pub rescue_tag,
+    pub Option<SingleOrMRHSNewFromArgsOrMRHSAddStar>,
+    pub Option<Assignable>,
+    pub Option<Vec<Expression>>,
+    pub Option<Box<Rescue>>,
+);
+
+#[derive(Deserialize, Debug)]
+#[serde(untagged)]
+pub enum SingleOrMRHSNewFromArgsOrMRHSAddStar {
+    Single(Vec<Expression>),
+    MRHSNewFromArgs(MRHSNewFromArgs),
+    MRHSAddStar(MRHSAddStar),
+}
+
+def_tag!(rescue_else_tag, "else");
+#[derive(Deserialize, Debug)]
+pub struct RescueElse(pub rescue_else_tag, pub Option<Vec<Expression>>);
+
+def_tag!(ensure_tag, "ensure");
+#[derive(Deserialize, Debug)]
+pub struct Ensure(pub ensure_tag, pub Option<Vec<Expression>>);
 
 def_tag!(vcall);
 #[derive(Deserialize, Debug)]
-pub struct VCall(vcall, pub Box<Expression>);
+pub struct VCall(pub vcall, pub Box<Expression>);
 
 def_tag!(command_call_tag, "command_call");
 #[derive(Deserialize, Debug)]
@@ -1023,4 +1050,14 @@ pub enum DotOrColon {
 
 def_tag!(binary_tag, "binary");
 #[derive(Deserialize, Debug)]
-pub struct Binary(pub binary_tag, pub Box<Expression>, pub String, pub Box<Expression>);
+pub struct Binary(
+    pub binary_tag,
+    pub Box<Expression>,
+    pub String,
+    pub Box<Expression>,
+);
+
+
+def_tag!(float_tag, "@float");
+#[derive(Deserialize, Debug)]
+pub struct Float(float_tag, pub String, pub LineCol);
