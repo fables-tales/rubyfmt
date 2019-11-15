@@ -3,7 +3,7 @@ use crate::format::{format_inner_string, StringType};
 use crate::line_metadata::LineMetadata;
 use crate::line_tokens::*;
 use crate::ripper_tree_types::StringContentPart;
-use crate::types::{ColNumber, FormatStatus, LineNumber};
+use crate::types::{ColNumber, LineNumber};
 use std::io::{self, Cursor, Write};
 
 #[derive(Clone, Debug, PartialEq)]
@@ -161,6 +161,10 @@ impl ParserState {
         self.push_token(Keyword::new("rescue".to_string()));
     }
 
+    pub fn emit_ensure(&mut self) {
+        self.push_token(Keyword::new("ensure".to_string()));
+    }
+
     pub fn emit_begin(&mut self) {
         self.push_token(Keyword::new("begin".to_string()));
     }
@@ -268,6 +272,17 @@ impl ParserState {
         self.depth_stack[ds_length - 1].increment();
         let res = f(self);
         self.depth_stack[ds_length - 1].decrement();
+        res
+    }
+
+    pub fn dedent<F>(&mut self, f: F)
+    where
+        F: FnOnce(&mut ParserState),
+    {
+        let ds_length = self.depth_stack.len();
+        self.depth_stack[ds_length - 1].decrement();
+        let res = f(self);
+        self.depth_stack[ds_length - 1].increment();
         res
     }
 

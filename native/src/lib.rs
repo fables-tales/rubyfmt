@@ -9,8 +9,6 @@ use std::fs::File;
 use std::io::{self, BufReader, Write};
 use std::str;
 
-use serde_json::Value;
-
 pub type RawStatus = i64;
 
 mod comment_block;
@@ -23,7 +21,6 @@ mod ruby_string_pointer;
 mod types;
 
 use line_metadata::LineMetadata;
-use line_tokens::LineToken;
 use parser_state::ParserState;
 use ruby_string_pointer::RubyStringPointer;
 
