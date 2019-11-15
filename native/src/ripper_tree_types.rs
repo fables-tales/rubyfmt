@@ -99,6 +99,7 @@ pub enum Expression {
     StringConcat(StringConcat),
     Kw(Kw),
     Undef(Undef),
+    Binary(Binary),
 }
 
 def_tag!(if_tag, "if");
@@ -1019,3 +1020,7 @@ pub enum DotOrColon {
     Period(Period),
     Op(Operator),
 }
+
+def_tag!(binary_tag, "binary");
+#[derive(Deserialize, Debug)]
+pub struct Binary(pub binary_tag, pub Box<Expression>, pub String, pub Box<Expression>);
