@@ -1493,6 +1493,31 @@ pub fn format_float(ps: &mut ParserState, float: Float) {
     }
 }
 
+pub fn format_aref(ps: &mut ParserState, aref: Aref) {
+    if ps.at_start_of_line() {
+        ps.emit_indent();
+    }
+
+    ps.with_start_of_line(false, |ps| {
+        format_expression(ps, *aref.1);
+        ps.emit_open_square_bracket();
+        match aref.2 {
+            None => {},
+            Some(arg_node) => {
+                let args_list = normalize_args(arg_node);
+                ps.with_formatting_context(FormattingContext::ArgsList, |ps| {
+                    format_list_like_thing(ps, args_list, true);
+                });
+            }
+        }
+        ps.emit_close_square_bracket();
+    });
+
+    if ps.at_start_of_line() {
+        ps.emit_newline();
+    }
+}
+
 pub fn format_expression(ps: &mut ParserState, expression: Expression) {
     let expression = normalize(expression);
     match expression {
@@ -1530,6 +1555,7 @@ pub fn format_expression(ps: &mut ParserState, expression: Expression) {
         Expression::If(ifs) => format_if(ps, ifs),
         Expression::Binary(binary) => format_binary(ps, binary),
         Expression::Float(float) => format_float(ps, float),
+        Expression::Aref(aref) => format_aref(ps, aref),
         e => {
             panic!("got unknown token: {:?}", e);
         }
