@@ -102,6 +102,7 @@ pub enum Expression {
     Undef(Undef),
     Binary(Binary),
     Float(Float),
+    Aref(Aref),
 }
 
 def_tag!(if_tag, "if");
@@ -1100,3 +1101,8 @@ pub struct Binary(
 def_tag!(float_tag, "@float");
 #[derive(Deserialize, Debug)]
 pub struct Float(float_tag, pub String, pub LineCol);
+
+
+def_tag!(aref_tag, "aref");
+#[derive(Deserialize, Debug)]
+pub struct Aref(aref_tag, pub Box<Expression>, pub Option<ArgNode>);
