@@ -1518,6 +1518,20 @@ pub fn format_aref(ps: &mut ParserState, aref: Aref) {
     }
 }
 
+pub fn format_char(ps: &mut ParserState, c: Char) {
+    if ps.at_start_of_line() {
+        ps.emit_indent();
+    }
+
+    ps.emit_double_quote();
+    ps.emit_ident(c.1[1..].to_string());
+    ps.emit_double_quote();
+
+    if ps.at_start_of_line() {
+        ps.emit_newline();
+    }
+}
+
 pub fn format_expression(ps: &mut ParserState, expression: Expression) {
     let expression = normalize(expression);
     match expression {
@@ -1556,6 +1570,7 @@ pub fn format_expression(ps: &mut ParserState, expression: Expression) {
         Expression::Binary(binary) => format_binary(ps, binary),
         Expression::Float(float) => format_float(ps, float),
         Expression::Aref(aref) => format_aref(ps, aref),
+        Expression::Char(c) => format_char(ps, c),
         e => {
             panic!("got unknown token: {:?}", e);
         }
