@@ -240,21 +240,21 @@ pub fn format_bodystmt(ps: &mut ParserState, bodystmt: BodyStmt, inside_begin: b
     format_ensure(ps, ensure_part);
 }
 
-pub fn format_rescue_class(ps: &mut ParserState, rescue_class: Option<SingleOrMRHSNewFromArgsOrMRHSAddStar>) {
-    match rescue_class {
+pub fn format_mrhs(ps: &mut ParserState, mrhs: Option<MRHS>) {
+    match mrhs {
         None => {},
-        Some(SingleOrMRHSNewFromArgsOrMRHSAddStar::Single(exprs)) => {
+        Some(MRHS::Single(exprs)) => {
             if exprs.len() != 1 {
                 panic!("this should be impossible, bug in the ruby parser?");
             }
             format_expression(ps, exprs.into_iter().next().expect("we checked there's one item"));
             ps.emit_space();
         },
-        Some(SingleOrMRHSNewFromArgsOrMRHSAddStar::MRHSNewFromArgs(mnfa)) => {
+        Some(MRHS::MRHSNewFromArgs(mnfa)) => {
             format_mrhs_new_from_args(ps, mnfa);
             ps.emit_space();
         },
-        Some(SingleOrMRHSNewFromArgsOrMRHSAddStar::MRHSAddStar(mas)) => {
+        Some(MRHS::MRHSAddStar(mas)) => {
             format_mrhs_add_star(ps, mas);
             ps.emit_space();
         }
@@ -287,7 +287,7 @@ pub fn format_rescue(ps: &mut ParserState, rescue_part: Option<Rescue>) {
                         ps.emit_space();
                     }
 
-                    format_rescue_class(ps, class);
+                    format_mrhs(ps, class);
                     format_rescue_capture(ps, capture);
                 });
             });
@@ -1048,7 +1048,7 @@ pub fn format_massign(ps: &mut ParserState, massign: MAssign) {
         ps.emit_space();
         ps.emit_ident("=".to_string());
         ps.emit_space();
-        format_expression(ps, *massign.2);
+        format_mrhs(ps, Some(massign.2));
     });
 
     if ps.at_start_of_line() {
@@ -1159,6 +1159,7 @@ pub fn format_mrhs_add_star(ps: &mut ParserState, mrhs: MRHSAddStar) {
             }
             MRHSNewFromArgsOrEmpty::MRHSNewFromArgs(mnfa) => {
                 format_mrhs_new_from_args(ps, mnfa);
+                ps.emit_comma_space();
             }
         }
         ps.emit_ident("*".to_string());

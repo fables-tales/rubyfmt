@@ -169,9 +169,92 @@ pub enum MRHSNewFromArgsOrEmpty {
     Empty(Vec<Expression>),
 }
 
+// MRHSNewFromArgs is really annoying to parse, consider:
+//
+// ```ruby
+// begin
+// rescue A,*B
+// end
+// ```
+// this will parse as:
+//
+// [:program,
+//  [[:begin,
+//    [:bodystmt,
+//     [[:void_stmt]],
+//     [:rescue,
+//      [:mrhs_add_star,
+//       [:mrhs_new_from_args, [[:var_ref, [:@const, "A", [1, 13]]]]],
+//       [:var_ref, [:@const, "B", [1, 16]]]],
+//      nil,
+//      [[:void_stmt]],
+//      nil],
+//     nil,
+//     nil]]]]
+//
+// however, if you have
+// ```ruby
+// a,b = 1,2
+// ```
+// you get
+// [:program,
+// [[:massign,
+//   [[:var_field, [:@ident, "a", [1, 0]]],
+//    [:var_field, [:@ident, "b", [1, 2]]]],
+//   [:mrhs_new_from_args, [[:@int, "1", [1, 4]]], [:@int, "2", [1, 6]]]]]]
+//
+// in the first case, the mrhs_new_from_args looks like:
+// [:mrhs_new_from_args, Vec<Expression>]
+// in the second case, the mrhs_new_from_args_tag looks like:
+// [:mrhs_new_from_args, Vec<Expression>, Expression]
+//
+// so we need to implement a custom deserializer, I am sad
 def_tag!(mrhs_new_from_args_tag, "mrhs_new_from_args");
-#[derive(Deserialize, Debug)]
-pub struct MRHSNewFromArgs(pub mrhs_new_from_args_tag, pub ArgsAddStarOrExpressionList);
+#[derive(Debug)]
+pub struct MRHSNewFromArgs(pub mrhs_new_from_args_tag, pub ArgsAddStarOrExpressionList, pub Option<Box<Expression>>);
+
+impl<'de> Deserialize<'de> for MRHSNewFromArgs {
+    fn deserialize<D>(deserializer: D) -> Result<MRHSNewFromArgs, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        struct MRHSNewFromArgsVisitor;
+
+        impl<'de> de::Visitor<'de> for MRHSNewFromArgsVisitor {
+            type Value = MRHSNewFromArgs;
+
+            fn expecting(&self, f: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
+                write!(
+                    f,
+                    "[mrhs_new_from_args, Vec<Expression>(, Expression?)]"
+                )
+            }
+
+            fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
+            where
+                A: de::SeqAccess<'de>,
+            {
+                let tag: &str = seq.next_element()?.ok_or_else(|| panic!("what"))?;
+                if tag != "mrhs_new_from_args" {
+                    println!("got wrong tag");
+                    return Err(de::Error::custom("didn't get right tag"));
+                }
+
+                let expressions: ArgsAddStarOrExpressionList = seq.next_element()?.expect("didn't get args add star or expression list in mrhs new");
+                let tail_expression: Option<Box<Expression>> = match seq.next_element() {
+                    Ok(Some(v)) => Some(Box::new(v)),
+                    Ok(None) => None,
+                    Err(e) => None,
+                };
+
+                Ok(MRHSNewFromArgs(mrhs_new_from_args_tag, expressions, tail_expression))
+            }
+
+        }
+
+        deserializer.deserialize_seq(MRHSNewFromArgsVisitor)
+    }
+}
 
 def_tag!(rescue_mod_tag, "rescue_mod");
 #[derive(Deserialize, Debug)]
@@ -230,7 +313,7 @@ pub struct Assign(pub assign_tag, pub Assignable, pub Box<Expression>);
 
 def_tag!(massign_tag, "massign");
 #[derive(Deserialize, Debug)]
-pub struct MAssign(pub massign_tag, pub Vec<Assignable>, pub Box<Expression>);
+pub struct MAssign(pub massign_tag, pub Vec<Assignable>, pub MRHS);
 
 #[derive(Deserialize, Debug)]
 #[serde(untagged)]
@@ -609,7 +692,7 @@ def_tag!(rescue_tag, "rescue");
 #[derive(Deserialize, Debug)]
 pub struct Rescue(
     pub rescue_tag,
-    pub Option<SingleOrMRHSNewFromArgsOrMRHSAddStar>,
+    pub Option<MRHS>,
     pub Option<Assignable>,
     pub Option<Vec<Expression>>,
     pub Option<Box<Rescue>>,
@@ -617,7 +700,7 @@ pub struct Rescue(
 
 #[derive(Deserialize, Debug)]
 #[serde(untagged)]
-pub enum SingleOrMRHSNewFromArgsOrMRHSAddStar {
+pub enum MRHS {
     Single(Vec<Expression>),
     MRHSNewFromArgs(MRHSNewFromArgs),
     MRHSAddStar(MRHSAddStar),
