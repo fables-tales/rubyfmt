@@ -4,16 +4,12 @@ use std::borrow::Borrow;
 
 pub fn format_def(ps: &mut ParserState, def: Def) {
     let def_expression = def.1;
-    let params = match def.2 {
-        ParenOrParams::Paren(p) => p.1,
-        ParenOrParams::Params(p) => p,
-    };
 
     let body = def.3;
     ps.on_line((def_expression.2).0);
     ps.emit_indent();
     ps.emit_def(def_expression.1);
-    format_params(ps, params, "(".to_string(), ")".to_string());
+    format_paren_or_params(ps, def.2);
     ps.emit_newline();
 
     ps.with_formatting_context(FormattingContext::Def, |ps| {
@@ -244,25 +240,119 @@ pub fn format_bodystmt(ps: &mut ParserState, bodystmt: BodyStmt, inside_begin: b
     format_ensure(ps, ensure_part);
 }
 
-pub fn format_rescue(ps: &mut ParserState, rescue_part: Option<Box<Expression>>) {
-    if rescue_part.is_none() {
-        return;
+pub fn format_rescue_class(ps: &mut ParserState, rescue_class: Option<SingleOrMRHSNewFromArgsOrMRHSAddStar>) {
+    match rescue_class {
+        None => {},
+        Some(SingleOrMRHSNewFromArgsOrMRHSAddStar::Single(exprs)) => {
+            if exprs.len() != 1 {
+                panic!("this should be impossible, bug in the ruby parser?");
+            }
+            format_expression(ps, exprs.into_iter().next().expect("we checked there's one item"));
+            ps.emit_space();
+        },
+        Some(SingleOrMRHSNewFromArgsOrMRHSAddStar::MRHSNewFromArgs(mnfa)) => {
+            format_mrhs_new_from_args(ps, mnfa);
+            ps.emit_space();
+        },
+        Some(SingleOrMRHSNewFromArgsOrMRHSAddStar::MRHSAddStar(mas)) => {
+            format_mrhs_add_star(ps, mas);
+            ps.emit_space();
+        }
     }
-    unimplemented!();
+
 }
 
-pub fn format_else(ps: &mut ParserState, else_part: Option<Box<Expression>>) {
-    if else_part.is_none() {
-        return;
+pub fn format_rescue_capture(ps: &mut ParserState, rescue_capture: Option<Assignable>) {
+    match (rescue_capture) {
+        None => {},
+        Some(expr) => {
+            ps.emit_ident("=>".to_string());
+            ps.emit_space();
+            format_assignable(ps, expr);
+        }
     }
-    unimplemented!();
 }
 
-pub fn format_ensure(ps: &mut ParserState, ensure_part: Option<Box<Expression>>) {
-    if ensure_part.is_none() {
-        return;
+pub fn format_rescue(ps: &mut ParserState, rescue_part: Option<Rescue>) {
+    match rescue_part {
+        None => {
+            return;
+        },
+        Some(Rescue(_, class, capture, expressions, more_rescue)) => {
+            ps.dedent(|ps| {
+                ps.emit_indent();
+                ps.emit_rescue();
+                ps.with_start_of_line(false, |ps| {
+                    if class.is_some() || capture.is_some() {
+                        ps.emit_space();
+                    }
+
+                    format_rescue_class(ps, class);
+                    format_rescue_capture(ps, capture);
+                });
+            });
+
+            match expressions {
+                None => {},
+                Some(expressions) => {
+                    ps.emit_newline();
+                    for expression in expressions {
+                        format_expression(ps, expression);
+                    }
+                }
+            }
+
+            format_rescue(ps, more_rescue.map(|v| *v));
+        }
     }
-    unimplemented!();
+}
+
+pub fn format_else(ps: &mut ParserState, else_part: Option<RescueElse>) {
+    match else_part {
+        None => return,
+        Some(re) => {
+            ps.dedent(|ps| {
+                ps.emit_indent();
+                ps.emit_else();
+            });
+
+            match re.1 {
+                None => {},
+                Some(exprs) => {
+                    ps.emit_newline();
+                    ps.with_start_of_line(true, |ps| {
+                        for expr in exprs {
+                            format_expression(ps, expr);
+                        };
+                    });
+                }
+            }
+        }
+    }
+}
+
+pub fn format_ensure(ps: &mut ParserState, ensure_part: Option<Ensure>) {
+    match ensure_part {
+        None => return,
+        Some(e) => {
+            ps.dedent(|ps| {
+                ps.emit_indent();
+                ps.emit_ensure();
+            });
+
+            match e.1 {
+                None => {},
+                Some(exprs) => {
+                    ps.emit_newline();
+                    ps.with_start_of_line(true, |ps| {
+                        for expr in exprs {
+                            format_expression(ps, expr);
+                        };
+                    });
+                }
+            }
+        }
+    }
 }
 
 pub fn use_parens_for_method_call(
@@ -647,6 +737,31 @@ pub fn format_dot2_or_3(
     }
 }
 
+pub fn percent_symbol_for(tag: String) -> String {
+    match tag.as_ref() {
+        "qsymbols" => "%i".to_string(),
+        "qwords" => "%w".to_string(),
+        "symbols" => "%I".to_string(),
+        "words" => "%W".to_string(),
+        _ => panic!("got invalid percent symbol"),
+    }
+}
+
+pub fn format_percent_array(ps: &mut ParserState, tag: String, parts: Vec<StringContentPart>) {
+    ps.emit_ident(percent_symbol_for(tag));
+    ps.emit_open_square_bracket();
+    ps.with_start_of_line(false, |ps| {
+        let parts_length = parts.len();
+        for (idx, part) in parts.into_iter().enumerate() {
+            format_inner_string(ps, vec![part], StringType::Array);
+            if idx != parts_length - 1 {
+                ps.emit_space();
+            }
+        }
+    });
+    ps.emit_close_square_bracket();
+}
+
 pub fn format_array(ps: &mut ParserState, array: Array) {
     if ps.at_start_of_line() {
         ps.emit_indent();
@@ -654,8 +769,9 @@ pub fn format_array(ps: &mut ParserState, array: Array) {
 
     match array.1 {
         SimpleArrayOrPercentArray::SimpleArray(a) => format_array_fast_path(ps, a),
-        _ => {
-            unimplemented!();
+        SimpleArrayOrPercentArray::PercentArray(pa) => {
+            ps.on_line((pa.2).0);
+            format_percent_array(ps, pa.0, pa.1);
         }
     }
 
@@ -738,13 +854,13 @@ pub fn emit_intermediate_array_separator(ps: &mut ParserState) {
 pub enum StringType {
     Quoted,
     Heredoc,
+    Array,
 }
 
 pub fn format_inner_string(ps: &mut ParserState, parts: Vec<StringContentPart>, tipe: StringType) {
-    if tipe == StringType::Heredoc {
-        panic!("heredocs aren't supported yet");
-    }
-    for (idx, part) in parts.into_iter().enumerate() {
+    let mut peekable = parts.into_iter().peekable();
+    while peekable.peek().is_some() {
+        let part = peekable.next().expect("we peeked");
         match part {
             StringContentPart::TStringContent(t) => ps.emit_string_content(t.1),
             StringContentPart::StringEmbexpr(e) => {
@@ -754,6 +870,17 @@ pub fn format_inner_string(ps: &mut ParserState, parts: Vec<StringContentPart>, 
                     format_expression(ps, expr);
                 });
                 ps.emit_string_content("}".to_string());
+
+                let on_line_skip = tipe == StringType::Heredoc
+                    && match peekable.peek() {
+                        Some(StringContentPart::TStringContent(TStringContent(_, s, _))) => {
+                            s.starts_with("\n")
+                        }
+                        _ => false,
+                    };
+                if on_line_skip {
+                    ps.render_heredocs(true)
+                }
             }
             StringContentPart::StringDVar(dv) => {
                 ps.emit_string_content("#{".to_string());
@@ -767,19 +894,49 @@ pub fn format_inner_string(ps: &mut ParserState, parts: Vec<StringContentPart>, 
     }
 }
 
-pub fn format_string_literal(ps: &mut ParserState, sl: StringLiteral) {
-    let parts = (sl.1).1;
-
+pub fn format_heredoc_string_literal(
+    ps: &mut ParserState,
+    hd: HeredocStringLiteral,
+    parts: Vec<StringContentPart>,
+) {
     if ps.at_start_of_line() {
         ps.emit_indent();
     }
 
-    ps.emit_double_quote();
-    format_inner_string(ps, parts, StringType::Quoted);
-    ps.emit_double_quote();
+    ps.with_surpress_comments(true, |ps| {
+        let heredoc_type = (hd.1).0;
+        let heredoc_symbol = (hd.1).1;
+        ps.emit_ident(heredoc_type.clone());
+        ps.emit_ident(heredoc_symbol.clone());
+
+        ps.push_heredoc_content(heredoc_symbol, heredoc_type.contains("~"), parts);
+    });
 
     if ps.at_start_of_line() && !ps.is_absorbing_indents() {
         ps.emit_newline();
+    }
+}
+
+pub fn format_string_literal(ps: &mut ParserState, sl: StringLiteral) {
+    let parts = (sl.2).1;
+    // some(hd) if we have a heredoc
+    match sl.1 {
+        Some(hd) => {
+            format_heredoc_string_literal(ps, hd, parts);
+        }
+        None => {
+            if ps.at_start_of_line() {
+                ps.emit_indent();
+            }
+
+            ps.emit_double_quote();
+            format_inner_string(ps, parts, StringType::Quoted);
+            ps.emit_double_quote();
+
+            if ps.at_start_of_line() {
+                ps.emit_newline();
+            }
+        }
     }
 }
 
@@ -815,24 +972,39 @@ pub fn format_const_path_field(ps: &mut ParserState, cf: ConstPathField) {
     }
 }
 
+pub fn format_top_const_field(ps: &mut ParserState, tcf: TopConstField) {
+    if ps.at_start_of_line() {
+        ps.emit_indent();
+    }
+
+    ps.with_start_of_line(false, |ps| {
+        ps.emit_colon_colon();
+        format_const(ps, tcf.1);
+    });
+
+    if ps.at_start_of_line() {
+        ps.emit_newline();
+    }
+}
+
 pub fn format_var_field(ps: &mut ParserState, vf: VarField) {
     let left = vf.1;
     format_var_ref_type(ps, left);
 }
 
-pub fn format_var_field_or_const_field_or_rest_param(
-    ps: &mut ParserState,
-    v: VarFieldOrConstFieldOrRestParam,
-) {
+pub fn format_assignable(ps: &mut ParserState, v: Assignable) {
     match v {
-        VarFieldOrConstFieldOrRestParam::VarField(vf) => {
+        Assignable::VarField(vf) => {
             format_var_field(ps, vf);
         }
-        VarFieldOrConstFieldOrRestParam::ConstPathField(cf) => {
+        Assignable::ConstPathField(cf) => {
             format_const_path_field(ps, cf);
         }
-        VarFieldOrConstFieldOrRestParam::RestParam(rp) => {
+        Assignable::RestParam(rp) => {
             format_rest_param(ps, Some(rp));
+        }
+        Assignable::TopConstField(tcf) => {
+            format_top_const_field(ps, tcf);
         }
     }
 }
@@ -843,7 +1015,7 @@ pub fn format_assign(ps: &mut ParserState, assign: Assign) {
     }
 
     ps.with_start_of_line(false, |ps| {
-        format_var_field_or_const_field_or_rest_param(ps, assign.1);
+        format_assignable(ps, assign.1);
         let right = assign.2;
 
         ps.emit_space();
@@ -868,7 +1040,7 @@ pub fn format_massign(ps: &mut ParserState, massign: MAssign) {
     ps.with_start_of_line(false, |ps| {
         let length = massign.1.len();
         for (idx, v) in massign.1.into_iter().enumerate() {
-            format_var_field_or_const_field_or_rest_param(ps, v);
+            format_assignable(ps, v);
             if idx != length - 1 {
                 ps.emit_comma_space();
             }
@@ -895,6 +1067,7 @@ pub fn format_var_ref_type(ps: &mut ParserState, vr: VarRefType) {
         VarRefType::IVar(i) => ps.emit_ident(i.1),
         VarRefType::Ident(i) => ps.emit_ident(i.1),
         VarRefType::Const(c) => ps.emit_ident(c.1),
+        VarRefType::Kw(kw) => ps.emit_ident(kw.1),
     }
 
     if ps.at_start_of_line() {
@@ -972,6 +1145,10 @@ pub fn format_rescue_mod(ps: &mut ParserState, rescue_mod: RescueMod) {
     }
 }
 
+pub fn format_mrhs_new_from_args(ps: &mut ParserState, mnfa: MRHSNewFromArgs) {
+    format_list_like_thing(ps, mnfa.1, true);
+}
+
 pub fn format_mrhs_add_star(ps: &mut ParserState, mrhs: MRHSAddStar) {
     ps.with_start_of_line(false, |ps| {
         match mrhs.1 {
@@ -981,7 +1158,7 @@ pub fn format_mrhs_add_star(ps: &mut ParserState, mrhs: MRHSAddStar) {
                 }
             }
             MRHSNewFromArgsOrEmpty::MRHSNewFromArgs(mnfa) => {
-                format_list_like_thing(ps, mnfa.1, true);
+                format_mrhs_new_from_args(ps, mnfa);
             }
         }
         ps.emit_ident("*".to_string());
@@ -1110,6 +1287,212 @@ pub fn format_dyna_symbol(ps: &mut ParserState, ds: DynaSymbol) {
     }
 }
 
+pub fn format_undef(ps: &mut ParserState, undef: Undef) {
+    if ps.at_start_of_line() {
+        ps.emit_indent();
+    }
+
+    ps.emit_ident("undef ".to_string());
+    let length = undef.1.len();
+    for (idx, literal) in undef.1.into_iter().enumerate() {
+        ps.with_start_of_line(false, |ps| format_symbol_literal(ps, literal));
+        if idx != length - 1 {
+            ps.emit_comma_space();
+        }
+    }
+
+    if ps.at_start_of_line() {
+        ps.emit_newline();
+    }
+}
+
+pub fn format_defs(ps: &mut ParserState, defs: Defs) {
+    if ps.at_start_of_line() {
+        ps.emit_indent();
+    }
+
+    let singleton = defs.1;
+    let ident = defs.3;
+    let paren_or_params = defs.4;
+    let bodystmt = defs.5;
+
+    ps.emit_def_keyword();
+    ps.emit_space();
+
+    ps.with_start_of_line(false, |ps| {
+        match singleton {
+            Singleton::VarRef(vr) => {
+                format_var_ref(ps, vr);
+            }
+            Singleton::Paren(pe) => {
+                format_paren(ps, pe);
+            }
+        }
+
+        ps.emit_dot();
+        format_ident(ps, ident);
+        format_paren_or_params(ps, paren_or_params);
+        ps.emit_newline();
+    });
+
+    ps.with_formatting_context(FormattingContext::Def, |ps| {
+        ps.new_block(|ps| {
+            format_bodystmt(ps, bodystmt, false);
+        });
+    });
+
+    ps.emit_end();
+
+    if ps.at_start_of_line() {
+        ps.emit_newline();
+    }
+}
+
+pub fn format_paren_or_params(ps: &mut ParserState, pp: ParenOrParams) {
+    let params = match pp {
+        ParenOrParams::Paren(p) => p.1,
+        ParenOrParams::Params(p) => p,
+    };
+    format_params(ps, params, "(".to_string(), ")".to_string());
+}
+
+pub fn format_class(ps: &mut ParserState, class: Class) {
+    if ps.at_start_of_line() {
+        ps.emit_indent();
+    }
+
+    let class_name = class.1;
+    let inherit = class.2;
+    let bodystmt = class.3;
+
+    ps.emit_class_keyword();
+    ps.with_start_of_line(false, |ps| {
+        ps.emit_space();
+
+        match class_name {
+            ConstPathRefOrConstRef::ConstPathRef(cpr) => {
+                format_const_path_ref(ps, cpr);
+            }
+            ConstPathRefOrConstRef::ConstRef(cr) => {
+                ps.on_line(((cr.1).2).0);
+                ps.emit_ident((cr.1).1);
+            }
+        }
+
+        if inherit.is_some() {
+            let inherit_expression = *(inherit.expect("We checked it is some"));
+            ps.emit_ident(" < ".to_string());
+            format_expression(ps, inherit_expression);
+        }
+    });
+
+    ps.emit_newline();
+    ps.new_block(|ps| {
+        ps.with_formatting_context(FormattingContext::ClassOrModule, |ps| {
+            format_bodystmt(ps, bodystmt, false);
+        });
+    });
+
+    ps.emit_end();
+    if ps.at_start_of_line() {
+        ps.emit_newline();
+    }
+}
+
+pub fn format_conditional(
+    ps: &mut ParserState,
+    cond_expr: Expression,
+    body: Vec<Expression>,
+    kw: String,
+    tail: Option<ElsifOrElse>,
+) {
+    if ps.at_start_of_line() {
+        ps.emit_indent();
+    }
+    ps.emit_keyword(kw);
+    ps.emit_space();
+    ps.with_start_of_line(false, |ps| {
+        format_expression(ps, cond_expr);
+    });
+    ps.emit_newline();
+
+    ps.with_start_of_line(true, |ps| {
+        ps.new_block(|ps| {
+            for expr in body.into_iter() {
+                format_expression(ps, expr);
+            }
+        });
+    });
+    ps.with_start_of_line(true, |ps| match tail {
+        None => {}
+        Some(ElsifOrElse::Elsif(elsif)) => {
+            ps.emit_newline();
+            format_conditional(
+                ps,
+                *elsif.1,
+                elsif.2,
+                "elsif".to_string(),
+                (elsif.3).map(|v| *v),
+            );
+        }
+        Some(ElsifOrElse::Else(els)) => {
+            ps.emit_newline();
+            ps.emit_indent();
+            ps.emit_else();
+            ps.emit_newline();
+            ps.with_start_of_line(true, |ps| {
+                ps.new_block(|ps| {
+                    for expr in els.1 {
+                        format_expression(ps, expr);
+                    }
+                });
+            });
+        }
+    });
+}
+
+pub fn format_if(ps: &mut ParserState, ifs: If) {
+    format_conditional(ps, *ifs.1, ifs.2, "if".to_string(), ifs.3);
+    ps.with_start_of_line(true, |ps| {
+        ps.emit_end();
+    });
+
+    if ps.at_start_of_line() {
+        ps.emit_newline();
+    }
+}
+
+pub fn format_binary(ps: &mut ParserState, binary: Binary) {
+    if ps.at_start_of_line() {
+        ps.emit_indent();
+    }
+
+    ps.with_start_of_line(false, |ps| {
+        format_expression(ps, *binary.1);
+        ps.emit_space();
+        ps.emit_ident(binary.2);
+        ps.emit_space();
+        format_expression(ps, *binary.3);
+    });
+
+    if ps.at_start_of_line() {
+        ps.emit_newline();
+    }
+}
+
+pub fn format_float(ps: &mut ParserState, float: Float) {
+    if ps.at_start_of_line() {
+        ps.emit_indent();
+    }
+
+    ps.on_line((float.2).0);
+    ps.emit_ident(float.1);
+
+    if ps.at_start_of_line() {
+        ps.emit_newline();
+    }
+}
+
 pub fn format_expression(ps: &mut ParserState, expression: Expression) {
     let expression = normalize(expression);
     match expression {
@@ -1141,6 +1524,12 @@ pub fn format_expression(ps: &mut ParserState, expression: Expression) {
         Expression::Unary(unary) => format_unary(ps, unary),
         Expression::StringConcat(sc) => format_string_concat(ps, sc),
         Expression::DynaSymbol(ds) => format_dyna_symbol(ps, ds),
+        Expression::Undef(undef) => format_undef(ps, undef),
+        Expression::Class(class) => format_class(ps, class),
+        Expression::Defs(defs) => format_defs(ps, defs),
+        Expression::If(ifs) => format_if(ps, ifs),
+        Expression::Binary(binary) => format_binary(ps, binary),
+        Expression::Float(float) => format_float(ps, float),
         e => {
             panic!("got unknown token: {:?}", e);
         }
@@ -1148,6 +1537,7 @@ pub fn format_expression(ps: &mut ParserState, expression: Expression) {
 }
 
 pub fn format_program(ps: &mut ParserState, program: Program) {
+    println!("{:?}", program);
     for expression in program.1 {
         format_expression(ps, expression);
     }

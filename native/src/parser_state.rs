@@ -1,7 +1,10 @@
 use crate::comment_block::CommentBlock;
+use crate::format::{format_inner_string, StringType};
 use crate::line_metadata::LineMetadata;
 use crate::line_tokens::*;
-use crate::types::{ColNumber, FormatStatus, LineNumber};
+use crate::ripper_tree_types::StringContentPart;
+use crate::types::{ColNumber, LineNumber};
+use std::io::{self, Cursor, Write};
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum FormattingContext {
@@ -14,6 +17,7 @@ pub enum FormattingContext {
     ArgsList,
 }
 
+#[derive(Clone, Copy)]
 struct IndentDepth {
     depth: ColNumber,
 }
@@ -36,6 +40,22 @@ impl IndentDepth {
     }
 }
 
+pub struct HeredocString {
+    symbol: String,
+    squiggly: bool,
+    buf: Vec<u8>,
+}
+
+impl HeredocString {
+    pub fn new(symbol: String, squiggly: bool, buf: Vec<u8>) -> Self {
+        HeredocString {
+            symbol: symbol,
+            squiggly: squiggly,
+            buf: buf,
+        }
+    }
+}
+
 pub struct ParserState {
     depth_stack: Vec<IndentDepth>,
     start_of_line: Vec<bool>,
@@ -44,7 +64,7 @@ pub struct ParserState {
     render_queue: Vec<Box<dyn LineToken>>,
     current_orig_line_number: LineNumber,
     comments_hash: LineMetadata,
-    heredoc_strings: Vec<String>,
+    heredoc_strings: Vec<HeredocString>,
     comments_to_insert: CommentBlock,
     breakable_entry_stack: Vec<BreakableEntry>,
     next_breakable_entry_id: u32,
@@ -71,7 +91,7 @@ impl ParserState {
         }
     }
 
-    pub fn consume_to_render_queue(self) -> Vec<Box<dyn LineToken>> {
+    fn consume_to_render_queue(self) -> Vec<Box<dyn LineToken>> {
         self.render_queue
     }
 
@@ -125,12 +145,24 @@ impl ParserState {
         self.push_token(DirectPart::new(ident));
     }
 
+    pub fn emit_keyword(&mut self, kw: String) {
+        self.push_token(Keyword::new(kw));
+    }
+
     pub fn emit_def_keyword(&mut self) {
         self.push_token(Keyword::new("def".to_string()));
     }
 
+    pub fn emit_class_keyword(&mut self) {
+        self.push_token(Keyword::new("class".to_string()));
+    }
+
     pub fn emit_rescue(&mut self) {
         self.push_token(Keyword::new("rescue".to_string()));
+    }
+
+    pub fn emit_ensure(&mut self) {
+        self.push_token(Keyword::new("ensure".to_string()));
     }
 
     pub fn emit_begin(&mut self) {
@@ -164,6 +196,7 @@ impl ParserState {
 
     pub fn emit_newline(&mut self) {
         self.push_token(HardNewLine::new());
+        self.render_heredocs(false);
     }
 
     pub fn emit_end(&mut self) {
@@ -172,6 +205,10 @@ impl ParserState {
             self.emit_indent();
         }
         self.push_token(Keyword::new("end".into()));
+    }
+
+    pub fn emit_else(&mut self) {
+        self.push_token(Keyword::new("else".into()));
     }
 
     pub fn emit_comma_space(&mut self) {
@@ -192,6 +229,15 @@ impl ParserState {
 
     pub fn emit_lonely_operator(&mut self) {
         self.push_token(LonelyOperator::new());
+    }
+
+    pub fn with_surpress_comments<F>(&mut self, surpress: bool, f: F)
+    where
+        F: FnOnce(&mut ParserState),
+    {
+        self.surpress_comments_stack.push(surpress);
+        f(self);
+        self.surpress_comments_stack.pop();
     }
 
     pub fn with_formatting_context<F>(&mut self, fc: FormattingContext, f: F)
@@ -226,6 +272,17 @@ impl ParserState {
         self.depth_stack[ds_length - 1].increment();
         let res = f(self);
         self.depth_stack[ds_length - 1].decrement();
+        res
+    }
+
+    pub fn dedent<F>(&mut self, f: F)
+    where
+        F: FnOnce(&mut ParserState),
+    {
+        let ds_length = self.depth_stack.len();
+        self.depth_stack[ds_length - 1].decrement();
+        let res = f(self);
+        self.depth_stack[ds_length - 1].increment();
         res
     }
 
@@ -268,6 +325,69 @@ impl ParserState {
         self.emit_ident(end_delim);
     }
 
+    pub fn push_heredoc_content(
+        &mut self,
+        symbol: String,
+        is_squiggly: bool,
+        parts: Vec<StringContentPart>,
+    ) {
+        let mut bufio = Cursor::new(Vec::new());
+        let mut next_ps = ParserState::new(LineMetadata::new());
+        next_ps.depth_stack = self.depth_stack.clone();
+        format_inner_string(&mut next_ps, parts, StringType::Heredoc);
+        next_ps.emit_newline();
+
+        for hs in next_ps.heredoc_strings.drain(0..) {
+            self.heredoc_strings.push(hs);
+        }
+
+        next_ps.write(&mut bufio).expect("in memory io cannot fail");
+        bufio.set_position(0);
+        let data = bufio.into_inner();
+        self.heredoc_strings
+            .push(HeredocString::new(symbol, is_squiggly, data));
+    }
+
+    pub fn render_heredocs(&mut self, skip: bool) {
+        while !self.heredoc_strings.is_empty() {
+            let mut next_heredoc = self.heredoc_strings.pop().expect("we checked it's there");
+            let want_newline = match self.render_queue.last() {
+                Some(x) => !x.is_newline(),
+                None => true,
+            };
+            if want_newline {
+                self.push_token(HardNewLine::new());
+            }
+
+            match next_heredoc.buf.last() {
+                Some(b'\n') => {
+                    next_heredoc.buf.pop();
+                }
+                _ => {}
+            };
+
+            match next_heredoc.buf.last() {
+                Some(b'\n') => {
+                    next_heredoc.buf.pop();
+                }
+                _ => {}
+            };
+
+            self.push_token(DirectPart::new(
+                String::from_utf8(next_heredoc.buf).expect("hereoc is utf8"),
+            ));
+            self.emit_newline();
+            if next_heredoc.squiggly {
+                self.emit_indent();
+            }
+
+            self.emit_ident(next_heredoc.symbol.replace("'", ""));
+            if !skip {
+                self.emit_newline();
+            }
+        }
+    }
+
     pub fn breakable_entry<F>(&mut self, f: F)
     where
         F: FnOnce(&mut ParserState),
@@ -301,6 +421,14 @@ impl ParserState {
 
     pub fn emit_close_paren(&mut self) {
         self.push_token(CloseParen::new());
+    }
+
+    pub fn write<W: Write>(self, writer: &mut W) -> io::Result<()> {
+        for line_token in self.consume_to_render_queue() {
+            let s = line_token.consume_to_string();
+            write!(writer, "{}", s)?
+        }
+        Ok(())
     }
 
     pub fn push_token<T: 'static + LineToken>(&mut self, t: T) {

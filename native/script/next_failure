@@ -1,0 +1,7 @@
+#!/bin/bash
+set -euxo pipefail
+
+while IFS= read -r -d '' FN
+do
+    ruby test.rb "$FN"
+done <   <(find ../fixtures -type f -print0 \! -name "*2.6*")

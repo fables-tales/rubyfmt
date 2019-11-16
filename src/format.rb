@@ -1045,7 +1045,6 @@ def format_array(ps, rest)
         ps.emit_space if index != parts.length - 1
       end
     end
-
     ps.emit_close_square_bracket
   else
     format_array_fast_path(ps, rest)
