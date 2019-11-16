@@ -234,7 +234,12 @@ impl<'de> Deserialize<'de> for MRHSNewFromArgs {
             where
                 A: de::SeqAccess<'de>,
             {
-                let tag: &str = seq.next_element()?.ok_or_else(|| panic!("what"))?;
+                let tag: &str = match seq.next_element() {
+                    Ok(Some(s)) => s,
+                    _  => {
+                        return Err(de::Error::custom("didn't get right tag"));
+                    }
+                };
                 if tag != "mrhs_new_from_args" {
                     println!("got wrong tag");
                     return Err(de::Error::custom("didn't get right tag"));
