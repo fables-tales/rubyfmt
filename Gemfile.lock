@@ -18,6 +18,3 @@ DEPENDENCIES
   rb-readline
   ruby-prof
   stackprof
-
-BUNDLED WITH
-   1.17.3

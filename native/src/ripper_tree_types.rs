@@ -12,7 +12,6 @@ macro_rules! def_tag {
     ($tag_name:ident, $tag:expr) => {
         #[derive(Serialize, Debug)]
         pub struct $tag_name;
-
         impl<'de> Deserialize<'de> for $tag_name {
             fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
             where
@@ -58,10 +57,13 @@ pub struct Program(pub program_tag, pub Vec<Expression>);
 #[derive(Deserialize, Debug)]
 #[serde(untagged)]
 pub enum Expression {
+    Class(Class),
+    If(If),
     IfMod(IfMod),
     Unary(Unary),
     VoidStmt(VoidStmt),
     Def(Def),
+    Defs(Defs),
     VCall(VCall),
     Ident(Ident),
     Params(Params),
@@ -96,7 +98,44 @@ pub enum Expression {
     Next(Next),
     StringConcat(StringConcat),
     Super(Super),
+    Kw(Kw),
+    Undef(Undef),
+    Binary(Binary),
+    Float(Float),
 }
+
+def_tag!(if_tag, "if");
+#[derive(Deserialize, Debug)]
+pub struct If(
+    pub if_tag,
+    pub Box<Expression>,
+    pub Vec<Expression>,
+    pub Option<ElsifOrElse>,
+);
+
+#[derive(Deserialize, Debug)]
+#[serde(untagged)]
+pub enum ElsifOrElse {
+    Elsif(Elsif),
+    Else(Else),
+}
+
+def_tag!(elsif_tag, "elsif");
+#[derive(Deserialize, Debug)]
+pub struct Elsif(
+    pub elsif_tag,
+    pub Box<Expression>,
+    pub Vec<Expression>,
+    pub Option<Box<ElsifOrElse>>,
+);
+
+def_tag!(else_tag, "else");
+#[derive(Deserialize, Debug)]
+pub struct Else(pub else_tag, pub Vec<Expression>);
+
+def_tag!(undef_tag, "undef");
+#[derive(Deserialize, Debug)]
+pub struct Undef(pub undef_tag, pub Vec<SymbolLiteral>);
 
 def_tag!(string_concat_tag, "string_concat");
 #[derive(Deserialize, Debug)]
@@ -144,9 +183,17 @@ def_tag!(top_const_ref_tag, "top_const_ref");
 #[derive(Deserialize, Debug)]
 pub struct TopConstRef(pub top_const_ref_tag, pub Const);
 
+def_tag!(top_const_field_tag, "top_const_field");
+#[derive(Deserialize, Debug)]
+pub struct TopConstField(pub top_const_field_tag, pub Const);
+
 def_tag!(const_path_ref_tag, "const_path_ref");
 #[derive(Deserialize, Debug)]
 pub struct ConstPathRef(pub const_path_ref_tag, pub Box<Expression>, pub Const);
+
+def_tag!(const_ref_tag, "const_ref");
+#[derive(Deserialize, Debug)]
+pub struct ConstRef(pub const_ref_tag, pub Const);
 
 def_tag!(command_tag, "command");
 #[derive(Deserialize, Debug)]
@@ -177,19 +224,11 @@ impl Command {
 
 def_tag!(assign_tag, "assign");
 #[derive(Deserialize, Debug)]
-pub struct Assign(
-    pub assign_tag,
-    pub VarFieldOrConstFieldOrRestParam,
-    pub Box<Expression>,
-);
+pub struct Assign(pub assign_tag, pub Assignable, pub Box<Expression>);
 
 def_tag!(massign_tag, "massign");
 #[derive(Deserialize, Debug)]
-pub struct MAssign(
-    pub massign_tag,
-    pub Vec<VarFieldOrConstFieldOrRestParam>,
-    pub Box<Expression>,
-);
+pub struct MAssign(pub massign_tag, pub Vec<Assignable>, pub Box<Expression>);
 
 #[derive(Deserialize, Debug)]
 #[serde(untagged)]
@@ -200,10 +239,11 @@ pub enum IdentOrVarField {
 
 #[derive(Deserialize, Debug)]
 #[serde(untagged)]
-pub enum VarFieldOrConstFieldOrRestParam {
+pub enum Assignable {
     VarField(VarField),
     ConstPathField(ConstPathField),
     RestParam(RestParam),
+    TopConstField(TopConstField),
 }
 
 def_tag!(const_path_field_tag, "const_path_field");
@@ -226,6 +266,7 @@ pub enum VarRefType {
     CVar(CVar),
     Ident(Ident),
     Const(Const),
+    Kw(Kw),
 }
 
 def_tag!(gvar_tag, "@gvar");
@@ -240,9 +281,70 @@ def_tag!(cvar_tag, "@cvar");
 #[derive(Deserialize, Debug)]
 pub struct CVar(pub cvar_tag, pub String, pub LineCol);
 
-def_tag!(string_literal_tag, "string_literal");
+def_tag!(heredoc_string_literal_tag, "heredoc_string_literal");
 #[derive(Deserialize, Debug)]
-pub struct StringLiteral(pub string_literal_tag, pub StringContent);
+pub struct HeredocStringLiteral(pub heredoc_string_literal_tag, pub (String, String));
+
+def_tag!(string_literal_tag, "string_literal");
+#[derive(Debug)]
+pub struct StringLiteral(
+    pub string_literal_tag,
+    pub Option<HeredocStringLiteral>,
+    pub StringContent,
+);
+
+impl<'de> Deserialize<'de> for StringLiteral {
+    fn deserialize<D>(deserializer: D) -> Result<StringLiteral, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        struct StringLiteralVisitor;
+
+        #[derive(Deserialize, Debug)]
+        #[serde(untagged)]
+        enum HeredocOrStringContent {
+            Heredoc(HeredocStringLiteral),
+            StringContent(StringContent),
+        };
+
+        impl<'de> de::Visitor<'de> for StringLiteralVisitor {
+            type Value = StringLiteral;
+
+            fn expecting(&self, f: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
+                write!(f, "[string_literal, [heredoc]?, string_content]")
+            }
+
+            fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
+            where
+                A: de::SeqAccess<'de>,
+            {
+                let tag: &str = seq.next_element()?.ok_or_else(|| panic!("what"))?;
+                if tag != "string_literal" {
+                    return Err(de::Error::custom("didn't get right tag"));
+                }
+
+                let mut h_or_sc: Option<HeredocOrStringContent> = seq.next_element()?;
+                let h_or_sc =
+                    h_or_sc.expect("didn't get either string content or heredoc in string literal");
+
+                let sl = match h_or_sc {
+                    HeredocOrStringContent::Heredoc(hd) => {
+                        let sc: Option<StringContent> = seq.next_element()?;
+                        let sc = sc.expect("didn't get string content in heredoc");
+                        StringLiteral(string_literal_tag, Some(hd), sc)
+                    }
+                    HeredocOrStringContent::StringContent(sc) => {
+                        StringLiteral(string_literal_tag, None, sc)
+                    }
+                };
+
+                Ok(sl)
+            }
+        }
+
+        deserializer.deserialize_seq(StringLiteralVisitor)
+    }
+}
 
 def_tag!(xstring_literal_tag, "xstring_literal");
 #[derive(Deserialize, Debug)]
@@ -256,10 +358,10 @@ impl DynaSymbol {
     pub fn to_string_literal(self) -> StringLiteral {
         match self.1 {
             StringContentOrStringContentParts::StringContent(sc) => {
-                StringLiteral(string_literal_tag, sc)
+                StringLiteral(string_literal_tag, None, sc)
             }
             StringContentOrStringContentParts::StringContentParts(scp) => {
-                StringLiteral(string_literal_tag, StringContent(string_content_tag, scp))
+                StringLiteral(string_literal_tag, None, StringContent(string_content_tag, scp))
             }
         }
     }
@@ -324,11 +426,9 @@ impl<'de> Deserialize<'de> for StringContent {
 
                 let mut elements = vec![];
                 let mut t_or_e: Option<StringContentPart> = seq.next_element()?;
-                println!("{:?}", t_or_e);
                 while t_or_e.is_some() {
                     elements.push(t_or_e.expect("we checked it's some"));
                     t_or_e = seq.next_element()?;
-                    println!("{:?}", t_or_e);
                 }
 
                 Ok(StringContent(string_content_tag, elements))
@@ -347,7 +447,7 @@ pub struct Array(pub array_tag, pub SimpleArrayOrPercentArray);
 #[serde(untagged)]
 pub enum SimpleArrayOrPercentArray {
     SimpleArray(Option<ArgsAddStarOrExpressionList>),
-    PercentArray((String, Vec<TStringContent>)),
+    PercentArray((String, Vec<StringContentPart>, LineCol)),
 }
 
 #[derive(Deserialize, Debug)]
@@ -498,14 +598,40 @@ def_tag!(bodystmt_tag, "bodystmt");
 pub struct BodyStmt(
     pub bodystmt_tag,
     pub Vec<Expression>,
-    pub Option<Box<Expression>>,
-    pub Option<Box<Expression>>,
-    pub Option<Box<Expression>>,
+    pub Option<Rescue>,
+    pub Option<RescueElse>,
+    pub Option<Ensure>,
 );
+
+def_tag!(rescue_tag, "rescue");
+#[derive(Deserialize, Debug)]
+pub struct Rescue(
+    pub rescue_tag,
+    pub Option<SingleOrMRHSNewFromArgsOrMRHSAddStar>,
+    pub Option<Assignable>,
+    pub Option<Vec<Expression>>,
+    pub Option<Box<Rescue>>,
+);
+
+#[derive(Deserialize, Debug)]
+#[serde(untagged)]
+pub enum SingleOrMRHSNewFromArgsOrMRHSAddStar {
+    Single(Vec<Expression>),
+    MRHSNewFromArgs(MRHSNewFromArgs),
+    MRHSAddStar(MRHSAddStar),
+}
+
+def_tag!(rescue_else_tag, "else");
+#[derive(Deserialize, Debug)]
+pub struct RescueElse(pub rescue_else_tag, pub Option<Vec<Expression>>);
+
+def_tag!(ensure_tag, "ensure");
+#[derive(Deserialize, Debug)]
+pub struct Ensure(pub ensure_tag, pub Option<Vec<Expression>>);
 
 def_tag!(vcall);
 #[derive(Deserialize, Debug)]
-pub struct VCall(vcall, pub Box<Expression>);
+pub struct VCall(pub vcall, pub Box<Expression>);
 
 def_tag!(command_call_tag, "command_call");
 #[derive(Deserialize, Debug)]
@@ -914,3 +1040,63 @@ impl Super {
         )
     }
 }
+
+def_tag!(kw_tag, "@kw");
+#[derive(Deserialize, Debug)]
+pub struct Kw(pub kw_tag, pub String, pub LineCol);
+
+#[derive(Deserialize, Debug)]
+#[serde(untagged)]
+pub enum ConstPathRefOrConstRef {
+    ConstPathRef(ConstPathRef),
+    ConstRef(ConstRef),
+}
+
+def_tag!(class_tag, "class");
+#[derive(Deserialize, Debug)]
+pub struct Class(
+    pub class_tag,
+    pub ConstPathRefOrConstRef,
+    pub Option<Box<Expression>>,
+    pub BodyStmt,
+);
+
+def_tag!(defs_tag, "defs");
+#[derive(Deserialize, Debug)]
+pub struct Defs(
+    pub defs_tag,
+    pub Singleton,
+    pub DotOrColon,
+    pub Ident,
+    pub ParenOrParams,
+    pub BodyStmt,
+);
+
+#[derive(Deserialize, Debug)]
+#[serde(untagged)]
+pub enum Singleton {
+    VarRef(VarRef),
+    Paren(ParenExpr),
+}
+
+// can only occur in defs, Op is always `::`
+#[derive(Deserialize, Debug)]
+#[serde(untagged)]
+pub enum DotOrColon {
+    Period(Period),
+    Op(Operator),
+}
+
+def_tag!(binary_tag, "binary");
+#[derive(Deserialize, Debug)]
+pub struct Binary(
+    pub binary_tag,
+    pub Box<Expression>,
+    pub String,
+    pub Box<Expression>,
+);
+
+
+def_tag!(float_tag, "@float");
+#[derive(Deserialize, Debug)]
+pub struct Float(float_tag, pub String, pub LineCol);
