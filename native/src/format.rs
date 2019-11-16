@@ -242,29 +242,34 @@ pub fn format_bodystmt(ps: &mut ParserState, bodystmt: BodyStmt, inside_begin: b
 
 pub fn format_mrhs(ps: &mut ParserState, mrhs: Option<MRHS>) {
     match mrhs {
-        None => {},
+        None => {}
         Some(MRHS::Single(exprs)) => {
             if exprs.len() != 1 {
                 panic!("this should be impossible, bug in the ruby parser?");
             }
-            format_expression(ps, exprs.into_iter().next().expect("we checked there's one item"));
+            format_expression(
+                ps,
+                exprs
+                    .into_iter()
+                    .next()
+                    .expect("we checked there's one item"),
+            );
             ps.emit_space();
-        },
+        }
         Some(MRHS::MRHSNewFromArgs(mnfa)) => {
             format_mrhs_new_from_args(ps, mnfa);
             ps.emit_space();
-        },
+        }
         Some(MRHS::MRHSAddStar(mas)) => {
             format_mrhs_add_star(ps, mas);
             ps.emit_space();
         }
     }
-
 }
 
 pub fn format_rescue_capture(ps: &mut ParserState, rescue_capture: Option<Assignable>) {
     match (rescue_capture) {
-        None => {},
+        None => {}
         Some(expr) => {
             ps.emit_ident("=>".to_string());
             ps.emit_space();
@@ -277,7 +282,7 @@ pub fn format_rescue(ps: &mut ParserState, rescue_part: Option<Rescue>) {
     match rescue_part {
         None => {
             return;
-        },
+        }
         Some(Rescue(_, class, capture, expressions, more_rescue)) => {
             ps.dedent(|ps| {
                 ps.emit_indent();
@@ -293,7 +298,7 @@ pub fn format_rescue(ps: &mut ParserState, rescue_part: Option<Rescue>) {
             });
 
             match expressions {
-                None => {},
+                None => {}
                 Some(expressions) => {
                     ps.emit_newline();
                     for expression in expressions {
@@ -317,13 +322,13 @@ pub fn format_else(ps: &mut ParserState, else_part: Option<RescueElse>) {
             });
 
             match re.1 {
-                None => {},
+                None => {}
                 Some(exprs) => {
                     ps.emit_newline();
                     ps.with_start_of_line(true, |ps| {
                         for expr in exprs {
                             format_expression(ps, expr);
-                        };
+                        }
                     });
                 }
             }
@@ -341,13 +346,13 @@ pub fn format_ensure(ps: &mut ParserState, ensure_part: Option<Ensure>) {
             });
 
             match e.1 {
-                None => {},
+                None => {}
                 Some(exprs) => {
                     ps.emit_newline();
                     ps.with_start_of_line(true, |ps| {
                         for expr in exprs {
                             format_expression(ps, expr);
-                        };
+                        }
                     });
                 }
             }
@@ -1503,7 +1508,7 @@ pub fn format_aref(ps: &mut ParserState, aref: Aref) {
         format_expression(ps, *aref.1);
         ps.emit_open_square_bracket();
         match aref.2 {
-            None => {},
+            None => {}
             Some(arg_node) => {
                 let args_list = normalize_args(arg_node);
                 ps.with_formatting_context(FormattingContext::ArgsList, |ps| {

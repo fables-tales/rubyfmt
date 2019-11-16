@@ -211,7 +211,11 @@ pub enum MRHSNewFromArgsOrEmpty {
 // so we need to implement a custom deserializer, I am sad
 def_tag!(mrhs_new_from_args_tag, "mrhs_new_from_args");
 #[derive(Debug)]
-pub struct MRHSNewFromArgs(pub mrhs_new_from_args_tag, pub ArgsAddStarOrExpressionList, pub Option<Box<Expression>>);
+pub struct MRHSNewFromArgs(
+    pub mrhs_new_from_args_tag,
+    pub ArgsAddStarOrExpressionList,
+    pub Option<Box<Expression>>,
+);
 
 impl<'de> Deserialize<'de> for MRHSNewFromArgs {
     fn deserialize<D>(deserializer: D) -> Result<MRHSNewFromArgs, D::Error>
@@ -224,10 +228,7 @@ impl<'de> Deserialize<'de> for MRHSNewFromArgs {
             type Value = MRHSNewFromArgs;
 
             fn expecting(&self, f: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
-                write!(
-                    f,
-                    "[mrhs_new_from_args, Vec<Expression>(, Expression?)]"
-                )
+                write!(f, "[mrhs_new_from_args, Vec<Expression>(, Expression?)]")
             }
 
             fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
@@ -236,7 +237,7 @@ impl<'de> Deserialize<'de> for MRHSNewFromArgs {
             {
                 let tag: &str = match seq.next_element() {
                     Ok(Some(s)) => s,
-                    _  => {
+                    _ => {
                         return Err(de::Error::custom("didn't get right tag"));
                     }
                 };
@@ -245,16 +246,21 @@ impl<'de> Deserialize<'de> for MRHSNewFromArgs {
                     return Err(de::Error::custom("didn't get right tag"));
                 }
 
-                let expressions: ArgsAddStarOrExpressionList = seq.next_element()?.expect("didn't get args add star or expression list in mrhs new");
+                let expressions: ArgsAddStarOrExpressionList = seq
+                    .next_element()?
+                    .expect("didn't get args add star or expression list in mrhs new");
                 let tail_expression: Option<Box<Expression>> = match seq.next_element() {
                     Ok(Some(v)) => Some(Box::new(v)),
                     Ok(None) => None,
                     Err(e) => None,
                 };
 
-                Ok(MRHSNewFromArgs(mrhs_new_from_args_tag, expressions, tail_expression))
+                Ok(MRHSNewFromArgs(
+                    mrhs_new_from_args_tag,
+                    expressions,
+                    tail_expression,
+                ))
             }
-
         }
 
         deserializer.deserialize_seq(MRHSNewFromArgsVisitor)
@@ -450,9 +456,11 @@ impl DynaSymbol {
             StringContentOrStringContentParts::StringContent(sc) => {
                 StringLiteral(string_literal_tag, None, sc)
             }
-            StringContentOrStringContentParts::StringContentParts(scp) => {
-                StringLiteral(string_literal_tag, None, StringContent(string_content_tag, scp))
-            }
+            StringContentOrStringContentParts::StringContentParts(scp) => StringLiteral(
+                string_literal_tag,
+                None,
+                StringContent(string_content_tag, scp),
+            ),
         }
     }
 }
@@ -1186,16 +1194,13 @@ pub struct Binary(
     pub Box<Expression>,
 );
 
-
 def_tag!(float_tag, "@float");
 #[derive(Deserialize, Debug)]
 pub struct Float(float_tag, pub String, pub LineCol);
 
-
 def_tag!(aref_tag, "aref");
 #[derive(Deserialize, Debug)]
 pub struct Aref(aref_tag, pub Box<Expression>, pub Option<ArgNode>);
-
 
 def_tag!(char_tag, "@CHAR");
 #[derive(Deserialize, Debug)]
