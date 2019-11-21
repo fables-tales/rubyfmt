@@ -471,6 +471,10 @@ pub fn format_method_call(ps: &mut ParserState, method_call: MethodCall) {
             ps.emit_close_paren();
         }
     });
+
+    if ps.at_start_of_line() {
+        ps.emit_newline();
+    }
 }
 
 pub fn format_list_like_thing_items(
@@ -667,9 +671,9 @@ pub fn normalize(e: Expression) -> Expression {
         Expression::CommandCall(call) => Expression::MethodCall(call.to_method_call()),
         Expression::Call(call) => Expression::MethodCall(call.to_method_call()),
         Expression::Super(sup) => Expression::MethodCall(sup.to_method_call()),
+        Expression::Return(ret) => Expression::MethodCall(ret.to_method_call()),
         //"fcall" => unimplemented!(),
         //"zsuper" => unimplemented!(),
-        //"return" => unimplemented!(),
         //"yield" => unimplemented!(),
         e => e,
     }
