@@ -599,23 +599,12 @@ pub fn format_assocs(ps: &mut ParserState, assocs: Vec<AssocNewOrAssocSplat>) {
         ps.with_start_of_line(false, |ps| match assoc {
             AssocNewOrAssocSplat::AssocNew(new) => {
                 match new.1 {
-                    LabelOrSymbolLiteralOrDynaSymbol::Label(label) => {
+                    AssocKey::Label(label) => {
                         ps.emit_ident(label.1);
                         ps.emit_space();
                     }
-                    LabelOrSymbolLiteralOrDynaSymbol::SymbolLiteral(symbol) => {
-                        match symbol.1 {
-                            SymbolOrBare::Symbol(symbol) => {
-                                format_expression(ps, Expression::Symbol(symbol))
-                            }
-                            _ => panic!("other symbol variants are not valid in an assoc"),
-                        }
-                        ps.emit_space();
-                        ps.emit_ident("=>".to_string());
-                        ps.emit_space();
-                    }
-                    LabelOrSymbolLiteralOrDynaSymbol::DynaSymbol(dyna_symbol) => {
-                        format_expression(ps, Expression::DynaSymbol(dyna_symbol));
+                    AssocKey::Expression(expression) => {
+                        format_expression(ps, expression);
                         ps.emit_space();
                         ps.emit_ident("=>".to_string());
                         ps.emit_space();
@@ -1589,6 +1578,27 @@ pub fn format_char(ps: &mut ParserState, c: Char) {
     }
 }
 
+pub fn format_hash(ps: &mut ParserState, hash: Hash) {
+    if ps.at_start_of_line() {
+        ps.emit_indent();
+    }
+
+    match hash.1 {
+        None => ps.emit_ident("{}".to_string()),
+        Some(assoc_list_from_args) => {
+            ps.breakable_of("{".to_string(), "}".to_string(), |ps| {
+                ps.breakable_entry(|ps| {
+                    format_assocs(ps, assoc_list_from_args.1);
+                });
+            });
+        }
+    };
+
+    if ps.at_start_of_line() {
+        ps.emit_newline();
+    }
+}
+
 pub fn format_expression(ps: &mut ParserState, expression: Expression) {
     let expression = normalize(expression);
     match expression {
@@ -1629,6 +1639,7 @@ pub fn format_expression(ps: &mut ParserState, expression: Expression) {
         Expression::Aref(aref) => format_aref(ps, aref),
         Expression::Char(c) => format_char(ps, c),
         Expression::Module(m) => format_module(ps, m),
+        Expression::Hash(h) => format_hash(ps, h),
         e => {
             panic!("got unknown token: {:?}", e);
         }
