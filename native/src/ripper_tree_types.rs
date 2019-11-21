@@ -106,6 +106,7 @@ pub enum Expression {
     Char(Char),
     Module(Module),
     Return(Return),
+    Hash(Hash),
 }
 
 def_tag!(if_tag, "if");
@@ -944,6 +945,14 @@ def_tag!(bare_assoc_hash_tag, "bare_assoc_hash");
 #[derive(Deserialize, Debug)]
 pub struct BareAssocHash(pub bare_assoc_hash_tag, pub Vec<AssocNewOrAssocSplat>);
 
+def_tag!(hash_tag, "hash");
+#[derive(Deserialize, Debug)]
+pub struct Hash(pub hash_tag, pub Option<AssocListFromArgs>);
+
+def_tag!(assoclist_from_args_tag, "assoclist_from_args");
+#[derive(Deserialize, Debug)]
+pub struct AssocListFromArgs(pub assoclist_from_args_tag, pub Vec<AssocNewOrAssocSplat>);
+
 #[derive(Deserialize, Debug)]
 #[serde(untagged)]
 pub enum AssocNewOrAssocSplat {
@@ -953,11 +962,7 @@ pub enum AssocNewOrAssocSplat {
 
 def_tag!(assoc_new_tag, "assoc_new");
 #[derive(Deserialize, Debug)]
-pub struct AssocNew(
-    pub assoc_new_tag,
-    pub LabelOrSymbolLiteralOrDynaSymbol,
-    pub Expression,
-);
+pub struct AssocNew(pub assoc_new_tag, pub AssocKey, pub Expression);
 
 def_tag!(assoc_splat_tag, "assoc_splat");
 #[derive(Deserialize, Debug)]
@@ -965,10 +970,9 @@ pub struct AssocSplat(pub assoc_splat_tag, pub Expression);
 
 #[derive(Deserialize, Debug)]
 #[serde(untagged)]
-pub enum LabelOrSymbolLiteralOrDynaSymbol {
+pub enum AssocKey {
     Label(Label),
-    SymbolLiteral(SymbolLiteral),
-    DynaSymbol(DynaSymbol),
+    Expression(Expression),
 }
 
 def_tag!(label_tag, "@label");
