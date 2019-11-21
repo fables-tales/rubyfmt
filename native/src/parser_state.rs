@@ -157,6 +157,10 @@ impl ParserState {
         self.push_token(Keyword::new("class".to_string()));
     }
 
+    pub fn emit_module_keyword(&mut self) {
+        self.push_token(Keyword::new("module".to_string()));
+    }
+
     pub fn emit_rescue(&mut self) {
         self.push_token(Keyword::new("rescue".to_string()));
     }
