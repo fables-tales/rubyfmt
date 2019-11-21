@@ -1163,11 +1163,7 @@ pub struct Class(
 
 def_tag!(module_tag, "module");
 #[derive(Deserialize, Debug)]
-pub struct Module(
-    pub module_tag,
-    pub ConstPathRefOrConstRef,
-    pub BodyStmt,
-);
+pub struct Module(pub module_tag, pub ConstPathRefOrConstRef, pub BodyStmt);
 
 def_tag!(defs_tag, "defs");
 #[derive(Deserialize, Debug)]

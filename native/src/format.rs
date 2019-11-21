@@ -777,8 +777,14 @@ pub fn format_array(ps: &mut ParserState, array: Array) {
         SimpleArrayOrPercentArray::SimpleArray(a) => format_array_fast_path(ps, a),
         SimpleArrayOrPercentArray::LowerPercentArray(pa) => {
             ps.on_line((pa.2).0);
-            format_percent_array(ps, pa.0, pa.1.into_iter().map(|v| vec!(StringContentPart::TStringContent(v))).collect());
-        },
+            format_percent_array(
+                ps,
+                pa.0,
+                pa.1.into_iter()
+                    .map(|v| vec![StringContentPart::TStringContent(v)])
+                    .collect(),
+            );
+        }
         SimpleArrayOrPercentArray::UpperPercentArray(pa) => {
             ps.on_line((pa.2).0);
             format_percent_array(ps, pa.0, pa.1);
