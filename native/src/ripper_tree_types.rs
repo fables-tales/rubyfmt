@@ -107,6 +107,7 @@ pub enum Expression {
     Module(Module),
     Return(Return),
     Hash(Hash),
+    RegexpLiteral(RegexpLiteral),
 }
 
 def_tag!(if_tag, "if");
@@ -1231,3 +1232,15 @@ impl Return {
         )
     }
 }
+
+def_tag!(regexp_literal_tag, "regexp_literal");
+#[derive(Deserialize, Debug)]
+pub struct RegexpLiteral(
+    regexp_literal_tag,
+    pub Vec<StringContentPart>,
+    pub RegexpEnd,
+);
+
+def_tag!(regexp_end_tag, "@regexp_end");
+#[derive(Deserialize, Debug)]
+pub struct RegexpEnd(regexp_end_tag, pub String, pub LineCol, pub String);
