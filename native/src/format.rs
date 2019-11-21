@@ -864,6 +864,7 @@ pub enum StringType {
     Quoted,
     Heredoc,
     Array,
+    Regexp,
 }
 
 pub fn format_inner_string(ps: &mut ParserState, parts: Vec<StringContentPart>, tipe: StringType) {
@@ -1599,6 +1600,31 @@ pub fn format_hash(ps: &mut ParserState, hash: Hash) {
     }
 }
 
+pub fn format_regexp_literal(ps: &mut ParserState, regexp: RegexpLiteral) {
+    if ps.at_start_of_line() {
+        ps.emit_indent();
+    }
+
+    let parts = regexp.1;
+    let start_delimiter = (regexp.2).3;
+    let end_delimiter = (regexp.2).1;
+
+    let (normalized_start_delimiter, normalized_end_delimiter) = if start_delimiter.starts_with("%")
+    {
+        (start_delimiter, end_delimiter)
+    } else {
+        (start_delimiter, end_delimiter)
+    };
+
+    ps.emit_ident(normalized_start_delimiter);
+    format_inner_string(ps, parts, StringType::Regexp);
+    ps.emit_ident(normalized_end_delimiter);
+
+    if ps.at_start_of_line() {
+        ps.emit_newline();
+    }
+}
+
 pub fn format_expression(ps: &mut ParserState, expression: Expression) {
     let expression = normalize(expression);
     match expression {
@@ -1640,6 +1666,7 @@ pub fn format_expression(ps: &mut ParserState, expression: Expression) {
         Expression::Char(c) => format_char(ps, c),
         Expression::Module(m) => format_module(ps, m),
         Expression::Hash(h) => format_hash(ps, h),
+        Expression::RegexpLiteral(regexp) => format_regexp_literal(ps, regexp),
         e => {
             panic!("got unknown token: {:?}", e);
         }
