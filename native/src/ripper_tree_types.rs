@@ -105,6 +105,7 @@ pub enum Expression {
     Aref(Aref),
     Char(Char),
     Module(Module),
+    Return(Return),
 }
 
 def_tag!(if_tag, "if");
@@ -1211,3 +1212,18 @@ pub struct Aref(aref_tag, pub Box<Expression>, pub Option<ArgNode>);
 def_tag!(char_tag, "@CHAR");
 #[derive(Deserialize, Debug)]
 pub struct Char(char_tag, pub String, pub LineCol);
+
+def_tag!(return_tag, "return");
+#[derive(Deserialize, Debug)]
+pub struct Return(return_tag, pub ArgNode);
+
+impl Return {
+    pub fn to_method_call(self) -> MethodCall {
+        MethodCall::new(
+            vec![],
+            Box::new(Expression::Ident(Ident::new("return".to_string()))),
+            false,
+            normalize_args(self.1),
+        )
+    }
+}
