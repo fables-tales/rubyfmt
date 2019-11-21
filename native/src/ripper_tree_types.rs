@@ -104,6 +104,7 @@ pub enum Expression {
     Float(Float),
     Aref(Aref),
     Char(Char),
+    Module(Module),
 }
 
 def_tag!(if_tag, "if");
@@ -1157,6 +1158,14 @@ pub struct Class(
     pub class_tag,
     pub ConstPathRefOrConstRef,
     pub Option<Box<Expression>>,
+    pub BodyStmt,
+);
+
+def_tag!(module_tag, "module");
+#[derive(Deserialize, Debug)]
+pub struct Module(
+    pub module_tag,
+    pub ConstPathRefOrConstRef,
     pub BodyStmt,
 );
 

@@ -1410,6 +1410,42 @@ pub fn format_class(ps: &mut ParserState, class: Class) {
     }
 }
 
+pub fn format_module(ps: &mut ParserState, module: Module) {
+    if ps.at_start_of_line() {
+        ps.emit_indent();
+    }
+
+    let module_name = module.1;
+    let bodystmt = module.2;
+
+    ps.emit_module_keyword();
+    ps.with_start_of_line(false, |ps| {
+        ps.emit_space();
+
+        match module_name {
+            ConstPathRefOrConstRef::ConstPathRef(cpr) => {
+                format_const_path_ref(ps, cpr);
+            }
+            ConstPathRefOrConstRef::ConstRef(cr) => {
+                ps.on_line(((cr.1).2).0);
+                ps.emit_ident((cr.1).1);
+            }
+        }
+    });
+
+    ps.emit_newline();
+    ps.new_block(|ps| {
+        ps.with_formatting_context(FormattingContext::ClassOrModule, |ps| {
+            format_bodystmt(ps, bodystmt, false);
+        });
+    });
+
+    ps.emit_end();
+    if ps.at_start_of_line() {
+        ps.emit_newline();
+    }
+}
+
 pub fn format_conditional(
     ps: &mut ParserState,
     cond_expr: Expression,
@@ -1582,6 +1618,7 @@ pub fn format_expression(ps: &mut ParserState, expression: Expression) {
         Expression::Float(float) => format_float(ps, float),
         Expression::Aref(aref) => format_aref(ps, aref),
         Expression::Char(c) => format_char(ps, c),
+        Expression::Module(m) => format_module(ps, m),
         e => {
             panic!("got unknown token: {:?}", e);
         }
