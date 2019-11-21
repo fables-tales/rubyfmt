@@ -1609,16 +1609,9 @@ pub fn format_regexp_literal(ps: &mut ParserState, regexp: RegexpLiteral) {
     let start_delimiter = (regexp.2).3;
     let end_delimiter = (regexp.2).1;
 
-    let (normalized_start_delimiter, normalized_end_delimiter) = if start_delimiter.starts_with("%")
-    {
-        (start_delimiter, end_delimiter)
-    } else {
-        (start_delimiter, end_delimiter)
-    };
-
-    ps.emit_ident(normalized_start_delimiter);
+    ps.emit_ident(start_delimiter);
     format_inner_string(ps, parts, StringType::Regexp);
-    ps.emit_ident(normalized_end_delimiter);
+    ps.emit_ident(end_delimiter);
 
     if ps.at_start_of_line() {
         ps.emit_newline();
