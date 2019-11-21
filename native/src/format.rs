@@ -341,6 +341,7 @@ pub fn format_ensure(ps: &mut ParserState, ensure_part: Option<Ensure>) {
         None => return,
         Some(e) => {
             ps.dedent(|ps| {
+                ps.emit_newline();
                 ps.emit_indent();
                 ps.emit_ensure();
             });
@@ -752,13 +753,13 @@ pub fn percent_symbol_for(tag: String) -> String {
     }
 }
 
-pub fn format_percent_array(ps: &mut ParserState, tag: String, parts: Vec<StringContentPart>) {
+pub fn format_percent_array(ps: &mut ParserState, tag: String, parts: Vec<Vec<StringContentPart>>) {
     ps.emit_ident(percent_symbol_for(tag));
     ps.emit_open_square_bracket();
     ps.with_start_of_line(false, |ps| {
         let parts_length = parts.len();
         for (idx, part) in parts.into_iter().enumerate() {
-            format_inner_string(ps, vec![part], StringType::Array);
+            format_inner_string(ps, part, StringType::Array);
             if idx != parts_length - 1 {
                 ps.emit_space();
             }
@@ -774,7 +775,11 @@ pub fn format_array(ps: &mut ParserState, array: Array) {
 
     match array.1 {
         SimpleArrayOrPercentArray::SimpleArray(a) => format_array_fast_path(ps, a),
-        SimpleArrayOrPercentArray::PercentArray(pa) => {
+        SimpleArrayOrPercentArray::LowerPercentArray(pa) => {
+            ps.on_line((pa.2).0);
+            format_percent_array(ps, pa.0, pa.1.into_iter().map(|v| vec!(StringContentPart::TStringContent(v))).collect());
+        },
+        SimpleArrayOrPercentArray::UpperPercentArray(pa) => {
             ps.on_line((pa.2).0);
             format_percent_array(ps, pa.0, pa.1);
         }

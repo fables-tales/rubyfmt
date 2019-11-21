@@ -5,6 +5,7 @@ EOM
 part 2 of heredoc
 EOD
 
+
 b = <<-EOD
 oweqijfoiwjefqwoefij
 EOD
