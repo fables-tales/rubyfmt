@@ -108,6 +108,7 @@ pub enum Expression {
     Return(Return),
     Hash(Hash),
     RegexpLiteral(RegexpLiteral),
+    Backref(Backref),
 }
 
 def_tag!(if_tag, "if");
@@ -1244,3 +1245,7 @@ pub struct RegexpLiteral(
 def_tag!(regexp_end_tag, "@regexp_end");
 #[derive(Deserialize, Debug)]
 pub struct RegexpEnd(regexp_end_tag, pub String, pub LineCol, pub String);
+
+def_tag!(backref_tag, "@backref");
+#[derive(Deserialize, Debug)]
+pub struct Backref(backref_tag, pub String, pub LineCol);

@@ -1618,6 +1618,19 @@ pub fn format_regexp_literal(ps: &mut ParserState, regexp: RegexpLiteral) {
     }
 }
 
+pub fn format_backref(ps: &mut ParserState, backref: Backref) {
+    if ps.at_start_of_line() {
+        ps.emit_indent();
+    }
+
+    ps.on_line((backref.2).0);
+    ps.emit_ident(backref.1);
+
+    if ps.at_start_of_line() {
+        ps.emit_newline();
+    }
+}
+
 pub fn format_expression(ps: &mut ParserState, expression: Expression) {
     let expression = normalize(expression);
     match expression {
@@ -1660,6 +1673,7 @@ pub fn format_expression(ps: &mut ParserState, expression: Expression) {
         Expression::Module(m) => format_module(ps, m),
         Expression::Hash(h) => format_hash(ps, h),
         Expression::RegexpLiteral(regexp) => format_regexp_literal(ps, regexp),
+        Expression::Backref(backref) => format_backref(ps, backref),
         e => {
             panic!("got unknown token: {:?}", e);
         }
