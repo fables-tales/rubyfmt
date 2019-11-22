@@ -1631,6 +1631,33 @@ pub fn format_backref(ps: &mut ParserState, backref: Backref) {
     }
 }
 
+pub fn format_yield(ps: &mut ParserState, y: Yield) {
+    if ps.at_start_of_line() {
+        ps.emit_indent();
+    }
+
+    ps.emit_keyword("yield".to_string());
+    ps.emit_space();
+    let yield_args = match y.1 {
+        ParenOrArgsAddBlock::ArgParen(p) => {
+            let arg = *p.1;
+            match arg {
+                ArgNode::ArgsAddBlock(aab) => aab,
+                _ => panic!("should not have anything other than aab in yield"),
+            }
+        }
+        ParenOrArgsAddBlock::ArgsAddBlock(aab) => aab,
+    };
+
+    ps.with_start_of_line(false, |ps| {
+        format_list_like_thing(ps, yield_args.1, true);
+    });
+
+    if ps.at_start_of_line() {
+        ps.emit_newline();
+    }
+}
+
 pub fn format_expression(ps: &mut ParserState, expression: Expression) {
     let expression = normalize(expression);
     match expression {
@@ -1674,6 +1701,7 @@ pub fn format_expression(ps: &mut ParserState, expression: Expression) {
         Expression::Hash(h) => format_hash(ps, h),
         Expression::RegexpLiteral(regexp) => format_regexp_literal(ps, regexp),
         Expression::Backref(backref) => format_backref(ps, backref),
+        Expression::Yield(y) => format_yield(ps, y),
         e => {
             panic!("got unknown token: {:?}", e);
         }
