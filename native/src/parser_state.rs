@@ -153,6 +153,10 @@ impl ParserState {
         self.push_token(Keyword::new("def".to_string()));
     }
 
+    pub fn emit_do_keyword(&mut self ) {
+        self.push_token(Keyword::new("do".to_string()));
+    }
+
     pub fn emit_class_keyword(&mut self) {
         self.push_token(Keyword::new("class".to_string()));
     }
@@ -329,27 +333,44 @@ impl ParserState {
         self.emit_ident(end_delim);
     }
 
+    pub fn new_with_depth_stack_from(ps: &ParserState) -> Self {
+        let mut next_ps = ParserState::new(LineMetadata::new());
+        next_ps.depth_stack = ps.depth_stack.clone();
+        return next_ps;
+    }
+
+    pub fn render_with_blank_state<F>(ps: &mut ParserState, f: F) -> ParserState
+        where F: FnOnce(&mut ParserState) {
+        let mut next_ps = ParserState::new_with_depth_stack_from(ps);
+        f(&mut next_ps);
+        next_ps
+    }
+
     pub fn push_heredoc_content(
         &mut self,
         symbol: String,
         is_squiggly: bool,
         parts: Vec<StringContentPart>,
     ) {
-        let mut bufio = Cursor::new(Vec::new());
-        let mut next_ps = ParserState::new(LineMetadata::new());
-        next_ps.depth_stack = self.depth_stack.clone();
-        format_inner_string(&mut next_ps, parts, StringType::Heredoc);
-        next_ps.emit_newline();
+        let mut next_ps = ParserState::render_with_blank_state(self, |n| {
+            format_inner_string(n, parts, StringType::Heredoc);
+            n.emit_newline();
+        });
 
         for hs in next_ps.heredoc_strings.drain(0..) {
             self.heredoc_strings.push(hs);
         }
 
-        next_ps.write(&mut bufio).expect("in memory io cannot fail");
-        bufio.set_position(0);
-        let data = bufio.into_inner();
+        let data = next_ps.render_to_buffer();
         self.heredoc_strings
             .push(HeredocString::new(symbol, is_squiggly, data));
+    }
+
+    pub fn render_to_buffer(self) -> Vec<u8> {
+        let mut bufio = Cursor::new(Vec::new());
+        self.write(&mut bufio).expect("in memory io cannot fail");
+        bufio.set_position(0);
+        bufio.into_inner()
     }
 
     pub fn render_heredocs(&mut self, skip: bool) {

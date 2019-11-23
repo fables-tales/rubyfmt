@@ -1,6 +1,7 @@
 use crate::parser_state::{FormattingContext, ParserState};
 use crate::ripper_tree_types::*;
 use std::borrow::Borrow;
+use std::io::Cursor;
 
 pub fn format_def(ps: &mut ParserState, def: Def) {
     let def_expression = def.1;
@@ -22,74 +23,116 @@ pub fn format_def(ps: &mut ParserState, def: Def) {
     ps.emit_newline();
 }
 
+pub fn inner_format_params(ps: &mut ParserState, params: Params) {
+    let non_null_positions = params.non_null_positions();
+    //def foo(a, b=nil, *args, d, e:, **kwargs, &blk)
+    //        ^  ^___^  ^___^  ^  ^    ^_____^   ^
+    //        |    |      |    |  |      |       |
+    //        |    |      |    |  |      |    block_arg
+    //        |    |      |    |  |      |
+    //        |    |      |    |  |  kwrest_params
+    //        |    |      |    |  |
+    //        |    |      |    | kwargs
+    //        |    |      |    |
+    //        |    |      | more_required_params
+    //        |    |      |
+    //        |    |  rest_params
+    //        |    |
+    //        | optional params
+    //        |
+    //    required params
+    let required_params = (params.1).unwrap_or(Vec::new());
+    let optional_params = (params.2).unwrap_or(Vec::new());
+    let rest_param = params.3;
+    let more_required_params = (params.4).unwrap_or(Vec::new());
+    let kwargs = (params.5).unwrap_or(Vec::new());
+    let kwrest_params = params.6;
+    let block_arg = params.7;
+
+    let formats: Vec<Box<dyn FnOnce(&mut ParserState) -> bool>> = vec![
+        Box::new(move |ps: &mut ParserState| format_required_params(ps, required_params)),
+        Box::new(move |ps: &mut ParserState| format_optional_params(ps, optional_params)),
+        Box::new(move |ps: &mut ParserState| format_rest_param(ps, rest_param)),
+        Box::new(move |ps: &mut ParserState| {
+            format_required_params(ps, more_required_params)
+        }),
+        Box::new(move |ps: &mut ParserState| format_kwargs(ps, kwargs)),
+        Box::new(move |ps: &mut ParserState| format_kwrest_params(ps, kwrest_params)),
+        Box::new(move |ps: &mut ParserState| format_block_arg(ps, block_arg)),
+    ];
+
+    for (idx, format_fn) in formats.into_iter().enumerate() {
+        let did_emit = format_fn(ps);
+        let have_more = non_null_positions[idx + 1..].into_iter().any(|&v| v);
+
+        if did_emit && have_more {
+            ps.emit_comma();
+            ps.emit_soft_newline();
+        }
+    }
+}
+
+
+pub fn format_blockvar(ps: &mut ParserState, bv: BlockVar) {
+    let f_params = match bv.2 {
+        BlockLocalVariables::Present(v) => Some(v),
+        _ => None,
+    };
+
+    let params = bv.1;
+
+    let have_any_params = match &params {
+        Some(params) => params.non_null_positions().iter().any(|&v| v) || f_params.is_some(),
+        None => f_params.is_some(),
+    };
+
+    if !have_any_params {
+        return
+    }
+
+    ps.breakable_of(" |".to_string(), "|".to_string(), |ps| {
+        ps.breakable_entry(|ps| {
+            match params {
+                Some(params) => inner_format_params(ps, params),
+                None => {},
+            }
+
+            match f_params {
+                None => {},
+                Some(f_params) => {
+                    if f_params.len() > 0 {
+                        ps.emit_ident(";".to_string());
+
+                        ps.with_start_of_line(false, |ps| {
+                            format_list_like_thing_items(
+                                ps,
+                                f_params.into_iter().map(|ident| Expression::Ident(ident)).collect(),
+                                true,
+                            );
+                        });
+                    }
+                }
+            }
+            ps.emit_collapsing_newline();
+        });
+    });
+
+}
+
 pub fn format_params(
     ps: &mut ParserState,
     params: Params,
     open_delim: String,
     close_delim: String,
 ) {
-    let non_null_positions = vec![
-        (params.1).is_some(),
-        (params.2).is_some(),
-        (params.3).is_some(),
-        (params.4).is_some(),
-        (params.5).is_some(),
-        (params.6).is_some(),
-        (params.7).is_some(),
-    ];
-
-    let have_any_params = non_null_positions.iter().any(|&x| x);
+    let have_any_params = params.non_null_positions().iter().any(|&x| x);
     if !have_any_params {
         return;
     }
 
     ps.breakable_of(open_delim, close_delim, |ps| {
         ps.breakable_entry(|ps| {
-            //def foo(a, b=nil, *args, d, e:, **kwargs, &blk)
-            //        ^  ^___^  ^___^  ^  ^    ^_____^   ^
-            //        |    |      |    |  |      |       |
-            //        |    |      |    |  |      |    block_arg
-            //        |    |      |    |  |      |
-            //        |    |      |    |  |  kwrest_params
-            //        |    |      |    |  |
-            //        |    |      |    | kwargs
-            //        |    |      |    |
-            //        |    |      | more_required_params
-            //        |    |      |
-            //        |    |  rest_params
-            //        |    |
-            //        | optional params
-            //        |
-            //    required params
-            let required_params = (params.1).unwrap_or(Vec::new());
-            let optional_params = (params.2).unwrap_or(Vec::new());
-            let rest_param = params.3;
-            let more_required_params = (params.4).unwrap_or(Vec::new());
-            let kwargs = (params.5).unwrap_or(Vec::new());
-            let kwrest_params = params.6;
-            let block_arg = params.7;
-
-            let formats: Vec<Box<dyn FnOnce(&mut ParserState) -> bool>> = vec![
-                Box::new(move |ps: &mut ParserState| format_required_params(ps, required_params)),
-                Box::new(move |ps: &mut ParserState| format_optional_params(ps, optional_params)),
-                Box::new(move |ps: &mut ParserState| format_rest_param(ps, rest_param)),
-                Box::new(move |ps: &mut ParserState| {
-                    format_required_params(ps, more_required_params)
-                }),
-                Box::new(move |ps: &mut ParserState| format_kwargs(ps, kwargs)),
-                Box::new(move |ps: &mut ParserState| format_kwrest_params(ps, kwrest_params)),
-                Box::new(move |ps: &mut ParserState| format_block_arg(ps, block_arg)),
-            ];
-
-            for (idx, format_fn) in formats.into_iter().enumerate() {
-                let did_emit = format_fn(ps);
-                let have_more = non_null_positions[idx + 1..].into_iter().any(|&v| v);
-
-                if did_emit && have_more {
-                    ps.emit_comma();
-                    ps.emit_soft_newline();
-                }
-            }
+            inner_format_params(ps, params);
             ps.emit_collapsing_newline();
         });
     });
@@ -1631,6 +1674,102 @@ pub fn format_backref(ps: &mut ParserState, backref: Backref) {
     }
 }
 
+pub fn format_method_add_block(ps: &mut ParserState, mab: MethodAddBlock) {
+    if ps.at_start_of_line() {
+        ps.emit_indent();
+    }
+
+    let method_call = match mab.1 {
+        MethodAddArgOrCall::MethodAddArg(maa) => maa.to_method_call(),
+        MethodAddArgOrCall::Call(call) => call.to_method_call(),
+    };
+
+    ps.with_start_of_line(false, |ps| {
+        format_method_call(ps, method_call);
+    });
+
+    // safe to unconditionally emit a space here, we don't have to worry
+    // about not having a block, method_add_block can only be parsed if we
+    // do in fact have a block
+    ps.emit_space();
+
+    match mab.2 {
+        Block::DoBlock(do_block) => format_do_block(ps, do_block),
+        Block::BraceBlock(brace_block) => format_brace_block(ps, brace_block),
+    }
+
+    if ps.at_start_of_line() {
+        ps.emit_newline();
+    }
+}
+
+pub fn format_brace_block(ps: &mut ParserState, brace_block: BraceBlock) {
+    let mut next_ps = ParserState::new_with_depth_stack_from(ps);
+
+    let bv = brace_block.1;
+    let body = brace_block.2;
+
+    let new_body = body.clone();
+    next_ps.new_block(|next_ps| {
+        next_ps.with_formatting_context(FormattingContext::CurlyBlock, |next_ps| {
+            for expr in new_body.into_iter() {
+                format_expression(next_ps, expr);
+            }
+        });
+    });
+
+    let data = next_ps.render_to_buffer();
+    let is_multiline = data.into_iter().any(|v| v == ('\n' as u8));
+
+    ps.emit_ident("{".to_string());
+
+    match bv {
+        Some(bv) => format_blockvar(ps, bv),
+        None => {},
+    }
+
+    if is_multiline {
+        ps.emit_newline();
+    } else {
+        ps.emit_space();
+    }
+
+    ps.new_block(|ps| {
+        ps.with_start_of_line(is_multiline, |ps| {
+            for expr in body.into_iter() {
+                format_expression(ps, expr);
+            }
+        });
+    });
+
+    if is_multiline {
+        ps.emit_indent();
+    } else {
+        ps.emit_space();
+    }
+
+    ps.emit_ident("}".to_string());
+}
+
+pub fn format_do_block(ps: &mut ParserState, do_block: DoBlock) {
+    ps.emit_do_keyword();
+
+    let bv = do_block.1;
+    let body = do_block.2;
+
+    match bv {
+        Some(bv) => format_blockvar(ps, bv),
+        None => {},
+    }
+
+    ps.emit_newline();
+    ps.new_block(|ps| {
+        format_bodystmt(ps, body, false);
+    });
+
+    ps.with_start_of_line(true, |ps| { ps.emit_end() });
+}
+
 pub fn format_yield(ps: &mut ParserState, y: Yield) {
     if ps.at_start_of_line() {
         ps.emit_indent();
@@ -1702,6 +1841,7 @@ pub fn format_expression(ps: &mut ParserState, expression: Expression) {
         Expression::RegexpLiteral(regexp) => format_regexp_literal(ps, regexp),
         Expression::Backref(backref) => format_backref(ps, backref),
         Expression::Yield(y) => format_yield(ps, y),
+        Expression::MethodAddBlock(mab) => format_method_add_block(ps, mab),
         e => {
             panic!("got unknown token: {:?}", e);
         }
