@@ -111,6 +111,7 @@ pub enum Expression {
     Backref(Backref),
     Yield(Yield),
     MethodAddBlock(MethodAddBlock),
+    While(While),
 }
 
 def_tag!(if_tag, "if");
@@ -1322,3 +1323,7 @@ pub struct DoBlock(do_block_tag, pub Option<BlockVar>, pub BodyStmt);
 def_tag!(brace_block_tag, "brace_block");
 #[derive(Deserialize, Debug, Clone)]
 pub struct BraceBlock(brace_block_tag, pub Option<BlockVar>, pub Vec<Expression>);
+
+def_tag!(while_tag, "while");
+#[derive(Deserialize, Debug, Clone)]
+pub struct While(while_tag, pub Box<Expression>, pub Vec<Expression>);
