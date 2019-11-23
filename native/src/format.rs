@@ -53,9 +53,7 @@ pub fn inner_format_params(ps: &mut ParserState, params: Params) {
         Box::new(move |ps: &mut ParserState| format_required_params(ps, required_params)),
         Box::new(move |ps: &mut ParserState| format_optional_params(ps, optional_params)),
         Box::new(move |ps: &mut ParserState| format_rest_param(ps, rest_param)),
-        Box::new(move |ps: &mut ParserState| {
-            format_required_params(ps, more_required_params)
-        }),
+        Box::new(move |ps: &mut ParserState| format_required_params(ps, more_required_params)),
         Box::new(move |ps: &mut ParserState| format_kwargs(ps, kwargs)),
         Box::new(move |ps: &mut ParserState| format_kwrest_params(ps, kwrest_params)),
         Box::new(move |ps: &mut ParserState| format_block_arg(ps, block_arg)),
@@ -72,7 +70,6 @@ pub fn inner_format_params(ps: &mut ParserState, params: Params) {
     }
 }
 
-
 pub fn format_blockvar(ps: &mut ParserState, bv: BlockVar) {
     let f_params = match bv.2 {
         BlockLocalVariables::Present(v) => Some(v),
@@ -87,18 +84,18 @@ pub fn format_blockvar(ps: &mut ParserState, bv: BlockVar) {
     };
 
     if !have_any_params {
-        return
+        return;
     }
 
     ps.breakable_of(" |".to_string(), "|".to_string(), |ps| {
         ps.breakable_entry(|ps| {
             match params {
                 Some(params) => inner_format_params(ps, params),
-                None => {},
+                None => {}
             }
 
             match f_params {
-                None => {},
+                None => {}
                 Some(f_params) => {
                     if f_params.len() > 0 {
                         ps.emit_ident(";".to_string());
@@ -106,7 +103,10 @@ pub fn format_blockvar(ps: &mut ParserState, bv: BlockVar) {
                         ps.with_start_of_line(false, |ps| {
                             format_list_like_thing_items(
                                 ps,
-                                f_params.into_iter().map(|ident| Expression::Ident(ident)).collect(),
+                                f_params
+                                    .into_iter()
+                                    .map(|ident| Expression::Ident(ident))
+                                    .collect(),
                                 true,
                             );
                         });
@@ -116,7 +116,6 @@ pub fn format_blockvar(ps: &mut ParserState, bv: BlockVar) {
             ps.emit_collapsing_newline();
         });
     });
-
 }
 
 pub fn format_params(
@@ -1725,7 +1724,7 @@ pub fn format_brace_block(ps: &mut ParserState, brace_block: BraceBlock) {
 
     match bv {
         Some(bv) => format_blockvar(ps, bv),
-        None => {},
+        None => {}
     }
 
     if is_multiline {
@@ -1759,7 +1758,7 @@ pub fn format_do_block(ps: &mut ParserState, do_block: DoBlock) {
 
     match bv {
         Some(bv) => format_blockvar(ps, bv),
-        None => {},
+        None => {}
     }
 
     ps.emit_newline();
@@ -1767,7 +1766,7 @@ pub fn format_do_block(ps: &mut ParserState, do_block: DoBlock) {
         format_bodystmt(ps, body, false);
     });
 
-    ps.with_start_of_line(true, |ps| { ps.emit_end() });
+    ps.with_start_of_line(true, |ps| ps.emit_end());
 }
 
 pub fn format_yield(ps: &mut ParserState, y: Yield) {

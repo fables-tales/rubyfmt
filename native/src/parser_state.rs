@@ -153,7 +153,7 @@ impl ParserState {
         self.push_token(Keyword::new("def".to_string()));
     }
 
-    pub fn emit_do_keyword(&mut self ) {
+    pub fn emit_do_keyword(&mut self) {
         self.push_token(Keyword::new("do".to_string()));
     }
 
@@ -340,7 +340,9 @@ impl ParserState {
     }
 
     pub fn render_with_blank_state<F>(ps: &mut ParserState, f: F) -> ParserState
-        where F: FnOnce(&mut ParserState) {
+    where
+        F: FnOnce(&mut ParserState),
+    {
         let mut next_ps = ParserState::new_with_depth_stack_from(ps);
         f(&mut next_ps);
         next_ps
