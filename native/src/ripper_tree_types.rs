@@ -10,7 +10,7 @@ macro_rules! def_tag {
     };
 
     ($tag_name:ident, $tag:expr) => {
-        #[derive(Serialize, Debug)]
+        #[derive(Serialize, Debug, Clone)]
         pub struct $tag_name;
         impl<'de> Deserialize<'de> for $tag_name {
             fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
@@ -51,10 +51,10 @@ macro_rules! def_tag {
 }
 
 def_tag!(program_tag, "program");
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 pub struct Program(pub program_tag, pub Vec<Expression>);
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 #[serde(untagged)]
 pub enum Expression {
     Class(Class),
@@ -110,10 +110,11 @@ pub enum Expression {
     RegexpLiteral(RegexpLiteral),
     Backref(Backref),
     Yield(Yield),
+    MethodAddBlock(MethodAddBlock),
 }
 
 def_tag!(if_tag, "if");
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 pub struct If(
     pub if_tag,
     pub Box<Expression>,
@@ -121,7 +122,7 @@ pub struct If(
     pub Option<ElsifOrElse>,
 );
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 #[serde(untagged)]
 pub enum ElsifOrElse {
     Elsif(Elsif),
@@ -129,7 +130,7 @@ pub enum ElsifOrElse {
 }
 
 def_tag!(elsif_tag, "elsif");
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 pub struct Elsif(
     pub elsif_tag,
     pub Box<Expression>,
@@ -138,22 +139,22 @@ pub struct Elsif(
 );
 
 def_tag!(else_tag, "else");
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 pub struct Else(pub else_tag, pub Vec<Expression>);
 
 def_tag!(undef_tag, "undef");
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 pub struct Undef(pub undef_tag, pub Vec<SymbolLiteral>);
 
 def_tag!(string_concat_tag, "string_concat");
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 pub struct StringConcat(
     pub string_concat_tag,
     pub StringConcatOrStringLiteral,
     pub StringLiteral,
 );
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 #[serde(untagged)]
 pub enum StringConcatOrStringLiteral {
     StringConcat(Box<StringConcat>),
@@ -161,14 +162,14 @@ pub enum StringConcatOrStringLiteral {
 }
 
 def_tag!(mrhs_add_star_tag, "mrhs_add_star");
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 pub struct MRHSAddStar(
     pub mrhs_add_star_tag,
     pub MRHSNewFromArgsOrEmpty,
     pub Box<Expression>,
 );
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 #[serde(untagged)]
 pub enum MRHSNewFromArgsOrEmpty {
     MRHSNewFromArgs(MRHSNewFromArgs),
@@ -216,7 +217,7 @@ pub enum MRHSNewFromArgsOrEmpty {
 //
 // so we need to implement a custom deserializer, I am sad
 def_tag!(mrhs_new_from_args_tag, "mrhs_new_from_args");
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct MRHSNewFromArgs(
     pub mrhs_new_from_args_tag,
     pub ArgsAddStarOrExpressionList,
@@ -274,34 +275,34 @@ impl<'de> Deserialize<'de> for MRHSNewFromArgs {
 }
 
 def_tag!(rescue_mod_tag, "rescue_mod");
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 pub struct RescueMod(pub rescue_mod_tag, pub Box<Expression>, pub Box<Expression>);
 
 def_tag!(defined_tag, "defined");
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 pub struct Defined(pub defined_tag, pub Box<Expression>);
 
 def_tag!(top_const_ref_tag, "top_const_ref");
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 pub struct TopConstRef(pub top_const_ref_tag, pub Const);
 
 def_tag!(top_const_field_tag, "top_const_field");
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 pub struct TopConstField(pub top_const_field_tag, pub Const);
 
 def_tag!(const_path_ref_tag, "const_path_ref");
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 pub struct ConstPathRef(pub const_path_ref_tag, pub Box<Expression>, pub Const);
 
 def_tag!(const_ref_tag, "const_ref");
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 pub struct ConstRef(pub const_ref_tag, pub Const);
 
 def_tag!(command_tag, "command");
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 pub struct Command(pub command_tag, pub Ident, pub ArgsAddBlockOrExpressionList);
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 #[serde(untagged)]
 pub enum ArgsAddBlockOrExpressionList {
     ArgsAddBlock(ArgsAddBlock),
@@ -325,21 +326,21 @@ impl Command {
 }
 
 def_tag!(assign_tag, "assign");
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 pub struct Assign(pub assign_tag, pub Assignable, pub Box<Expression>);
 
 def_tag!(massign_tag, "massign");
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 pub struct MAssign(pub massign_tag, pub Vec<Assignable>, pub MRHS);
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 #[serde(untagged)]
 pub enum IdentOrVarField {
     Ident(Ident),
     VarField(VarField),
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 #[serde(untagged)]
 pub enum Assignable {
     VarField(VarField),
@@ -349,18 +350,18 @@ pub enum Assignable {
 }
 
 def_tag!(const_path_field_tag, "const_path_field");
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 pub struct ConstPathField(pub const_path_field_tag, pub Box<Expression>, pub Const);
 
 def_tag!(var_field_tag, "var_field");
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 pub struct VarField(pub var_field_tag, pub VarRefType);
 
 def_tag!(var_ref_tag, "var_ref");
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 pub struct VarRef(pub var_ref_tag, pub VarRefType);
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 #[serde(untagged)]
 pub enum VarRefType {
     GVar(GVar),
@@ -372,23 +373,23 @@ pub enum VarRefType {
 }
 
 def_tag!(gvar_tag, "@gvar");
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 pub struct GVar(pub gvar_tag, pub String, pub LineCol);
 
 def_tag!(ivar_tag, "@ivar");
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 pub struct IVar(pub ivar_tag, pub String, pub LineCol);
 
 def_tag!(cvar_tag, "@cvar");
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 pub struct CVar(pub cvar_tag, pub String, pub LineCol);
 
 def_tag!(heredoc_string_literal_tag, "heredoc_string_literal");
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 pub struct HeredocStringLiteral(pub heredoc_string_literal_tag, pub (String, String));
 
 def_tag!(string_literal_tag, "string_literal");
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct StringLiteral(
     pub string_literal_tag,
     pub Option<HeredocStringLiteral>,
@@ -402,7 +403,7 @@ impl<'de> Deserialize<'de> for StringLiteral {
     {
         struct StringLiteralVisitor;
 
-        #[derive(Deserialize, Debug)]
+        #[derive(Deserialize, Debug, Clone)]
         #[serde(untagged)]
         enum HeredocOrStringContent {
             Heredoc(HeredocStringLiteral),
@@ -449,11 +450,11 @@ impl<'de> Deserialize<'de> for StringLiteral {
 }
 
 def_tag!(xstring_literal_tag, "xstring_literal");
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 pub struct XStringLiteral(pub xstring_literal_tag, pub Vec<StringContentPart>);
 
 def_tag!(dyna_symbol_tag, "dyna_symbol");
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 pub struct DynaSymbol(pub dyna_symbol_tag, pub StringContentOrStringContentParts);
 
 impl DynaSymbol {
@@ -471,7 +472,7 @@ impl DynaSymbol {
     }
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 #[serde(untagged)]
 pub enum StringContentOrStringContentParts {
     StringContent(StringContent),
@@ -479,18 +480,18 @@ pub enum StringContentOrStringContentParts {
 }
 
 def_tag!(tstring_content_tag, "@tstring_content");
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 pub struct TStringContent(pub tstring_content_tag, pub String, pub LineCol);
 
 def_tag!(string_embexpr_tag, "string_embexpr");
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 pub struct StringEmbexpr(pub string_embexpr_tag, pub Vec<Expression>);
 
 def_tag!(string_dvar_tag, "string_dvar");
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 pub struct StringDVar(pub string_dvar_tag, pub Box<Expression>);
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 #[serde(untagged)]
 pub enum StringContentPart {
     TStringContent(TStringContent),
@@ -499,7 +500,7 @@ pub enum StringContentPart {
 }
 
 def_tag!(string_content_tag, "string_content");
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct StringContent(pub string_content_tag, pub Vec<StringContentPart>);
 
 impl<'de> Deserialize<'de> for StringContent {
@@ -544,10 +545,10 @@ impl<'de> Deserialize<'de> for StringContent {
 }
 
 def_tag!(array_tag, "array");
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 pub struct Array(pub array_tag, pub SimpleArrayOrPercentArray);
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 #[serde(untagged)]
 pub enum SimpleArrayOrPercentArray {
     SimpleArray(Option<ArgsAddStarOrExpressionList>),
@@ -555,7 +556,7 @@ pub enum SimpleArrayOrPercentArray {
     UpperPercentArray((String, Vec<Vec<StringContentPart>>, LineCol)),
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 #[serde(untagged)]
 pub enum ArgsAddStarOrExpressionList {
     ExpressionList(Vec<Expression>),
@@ -578,7 +579,7 @@ impl ArgsAddStarOrExpressionList {
 }
 
 def_tag!(args_add_star_tag, "args_add_star");
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ArgsAddStar(
     pub args_add_star_tag,
     pub Box<ArgsAddStarOrExpressionList>,
@@ -641,15 +642,15 @@ impl<'de> Deserialize<'de> for ArgsAddStar {
 }
 
 def_tag!(alias_tag, "alias");
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 pub struct Alias(pub alias_tag, pub SymbolLiteral, pub SymbolLiteral);
 
 def_tag!(paren_expr_tag, "paren");
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 pub struct ParenExpr(pub paren_expr_tag, pub Vec<Expression>);
 
 def_tag!(dot2_tag, "dot2");
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 pub struct Dot2(
     pub dot2_tag,
     pub Option<Box<Expression>>,
@@ -657,7 +658,7 @@ pub struct Dot2(
 );
 
 def_tag!(dot3_tag, "dot3");
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 pub struct Dot3(
     pub dot3_tag,
     pub Option<Box<Expression>>,
@@ -665,12 +666,12 @@ pub struct Dot3(
 );
 
 def_tag!(void_stmt_tag, "void_stmt");
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 pub struct VoidStmt(pub (void_stmt_tag,));
 
 // isn't parsable, but we do create it in our "normalized tree"
 def_tag!(method_call_tag, "method_call");
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 pub struct MethodCall(
     pub method_call_tag,
     pub Vec<CallChainElement>,
@@ -691,15 +692,15 @@ impl MethodCall {
 }
 
 def_tag!(def_tag, "def");
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 pub struct Def(pub def_tag, pub Ident, pub ParenOrParams, pub BodyStmt);
 
 def_tag!(begin_tag, "begin");
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 pub struct Begin(pub begin_tag, pub BodyStmt);
 
 def_tag!(bodystmt_tag, "bodystmt");
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 pub struct BodyStmt(
     pub bodystmt_tag,
     pub Vec<Expression>,
@@ -709,7 +710,7 @@ pub struct BodyStmt(
 );
 
 def_tag!(rescue_tag, "rescue");
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 pub struct Rescue(
     pub rescue_tag,
     pub Option<MRHS>,
@@ -718,7 +719,7 @@ pub struct Rescue(
     pub Option<Box<Rescue>>,
 );
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 #[serde(untagged)]
 pub enum MRHS {
     Single(Vec<Expression>),
@@ -727,19 +728,19 @@ pub enum MRHS {
 }
 
 def_tag!(rescue_else_tag, "else");
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 pub struct RescueElse(pub rescue_else_tag, pub Option<Vec<Expression>>);
 
 def_tag!(ensure_tag, "ensure");
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 pub struct Ensure(pub ensure_tag, pub Option<Vec<Expression>>);
 
 def_tag!(vcall);
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 pub struct VCall(pub vcall, pub Box<Expression>);
 
 def_tag!(command_call_tag, "command_call");
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 pub struct CommandCall(
     command_call_tag,
     pub Box<Expression>,
@@ -763,7 +764,7 @@ impl CommandCall {
 }
 
 def_tag!(const_tag, "@const");
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 pub struct Const(pub const_tag, pub String, pub LineCol);
 
 impl Const {
@@ -773,7 +774,7 @@ impl Const {
 }
 
 def_tag!(ident_tag, "@ident");
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 pub struct Ident(pub ident_tag, pub String, pub LineCol);
 
 impl Ident {
@@ -785,7 +786,7 @@ impl Ident {
     }
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 #[serde(untagged)]
 pub enum ParenOrParams {
     Paren(Paren),
@@ -793,11 +794,11 @@ pub enum ParenOrParams {
 }
 
 def_tag!(paren_tag, "paren");
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 pub struct Paren(pub paren_tag, pub Params);
 
 def_tag!(params_tag, "params");
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 pub struct Params(
     pub params_tag,
     pub Option<Vec<Ident>>,
@@ -809,7 +810,21 @@ pub struct Params(
     pub Option<BlockArg>,
 );
 
-#[derive(Deserialize, Debug)]
+impl Params {
+    pub fn non_null_positions(&self) -> Vec<bool> {
+        vec![
+            (self.1).is_some(),
+            (self.2).is_some(),
+            (self.3).is_some(),
+            (self.4).is_some(),
+            (self.5).is_some(),
+            (self.6).is_some(),
+            (self.7).is_some(),
+        ]
+    }
+}
+
+#[derive(Deserialize, Debug, Clone)]
 #[serde(untagged)]
 pub enum ExpressionOrFalse {
     Expression(Expression),
@@ -817,25 +832,25 @@ pub enum ExpressionOrFalse {
 }
 
 def_tag!(rest_param_tag, "rest_param");
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 pub struct RestParam(pub rest_param_tag, pub Option<IdentOrVarField>);
 
 def_tag!(kw_rest_param_tag, "kwrest_param");
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 pub struct KwRestParam(pub kw_rest_param_tag, pub Option<Ident>);
 
 def_tag!(blockarg_tag, "blockarg");
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 pub struct BlockArg(pub blockarg_tag, pub Ident);
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 pub struct LineCol(pub LineNumber, pub u64);
 
 def_tag!(dotCall, "call");
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 pub struct DotCall(pub dotCall);
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 #[serde(untagged)]
 pub enum CallExpr {
     FCall(FCall),
@@ -843,7 +858,7 @@ pub enum CallExpr {
     Expression(Box<Expression>),
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 #[serde(untagged)]
 pub enum CallChainElement {
     Expression(Box<Expression>),
@@ -851,7 +866,7 @@ pub enum CallChainElement {
 }
 
 def_tag!(method_add_arg_tag, "method_add_arg");
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 pub struct MethodAddArg(pub method_add_arg_tag, pub CallExpr, pub ArgNode);
 
 pub fn normalize_inner_call(call_expr: CallExpr) -> (Vec<CallChainElement>, Box<Expression>) {
@@ -907,10 +922,10 @@ impl MethodAddArg {
 }
 
 def_tag!(fcall_tag, "fcall");
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 pub struct FCall(pub fcall_tag, pub Ident);
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 #[serde(untagged)]
 pub enum ArgNode {
     ArgParen(ArgParen),
@@ -922,10 +937,10 @@ pub enum ArgNode {
 }
 
 def_tag!(arg_paren_tag, "arg_paren");
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 pub struct ArgParen(pub arg_paren_tag, pub Box<ArgNode>);
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 #[serde(untagged)]
 pub enum MaybeBlock {
     NoBlock(bool),
@@ -933,7 +948,7 @@ pub enum MaybeBlock {
 }
 
 def_tag!(args_add_block_tag, "args_add_block");
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 pub struct ArgsAddBlock(
     pub args_add_block_tag,
     pub ArgsAddStarOrExpressionList,
@@ -941,22 +956,22 @@ pub struct ArgsAddBlock(
 );
 
 def_tag!(int_tag, "@int");
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 pub struct Int(pub int_tag, pub String, pub LineCol);
 
 def_tag!(bare_assoc_hash_tag, "bare_assoc_hash");
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 pub struct BareAssocHash(pub bare_assoc_hash_tag, pub Vec<AssocNewOrAssocSplat>);
 
 def_tag!(hash_tag, "hash");
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 pub struct Hash(pub hash_tag, pub Option<AssocListFromArgs>);
 
 def_tag!(assoclist_from_args_tag, "assoclist_from_args");
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 pub struct AssocListFromArgs(pub assoclist_from_args_tag, pub Vec<AssocNewOrAssocSplat>);
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 #[serde(untagged)]
 pub enum AssocNewOrAssocSplat {
     AssocNew(AssocNew),
@@ -964,14 +979,14 @@ pub enum AssocNewOrAssocSplat {
 }
 
 def_tag!(assoc_new_tag, "assoc_new");
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 pub struct AssocNew(pub assoc_new_tag, pub AssocKey, pub Expression);
 
 def_tag!(assoc_splat_tag, "assoc_splat");
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 pub struct AssocSplat(pub assoc_splat_tag, pub Expression);
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 #[serde(untagged)]
 pub enum AssocKey {
     Label(Label),
@@ -979,14 +994,14 @@ pub enum AssocKey {
 }
 
 def_tag!(label_tag, "@label");
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 pub struct Label(pub label_tag, pub String, pub LineCol);
 
 def_tag!(symbol_literal_tag, "symbol_literal");
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 pub struct SymbolLiteral(pub symbol_literal_tag, pub SymbolOrBare);
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 #[serde(untagged)]
 pub enum SymbolOrBare {
     Ident(Ident),
@@ -994,7 +1009,7 @@ pub enum SymbolOrBare {
     Symbol(Symbol),
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 #[serde(untagged)]
 pub enum IdentOrConst {
     Ident(Ident),
@@ -1002,11 +1017,11 @@ pub enum IdentOrConst {
 }
 
 def_tag!(symbol_tag, "symbol");
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 pub struct Symbol(pub symbol_tag, pub IdentOrConst);
 
 def_tag!(call_tag, "call");
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 pub struct Call(
     pub call_tag,
     pub Box<Expression>,
@@ -1026,7 +1041,7 @@ impl Call {
     }
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 #[serde(untagged)]
 pub enum Operator {
     Equals(Equals),
@@ -1034,14 +1049,14 @@ pub enum Operator {
     LonelyOperator(LonelyOperator),
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 #[serde(untagged)]
 pub enum DotType {
     Dot(Dot),
     LonelyOperator(LonelyOperator),
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 #[serde(untagged)]
 pub enum DotTypeOrOp {
     DotType(DotType),
@@ -1051,44 +1066,44 @@ pub enum DotTypeOrOp {
 }
 
 def_tag!(period_tag, "@period");
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 pub struct Period(pub period_tag, pub String, pub LineCol);
 
 def_tag!(equals_tag, "==");
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 pub struct Equals(pub equals_tag);
 
 def_tag!(dot_tag, ".");
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 pub struct Dot(pub dot_tag);
 
 def_tag!(colon_colon_tag, "::");
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 pub struct ColonColon(pub colon_colon_tag);
 
 def_tag!(lonely_operator_tag, "&.");
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 pub struct LonelyOperator(pub lonely_operator_tag);
 
 def_tag!(op_tag, "@op");
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 pub struct Op(pub op_tag, pub Operator, pub LineCol);
 
 def_tag!(next_tag, "next");
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 pub struct Next(pub next_tag, pub ArgsAddBlockOrExpressionList);
 
 def_tag!(if_mod_tag, "if_mod");
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 pub struct IfMod(pub if_mod_tag, pub Box<Expression>, pub Box<Expression>);
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum UnaryType {
     Not,
 }
 
 def_tag!(unary_tag, "unary");
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Unary(pub unary_tag, pub UnaryType, pub Box<Expression>);
 
 impl<'de> Deserialize<'de> for Unary {
@@ -1135,7 +1150,7 @@ impl<'de> Deserialize<'de> for Unary {
 }
 
 def_tag!(super_tag, "super");
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 pub struct Super(pub super_tag, pub ArgNode);
 
 impl Super {
@@ -1150,10 +1165,10 @@ impl Super {
 }
 
 def_tag!(kw_tag, "@kw");
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 pub struct Kw(pub kw_tag, pub String, pub LineCol);
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 #[serde(untagged)]
 pub enum ConstPathRefOrConstRef {
     ConstPathRef(ConstPathRef),
@@ -1161,7 +1176,7 @@ pub enum ConstPathRefOrConstRef {
 }
 
 def_tag!(class_tag, "class");
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 pub struct Class(
     pub class_tag,
     pub ConstPathRefOrConstRef,
@@ -1170,11 +1185,11 @@ pub struct Class(
 );
 
 def_tag!(module_tag, "module");
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 pub struct Module(pub module_tag, pub ConstPathRefOrConstRef, pub BodyStmt);
 
 def_tag!(defs_tag, "defs");
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 pub struct Defs(
     pub defs_tag,
     pub Singleton,
@@ -1184,7 +1199,7 @@ pub struct Defs(
     pub BodyStmt,
 );
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 #[serde(untagged)]
 pub enum Singleton {
     VarRef(VarRef),
@@ -1192,7 +1207,7 @@ pub enum Singleton {
 }
 
 // can only occur in defs, Op is always `::`
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 #[serde(untagged)]
 pub enum DotOrColon {
     Period(Period),
@@ -1200,7 +1215,7 @@ pub enum DotOrColon {
 }
 
 def_tag!(binary_tag, "binary");
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 pub struct Binary(
     pub binary_tag,
     pub Box<Expression>,
@@ -1209,19 +1224,19 @@ pub struct Binary(
 );
 
 def_tag!(float_tag, "@float");
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 pub struct Float(float_tag, pub String, pub LineCol);
 
 def_tag!(aref_tag, "aref");
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 pub struct Aref(aref_tag, pub Box<Expression>, pub Option<ArgNode>);
 
 def_tag!(char_tag, "@CHAR");
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 pub struct Char(char_tag, pub String, pub LineCol);
 
 def_tag!(return_tag, "return");
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 pub struct Return(return_tag, pub ArgNode);
 
 impl Return {
@@ -1236,7 +1251,7 @@ impl Return {
 }
 
 def_tag!(regexp_literal_tag, "regexp_literal");
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 pub struct RegexpLiteral(
     regexp_literal_tag,
     pub Vec<StringContentPart>,
@@ -1244,20 +1259,66 @@ pub struct RegexpLiteral(
 );
 
 def_tag!(regexp_end_tag, "@regexp_end");
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 pub struct RegexpEnd(regexp_end_tag, pub String, pub LineCol, pub String);
 
 def_tag!(backref_tag, "@backref");
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 pub struct Backref(backref_tag, pub String, pub LineCol);
 
 def_tag!(yield_tag, "yield");
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 pub struct Yield(yield_tag, pub ParenOrArgsAddBlock);
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 #[serde(untagged)]
 pub enum ParenOrArgsAddBlock {
     ArgParen(ArgParen),
     ArgsAddBlock(ArgsAddBlock),
 }
+
+def_tag!(method_add_block_tag, "method_add_block");
+#[derive(Deserialize, Debug, Clone)]
+pub struct MethodAddBlock(method_add_block_tag, pub MethodAddArgOrCall, pub Block);
+
+#[derive(Deserialize, Debug, Clone)]
+#[serde(untagged)]
+pub enum MethodAddArgOrCall {
+    MethodAddArg(MethodAddArg),
+    Call(Call),
+}
+
+#[derive(Deserialize, Debug, Clone)]
+#[serde(untagged)]
+pub enum Block {
+    BraceBlock(BraceBlock),
+    DoBlock(DoBlock),
+}
+
+// block local variables are a nightmare, they can be false, nil, or an array
+// of idents:
+//
+// 1. nil if params are not present, and block local variables are also not
+//    specified
+// 2. false if params are present, and block local variables are not present
+// 3. a vec of idents either if params are or are not present, and block local
+//    variables are present
+#[derive(Deserialize, Debug, Clone)]
+#[serde(untagged)]
+pub enum BlockLocalVariables {
+    EmptyBecauseParamsWerePresent(bool),
+    NilBecauseParamsWereNotPresent(Option<()>),
+    Present(Vec<Ident>),
+}
+
+def_tag!(block_var_tag, "block_var");
+#[derive(Deserialize, Debug, Clone)]
+pub struct BlockVar(block_var_tag, pub Option<Params>, pub BlockLocalVariables);
+
+def_tag!(do_block_tag, "do_block");
+#[derive(Deserialize, Debug, Clone)]
+pub struct DoBlock(do_block_tag, pub Option<BlockVar>, pub BodyStmt);
+
+def_tag!(brace_block_tag, "brace_block");
+#[derive(Deserialize, Debug, Clone)]
+pub struct BraceBlock(brace_block_tag, pub Option<BlockVar>, pub Vec<Expression>);
