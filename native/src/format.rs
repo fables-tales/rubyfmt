@@ -1797,6 +1797,35 @@ pub fn format_yield(ps: &mut ParserState, y: Yield) {
     }
 }
 
+pub fn format_while(ps: &mut ParserState, w: While) {
+    if ps.at_start_of_line() {
+        ps.emit_indent();
+    }
+
+    let conditional = w.1;
+    let exprs = w.2;
+
+    ps.with_start_of_line(false, |ps| {
+        ps.emit_keyword("while".to_string());
+        ps.emit_space();
+        format_expression(ps, *conditional);
+        ps.emit_newline();
+        ps.new_block(|ps| {
+            ps.with_start_of_line(true, |ps| {
+                for expr in exprs {
+                    format_expression(ps, expr);
+                }
+            });
+        });
+    });
+
+    ps.emit_end();
+
+    if ps.at_start_of_line() {
+        ps.emit_newline();
+    }
+}
+
 pub fn format_expression(ps: &mut ParserState, expression: Expression) {
     let expression = normalize(expression);
     match expression {
@@ -1842,6 +1871,7 @@ pub fn format_expression(ps: &mut ParserState, expression: Expression) {
         Expression::Backref(backref) => format_backref(ps, backref),
         Expression::Yield(y) => format_yield(ps, y),
         Expression::MethodAddBlock(mab) => format_method_add_block(ps, mab),
+        Expression::While(w) => format_while(ps, w),
         e => {
             panic!("got unknown token: {:?}", e);
         }
