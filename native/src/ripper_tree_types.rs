@@ -746,7 +746,7 @@ pub struct CommandCall(
     command_call_tag,
     pub Box<Expression>,
     pub DotTypeOrOp,
-    pub Ident,
+    pub IdentOrConst,
     pub ArgNode,
 );
 
