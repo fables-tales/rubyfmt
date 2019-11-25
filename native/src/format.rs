@@ -1860,6 +1860,90 @@ pub fn format_mod_statement(
     }
 }
 
+pub fn format_when_or_else(ps: &mut ParserState, tail: WhenOrElse) {
+    match tail {
+        WhenOrElse::When(when) => {
+            let conditionals = when.1;
+            let body = when.2;
+            let tail = when.3;
+            ps.emit_indent();
+            ps.emit_when_keyword();
+            ps.emit_space();
+
+            ps.with_start_of_line(false, |ps| {
+                ps.breakable_of("".to_string(), "".to_string(), |ps| {
+                    ps.breakable_entry(|ps| {
+                        format_list_like_thing(
+                            ps,
+                            ArgsAddStarOrExpressionList::ExpressionList(conditionals),
+                            false,
+                        );
+                    });
+                });
+            });
+
+            ps.emit_newline();
+            ps.new_block(|ps| {
+                ps.with_start_of_line(true, |ps| {
+                    for expr in body {
+                        format_expression(ps, expr);
+                    }
+                });
+            });
+
+            match tail {
+                Some(tail) => {
+                    format_when_or_else(ps, *tail);
+                }
+                None => {}
+            };
+        }
+        WhenOrElse::Else(e) => {
+            ps.emit_indent();
+            ps.emit_else();
+            ps.emit_newline();
+
+            ps.new_block(|ps| {
+                ps.with_start_of_line(true, |ps| {
+                    for expr in e.1 {
+                        format_expression(ps, expr);
+                    }
+                });
+            });
+        }
+    }
+}
+
+pub fn format_case(ps: &mut ParserState, case: Case) {
+    if ps.at_start_of_line() {
+        ps.emit_indent();
+    }
+
+    ps.emit_case_keyword();
+
+    let case_expr = case.1;
+    let tail = case.2;
+
+    match case_expr {
+        Some(e) => {
+            ps.with_start_of_line(false, |ps| {
+                ps.emit_space();
+                format_expression(ps, *e)
+            });
+        }
+        None => {}
+    }
+    ps.emit_newline();
+    ps.with_start_of_line(true, |ps| {
+        format_when_or_else(ps, WhenOrElse::When(tail));
+        ps.emit_end();
+    });
+
+    if ps.at_start_of_line() {
+        ps.emit_newline();
+    }
+}
+
 pub fn format_expression(ps: &mut ParserState, expression: Expression) {
     let expression = normalize(expression);
     match expression {
@@ -1907,6 +1991,7 @@ pub fn format_expression(ps: &mut ParserState, expression: Expression) {
         Expression::While(w) => format_while(ps, w),
         Expression::WhileMod(wm) => format_mod_statement(ps, wm.1, wm.2, "while".to_string()),
         Expression::IfMod(wm) => format_mod_statement(ps, wm.1, wm.2, "if".to_string()),
+        Expression::Case(c) => format_case(ps, c),
         e => {
             panic!("got unknown token: {:?}", e);
         }
