@@ -191,16 +191,14 @@ pub fn format_kwargs(ps: &mut ParserState, kwargs: Vec<(Label, ExpressionOrFalse
     return true;
 }
 
-pub fn format_rest_param(ps: &mut ParserState, rest_param: Option<RestParam>) -> bool {
-    if rest_param.is_none() {
-        return false;
-    }
-
-    ps.emit_soft_indent();
-    ps.emit_ident("*".to_string());
-    ps.with_start_of_line(false, |ps| {
-        match rest_param {
-            Some(rp) => {
+pub fn format_rest_param(ps: &mut ParserState, rest_param: Option<RestParamOr0OrExcessedComma>) -> bool {
+    match rest_param {
+        None => false,
+        Some(RestParamOr0OrExcessedComma::ExcessedComma(ec)) => false,
+        Some(RestParamOr0OrExcessedComma::RestParam(rp)) => {
+            ps.emit_soft_indent();
+            ps.emit_ident("*".to_string());
+            ps.with_start_of_line(false, |ps| {
                 match rp.1 {
                     Some(IdentOrVarField::Ident(i)) => {
                         format_ident(ps, i);
@@ -212,14 +210,11 @@ pub fn format_rest_param(ps: &mut ParserState, rest_param: Option<RestParam>) ->
                         // deliberately do nothing
                     }
                 }
-            }
-            None => {
-                panic!("format_rest_param was called with none");
-            }
-        }
-    });
+            });
 
-    return true;
+            true
+        }
+    }
 }
 
 pub fn format_optional_params(
@@ -1054,7 +1049,7 @@ pub fn format_assignable(ps: &mut ParserState, v: Assignable) {
             format_const_path_field(ps, cf);
         }
         Assignable::RestParam(rp) => {
-            format_rest_param(ps, Some(rp));
+            format_rest_param(ps, Some(RestParamOr0OrExcessedComma::RestParam(rp)));
         }
         Assignable::TopConstField(tcf) => {
             format_top_const_field(ps, tcf);
