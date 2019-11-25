@@ -1289,7 +1289,6 @@ pub enum ParenOrArgsAddBlock {
     ArgsAddBlock(ArgsAddBlock),
 }
 
-
 def_tag!(yield_paren_tag, "paren");
 #[derive(Deserialize, Debug, Clone)]
 pub struct YieldParen(yield_paren_tag, pub Box<ArgNode>);
