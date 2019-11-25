@@ -5,6 +5,7 @@ use crate::line_tokens::*;
 use crate::ripper_tree_types::StringContentPart;
 use crate::types::{ColNumber, LineNumber};
 use std::io::{self, Cursor, Write};
+use std::str;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum FormattingContext {
@@ -368,7 +369,26 @@ impl ParserState {
             .push(HeredocString::new(symbol, is_squiggly, data));
     }
 
-    pub fn render_to_buffer(self) -> Vec<u8> {
+    pub fn will_render_as_multiline<F>(&mut self, f: F) -> bool
+    where
+        F: FnOnce(&mut ParserState),
+    {
+        let mut next_ps = ParserState::new_with_depth_stack_from(self);
+        f(&mut next_ps);
+        let data = next_ps.render_to_buffer();
+
+        // unsafe because we got the source code from the ruby parser
+        // and only in wildly exceptional circumstances will it not be
+        // valid utf8 and also we're only using this to newline match
+        // which should be very hard to break. The unsafe conversion
+        // here skips a utf8 check which is faster.
+        unsafe {
+            let s = str::from_utf8_unchecked(&data).to_string();
+            s.trim().chars().any(|v| v == '\n')
+        }
+    }
+
+    fn render_to_buffer(self) -> Vec<u8> {
         let mut bufio = Cursor::new(Vec::new());
         self.write(&mut bufio).expect("in memory io cannot fail");
         bufio.set_position(0);
