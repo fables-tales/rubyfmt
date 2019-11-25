@@ -994,7 +994,6 @@ impl<'de> Deserialize<'de> for ExcessedComma {
     }
 }
 
-
 impl Params {
     pub fn non_null_positions(&self) -> Vec<bool> {
         vec![

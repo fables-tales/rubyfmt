@@ -191,7 +191,10 @@ pub fn format_kwargs(ps: &mut ParserState, kwargs: Vec<(Label, ExpressionOrFalse
     return true;
 }
 
-pub fn format_rest_param(ps: &mut ParserState, rest_param: Option<RestParamOr0OrExcessedComma>) -> bool {
+pub fn format_rest_param(
+    ps: &mut ParserState,
+    rest_param: Option<RestParamOr0OrExcessedComma>,
+) -> bool {
     match rest_param {
         None => false,
         Some(RestParamOr0OrExcessedComma::ExcessedComma(ec)) => false,
@@ -240,19 +243,19 @@ pub fn format_optional_params(
 }
 
 pub fn format_mlhs(ps: &mut ParserState, mlhs: MLhs) {
-  ps.emit_open_paren();
+    ps.emit_open_paren();
 
-  ps.with_start_of_line(false, |ps| {
-      let len = (mlhs.0).len();
-      for (idx, expr) in (mlhs.0).into_iter().enumerate() {
-          format_expression(ps, expr);
-          if idx != len -1 {
-              ps.emit_comma_space();
-          }
-      }
-  });
+    ps.with_start_of_line(false, |ps| {
+        let len = (mlhs.0).len();
+        for (idx, expr) in (mlhs.0).into_iter().enumerate() {
+            format_expression(ps, expr);
+            if idx != len - 1 {
+                ps.emit_comma_space();
+            }
+        }
+    });
 
-  ps.emit_close_paren();
+    ps.emit_close_paren();
 }
 
 pub fn format_required_params(ps: &mut ParserState, required_params: Vec<IdentOrMLhs>) -> bool {
