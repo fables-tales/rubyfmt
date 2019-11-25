@@ -1749,14 +1749,14 @@ pub fn format_do_block(ps: &mut ParserState, do_block: DoBlock) {
     ps.with_start_of_line(true, |ps| ps.emit_end());
 }
 
-pub fn format_yield(ps: &mut ParserState, y: Yield) {
+pub fn format_kw_with_args(ps: &mut ParserState, args: ParenOrArgsAddBlock, kw: String) {
     if ps.at_start_of_line() {
         ps.emit_indent();
     }
 
-    ps.emit_keyword("yield".to_string());
+    ps.emit_keyword(kw);
     ps.emit_space();
-    let yield_args = match y.1 {
+    let yield_args = match args {
         ParenOrArgsAddBlock::YieldParen(p) => {
             let arg = *p.1;
             match arg {
@@ -1765,6 +1765,16 @@ pub fn format_yield(ps: &mut ParserState, y: Yield) {
             }
         }
         ParenOrArgsAddBlock::ArgsAddBlock(aab) => aab,
+        ParenOrArgsAddBlock::Empty(v) => {
+            if v.len() > 0 {
+                panic!("got non empty empty in break/yield");
+            };
+            ArgsAddBlock(
+                args_add_block_tag,
+                ArgsAddStarOrExpressionList::ExpressionList(vec![]),
+                MaybeBlock::NoBlock(false),
+            )
+        }
     };
 
     ps.with_start_of_line(false, |ps| {
@@ -2026,7 +2036,8 @@ pub fn format_expression(ps: &mut ParserState, expression: Expression) {
         Expression::Hash(h) => format_hash(ps, h),
         Expression::RegexpLiteral(regexp) => format_regexp_literal(ps, regexp),
         Expression::Backref(backref) => format_backref(ps, backref),
-        Expression::Yield(y) => format_yield(ps, y),
+        Expression::Yield(y) => format_kw_with_args(ps, y.1, "yield".to_string()),
+        Expression::Break(b) => format_kw_with_args(ps, b.1, "break".to_string()),
         Expression::MethodAddBlock(mab) => format_method_add_block(ps, mab),
         Expression::While(w) => format_while(ps, w),
         Expression::WhileMod(wm) => format_mod_statement(ps, wm.1, wm.2, "while".to_string()),

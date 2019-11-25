@@ -116,6 +116,7 @@ pub enum Expression {
     Case(Case),
     Retry(Retry),
     SClass(SClass),
+    Break(Break),
 }
 
 def_tag!(if_tag, "if");
@@ -1298,11 +1299,16 @@ def_tag!(yield_tag, "yield");
 #[derive(Deserialize, Debug, Clone)]
 pub struct Yield(yield_tag, pub ParenOrArgsAddBlock);
 
+def_tag!(break_tag, "break");
+#[derive(Deserialize, Debug, Clone)]
+pub struct Break(break_tag, pub ParenOrArgsAddBlock);
+
 #[derive(Deserialize, Debug, Clone)]
 #[serde(untagged)]
 pub enum ParenOrArgsAddBlock {
     YieldParen(YieldParen),
     ArgsAddBlock(ArgsAddBlock),
+    Empty(Vec<()>),
 }
 
 def_tag!(yield_paren_tag, "paren");

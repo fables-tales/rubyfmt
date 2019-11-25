@@ -3,7 +3,7 @@ set -euxo pipefail
 
 while IFS= read -r -d '' FN
 do
-    if echo "$FN" | grep -v 'rspec'
+    if echo "$FN" | grep -v 'rspec' | grep -v '2.6'
     then
         ruby --disable=gems test.rb "$FN"
     fi
