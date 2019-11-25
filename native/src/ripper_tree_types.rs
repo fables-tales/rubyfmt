@@ -942,7 +942,7 @@ pub enum ArgNode {
     Null(Option<String>),
 }
 
-def_tag!(arg_paren_tag, "paren");
+def_tag!(arg_paren_tag, "arg_paren");
 #[derive(Deserialize, Debug, Clone)]
 pub struct ArgParen(pub arg_paren_tag, pub Box<ArgNode>);
 
@@ -1285,9 +1285,14 @@ pub struct Yield(yield_tag, pub ParenOrArgsAddBlock);
 #[derive(Deserialize, Debug, Clone)]
 #[serde(untagged)]
 pub enum ParenOrArgsAddBlock {
-    ArgParen(ArgParen),
+    YieldParen(YieldParen),
     ArgsAddBlock(ArgsAddBlock),
 }
+
+
+def_tag!(yield_paren_tag, "paren");
+#[derive(Deserialize, Debug, Clone)]
+pub struct YieldParen(yield_paren_tag, pub Box<ArgNode>);
 
 def_tag!(method_add_block_tag, "method_add_block");
 #[derive(Deserialize, Debug, Clone)]
