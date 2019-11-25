@@ -1250,33 +1250,6 @@ pub fn format_next(ps: &mut ParserState, next: Next) {
     }
 }
 
-pub fn format_conditional_mod(
-    ps: &mut ParserState,
-    right: Expression,
-    left: Expression,
-    conditional: String,
-) {
-    if ps.at_start_of_line() {
-        ps.emit_indent();
-    }
-
-    ps.with_start_of_line(false, |ps| {
-        format_expression(ps, left);
-        ps.emit_space();
-        ps.emit_ident(conditional);
-        ps.emit_space();
-        format_expression(ps, right);
-    });
-
-    if ps.at_start_of_line() {
-        ps.emit_newline();
-    }
-}
-
-pub fn format_if_mod(ps: &mut ParserState, if_mod: IfMod) {
-    format_conditional_mod(ps, *if_mod.1, *if_mod.2, "if".to_string());
-}
-
 pub fn format_unary(ps: &mut ParserState, unary: Unary) {
     if ps.at_start_of_line() {
         ps.emit_indent();
@@ -1832,13 +1805,16 @@ pub fn format_while(ps: &mut ParserState, w: While) {
     }
 }
 
-pub fn format_while_mod(ps: &mut ParserState, wm: WhileMod) {
+pub fn format_mod_statement(
+    ps: &mut ParserState,
+    conditional: Box<Expression>,
+    body: Box<Expression>,
+    name: String,
+) {
     if ps.at_start_of_line() {
         ps.emit_indent();
     }
 
-    let conditional = wm.1;
-    let body = wm.2;
     let new_body = body.clone();
 
     let is_multiline = ps.will_render_as_multiline(|next_ps| {
@@ -1875,7 +1851,7 @@ pub fn format_while_mod(ps: &mut ParserState, wm: WhileMod) {
             format_expression(ps, *body);
         }
 
-        ps.emit_ident(format!(" while "));
+        ps.emit_ident(format!(" {} ", name));
         format_expression(ps, *conditional);
     });
 
@@ -1911,7 +1887,6 @@ pub fn format_expression(ps: &mut ParserState, expression: Expression) {
         Expression::MRHSAddStar(mrhs) => format_mrhs_add_star(ps, mrhs),
         Expression::MAssign(massign) => format_massign(ps, massign),
         Expression::Next(next) => format_next(ps, next),
-        Expression::IfMod(if_mod) => format_if_mod(ps, if_mod),
         Expression::Unary(unary) => format_unary(ps, unary),
         Expression::StringConcat(sc) => format_string_concat(ps, sc),
         Expression::DynaSymbol(ds) => format_dyna_symbol(ps, ds),
@@ -1930,7 +1905,8 @@ pub fn format_expression(ps: &mut ParserState, expression: Expression) {
         Expression::Yield(y) => format_yield(ps, y),
         Expression::MethodAddBlock(mab) => format_method_add_block(ps, mab),
         Expression::While(w) => format_while(ps, w),
-        Expression::WhileMod(wm) => format_while_mod(ps, wm),
+        Expression::WhileMod(wm) => format_mod_statement(ps, wm.1, wm.2, "while".to_string()),
+        Expression::IfMod(wm) => format_mod_statement(ps, wm.1, wm.2, "if".to_string()),
         e => {
             panic!("got unknown token: {:?}", e);
         }
