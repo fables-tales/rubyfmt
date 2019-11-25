@@ -296,15 +296,15 @@ pub fn format_mrhs(ps: &mut ParserState, mrhs: Option<MRHS>) {
                     .next()
                     .expect("we checked there's one item"),
             );
-            ps.emit_space();
         }
         Some(MRHS::MRHSNewFromArgs(mnfa)) => {
             format_mrhs_new_from_args(ps, mnfa);
-            ps.emit_space();
         }
         Some(MRHS::MRHSAddStar(mas)) => {
             format_mrhs_add_star(ps, mas);
-            ps.emit_space();
+        },
+        Some(MRHS::Array(array)) => {
+            format_array(ps, array);
         }
     }
 }
@@ -335,6 +335,7 @@ pub fn format_rescue(ps: &mut ParserState, rescue_part: Option<Rescue>) {
                     }
 
                     format_mrhs(ps, class);
+                    ps.emit_space();
                     format_rescue_capture(ps, capture);
                 });
             });

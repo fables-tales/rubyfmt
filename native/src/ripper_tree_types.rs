@@ -743,6 +743,7 @@ pub enum MRHS {
     Single(Vec<Expression>),
     MRHSNewFromArgs(MRHSNewFromArgs),
     MRHSAddStar(MRHSAddStar),
+    Array(Array),
 }
 
 def_tag!(rescue_else_tag, "else");
