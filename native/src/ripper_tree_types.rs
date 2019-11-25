@@ -115,6 +115,7 @@ pub enum Expression {
     IfMod(IfMod),
     Case(Case),
     Retry(Retry),
+    SClass(SClass),
 }
 
 def_tag!(if_tag, "if");
@@ -1389,3 +1390,7 @@ pub struct CaseElse(case_else_tag, pub Vec<Expression>);
 def_tag!(retry_tag, "retry");
 #[derive(Deserialize, Debug, Clone)]
 pub struct Retry((retry_tag,));
+
+def_tag!(sclass_tag, "sclass");
+#[derive(Deserialize, Debug, Clone)]
+pub struct SClass(sclass_tag, pub Box<Expression>, pub BodyStmt);

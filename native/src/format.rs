@@ -1956,6 +1956,34 @@ pub fn format_retry(ps: &mut ParserState, _r: Retry ) {
     }
 }
 
+pub fn format_sclass(ps: &mut ParserState, sc: SClass) {
+    if ps.at_start_of_line() {
+        ps.emit_indent();
+    }
+
+    let expr = sc.1;
+    let body = sc.2;
+
+    ps.with_start_of_line(false, |ps| {
+        ps.emit_class_keyword();
+        ps.emit_space();
+        ps.emit_ident("<<".to_string());
+        ps.emit_space();
+        format_expression(ps, *expr);
+        ps.emit_newline();
+        ps.new_block(|ps| {
+            ps.with_start_of_line(true, |ps| {
+                format_bodystmt(ps, body, false);
+            });
+        });
+        ps.emit_end();
+    });
+
+    if ps.at_start_of_line() {
+        ps.emit_newline();
+    }
+}
+
 pub fn format_expression(ps: &mut ParserState, expression: Expression) {
     let expression = normalize(expression);
     match expression {
@@ -2005,6 +2033,7 @@ pub fn format_expression(ps: &mut ParserState, expression: Expression) {
         Expression::IfMod(wm) => format_mod_statement(ps, wm.1, wm.2, "if".to_string()),
         Expression::Case(c) => format_case(ps, c),
         Expression::Retry(r) => format_retry(ps, r),
+        Expression::SClass(sc) => format_sclass(ps, sc),
         e => {
             panic!("got unknown token: {:?}", e);
         }
