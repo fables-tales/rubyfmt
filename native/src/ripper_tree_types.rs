@@ -1105,6 +1105,9 @@ pub struct IfMod(pub if_mod_tag, pub Box<Expression>, pub Box<Expression>);
 #[derive(Debug, Clone)]
 pub enum UnaryType {
     Not,
+    Negative,
+    Positive,
+    BooleanNot,
 }
 
 def_tag!(unary_tag, "unary");
@@ -1140,6 +1143,9 @@ impl<'de> Deserialize<'de> for Unary {
                     .ok_or_else(|| de::Error::custom("didn't get array of expressions"))?;
                 let unary_type = match unary_type_string {
                     "not" => UnaryType::Not,
+                    "-@" => UnaryType::Negative,
+                    "+@" => UnaryType::Positive,
+                    "!" => UnaryType::BooleanNot,
                     _ => panic!("got unknown unary type {}", unary_type_string),
                 };
 
