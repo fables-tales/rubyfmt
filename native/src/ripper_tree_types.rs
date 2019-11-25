@@ -752,12 +752,16 @@ pub struct CommandCall(
 
 impl CommandCall {
     pub fn to_method_call(self) -> MethodCall {
+        let expr = match self.3 {
+            IdentOrConst::Ident(i) => Box::new(Expression::Ident(i)),
+            IdentOrConst::Const(c) => Box::new(Expression::Const(c)),
+        };
         MethodCall::new(
             vec![
                 CallChainElement::Expression(self.1),
                 CallChainElement::Dot(self.2),
             ],
-            Box::new(Expression::Ident(self.3)),
+            expr,
             false,
             normalize_args(self.4),
         )
