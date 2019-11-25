@@ -1944,7 +1944,7 @@ pub fn format_case(ps: &mut ParserState, case: Case) {
     }
 }
 
-pub fn format_retry(ps: &mut ParserState, _r: Retry ) {
+pub fn format_retry(ps: &mut ParserState, _r: Retry) {
     if ps.at_start_of_line() {
         ps.emit_indent();
     }
