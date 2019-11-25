@@ -1999,7 +1999,6 @@ pub fn format_stabby_lambda(ps: &mut ParserState, sl: StabbyLambda) {
         ps.emit_indent();
     }
 
-
     let params = sl.1;
 
     let tpe = sl.2;
@@ -2038,7 +2037,7 @@ pub fn format_stabby_lambda(ps: &mut ParserState, sl: StabbyLambda) {
                     });
                     ps.emit_ident(close_delim);
                 }
-            },
+            }
             ExpressionListOrBodyStmt::BodyStmt(bs) => {
                 ps.emit_space();
                 ps.emit_ident(open_delim);
@@ -2051,7 +2050,6 @@ pub fn format_stabby_lambda(ps: &mut ParserState, sl: StabbyLambda) {
                 ps.emit_ident(close_delim);
             }
         }
-
     });
 
     if ps.at_start_of_line() {
