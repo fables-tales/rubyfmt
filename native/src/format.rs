@@ -2135,6 +2135,7 @@ pub fn format_expression(ps: &mut ParserState, expression: Expression) {
         Expression::MethodAddBlock(mab) => format_method_add_block(ps, mab),
         Expression::While(w) => format_while(ps, w),
         Expression::WhileMod(wm) => format_mod_statement(ps, wm.1, wm.2, "while".to_string()),
+        Expression::UntilMod(um) => format_mod_statement(ps, um.1, um.2, "until".to_string()),
         Expression::IfMod(wm) => format_mod_statement(ps, wm.1, wm.2, "if".to_string()),
         Expression::Case(c) => format_case(ps, c),
         Expression::Retry(r) => format_retry(ps, r),

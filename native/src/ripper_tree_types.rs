@@ -112,6 +112,7 @@ pub enum Expression {
     MethodAddBlock(MethodAddBlock),
     While(While),
     WhileMod(WhileMod),
+    UntilMod(UntilMod),
     IfMod(IfMod),
     Case(Case),
     Retry(Retry),
@@ -1531,6 +1532,10 @@ pub struct While(while_tag, pub Box<Expression>, pub Vec<Expression>);
 def_tag!(while_mod_tag, "while_mod");
 #[derive(Deserialize, Debug, Clone)]
 pub struct WhileMod(while_mod_tag, pub Box<Expression>, pub Box<Expression>);
+
+def_tag!(until_mod_tag, "until_mod");
+#[derive(Deserialize, Debug, Clone)]
+pub struct UntilMod(until_mod_tag, pub Box<Expression>, pub Box<Expression>);
 
 def_tag!(case_tag, "case");
 #[derive(Deserialize, Debug, Clone)]
