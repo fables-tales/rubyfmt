@@ -827,12 +827,118 @@ pub struct Params(
     pub params_tag,
     pub Option<Vec<Ident>>,
     pub Option<Vec<(Ident, Expression)>>,
-    pub Option<RestParam>,
+    pub Option<RestParamOr0OrExcessedComma>,
     pub Option<Vec<Ident>>,
     pub Option<Vec<(Label, ExpressionOrFalse)>>,
     pub Option<KwRestParam>,
     pub Option<BlockArg>,
 );
+
+// on ruby 2.5 and 2.6 the params lists for blocks (only), permit a trailing
+// comma (presumably because of f params). Params lists for functions do
+// not allow this.
+//
+// valid:
+// ```ruby
+// lambda { |x,| }
+// lambda { |x, ;f }
+// ```
+// not valid:
+// ``` ruby
+// def foo(x,)
+// end
+// ```
+//
+// this causes the parser to parse the *params* node differently, even though
+// the wrapping structure is a block var:
+//
+// on 2.5:
+//
+// rr 'lambda { |x,| }'
+// [:program,
+//  [[:method_add_block,
+//    [:method_add_arg, [:fcall, [:@ident, "lambda", [1, 0]]], []],
+//    [:brace_block,
+//     [:block_var,
+//      [:params, [[:@ident, "x", [1, 10]]], nil, 0, nil, nil, nil, nil],
+//      false],
+//     [[:void_stmt]]]]]]
+// on 2.6:
+//
+// [:program,
+//  [[:method_add_block,
+//    [:method_add_arg, [:fcall, [:@ident, "lambda", [1, 0]]], []],
+//    [:brace_block,
+//     [:block_var,
+//      [:params,
+//       [[:@ident, "x", [1, 10]]],
+//       nil,
+//       [:excessed_comma],
+//       nil,
+//       nil,
+//       nil,
+//       nil],
+//      false],
+//     [[:void_stmt]]]]]]
+// this difference is in the "rest_args" position, and on 2.5 is a literal
+// integer 0 and on 2.6 a unit parser tag [:excessed_comma]. These nodes don't
+// appear to cause any semantic difference in the program.
+// So:
+//  we implement a custom deserializer for excessed comma (which at least has
+//  a name) which matches either [:excessed_comma] or the literal integer 0
+#[derive(Deserialize, Debug, Clone)]
+#[serde(untagged)]
+pub enum RestParamOr0OrExcessedComma {
+    RestParam(RestParam),
+    ExcessedComma(ExcessedComma),
+}
+
+#[derive(Debug, Clone)]
+pub struct ExcessedComma();
+
+impl<'de> Deserialize<'de> for ExcessedComma {
+    fn deserialize<D>(deserializer: D) -> Result<ExcessedComma, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        struct ExcessedCommaVisitor;
+
+        impl<'de> de::Visitor<'de> for ExcessedCommaVisitor {
+            type Value = ExcessedComma;
+            fn expecting(&self, f: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
+                write!(f, "0 or [excessed_comma]")
+            }
+
+            fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
+            where
+                A: de::SeqAccess<'de>,
+            {
+                let tag: &str = seq
+                    .next_element()?
+                    .ok_or_else(|| de::Error::custom("didn't get array of expressions"))?;
+                if tag != "excessed_comma" {
+                    return Err(de::Error::custom("didn't get ExcessedComma"));
+                } else {
+                    return Ok(ExcessedComma());
+                }
+            }
+
+            fn visit_i64<E>(self, v: i64) -> Result<Self::Value, E>
+            where
+                E: de::Error,
+            {
+                if v == 0 {
+                    return Ok(ExcessedComma());
+                } else {
+                    return Err(de::Error::custom("didn't get ExcessedComma"));
+                }
+            }
+        }
+
+        deserializer.deserialize_any(ExcessedCommaVisitor)
+    }
+}
+
 
 impl Params {
     pub fn non_null_positions(&self) -> Vec<bool> {
