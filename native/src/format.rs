@@ -1757,7 +1757,7 @@ pub fn format_yield(ps: &mut ParserState, y: Yield) {
     ps.emit_keyword("yield".to_string());
     ps.emit_space();
     let yield_args = match y.1 {
-        ParenOrArgsAddBlock::ArgParen(p) => {
+        ParenOrArgsAddBlock::YieldParen(p) => {
             let arg = *p.1;
             match arg {
                 ArgNode::ArgsAddBlock(aab) => aab,
