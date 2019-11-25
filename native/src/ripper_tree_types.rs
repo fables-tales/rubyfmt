@@ -114,6 +114,7 @@ pub enum Expression {
     WhileMod(WhileMod),
     IfMod(IfMod),
     Case(Case),
+    Retry(Retry),
 }
 
 def_tag!(if_tag, "if");
@@ -1384,3 +1385,7 @@ pub enum WhenOrElse {
 def_tag!(case_else_tag, "else");
 #[derive(Deserialize, Debug, Clone)]
 pub struct CaseElse(case_else_tag, pub Vec<Expression>);
+
+def_tag!(retry_tag, "retry");
+#[derive(Deserialize, Debug, Clone)]
+pub struct Retry((retry_tag,));
