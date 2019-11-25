@@ -113,6 +113,7 @@ pub enum Expression {
     While(While),
     WhileMod(WhileMod),
     IfMod(IfMod),
+    Case(Case),
 }
 
 def_tag!(if_tag, "if");
@@ -1346,3 +1347,27 @@ pub struct While(while_tag, pub Box<Expression>, pub Vec<Expression>);
 def_tag!(while_mod_tag, "while_mod");
 #[derive(Deserialize, Debug, Clone)]
 pub struct WhileMod(while_mod_tag, pub Box<Expression>, pub Box<Expression>);
+
+def_tag!(case_tag, "case");
+#[derive(Deserialize, Debug, Clone)]
+pub struct Case(case_tag, pub Option<Box<Expression>>, pub When);
+
+def_tag!(when_tag, "when");
+#[derive(Deserialize, Debug, Clone)]
+pub struct When(
+    when_tag,
+    pub Vec<Expression>,
+    pub Vec<Expression>,
+    pub Option<Box<WhenOrElse>>,
+);
+
+#[derive(Deserialize, Debug, Clone)]
+#[serde(untagged)]
+pub enum WhenOrElse {
+    When(When),
+    Else(CaseElse),
+}
+
+def_tag!(case_else_tag, "else");
+#[derive(Deserialize, Debug, Clone)]
+pub struct CaseElse(case_else_tag, pub Vec<Expression>);

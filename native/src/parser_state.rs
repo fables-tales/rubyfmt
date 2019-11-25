@@ -154,6 +154,14 @@ impl ParserState {
         self.push_token(Keyword::new("def".to_string()));
     }
 
+    pub fn emit_case_keyword(&mut self) {
+        self.push_token(Keyword::new("case".to_string()));
+    }
+
+    pub fn emit_when_keyword(&mut self) {
+        self.push_token(Keyword::new("when".to_string()));
+    }
+
     pub fn emit_do_keyword(&mut self) {
         self.push_token(Keyword::new("do".to_string()));
     }
