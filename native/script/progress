@@ -13,6 +13,6 @@ do
         FAIL=$((FAIL+1))
     fi
     set -e
-done <   <(find ../fixtures -type f -print0 \! -name "*2.6*")
+done <   <(find ../fixtures -type f -print0 \! -name "*2.6*" \! -name "*rspec*")
 echo success $SUCCESS
 echo fail $FAIL

@@ -3,5 +3,8 @@ set -euxo pipefail
 
 while IFS= read -r -d '' FN
 do
-    ruby test.rb "$FN"
-done <   <(find ../fixtures -type f -print0 \! -name "*2.6*")
+    if echo "$FN" | grep -v 'rspec'
+    then
+        ruby --disable=gems test.rb "$FN"
+    fi
+done <   <(find ../fixtures -type f -print0 -not -name "*2.6*")
