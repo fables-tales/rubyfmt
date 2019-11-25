@@ -2138,6 +2138,7 @@ pub fn format_expression(ps: &mut ParserState, expression: Expression) {
         Expression::SClass(sc) => format_sclass(ps, sc),
         Expression::StabbyLambda(sl) => format_stabby_lambda(ps, sl),
         Expression::Imaginary(imaginary) => format_imaginary(ps, imaginary),
+        Expression::MLhs(mlhs) => format_mlhs(ps, mlhs),
         e => {
             panic!("got unknown token: {:?}", e);
         }

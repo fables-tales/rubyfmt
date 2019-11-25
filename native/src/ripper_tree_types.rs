@@ -119,6 +119,7 @@ pub enum Expression {
     Break(Break),
     StabbyLambda(StabbyLambda),
     Imaginary(Imaginary),
+    MLhs(MLhs),
 }
 
 #[derive(Debug, Clone)]
