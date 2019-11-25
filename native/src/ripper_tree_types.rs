@@ -121,6 +121,53 @@ pub enum Expression {
     Imaginary(Imaginary),
 }
 
+#[derive(Debug, Clone)]
+pub struct MLhs(pub Vec<Expression>);
+
+impl<'de> Deserialize<'de> for MLhs {
+    fn deserialize<D>(deserializer: D) -> Result<MLhs, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        struct MLhsVisitor;
+
+        impl<'de> de::Visitor<'de> for MLhsVisitor {
+            type Value = MLhs;
+
+            fn expecting(&self, f: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
+                write!(f, "[mlhs, (expression)*]")
+            }
+
+            fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
+            where
+                A: de::SeqAccess<'de>,
+            {
+                let tag: &str = match seq.next_element() {
+                    Ok(Some(s)) => s,
+                    _ => {
+                        return Err(de::Error::custom("didn't get right tag"));
+                    }
+                };
+
+                if tag != "mlhs" {
+                    return Err(de::Error::custom("didn't get right tag"));
+                }
+
+                let mut elements = Vec::new();
+                let mut expr: Option<Expression> = seq.next_element()?;
+                while expr.is_some() {
+                    elements.push(expr.expect("we checked it's some"));
+                    expr = seq.next_element()?;
+                }
+
+                Ok(MLhs(elements))
+            }
+        }
+
+        deserializer.deserialize_seq(MLhsVisitor)
+    }
+}
+
 def_tag!(if_tag, "if");
 #[derive(Deserialize, Debug, Clone)]
 pub struct If(
@@ -817,6 +864,13 @@ pub enum ParenOrParams {
     Params(Params),
 }
 
+#[derive(Deserialize, Debug, Clone)]
+#[serde(untagged)]
+pub enum IdentOrMLhs {
+    Ident(Ident),
+    MLhs(MLhs),
+}
+
 def_tag!(paren_tag, "paren");
 #[derive(Deserialize, Debug, Clone)]
 pub struct Paren(pub paren_tag, pub Params);
@@ -825,10 +879,10 @@ def_tag!(params_tag, "params");
 #[derive(Deserialize, Debug, Clone)]
 pub struct Params(
     pub params_tag,
-    pub Option<Vec<Ident>>,
+    pub Option<Vec<IdentOrMLhs>>,
     pub Option<Vec<(Ident, Expression)>>,
     pub Option<RestParamOr0OrExcessedComma>,
-    pub Option<Vec<Ident>>,
+    pub Option<Vec<IdentOrMLhs>>,
     pub Option<Vec<(Label, ExpressionOrFalse)>>,
     pub Option<KwRestParam>,
     pub Option<BlockArg>,

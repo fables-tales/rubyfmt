@@ -239,7 +239,23 @@ pub fn format_optional_params(
     return true;
 }
 
-pub fn format_required_params(ps: &mut ParserState, required_params: Vec<Ident>) -> bool {
+pub fn format_mlhs(ps: &mut ParserState, mlhs: MLhs) {
+  ps.emit_open_paren();
+
+  ps.with_start_of_line(false, |ps| {
+      let len = (mlhs.0).len();
+      for (idx, expr) in (mlhs.0).into_iter().enumerate() {
+          format_expression(ps, expr);
+          if idx != len -1 {
+              ps.emit_comma_space();
+          }
+      }
+  });
+
+  ps.emit_close_paren();
+}
+
+pub fn format_required_params(ps: &mut ParserState, required_params: Vec<IdentOrMLhs>) -> bool {
     if required_params.is_empty() {
         return false;
     }
@@ -248,7 +264,10 @@ pub fn format_required_params(ps: &mut ParserState, required_params: Vec<Ident>)
         let len = required_params.len();
         for (idx, ident) in required_params.into_iter().enumerate() {
             ps.emit_soft_indent();
-            format_ident(ps, ident);
+            match ident {
+                IdentOrMLhs::Ident(ident) => format_ident(ps, ident),
+                IdentOrMLhs::MLhs(mlhs) => format_mlhs(ps, mlhs),
+            }
             emit_params_separator(ps, idx, len);
         }
     });
