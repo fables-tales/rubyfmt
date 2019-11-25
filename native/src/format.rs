@@ -302,7 +302,7 @@ pub fn format_mrhs(ps: &mut ParserState, mrhs: Option<MRHS>) {
         }
         Some(MRHS::MRHSAddStar(mas)) => {
             format_mrhs_add_star(ps, mas);
-        },
+        }
         Some(MRHS::Array(array)) => {
             format_array(ps, array);
         }
@@ -2058,6 +2058,19 @@ pub fn format_stabby_lambda(ps: &mut ParserState, sl: StabbyLambda) {
     }
 }
 
+pub fn format_imaginary(ps: &mut ParserState, imaginary: Imaginary) {
+    if ps.at_start_of_line() {
+        ps.emit_indent();
+    }
+
+    ps.on_line((imaginary.2).0);
+    ps.emit_ident(imaginary.1);
+
+    if ps.at_start_of_line() {
+        ps.emit_newline();
+    }
+}
+
 pub fn format_expression(ps: &mut ParserState, expression: Expression) {
     let expression = normalize(expression);
     match expression {
@@ -2110,6 +2123,7 @@ pub fn format_expression(ps: &mut ParserState, expression: Expression) {
         Expression::Retry(r) => format_retry(ps, r),
         Expression::SClass(sc) => format_sclass(ps, sc),
         Expression::StabbyLambda(sl) => format_stabby_lambda(ps, sl),
+        Expression::Imaginary(imaginary) => format_imaginary(ps, imaginary),
         e => {
             panic!("got unknown token: {:?}", e);
         }

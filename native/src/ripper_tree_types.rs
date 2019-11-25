@@ -118,6 +118,7 @@ pub enum Expression {
     SClass(SClass),
     Break(Break),
     StabbyLambda(StabbyLambda),
+    Imaginary(Imaginary),
 }
 
 def_tag!(if_tag, "if");
@@ -1420,3 +1421,7 @@ pub struct StabbyLambda(
     pub String,
     pub ExpressionListOrBodyStmt,
 );
+
+def_tag!(imaginary_tag, "@imaginary");
+#[derive(Deserialize, Debug, Clone)]
+pub struct Imaginary(imaginary_tag, pub String, pub LineCol);
