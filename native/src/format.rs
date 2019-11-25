@@ -1287,16 +1287,16 @@ pub fn format_unary(ps: &mut ParserState, unary: Unary) {
             UnaryType::Not => {
                 ps.emit_ident("not".to_string());
                 ps.emit_space();
-            },
+            }
             UnaryType::Positive => {
                 ps.emit_ident("+".to_string());
-            },
+            }
             UnaryType::Negative => {
                 ps.emit_ident("-".to_string());
-            },
+            }
             UnaryType::BooleanNot => {
                 ps.emit_ident("!".to_string());
-            },
+            }
         }
 
         format_expression(ps, *unary.2);
