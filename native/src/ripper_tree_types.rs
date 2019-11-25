@@ -59,7 +59,6 @@ pub struct Program(pub program_tag, pub Vec<Expression>);
 pub enum Expression {
     Class(Class),
     If(If),
-    IfMod(IfMod),
     Unary(Unary),
     VoidStmt(VoidStmt),
     Def(Def),
@@ -113,6 +112,7 @@ pub enum Expression {
     MethodAddBlock(MethodAddBlock),
     While(While),
     WhileMod(WhileMod),
+    IfMod(IfMod),
 }
 
 def_tag!(if_tag, "if");
