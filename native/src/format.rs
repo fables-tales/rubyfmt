@@ -1944,6 +1944,18 @@ pub fn format_case(ps: &mut ParserState, case: Case) {
     }
 }
 
+pub fn format_retry(ps: &mut ParserState, _r: Retry ) {
+    if ps.at_start_of_line() {
+        ps.emit_indent();
+    }
+
+    ps.emit_keyword("retry".to_string());
+
+    if ps.at_start_of_line() {
+        ps.emit_newline();
+    }
+}
+
 pub fn format_expression(ps: &mut ParserState, expression: Expression) {
     let expression = normalize(expression);
     match expression {
@@ -1992,6 +2004,7 @@ pub fn format_expression(ps: &mut ParserState, expression: Expression) {
         Expression::WhileMod(wm) => format_mod_statement(ps, wm.1, wm.2, "while".to_string()),
         Expression::IfMod(wm) => format_mod_statement(ps, wm.1, wm.2, "if".to_string()),
         Expression::Case(c) => format_case(ps, c),
+        Expression::Retry(r) => format_retry(ps, r),
         e => {
             panic!("got unknown token: {:?}", e);
         }
