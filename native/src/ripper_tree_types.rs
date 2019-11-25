@@ -942,7 +942,7 @@ pub enum ArgNode {
     Null(Option<String>),
 }
 
-def_tag!(arg_paren_tag, "arg_paren");
+def_tag!(arg_paren_tag, "paren");
 #[derive(Deserialize, Debug, Clone)]
 pub struct ArgParen(pub arg_paren_tag, pub Box<ArgNode>);
 
