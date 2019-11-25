@@ -1994,6 +1994,71 @@ pub fn format_sclass(ps: &mut ParserState, sc: SClass) {
     }
 }
 
+pub fn format_stabby_lambda(ps: &mut ParserState, sl: StabbyLambda) {
+    if ps.at_start_of_line() {
+        ps.emit_indent();
+    }
+
+
+    let params = sl.1;
+
+    let tpe = sl.2;
+    debug_assert!(tpe == "do".to_string() || tpe == "curly".to_string());
+
+    let body = sl.3;
+    ps.with_start_of_line(false, |ps| {
+        ps.emit_keyword("->".to_string());
+        format_paren_or_params(ps, params);
+
+        let (open_delim, close_delim) = if tpe == "do".to_string() {
+            ("do".to_string(), "end".to_string())
+        } else {
+            ("{".to_string(), "}".to_string())
+        };
+
+        match body {
+            ExpressionListOrBodyStmt::ExpresionList(bud) => {
+                let mut b = bud;
+                //lambdas typically are a single statement, so line breaking them would
+                //be masochistic
+                if tpe == "curly".to_string() && b.len() == 1 {
+                    ps.emit_ident(" { ".to_string());
+                    format_expression(ps, b.remove(0));
+                    ps.emit_ident(" }".to_string());
+                } else {
+                    ps.emit_space();
+                    ps.emit_ident(open_delim);
+                    ps.emit_newline();
+                    ps.new_block(|ps| {
+                        ps.with_start_of_line(true, |ps| {
+                            for expr in b.into_iter() {
+                                format_expression(ps, expr);
+                            }
+                        });
+                    });
+                    ps.emit_ident(close_delim);
+                }
+            },
+            ExpressionListOrBodyStmt::BodyStmt(bs) => {
+                ps.emit_space();
+                ps.emit_ident(open_delim);
+                ps.emit_newline();
+                ps.new_block(|ps| {
+                    ps.with_start_of_line(true, |ps| {
+                        format_bodystmt(ps, bs, false);
+                    });
+                });
+                ps.emit_ident(close_delim);
+            }
+        }
+
+    });
+
+    if ps.at_start_of_line() {
+        ps.emit_newline();
+    }
+}
+
 pub fn format_expression(ps: &mut ParserState, expression: Expression) {
     let expression = normalize(expression);
     match expression {
@@ -2045,6 +2110,7 @@ pub fn format_expression(ps: &mut ParserState, expression: Expression) {
         Expression::Case(c) => format_case(ps, c),
         Expression::Retry(r) => format_retry(ps, r),
         Expression::SClass(sc) => format_sclass(ps, sc),
+        Expression::StabbyLambda(sl) => format_stabby_lambda(ps, sl),
         e => {
             panic!("got unknown token: {:?}", e);
         }

@@ -117,6 +117,7 @@ pub enum Expression {
     Retry(Retry),
     SClass(SClass),
     Break(Break),
+    StabbyLambda(StabbyLambda),
 }
 
 def_tag!(if_tag, "if");
@@ -1400,3 +1401,16 @@ pub struct Retry((retry_tag,));
 def_tag!(sclass_tag, "sclass");
 #[derive(Deserialize, Debug, Clone)]
 pub struct SClass(sclass_tag, pub Box<Expression>, pub BodyStmt);
+
+// some constructs were expressionlist in 2.5 and bodystmt in 2.6 so this
+// deals with both cases
+#[derive(Deserialize, Debug, Clone)]
+#[serde(untagged)]
+pub enum ExpressionListOrBodyStmt {
+    ExpresionList(Vec<Expression>),
+    BodyStmt(BodyStmt),
+}
+
+def_tag!(stabby_lambda_tag, "lambda");
+#[derive(Deserialize, Debug, Clone)]
+pub struct StabbyLambda(stabby_lambda_tag, pub ParenOrParams, pub String, pub ExpressionListOrBodyStmt);
