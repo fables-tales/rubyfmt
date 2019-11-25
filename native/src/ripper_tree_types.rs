@@ -1413,4 +1413,9 @@ pub enum ExpressionListOrBodyStmt {
 
 def_tag!(stabby_lambda_tag, "lambda");
 #[derive(Deserialize, Debug, Clone)]
-pub struct StabbyLambda(stabby_lambda_tag, pub ParenOrParams, pub String, pub ExpressionListOrBodyStmt);
+pub struct StabbyLambda(
+    stabby_lambda_tag,
+    pub ParenOrParams,
+    pub String,
+    pub ExpressionListOrBodyStmt,
+);
