@@ -424,7 +424,11 @@ impl<'de> Deserialize<'de> for StringLiteral {
             where
                 A: de::SeqAccess<'de>,
             {
-                let tag: &str = seq.next_element()?.ok_or_else(|| panic!("what"))?;
+                let tag: &str = match seq.next_element()? {
+                    Some(x) => x,
+                    None => return Err(de::Error::custom("got no tag")),
+                };
+
                 if tag != "string_literal" {
                     return Err(de::Error::custom("didn't get right tag"));
                 }
@@ -527,7 +531,10 @@ impl<'de> Deserialize<'de> for StringContent {
             where
                 A: de::SeqAccess<'de>,
             {
-                let tag: &str = seq.next_element()?.ok_or_else(|| panic!("what"))?;
+                let tag: &str = match seq.next_element()? {
+                    Some(x) => x,
+                    None => return Err(de::Error::custom("got no tag")),
+                };
                 if tag != "string_content" {
                     return Err(de::Error::custom("didn't get right tag"));
                 }
@@ -611,7 +618,11 @@ impl<'de> Deserialize<'de> for ArgsAddStar {
             where
                 A: de::SeqAccess<'de>,
             {
-                let tag: &str = seq.next_element()?.ok_or_else(|| panic!("what"))?;
+                let tag: &str = match seq.next_element()? {
+                    Some(x) => x,
+                    None => return Err(de::Error::custom("got no tag")),
+                };
+
                 if tag != "args_add_star" {
                     return Err(de::Error::custom("didn't get right tag"));
                 }
@@ -909,6 +920,7 @@ pub fn normalize_args(arg_node: ArgNode) -> ArgsAddStarOrExpressionList {
     match arg_node {
         ArgNode::ArgParen(ap) => normalize_arg_paren(ap),
         ArgNode::ArgsAddBlock(aab) => normalize_args_add_block(aab),
+        ArgNode::ArgsAddStar(aas) => ArgsAddStarOrExpressionList::ArgsAddStar(aas),
         ArgNode::Exprs(exprs) => ArgsAddStarOrExpressionList::ExpressionList(exprs),
         ArgNode::Const(c) => {
             ArgsAddStarOrExpressionList::ExpressionList(vec![Expression::Const(c)])
@@ -937,6 +949,7 @@ pub struct FCall(pub fcall_tag, pub Ident);
 pub enum ArgNode {
     ArgParen(ArgParen),
     ArgsAddBlock(ArgsAddBlock),
+    ArgsAddStar(ArgsAddStar),
     Exprs(Vec<Expression>),
     Const(Const),
     Ident(Ident),
