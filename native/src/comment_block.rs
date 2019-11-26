@@ -9,12 +9,12 @@ impl CommentBlock {
         CommentBlock { comments }
     }
 
-    pub fn to_line_tokens(self) -> Vec<Box<dyn LineToken>> {
+    pub fn into_line_tokens(self) -> Vec<Box<dyn LineToken>> {
         self.comments.into_iter().map(|v| Box::new(Comment::new(v)) as Box<dyn LineToken>).collect()
     }
 
     pub fn has_comments(&self) -> bool {
-        self.comments.len() > 0
+        !self.comments.is_empty()
     }
 
     pub fn merge(&mut self, mut other: CommentBlock) {
