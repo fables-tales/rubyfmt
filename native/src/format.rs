@@ -1912,7 +1912,7 @@ pub fn format_when_or_else(ps: &mut ParserState, tail: WhenOrElse) {
                     ps.breakable_entry(|ps| {
                         format_list_like_thing(
                             ps,
-                            ArgsAddStarOrExpressionList::ExpressionList(conditionals),
+                            conditionals,
                             false,
                         );
                     });

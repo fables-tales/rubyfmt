@@ -1021,7 +1021,13 @@ pub struct MethodAddArg(pub method_add_arg_tag, pub CallExpr, pub ArgNode);
 
 pub fn normalize_inner_call(call_expr: CallExpr) -> (Vec<CallChainElement>, Box<Expression>) {
     match call_expr {
-        CallExpr::FCall(FCall(_, i)) => (vec![], Box::new(Expression::Ident(i))),
+        CallExpr::FCall(FCall(_, i)) => {
+            let id = match i {
+                IdentOrConst::Ident(i) => i,
+                IdentOrConst::Const(c) => Ident(ident_tag, c.1, c.2),
+            };
+            (vec![], Box::new(Expression::Ident(id)))
+        },
         CallExpr::Call(Call(_, left, dot, right)) => {
             let (mut chain, method) = normalize_inner_call(CallExpr::Expression(left));
             chain.push(CallChainElement::Expression(method));
@@ -1074,7 +1080,7 @@ impl MethodAddArg {
 
 def_tag!(fcall_tag, "fcall");
 #[derive(Deserialize, Debug, Clone)]
-pub struct FCall(pub fcall_tag, pub Ident);
+pub struct FCall(pub fcall_tag, pub IdentOrConst);
 
 #[derive(Deserialize, Debug, Clone)]
 #[serde(untagged)]
@@ -1515,7 +1521,7 @@ def_tag!(when_tag, "when");
 #[derive(Deserialize, Debug, Clone)]
 pub struct When(
     when_tag,
-    pub Vec<Expression>,
+    pub ArgsAddStarOrExpressionList,
     pub Vec<Expression>,
     pub Option<Box<WhenOrElse>>,
 );
