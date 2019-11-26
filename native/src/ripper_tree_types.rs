@@ -1377,10 +1377,17 @@ pub struct Defs(
     pub defs_tag,
     pub Singleton,
     pub DotOrColon,
-    pub Ident,
+    pub IdentOrKw,
     pub ParenOrParams,
     pub BodyStmt,
 );
+
+#[derive(Deserialize, Debug, Clone)]
+#[serde(untagged)]
+pub enum IdentOrKw {
+    Ident(Ident),
+    Kw(Kw),
+}
 
 #[derive(Deserialize, Debug, Clone)]
 #[serde(untagged)]

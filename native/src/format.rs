@@ -1376,7 +1376,7 @@ pub fn format_defs(ps: &mut ParserState, defs: Defs) {
     }
 
     let singleton = defs.1;
-    let ident = defs.3;
+    let ident_or_kw = defs.3;
     let paren_or_params = defs.4;
     let bodystmt = defs.5;
 
@@ -1394,7 +1394,13 @@ pub fn format_defs(ps: &mut ParserState, defs: Defs) {
         }
 
         ps.emit_dot();
-        format_ident(ps, ident);
+        match ident_or_kw {
+            IdentOrKw::Ident(ident) => format_ident(ps, ident),
+            IdentOrKw::Kw(kw) => {
+                ps.on_line((kw.2).0);
+                ps.emit_ident(kw.1);
+            },
+        }
         format_paren_or_params(ps, paren_or_params);
         ps.emit_newline();
     });
