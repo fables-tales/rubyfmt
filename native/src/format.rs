@@ -303,7 +303,13 @@ pub fn format_bodystmt(ps: &mut ParserState, bodystmt: BodyStmt, inside_begin: b
 pub fn format_mrhs(ps: &mut ParserState, mrhs: Option<MRHS>) {
     match mrhs {
         None => {}
-        Some(MRHS::Single(exprs)) => {
+        Some(MRHS::Single(expr)) => {
+            format_expression(
+                ps,
+                *expr,
+            );
+        }
+        Some(MRHS::SingleAsArray(exprs)) => {
             if exprs.len() != 1 {
                 panic!("this should be impossible, bug in the ruby parser?");
             }
@@ -485,6 +491,9 @@ pub fn format_dot(ps: &mut ParserState, dot: DotTypeOrOp) {
         }
         DotTypeOrOp::ColonColon(_) => {
             ps.emit_colon_colon();
+        },
+        DotTypeOrOp::StringDot(s) => {
+            ps.emit_ident(s);
         }
     }
 }
