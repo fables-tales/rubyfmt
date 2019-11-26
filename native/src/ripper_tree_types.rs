@@ -940,60 +940,21 @@ pub struct Params(
 // integer 0 and on 2.6 a unit parser tag [:excessed_comma]. These nodes don't
 // appear to cause any semantic difference in the program.
 // So:
-//  we implement a custom deserializer for excessed comma (which at least has
-//  a name) which matches either [:excessed_comma] or the literal integer 0
+//   the Zero deserialzer deals with the 2.5 case, and the ExcessedComma node
+//   deals with the 2.6 case, I will note that I tried to collapse them in to
+//   a single representative node, but that didn't work with the serde setup
+//   we have for some reason.
 #[derive(Deserialize, Debug, Clone)]
 #[serde(untagged)]
 pub enum RestParamOr0OrExcessedComma {
+    Zero(i64),
     RestParam(RestParam),
     ExcessedComma(ExcessedComma),
 }
 
-#[derive(Debug, Clone)]
-pub struct ExcessedComma();
-
-impl<'de> Deserialize<'de> for ExcessedComma {
-    fn deserialize<D>(deserializer: D) -> Result<ExcessedComma, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        struct ExcessedCommaVisitor;
-
-        impl<'de> de::Visitor<'de> for ExcessedCommaVisitor {
-            type Value = ExcessedComma;
-            fn expecting(&self, f: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
-                write!(f, "0 or [excessed_comma]")
-            }
-
-            fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
-            where
-                A: de::SeqAccess<'de>,
-            {
-                let tag: &str = seq
-                    .next_element()?
-                    .ok_or_else(|| de::Error::custom("didn't get array of expressions"))?;
-                if tag != "excessed_comma" {
-                    return Err(de::Error::custom("didn't get ExcessedComma"));
-                } else {
-                    return Ok(ExcessedComma());
-                }
-            }
-
-            fn visit_i64<E>(self, v: i64) -> Result<Self::Value, E>
-            where
-                E: de::Error,
-            {
-                if v == 0 {
-                    return Ok(ExcessedComma());
-                } else {
-                    return Err(de::Error::custom("didn't get ExcessedComma"));
-                }
-            }
-        }
-
-        deserializer.deserialize_any(ExcessedCommaVisitor)
-    }
-}
+def_tag!(excessed_comma_tag, "excessed_comma");
+#[derive(Deserialize, Debug, Clone)]
+pub struct ExcessedComma((excessed_comma_tag,));
 
 impl Params {
     pub fn non_null_positions(&self) -> Vec<bool> {
