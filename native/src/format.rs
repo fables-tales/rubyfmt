@@ -1805,16 +1805,13 @@ pub fn format_kw_with_args(ps: &mut ParserState, args: ParenOrArgsAddBlock, kw: 
     }
 }
 
-pub fn format_while(ps: &mut ParserState, w: While) {
+pub fn format_while(ps: &mut ParserState, conditional: Box<Expression>, exprs: Vec<Expression>, kw: String) {
     if ps.at_start_of_line() {
         ps.emit_indent();
     }
 
-    let conditional = w.1;
-    let exprs = w.2;
-
     ps.with_start_of_line(false, |ps| {
-        ps.emit_keyword("while".to_string());
+        ps.emit_keyword(kw);
         ps.emit_space();
         format_expression(ps, *conditional);
         ps.emit_newline();
@@ -2134,7 +2131,8 @@ pub fn format_expression(ps: &mut ParserState, expression: Expression) {
         Expression::Yield(y) => format_kw_with_args(ps, y.1, "yield".to_string()),
         Expression::Break(b) => format_kw_with_args(ps, b.1, "break".to_string()),
         Expression::MethodAddBlock(mab) => format_method_add_block(ps, mab),
-        Expression::While(w) => format_while(ps, w),
+        Expression::While(w) => format_while(ps, w.1, w.2, "while".to_string()),
+        Expression::Until(u) => format_while(ps, u.1, u.2, "until".to_string()),
         Expression::WhileMod(wm) => format_mod_statement(ps, wm.1, wm.2, "while".to_string()),
         Expression::UntilMod(um) => format_mod_statement(ps, um.1, um.2, "until".to_string()),
         Expression::IfMod(wm) => format_mod_statement(ps, wm.1, wm.2, "if".to_string()),
