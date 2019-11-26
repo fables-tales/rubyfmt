@@ -122,6 +122,7 @@ pub enum Expression {
     Imaginary(Imaginary),
     MLhs(MLhs),
     Until(Until),
+    For(For),
 }
 
 #[derive(Debug, Clone)]
@@ -1558,3 +1559,19 @@ pub struct StabbyLambda(
 def_tag!(imaginary_tag, "@imaginary");
 #[derive(Deserialize, Debug, Clone)]
 pub struct Imaginary(imaginary_tag, pub String, pub LineCol);
+
+def_tag!(for_tag, "for");
+#[derive(Deserialize, Debug, Clone)]
+pub struct For(
+    for_tag,
+    pub VarFieldOrVarFields,
+    pub Box<Expression>,
+    pub Vec<Expression>,
+);
+
+#[derive(Deserialize, Debug, Clone)]
+#[serde(untagged)]
+pub enum VarFieldOrVarFields {
+    VarField(VarField),
+    VarFields(Vec<VarField>),
+}
