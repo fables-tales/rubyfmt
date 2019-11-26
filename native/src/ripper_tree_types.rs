@@ -115,6 +115,7 @@ pub enum Expression {
     WhileMod(WhileMod),
     UntilMod(UntilMod),
     IfMod(IfMod),
+    UnlessMod(UnlessMod),
     Case(Case),
     Retry(Retry),
     SClass(SClass),
@@ -1273,6 +1274,10 @@ pub struct Next(pub next_tag, pub ArgsAddBlockOrExpressionList);
 def_tag!(if_mod_tag, "if_mod");
 #[derive(Deserialize, Debug, Clone)]
 pub struct IfMod(pub if_mod_tag, pub Box<Expression>, pub Box<Expression>);
+
+def_tag!(unless_mod_tag, "unless_mod");
+#[derive(Deserialize, Debug, Clone)]
+pub struct UnlessMod(pub unless_mod_tag, pub Box<Expression>, pub Box<Expression>);
 
 #[derive(Debug, Clone)]
 pub enum UnaryType {
