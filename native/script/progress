@@ -5,7 +5,7 @@ FAIL=0
 SUCCESS=0
 while IFS= read -r -d '' FN
 do
-    if echo "$FN" | grep -v 'rspec' | grep -v '2.6'
+    if echo "$FN" | grep -v 'rspec'
     then
         set +e
         if ruby --disable="gems" test.rb "$FN"
