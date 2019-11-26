@@ -791,7 +791,8 @@ pub struct Rescue(
 #[derive(Deserialize, Debug, Clone)]
 #[serde(untagged)]
 pub enum MRHS {
-    Single(Vec<Expression>),
+    Single(Box<Expression>),
+    SingleAsArray(Vec<Expression>),
     MRHSNewFromArgs(MRHSNewFromArgs),
     MRHSAddStar(MRHSAddStar),
     Array(Array),
@@ -1212,6 +1213,7 @@ pub enum DotTypeOrOp {
     Period(Period),
     ColonColon(ColonColon),
     Op(Op),
+    StringDot(String),
 }
 
 def_tag!(period_tag, "@period");
