@@ -123,6 +123,7 @@ pub enum Expression {
     MLhs(MLhs),
     Until(Until),
     For(For),
+    IfOp(IfOp),
 }
 
 #[derive(Debug, Clone)]
@@ -1575,3 +1576,13 @@ pub enum VarFieldOrVarFields {
     VarField(VarField),
     VarFields(Vec<VarField>),
 }
+
+// ternary
+def_tag!(ifop_tag, "ifop");
+#[derive(Deserialize, Debug, Clone)]
+pub struct IfOp(
+    ifop_tag,
+    pub Box<Expression>,
+    pub Box<Expression>,
+    pub Box<Expression>,
+);
