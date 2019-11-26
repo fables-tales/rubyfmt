@@ -2093,6 +2093,19 @@ pub fn format_imaginary(ps: &mut ParserState, imaginary: Imaginary) {
     }
 }
 
+pub fn format_rational(ps: &mut ParserState, rational: Rational) {
+    if ps.at_start_of_line() {
+        ps.emit_indent();
+    }
+
+    ps.on_line((rational.2).0);
+    ps.emit_ident(rational.1);
+
+    if ps.at_start_of_line() {
+        ps.emit_newline();
+    }
+}
+
 pub fn format_for(ps: &mut ParserState, forloop: For) {
     if ps.at_start_of_line() {
         ps.emit_indent();
@@ -2218,6 +2231,7 @@ pub fn format_expression(ps: &mut ParserState, expression: Expression) {
         Expression::Retry(r) => format_retry(ps, r),
         Expression::SClass(sc) => format_sclass(ps, sc),
         Expression::StabbyLambda(sl) => format_stabby_lambda(ps, sl),
+        Expression::Rational(rational) => format_rational(ps, rational),
         Expression::Imaginary(imaginary) => format_imaginary(ps, imaginary),
         Expression::MLhs(mlhs) => format_mlhs(ps, mlhs),
         Expression::For(forloop) => format_for(ps, forloop),
