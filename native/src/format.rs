@@ -2177,6 +2177,18 @@ pub fn format_ifop(ps: &mut ParserState, ifop: IfOp) {
     }
 }
 
+pub fn format_return0(ps: &mut ParserState, r0: Return0) {
+    if ps.at_start_of_line() {
+        ps.emit_indent();
+    }
+
+    ps.emit_keyword("return".to_string());
+
+    if ps.at_start_of_line() {
+        ps.emit_newline();
+    }
+}
+
 pub fn format_expression(ps: &mut ParserState, expression: Expression) {
     let expression = normalize(expression);
     match expression {
@@ -2236,6 +2248,7 @@ pub fn format_expression(ps: &mut ParserState, expression: Expression) {
         Expression::MLhs(mlhs) => format_mlhs(ps, mlhs),
         Expression::For(forloop) => format_for(ps, forloop),
         Expression::IfOp(ifop) => format_ifop(ps, ifop),
+        Expression::Return0(r) => format_return0(ps, r),
         e => {
             panic!("got unknown token: {:?}", e);
         }

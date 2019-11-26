@@ -105,6 +105,7 @@ pub enum Expression {
     Char(Char),
     Module(Module),
     Return(Return),
+    Return0(Return0),
     Hash(Hash),
     RegexpLiteral(RegexpLiteral),
     Backref(Backref),
@@ -1423,6 +1424,10 @@ impl Return {
         )
     }
 }
+
+def_tag!(return0_tag, "return0");
+#[derive(Deserialize, Debug, Clone)]
+pub struct Return0((return0_tag,));
 
 def_tag!(regexp_literal_tag, "regexp_literal");
 #[derive(Deserialize, Debug, Clone)]
