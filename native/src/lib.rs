@@ -47,7 +47,7 @@ pub extern "C" fn format_sexp_tree_to_file(
     buf: RubyStringPointer,
     tree: RubyStringPointer,
 ) -> RawStatus {
-    let b = filename.as_buf();
+    let b = filename.into_buf();
     let filename = match str::from_utf8(b) {
         Ok(x) => x,
         Err(_) => return Status::BadFileName as RawStatus,
@@ -66,8 +66,8 @@ fn raw_format_program<T: Write>(
     buf: RubyStringPointer,
     tree: RubyStringPointer,
 ) -> RawStatus {
-    let buf = buf.as_buf();
-    let tree = tree.as_buf();
+    let buf = buf.into_buf();
+    let tree = tree.into_buf();
 
     let res = match toplevel_format_program(writer, buf, tree) {
         Ok(()) => Status::Ok,

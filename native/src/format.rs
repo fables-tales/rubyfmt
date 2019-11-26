@@ -1,6 +1,5 @@
 use crate::parser_state::{FormattingContext, ParserState};
 use crate::ripper_tree_types::*;
-use std::borrow::Borrow;
 
 pub fn format_def(ps: &mut ParserState, def: Def) {
     let def_expression = def.1;
@@ -40,11 +39,11 @@ pub fn inner_format_params(ps: &mut ParserState, params: Params) {
     //        | optional params
     //        |
     //    required params
-    let required_params = (params.1).unwrap_or(Vec::new());
-    let optional_params = (params.2).unwrap_or(Vec::new());
+    let required_params = (params.1).unwrap_or_default();
+    let optional_params = (params.2).unwrap_or_default();
     let rest_param = params.3;
-    let more_required_params = (params.4).unwrap_or(Vec::new());
-    let kwargs = (params.5).unwrap_or(Vec::new());
+    let more_required_params = (params.4).unwrap_or_default();
+    let kwargs = (params.5).unwrap_or_default();
     let kwrest_params = params.6;
     let block_arg = params.7;
 
@@ -60,7 +59,7 @@ pub fn inner_format_params(ps: &mut ParserState, params: Params) {
 
     for (idx, format_fn) in formats.into_iter().enumerate() {
         let did_emit = format_fn(ps);
-        let have_more = non_null_positions[idx + 1..].into_iter().any(|&v| v);
+        let have_more = non_null_positions[idx + 1..].iter().any(|&v| v);
 
         if did_emit && have_more {
             ps.emit_comma();
@@ -88,15 +87,14 @@ pub fn format_blockvar(ps: &mut ParserState, bv: BlockVar) {
 
     ps.breakable_of(" |".to_string(), "|".to_string(), |ps| {
         ps.breakable_entry(|ps| {
-            match params {
-                Some(params) => inner_format_params(ps, params),
-                None => {}
+            if let Some(params) = params {
+                inner_format_params(ps, params);
             }
 
             match f_params {
                 None => {}
                 Some(f_params) => {
-                    if f_params.len() > 0 {
+                    if !f_params.is_empty() {
                         ps.emit_ident(";".to_string());
 
                         ps.with_start_of_line(false, |ps| {
@@ -104,7 +102,7 @@ pub fn format_blockvar(ps: &mut ParserState, bv: BlockVar) {
                                 ps,
                                 f_params
                                     .into_iter()
-                                    .map(|ident| Expression::Ident(ident))
+                                    .map(Expression::Ident)
                                     .collect(),
                                 true,
                             );
@@ -145,8 +143,8 @@ pub fn format_kwrest_params(ps: &mut ParserState, kwrest_params: Option<KwRestPa
         ps.emit_soft_indent();
         ps.emit_ident("**".to_string());
         let ident = (kwrest_params.unwrap()).1;
-        if ident.is_some() {
-            format_ident(ps, ident.unwrap());
+        if let Some(ident) = ident {
+            format_ident(ps, ident);
         }
     });
     true
@@ -436,12 +434,12 @@ pub fn format_ensure(ps: &mut ParserState, ensure_part: Option<Ensure>) {
 }
 
 pub fn use_parens_for_method_call(
-    method: &Box<Expression>,
+    method: &Expression,
     args: &ArgsAddStarOrExpressionList,
     original_used_parens: bool,
-    context: &FormattingContext,
+    context: FormattingContext,
 ) -> bool {
-    let name = match method.borrow() {
+    let name = match method {
         Expression::DotCall(_) => return true,
         Expression::Ident(Ident(_, name, _)) => name,
         Expression::Const(Const(_, name, _)) => name,
@@ -450,7 +448,7 @@ pub fn use_parens_for_method_call(
             method
         ),
     };
-    if name.starts_with("attr_") && context == &FormattingContext::ClassOrModule {
+    if name.starts_with("attr_") && context == FormattingContext::ClassOrModule {
         return false;
     }
 
@@ -470,7 +468,7 @@ pub fn use_parens_for_method_call(
         return false;
     }
 
-    if context == &FormattingContext::ClassOrModule && !original_used_parens {
+    if context == FormattingContext::ClassOrModule && !original_used_parens {
         return false;
     }
 
@@ -516,7 +514,7 @@ pub fn format_method_call(ps: &mut ParserState, method_call: MethodCall) {
         &method,
         &args,
         original_used_parens,
-        &ps.current_formatting_context(),
+        ps.current_formatting_context(),
     );
 
     ps.with_start_of_line(false, |ps| {
@@ -568,7 +566,7 @@ pub fn format_list_like_thing_items(
 
         if single_line {
             format_expression(ps, expr);
-            if !(idx == args_count - 1) {
+            if idx != args_count - 1 {
                 ps.emit_comma_space();
             }
         } else {
@@ -793,16 +791,14 @@ pub fn format_dot2_or_3(
     }
 
     ps.with_start_of_line(false, |ps| {
-        match left {
-            Some(expr) => format_expression(ps, *expr),
-            _ => {}
+        if let Some(expr) = left {
+            format_expression(ps, *expr)
         }
 
         ps.emit_ident(dots);
 
-        match right {
-            Some(expr) => format_expression(ps, *expr),
-            _ => {}
+        if let Some(expr) = right {
+            format_expression(ps, *expr)
         }
     });
 
@@ -959,7 +955,7 @@ pub fn format_inner_string(ps: &mut ParserState, parts: Vec<StringContentPart>, 
                 let on_line_skip = tipe == StringType::Heredoc
                     && match peekable.peek() {
                         Some(StringContentPart::TStringContent(TStringContent(_, s, _))) => {
-                            s.starts_with("\n")
+                            s.starts_with('\n')
                         }
                         _ => false,
                     };
@@ -994,7 +990,7 @@ pub fn format_heredoc_string_literal(
         ps.emit_ident(heredoc_type.clone());
         ps.emit_ident(heredoc_symbol.clone());
 
-        ps.push_heredoc_content(heredoc_symbol, heredoc_type.contains("~"), parts);
+        ps.push_heredoc_content(heredoc_symbol, heredoc_type.contains('~'), parts);
     });
 
     if ps.at_start_of_line() && !ps.is_absorbing_indents() {
@@ -1261,7 +1257,7 @@ pub fn format_next(ps: &mut ParserState, next: Next) {
         ps.emit_ident("next".to_string());
         match next.1 {
             ArgsAddBlockOrExpressionList::ExpressionList(e) => {
-                if e.len() != 0 {
+                if !e.is_empty() {
                     panic!("got non empty next expression list, should be impossible");
                 }
             }
@@ -1737,9 +1733,8 @@ pub fn format_brace_block(ps: &mut ParserState, brace_block: BraceBlock) {
 
     ps.emit_ident("{".to_string());
 
-    match bv {
-        Some(bv) => format_blockvar(ps, bv),
-        None => {}
+    if let Some(bv) = bv {
+        format_blockvar(ps, bv);
     }
 
     if is_multiline {
@@ -1771,9 +1766,8 @@ pub fn format_do_block(ps: &mut ParserState, do_block: DoBlock) {
     let bv = do_block.1;
     let body = do_block.2;
 
-    match bv {
-        Some(bv) => format_blockvar(ps, bv),
-        None => {}
+    if let Some(bv) = bv {
+        format_blockvar(ps, bv)
     }
 
     ps.emit_newline();
@@ -1801,7 +1795,7 @@ pub fn format_kw_with_args(ps: &mut ParserState, args: ParenOrArgsAddBlock, kw: 
         }
         ParenOrArgsAddBlock::ArgsAddBlock(aab) => aab,
         ParenOrArgsAddBlock::Empty(v) => {
-            if v.len() > 0 {
+            if !v.is_empty() {
                 panic!("got non empty empty in break/yield");
             };
             ArgsAddBlock(
@@ -1934,12 +1928,9 @@ pub fn format_when_or_else(ps: &mut ParserState, tail: WhenOrElse) {
                 });
             });
 
-            match tail {
-                Some(tail) => {
-                    format_when_or_else(ps, *tail);
-                }
-                None => {}
-            };
+            if let Some(tail) = tail {
+                format_when_or_else(ps, *tail);
+            }
         }
         WhenOrElse::Else(e) => {
             ps.emit_indent();
@@ -1967,15 +1958,13 @@ pub fn format_case(ps: &mut ParserState, case: Case) {
     let case_expr = case.1;
     let tail = case.2;
 
-    match case_expr {
-        Some(e) => {
-            ps.with_start_of_line(false, |ps| {
-                ps.emit_space();
-                format_expression(ps, *e)
-            });
-        }
-        None => {}
+    if let Some(e) = case_expr {
+        ps.with_start_of_line(false, |ps| {
+            ps.emit_space();
+            format_expression(ps, *e)
+        });
     }
+
     ps.emit_newline();
     ps.with_start_of_line(true, |ps| {
         format_when_or_else(ps, WhenOrElse::When(tail));
@@ -2035,14 +2024,14 @@ pub fn format_stabby_lambda(ps: &mut ParserState, sl: StabbyLambda) {
     let params = sl.1;
 
     let tpe = sl.2;
-    debug_assert!(tpe == "do".to_string() || tpe == "curly".to_string());
+    debug_assert!(tpe == "do" || tpe == "curly");
 
     let body = sl.3;
     ps.with_start_of_line(false, |ps| {
         ps.emit_keyword("->".to_string());
         format_paren_or_params(ps, params);
 
-        let (open_delim, close_delim) = if tpe == "do".to_string() {
+        let (open_delim, close_delim) = if tpe == "do" {
             ("do".to_string(), "end".to_string())
         } else {
             ("{".to_string(), "}".to_string())
@@ -2053,7 +2042,7 @@ pub fn format_stabby_lambda(ps: &mut ParserState, sl: StabbyLambda) {
                 let mut b = bud;
                 //lambdas typically are a single statement, so line breaking them would
                 //be masochistic
-                if tpe == "curly".to_string() && b.len() == 1 {
+                if tpe == "curly" && b.len() == 1 {
                     ps.emit_ident(" { ".to_string());
                     format_expression(ps, b.remove(0));
                     ps.emit_ident(" }".to_string());

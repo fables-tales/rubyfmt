@@ -17,7 +17,7 @@ fn insert_at<T>(idx: usize, target: &mut Vec<T>, input: &mut Vec<T>) {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub enum FormattingContext {
     Main,
     Assign,
@@ -46,7 +46,7 @@ impl IndentDepth {
         self.depth -= 1;
     }
 
-    fn get(&self) -> ColNumber {
+    fn get(self) -> ColNumber {
         self.depth
     }
 }
@@ -245,7 +245,7 @@ impl ParserState {
             let mut new_comments = CommentBlock::new(vec!());
             mem::swap(&mut new_comments, &mut self.comments_to_insert);
 
-            insert_at(insert_index, &mut self.render_queue, &mut new_comments.to_line_tokens());
+            insert_at(insert_index, &mut self.render_queue, &mut new_comments.into_line_tokens());
             self.comments_to_insert = CommentBlock::new(vec!());
         }
     }
@@ -288,9 +288,8 @@ impl ParserState {
         F: FnOnce(&mut ParserState),
     {
         self.formatting_context.push(fc);
-        let res = f(self);
+        f(self);
         self.formatting_context.pop();
-        res
     }
 
     pub fn with_absorbing_indent_block<F>(&mut self, f: F)
@@ -313,9 +312,8 @@ impl ParserState {
     {
         let ds_length = self.depth_stack.len();
         self.depth_stack[ds_length - 1].increment();
-        let res = f(self);
+        f(self);
         self.depth_stack[ds_length - 1].decrement();
-        res
     }
 
     pub fn dedent<F>(&mut self, f: F)
@@ -324,9 +322,8 @@ impl ParserState {
     {
         let ds_length = self.depth_stack.len();
         self.depth_stack[ds_length - 1].decrement();
-        let res = f(self);
+        f(self);
         self.depth_stack[ds_length - 1].increment();
-        res
     }
 
     pub fn with_start_of_line<F>(&mut self, start_of_line: bool, f: F)
@@ -334,23 +331,20 @@ impl ParserState {
         F: FnOnce(&mut ParserState),
     {
         self.start_of_line.push(start_of_line);
-        let res = f(self);
+        f(self);
         self.start_of_line.pop();
-        res
     }
 
     pub fn at_start_of_line(&self) -> bool {
-        self.start_of_line
+        *self.start_of_line
             .last()
             .expect("start of line is never_empty")
-            .clone()
     }
 
     pub fn current_formatting_context(&self) -> FormattingContext {
-        self.formatting_context
+        *self.formatting_context
             .last()
             .expect("formatting context is never empty")
-            .clone()
     }
 
     pub fn breakable_of<F>(&mut self, start_delim: String, end_delim: String, f: F)
@@ -440,19 +434,14 @@ impl ParserState {
                 self.push_token(HardNewLine::new());
             }
 
-            match next_heredoc.buf.last() {
-                Some(b'\n') => {
-                    next_heredoc.buf.pop();
-                }
-                _ => {}
+            if let Some(b'\n') = next_heredoc.buf.last() {
+                next_heredoc.buf.pop();
             };
 
-            match next_heredoc.buf.last() {
-                Some(b'\n') => {
-                    next_heredoc.buf.pop();
-                }
-                _ => {}
+            if let Some(b'\n') = next_heredoc.buf.last() {
+                next_heredoc.buf.pop();
             };
+
 
             self.push_token(DirectPart::new(
                 String::from_utf8(next_heredoc.buf).expect("hereoc is utf8"),
