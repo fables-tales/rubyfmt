@@ -1,7 +1,6 @@
 use crate::parser_state::{FormattingContext, ParserState};
 use crate::ripper_tree_types::*;
 use std::borrow::Borrow;
-use std::io::Cursor;
 
 pub fn format_def(ps: &mut ParserState, def: Def) {
     let def_expression = def.1;
@@ -15,7 +14,7 @@ pub fn format_def(ps: &mut ParserState, def: Def) {
 
     ps.with_formatting_context(FormattingContext::Def, |ps| {
         ps.new_block(|ps| {
-            format_bodystmt(ps, body, false);
+            format_bodystmt(ps, body);
         });
     });
 
@@ -285,7 +284,7 @@ pub fn emit_params_separator(ps: &mut ParserState, index: usize, length: usize) 
     }
 }
 
-pub fn format_bodystmt(ps: &mut ParserState, bodystmt: BodyStmt, inside_begin: bool) {
+pub fn format_bodystmt(ps: &mut ParserState, bodystmt: BodyStmt) {
     let expressions = bodystmt.1;
     let rescue_part = bodystmt.2;
     let else_part = bodystmt.3;
@@ -331,7 +330,7 @@ pub fn format_mrhs(ps: &mut ParserState, mrhs: Option<MRHS>) {
 }
 
 pub fn format_rescue_capture(ps: &mut ParserState, rescue_capture: Option<Assignable>) {
-    match (rescue_capture) {
+    match rescue_capture {
         None => {}
         Some(expr) => {
             ps.emit_ident("=>".to_string());
@@ -440,7 +439,6 @@ pub fn format_ensure(ps: &mut ParserState, ensure_part: Option<Ensure>) {
 
 pub fn use_parens_for_method_call(
     method: &Box<Expression>,
-    chain: &Vec<CallChainElement>,
     args: &ArgsAddStarOrExpressionList,
     original_used_parens: bool,
     context: &FormattingContext,
@@ -518,7 +516,6 @@ pub fn format_method_call(ps: &mut ParserState, method_call: MethodCall) {
 
     let use_parens = use_parens_for_method_call(
         &method,
-        &chain,
         &args,
         original_used_parens,
         &ps.current_formatting_context(),
@@ -709,7 +706,7 @@ pub fn format_begin(ps: &mut ParserState, begin: Begin) {
 
     ps.emit_begin();
     ps.emit_newline();
-    ps.new_block(|ps| format_bodystmt(ps, begin.1, true));
+    ps.new_block(|ps| format_bodystmt(ps, begin.1));
 
     ps.with_start_of_line(true, |ps| {
         ps.emit_end();
@@ -1410,7 +1407,7 @@ pub fn format_defs(ps: &mut ParserState, defs: Defs) {
 
     ps.with_formatting_context(FormattingContext::Def, |ps| {
         ps.new_block(|ps| {
-            format_bodystmt(ps, bodystmt, false);
+            format_bodystmt(ps, bodystmt);
         });
     });
 
@@ -1462,7 +1459,7 @@ pub fn format_class(ps: &mut ParserState, class: Class) {
     ps.emit_newline();
     ps.new_block(|ps| {
         ps.with_formatting_context(FormattingContext::ClassOrModule, |ps| {
-            format_bodystmt(ps, bodystmt, false);
+            format_bodystmt(ps, bodystmt);
         });
     });
 
@@ -1498,7 +1495,7 @@ pub fn format_module(ps: &mut ParserState, module: Module) {
     ps.emit_newline();
     ps.new_block(|ps| {
         ps.with_formatting_context(FormattingContext::ClassOrModule, |ps| {
-            format_bodystmt(ps, bodystmt, false);
+            format_bodystmt(ps, bodystmt);
         });
     });
 
@@ -1576,12 +1573,14 @@ pub fn format_binary(ps: &mut ParserState, binary: Binary) {
         ps.emit_indent();
     }
 
-    ps.with_start_of_line(false, |ps| {
-        format_expression(ps, *binary.1);
-        ps.emit_space();
-        ps.emit_ident(binary.2);
-        ps.emit_space();
-        format_expression(ps, *binary.3);
+    ps.with_formatting_context(FormattingContext::Binary, |ps| {
+        ps.with_start_of_line(false, |ps| {
+            format_expression(ps, *binary.1);
+            ps.emit_space();
+            ps.emit_ident(binary.2);
+            ps.emit_space();
+            format_expression(ps, *binary.3);
+        });
     });
 
     if ps.at_start_of_line() {
@@ -1781,7 +1780,7 @@ pub fn format_do_block(ps: &mut ParserState, do_block: DoBlock) {
 
     ps.emit_newline();
     ps.new_block(|ps| {
-        format_bodystmt(ps, body, false);
+        format_bodystmt(ps, body);
     });
 
     ps.with_start_of_line(true, |ps| ps.emit_end());
@@ -2019,7 +2018,7 @@ pub fn format_sclass(ps: &mut ParserState, sc: SClass) {
         ps.emit_newline();
         ps.new_block(|ps| {
             ps.with_start_of_line(true, |ps| {
-                format_bodystmt(ps, body, false);
+                format_bodystmt(ps, body);
             });
         });
         ps.emit_end();
@@ -2080,7 +2079,7 @@ pub fn format_stabby_lambda(ps: &mut ParserState, sl: StabbyLambda) {
                 ps.emit_newline();
                 ps.new_block(|ps| {
                     ps.with_start_of_line(true, |ps| {
-                        format_bodystmt(ps, bs, false);
+                        format_bodystmt(ps, bs);
                     });
                 });
                 ps.emit_ident(close_delim);
@@ -2190,7 +2189,7 @@ pub fn format_ifop(ps: &mut ParserState, ifop: IfOp) {
     }
 }
 
-pub fn format_return0(ps: &mut ParserState, r0: Return0) {
+pub fn format_return0(ps: &mut ParserState, _r0: Return0) {
     if ps.at_start_of_line() {
         ps.emit_indent();
     }
@@ -2270,6 +2269,7 @@ pub fn format_expression(ps: &mut ParserState, expression: Expression) {
 
 pub fn format_program(ps: &mut ParserState, program: Program) {
     println!("{:?}", program);
+    ps.on_line(1);
     for expression in program.1 {
         format_expression(ps, expression);
     }

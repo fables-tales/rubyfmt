@@ -529,3 +529,26 @@ impl LineToken for SingleSlash {
         "\\".to_string()
     }
 }
+
+pub struct Comment {
+    contents: String,
+}
+
+impl Comment {
+    pub fn new(contents: String) -> Self {
+        Comment {
+            contents: contents,
+        }
+    }
+}
+
+
+impl LineToken for Comment {
+    fn consume_to_string(self: Box<Self>) -> String {
+        format!("{}\n", self.contents)
+    }
+
+    fn is_comment(&self) -> bool {
+        true
+    }
+}
