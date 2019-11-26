@@ -120,6 +120,7 @@ pub enum Expression {
     Break(Break),
     StabbyLambda(StabbyLambda),
     Imaginary(Imaginary),
+    Rational(Rational),
     MLhs(MLhs),
     Until(Until),
     For(For),
@@ -360,7 +361,11 @@ pub struct ConstRef(pub const_ref_tag, pub Const);
 
 def_tag!(command_tag, "command");
 #[derive(Deserialize, Debug, Clone)]
-pub struct Command(pub command_tag, pub Ident, pub ArgsAddBlockOrExpressionList);
+pub struct Command(
+    pub command_tag,
+    pub IdentOrConst,
+    pub ArgsAddBlockOrExpressionList,
+);
 
 #[derive(Deserialize, Debug, Clone)]
 #[serde(untagged)]
@@ -375,10 +380,14 @@ impl Command {
             ArgsAddBlockOrExpressionList::ArgsAddBlock(n) => ArgNode::ArgsAddBlock(n),
             ArgsAddBlockOrExpressionList::ExpressionList(es) => ArgNode::Exprs(es),
         };
+        let id = match self.1 {
+            IdentOrConst::Ident(i) => i,
+            IdentOrConst::Const(c) => Ident(ident_tag, c.1, c.2),
+        };
 
         MethodCall::new(
             vec![],
-            Box::new(Expression::Ident(self.1)),
+            Box::new(Expression::Ident(id)),
             false,
             normalize_args(arg_node),
         )
@@ -1566,6 +1575,10 @@ pub struct StabbyLambda(
 def_tag!(imaginary_tag, "@imaginary");
 #[derive(Deserialize, Debug, Clone)]
 pub struct Imaginary(imaginary_tag, pub String, pub LineCol);
+
+def_tag!(rational_tag, "@rational");
+#[derive(Deserialize, Debug, Clone)]
+pub struct Rational(rational_tag, pub String, pub LineCol);
 
 def_tag!(for_tag, "for");
 #[derive(Deserialize, Debug, Clone)]
