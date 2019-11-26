@@ -1910,11 +1910,7 @@ pub fn format_when_or_else(ps: &mut ParserState, tail: WhenOrElse) {
             ps.with_start_of_line(false, |ps| {
                 ps.breakable_of("".to_string(), "".to_string(), |ps| {
                     ps.breakable_entry(|ps| {
-                        format_list_like_thing(
-                            ps,
-                            conditionals,
-                            false,
-                        );
+                        format_list_like_thing(ps, conditionals, false);
                     });
                 });
             });

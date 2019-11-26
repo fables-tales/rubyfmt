@@ -1027,7 +1027,7 @@ pub fn normalize_inner_call(call_expr: CallExpr) -> (Vec<CallChainElement>, Box<
                 IdentOrConst::Const(c) => Ident(ident_tag, c.1, c.2),
             };
             (vec![], Box::new(Expression::Ident(id)))
-        },
+        }
         CallExpr::Call(Call(_, left, dot, right)) => {
             let (mut chain, method) = normalize_inner_call(CallExpr::Expression(left));
             chain.push(CallChainElement::Expression(method));
