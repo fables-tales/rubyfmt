@@ -6,6 +6,16 @@ use crate::ripper_tree_types::StringContentPart;
 use crate::types::{ColNumber, LineNumber};
 use std::io::{self, Cursor, Write};
 use std::str;
+use std::mem;
+
+fn insert_at<T>(idx: usize, target: &mut Vec<T>, input: &mut Vec<T>) {
+    let drain = input.drain(..);
+    let mut idx = idx;
+    for item in drain {
+        target.insert(idx, item);
+        idx += 1;
+    }
+}
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum FormattingContext {
@@ -61,7 +71,6 @@ pub struct ParserState {
     depth_stack: Vec<IndentDepth>,
     start_of_line: Vec<bool>,
     surpress_comments_stack: Vec<bool>,
-    surpress_one_paren: bool,
     render_queue: Vec<Box<dyn LineToken>>,
     current_orig_line_number: LineNumber,
     comments_hash: LineMetadata,
@@ -79,7 +88,6 @@ impl ParserState {
             depth_stack: vec![IndentDepth::new()],
             start_of_line: vec![true],
             surpress_comments_stack: vec![false],
-            surpress_one_paren: false,
             render_queue: vec![],
             current_orig_line_number: 0,
             comments_hash: lm,
@@ -212,6 +220,7 @@ impl ParserState {
     }
 
     pub fn emit_newline(&mut self) {
+        self.shift_comments();
         self.push_token(HardNewLine::new());
         self.render_heredocs(false);
     }
@@ -222,6 +231,23 @@ impl ParserState {
             self.emit_indent();
         }
         self.push_token(Keyword::new("end".into()));
+    }
+
+    pub fn shift_comments(&mut self) {
+        let idx_of_prev_hard_newline = self.render_queue.iter().rposition(|v| v.is_newline());
+
+        if self.comments_to_insert.has_comments() {
+            let insert_index = match idx_of_prev_hard_newline {
+                Some(idx) => idx+1,
+                None => 0,
+            };
+
+            let mut new_comments = CommentBlock::new(vec!());
+            mem::swap(&mut new_comments, &mut self.comments_to_insert);
+
+            insert_at(insert_index, &mut self.render_queue, &mut new_comments.to_line_tokens());
+            self.comments_to_insert = CommentBlock::new(vec!());
+        }
     }
 
     pub fn emit_else(&mut self) {
