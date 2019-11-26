@@ -6,14 +6,14 @@ pub trait LineToken {
     where
         Self: Sized + 'static,
     {
-        return Box::new(self);
+        Box::new(self)
     }
 
     fn as_multi_line(self) -> Box<dyn LineToken>
     where
         Self: Sized + 'static,
     {
-        return Box::new(self);
+        Box::new(self)
     }
 
     fn is_hard_newline(&self) -> bool {
@@ -99,7 +99,7 @@ pub struct BreakableState {
 impl BreakableState {
     pub fn new(indentation_depth: ColNumber) -> Self {
         BreakableState {
-            indentation_depth: indentation_depth,
+            indentation_depth,
         }
     }
 }
@@ -158,7 +158,7 @@ pub struct Indent {
 }
 impl Indent {
     pub fn new(depth: ColNumber) -> Self {
-        Indent { depth: depth }
+        Indent { depth }
     }
 }
 
@@ -178,7 +178,7 @@ pub struct Keyword {
 
 impl Keyword {
     pub fn new(keyword: String) -> Self {
-        Keyword { keyword: keyword }
+        Keyword { keyword }
     }
 }
 
@@ -222,7 +222,7 @@ pub struct DirectPart {
 
 impl DirectPart {
     pub fn new(part: String) -> Self {
-        DirectPart { part: part }
+        DirectPart { part }
     }
 
     pub fn null() -> Self {
@@ -253,7 +253,7 @@ pub struct CommaSpace;
 
 impl CommaSpace {
     pub fn new() -> Self {
-        return CommaSpace;
+        CommaSpace
     }
 }
 
@@ -268,7 +268,7 @@ pub struct SoftIndent {
 }
 impl SoftIndent {
     pub fn new(depth: ColNumber) -> Self {
-        SoftIndent { depth: depth }
+        SoftIndent { depth }
     }
 }
 
@@ -447,7 +447,7 @@ impl BreakableEntry {
     pub fn new(id: u32) -> Self {
         BreakableEntry {
             tokens: vec![],
-            id: id,
+            id,
         }
     }
 
@@ -476,7 +476,7 @@ pub struct Op {
 
 impl Op {
     pub fn new(op: String) -> Self {
-        Op { op: op }
+        Op { op }
     }
 }
 
@@ -537,7 +537,7 @@ pub struct Comment {
 impl Comment {
     pub fn new(contents: String) -> Self {
         Comment {
-            contents: contents,
+            contents,
         }
     }
 }

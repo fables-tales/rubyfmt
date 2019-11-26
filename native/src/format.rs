@@ -149,7 +149,7 @@ pub fn format_kwrest_params(ps: &mut ParserState, kwrest_params: Option<KwRestPa
             format_ident(ps, ident.unwrap());
         }
     });
-    return true;
+    true
 }
 
 pub fn format_block_arg(ps: &mut ParserState, block_arg: Option<BlockArg>) -> bool {
@@ -163,7 +163,7 @@ pub fn format_block_arg(ps: &mut ParserState, block_arg: Option<BlockArg>) -> bo
         format_ident(ps, block_arg.unwrap().1);
     });
 
-    return true;
+    true
 }
 
 pub fn format_kwargs(ps: &mut ParserState, kwargs: Vec<(Label, ExpressionOrFalse)>) -> bool {
@@ -187,7 +187,7 @@ pub fn format_kwargs(ps: &mut ParserState, kwargs: Vec<(Label, ExpressionOrFalse
         }
     });
 
-    return true;
+    true
 }
 
 pub fn format_rest_param(
@@ -239,7 +239,7 @@ pub fn format_optional_params(
         }
     });
 
-    return true;
+    true
 }
 
 pub fn format_mlhs(ps: &mut ParserState, mlhs: MLhs) {
@@ -274,7 +274,7 @@ pub fn format_required_params(ps: &mut ParserState, required_params: Vec<IdentOr
             emit_params_separator(ps, idx, len);
         }
     });
-    return true;
+    true
 }
 
 pub fn emit_params_separator(ps: &mut ParserState, index: usize, length: usize) {
@@ -342,9 +342,7 @@ pub fn format_rescue_capture(ps: &mut ParserState, rescue_capture: Option<Assign
 
 pub fn format_rescue(ps: &mut ParserState, rescue_part: Option<Rescue>) {
     match rescue_part {
-        None => {
-            return;
-        }
+        None => {},
         Some(Rescue(_, class, capture, expressions, more_rescue)) => {
             ps.dedent(|ps| {
                 ps.emit_indent();
@@ -377,7 +375,7 @@ pub fn format_rescue(ps: &mut ParserState, rescue_part: Option<Rescue>) {
 
 pub fn format_else(ps: &mut ParserState, else_part: Option<RescueElseOrExpressionList>) {
     match else_part {
-        None => return,
+        None => {},
         Some(RescueElseOrExpressionList::ExpressionList(exprs)) => {
             ps.dedent(|ps| {
                 ps.emit_indent();
@@ -414,7 +412,7 @@ pub fn format_else(ps: &mut ParserState, else_part: Option<RescueElseOrExpressio
 
 pub fn format_ensure(ps: &mut ParserState, ensure_part: Option<Ensure>) {
     match ensure_part {
-        None => return,
+        None => {},
         Some(e) => {
             ps.dedent(|ps| {
                 ps.emit_newline();
@@ -476,7 +474,7 @@ pub fn use_parens_for_method_call(
         return false;
     }
 
-    return true;
+    true
 }
 
 pub fn format_dot_type(ps: &mut ParserState, dt: DotType) {
