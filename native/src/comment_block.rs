@@ -6,7 +6,7 @@ pub struct CommentBlock {
 
 impl CommentBlock {
     pub fn new(comments: Vec<String>) -> Self {
-        CommentBlock { comments: comments }
+        CommentBlock { comments }
     }
 
     pub fn to_line_tokens(self) -> Vec<Box<dyn LineToken>> {

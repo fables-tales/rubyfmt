@@ -60,9 +60,9 @@ pub struct HeredocString {
 impl HeredocString {
     pub fn new(symbol: String, squiggly: bool, buf: Vec<u8>) -> Self {
         HeredocString {
-            symbol: symbol,
-            squiggly: squiggly,
-            buf: buf,
+            symbol,
+            squiggly,
+            buf,
         }
     }
 }
@@ -371,7 +371,7 @@ impl ParserState {
     pub fn new_with_depth_stack_from(ps: &ParserState) -> Self {
         let mut next_ps = ParserState::new(LineMetadata::new());
         next_ps.depth_stack = ps.depth_stack.clone();
-        return next_ps;
+        next_ps
     }
 
     pub fn render_with_blank_state<F>(ps: &mut ParserState, f: F) -> ParserState

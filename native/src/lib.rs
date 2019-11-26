@@ -74,7 +74,7 @@ fn raw_format_program<T: Write>(
         Err(status) => status,
     };
 
-    return res as RawStatus;
+    res as RawStatus
 }
 
 fn toplevel_format_program<W: Write>(mut writer: W, buf: &[u8], tree: &[u8]) -> Result<(), Status> {
