@@ -121,6 +121,7 @@ pub enum Expression {
     StabbyLambda(StabbyLambda),
     Imaginary(Imaginary),
     MLhs(MLhs),
+    Until(Until),
 }
 
 #[derive(Debug, Clone)]
@@ -1489,6 +1490,10 @@ pub struct BraceBlock(brace_block_tag, pub Option<BlockVar>, pub Vec<Expression>
 def_tag!(while_tag, "while");
 #[derive(Deserialize, Debug, Clone)]
 pub struct While(while_tag, pub Box<Expression>, pub Vec<Expression>);
+
+def_tag!(until_tag, "until");
+#[derive(Deserialize, Debug, Clone)]
+pub struct Until(until_tag, pub Box<Expression>, pub Vec<Expression>);
 
 def_tag!(while_mod_tag, "while_mod");
 #[derive(Deserialize, Debug, Clone)]
