@@ -786,9 +786,17 @@ pub struct BodyStmt(
     pub bodystmt_tag,
     pub Vec<Expression>,
     pub Option<Rescue>,
-    pub Option<RescueElse>,
+    pub Option<RescueElseOrExpressionList>,
     pub Option<Ensure>,
 );
+
+// deals with 2.6, where else is a vec expression and not an else
+#[derive(Deserialize, Debug, Clone)]
+#[serde(untagged)]
+pub enum RescueElseOrExpressionList {
+    RescueElse(RescueElse),
+    ExpressionList(Vec<Expression>),
+}
 
 def_tag!(rescue_tag, "rescue");
 #[derive(Deserialize, Debug, Clone)]

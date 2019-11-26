@@ -376,10 +376,23 @@ pub fn format_rescue(ps: &mut ParserState, rescue_part: Option<Rescue>) {
     }
 }
 
-pub fn format_else(ps: &mut ParserState, else_part: Option<RescueElse>) {
+pub fn format_else(ps: &mut ParserState, else_part: Option<RescueElseOrExpressionList>) {
     match else_part {
         None => return,
-        Some(re) => {
+        Some(RescueElseOrExpressionList::ExpressionList(exprs)) => {
+            ps.dedent(|ps| {
+                ps.emit_indent();
+                ps.emit_else();
+            });
+            ps.emit_newline();
+
+            ps.with_start_of_line(true, |ps| {
+                for expr in exprs {
+                    format_expression(ps, expr);
+                }
+            });
+        }
+        Some(RescueElseOrExpressionList::RescueElse(re)) => {
             ps.dedent(|ps| {
                 ps.emit_indent();
                 ps.emit_else();
