@@ -217,7 +217,7 @@ pub fn format_rest_param(
             });
 
             true
-        },
+        }
     }
 }
 
@@ -304,10 +304,7 @@ pub fn format_mrhs(ps: &mut ParserState, mrhs: Option<MRHS>) {
     match mrhs {
         None => {}
         Some(MRHS::Single(expr)) => {
-            format_expression(
-                ps,
-                *expr,
-            );
+            format_expression(ps, *expr);
         }
         Some(MRHS::SingleAsArray(exprs)) => {
             if exprs.len() != 1 {
@@ -491,7 +488,7 @@ pub fn format_dot(ps: &mut ParserState, dot: DotTypeOrOp) {
         }
         DotTypeOrOp::ColonColon(_) => {
             ps.emit_colon_colon();
-        },
+        }
         DotTypeOrOp::StringDot(s) => {
             ps.emit_ident(s);
         }
@@ -1814,7 +1811,12 @@ pub fn format_kw_with_args(ps: &mut ParserState, args: ParenOrArgsAddBlock, kw: 
     }
 }
 
-pub fn format_while(ps: &mut ParserState, conditional: Box<Expression>, exprs: Vec<Expression>, kw: String) {
+pub fn format_while(
+    ps: &mut ParserState,
+    conditional: Box<Expression>,
+    exprs: Vec<Expression>,
+    kw: String,
+) {
     if ps.at_start_of_line() {
         ps.emit_indent();
     }
@@ -2095,6 +2097,55 @@ pub fn format_imaginary(ps: &mut ParserState, imaginary: Imaginary) {
     }
 }
 
+pub fn format_for(ps: &mut ParserState, forloop: For) {
+    if ps.at_start_of_line() {
+        ps.emit_indent();
+    }
+
+    let variables = forloop.1;
+    let collection = forloop.2;
+    let body = forloop.3;
+
+    ps.with_start_of_line(false, |ps| {
+        ps.emit_keyword("for".to_string());
+        ps.emit_space();
+        match variables {
+            VarFieldOrVarFields::VarField(vf) => {
+                format_var_field(ps, vf);
+            }
+            VarFieldOrVarFields::VarFields(vfs) => {
+                let len = vfs.len();
+                for (idx, expr) in vfs.into_iter().enumerate() {
+                    format_var_field(ps, expr);
+                    if idx != len - 1 {
+                        ps.emit_comma_space();
+                    }
+                }
+            }
+        }
+
+        ps.emit_space();
+        ps.emit_keyword("in".to_string());
+        ps.emit_space();
+        format_expression(ps, *collection);
+        ps.emit_newline();
+        ps.new_block(|ps| {
+            ps.with_start_of_line(true, |ps| {
+                for expr in body.into_iter() {
+                    format_expression(ps, expr);
+                }
+            });
+        });
+    });
+    ps.with_start_of_line(true, |ps| {
+        ps.emit_end();
+    });
+
+    if ps.at_start_of_line() {
+        ps.emit_newline();
+    }
+}
+
 pub fn format_expression(ps: &mut ParserState, expression: Expression) {
     let expression = normalize(expression);
     match expression {
@@ -2151,6 +2202,7 @@ pub fn format_expression(ps: &mut ParserState, expression: Expression) {
         Expression::StabbyLambda(sl) => format_stabby_lambda(ps, sl),
         Expression::Imaginary(imaginary) => format_imaginary(ps, imaginary),
         Expression::MLhs(mlhs) => format_mlhs(ps, mlhs),
+        Expression::For(forloop) => format_for(ps, forloop),
         e => {
             panic!("got unknown token: {:?}", e);
         }
