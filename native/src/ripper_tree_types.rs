@@ -429,7 +429,12 @@ pub enum Assignable {
     ConstPathField(ConstPathField),
     RestParam(RestParam),
     TopConstField(TopConstField),
+    ArefField(ArefField),
 }
+
+def_tag!(aref_field_tag, "aref_field");
+#[derive(Deserialize, Debug, Clone)]
+pub struct ArefField(pub aref_field_tag, pub Box<Expression>, pub ArgsAddBlock);
 
 def_tag!(const_path_field_tag, "const_path_field");
 #[derive(Deserialize, Debug, Clone)]
