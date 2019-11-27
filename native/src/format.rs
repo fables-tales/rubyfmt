@@ -1569,6 +1569,17 @@ pub fn format_if(ps: &mut ParserState, ifs: If) {
     }
 }
 
+pub fn format_unless(ps: &mut ParserState, unless: Unless) {
+    format_conditional(ps, *unless.1, unless.2, "unless".to_string(), (unless.3).map(ElsifOrElse::Else));
+    ps.with_start_of_line(true, |ps| {
+        ps.emit_end();
+    });
+
+    if ps.at_start_of_line() {
+        ps.emit_newline();
+    }
+}
+
 pub fn format_binary(ps: &mut ParserState, binary: Binary) {
     if ps.at_start_of_line() {
         ps.emit_indent();
@@ -2275,6 +2286,7 @@ pub fn format_expression(ps: &mut ParserState, expression: Expression) {
         Expression::IfOp(ifop) => format_ifop(ps, ifop),
         Expression::Return0(r) => format_return0(ps, r),
         Expression::OpAssign(op) => format_opassign(ps, op),
+        Expression::Unless(u) => format_unless(ps, u),
         e => {
             panic!("got unknown token: {:?}", e);
         }

@@ -128,6 +128,7 @@ pub enum Expression {
     For(For),
     IfOp(IfOp),
     OpAssign(OpAssign),
+    Unless(Unless),
 }
 
 #[derive(Debug, Clone)]
@@ -184,6 +185,15 @@ pub struct If(
     pub Box<Expression>,
     pub Vec<Expression>,
     pub Option<ElsifOrElse>,
+);
+
+def_tag!(unless_tag, "unless");
+#[derive(Deserialize, Debug, Clone)]
+pub struct Unless(
+    pub unless_tag,
+    pub Box<Expression>,
+    pub Vec<Expression>,
+    pub Option<Else>,
 );
 
 #[derive(Deserialize, Debug, Clone)]
