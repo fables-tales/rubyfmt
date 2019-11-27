@@ -127,6 +127,7 @@ pub enum Expression {
     Until(Until),
     For(For),
     IfOp(IfOp),
+    OpAssign(OpAssign),
 }
 
 #[derive(Debug, Clone)]
@@ -1220,14 +1221,6 @@ impl Call {
 
 #[derive(Deserialize, Debug, Clone)]
 #[serde(untagged)]
-pub enum Operator {
-    Equals(Equals),
-    Dot(Dot),
-    LonelyOperator(LonelyOperator),
-}
-
-#[derive(Deserialize, Debug, Clone)]
-#[serde(untagged)]
 pub enum DotType {
     Dot(Dot),
     LonelyOperator(LonelyOperator),
@@ -1266,6 +1259,19 @@ pub struct LonelyOperator(pub lonely_operator_tag);
 def_tag!(op_tag, "@op");
 #[derive(Deserialize, Debug, Clone)]
 pub struct Op(pub op_tag, pub Operator, pub LineCol);
+
+#[derive(Deserialize, Debug, Clone)]
+#[serde(untagged)]
+pub enum Operator {
+    Equals(Equals),
+    Dot(Dot),
+    LonelyOperator(LonelyOperator),
+    StringOperator(String),
+}
+
+def_tag!(opassign_tag, "opassign");
+#[derive(Deserialize, Debug, Clone)]
+pub struct OpAssign(pub opassign_tag, pub VarField, pub Op, pub Box<Expression>);
 
 def_tag!(next_tag, "next");
 #[derive(Deserialize, Debug, Clone)]
