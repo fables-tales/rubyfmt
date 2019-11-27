@@ -1074,6 +1074,31 @@ pub fn format_var_field(ps: &mut ParserState, vf: VarField) {
     format_var_ref_type(ps, left);
 }
 
+pub fn format_aref_field(ps: &mut ParserState, af: ArefField) {
+    if ps.at_start_of_line() {
+        ps.emit_indent();
+    }
+
+    ps.with_start_of_line(false, |ps| {
+        format_expression(ps, *af.1);
+        ps.emit_open_square_bracket();
+        let aab = af.2;
+        match aab.2 {
+            MaybeBlock::ToProcExpr(_) => {
+                panic!("got a block in a next, should be impossible");
+            }
+            MaybeBlock::NoBlock(_) => {
+                format_list_like_thing(ps, aab.1, true);
+            }
+        }
+        ps.emit_close_square_bracket();
+    });
+
+    if ps.at_start_of_line() {
+        ps.emit_newline();
+    }
+}
+
 pub fn format_assignable(ps: &mut ParserState, v: Assignable) {
     match v {
         Assignable::VarField(vf) => {
@@ -1087,6 +1112,9 @@ pub fn format_assignable(ps: &mut ParserState, v: Assignable) {
         }
         Assignable::TopConstField(tcf) => {
             format_top_const_field(ps, tcf);
+        },
+        Assignable::ArefField(af) => {
+            format_aref_field(ps, af);
         }
     }
 }
