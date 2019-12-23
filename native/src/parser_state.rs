@@ -4,6 +4,7 @@ use crate::line_metadata::LineMetadata;
 use crate::line_tokens::*;
 use crate::ripper_tree_types::StringContentPart;
 use crate::types::{ColNumber, LineNumber};
+use crate::render_queue_writer::RenderQueueWriter;
 use std::io::{self, Cursor, Write};
 use std::str;
 use std::mem;
@@ -226,7 +227,11 @@ impl ParserState {
     }
 
     pub fn emit_end(&mut self) {
-        self.emit_newline();
+        if let Some(lt) = self.render_queue.last() {
+            if !lt.is_newline() {
+                self.emit_newline();
+            }
+        }
         if self.at_start_of_line() {
             self.emit_indent();
         }
@@ -494,11 +499,8 @@ impl ParserState {
     }
 
     pub fn write<W: Write>(self, writer: &mut W) -> io::Result<()> {
-        for line_token in self.consume_to_render_queue() {
-            let s = line_token.consume_to_string();
-            write!(writer, "{}", s)?
-        }
-        Ok(())
+        let rqw = RenderQueueWriter::new(self.consume_to_render_queue());
+        rqw.write(writer)
     }
 
     pub fn push_token<T: 'static + LineToken>(&mut self, t: T) {

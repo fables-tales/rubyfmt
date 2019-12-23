@@ -34,10 +34,8 @@ macro_rules! def_tag {
                         E: de::Error,
                     {
                         if s == $tag {
-                            println!("accepgted at {}", s);
                             Ok(())
                         } else {
-                            println!("rejected at {}", s);
                             Err(E::custom("mismatched tag"))
                         }
                     }
@@ -323,7 +321,6 @@ impl<'de> Deserialize<'de> for MRHSNewFromArgs {
                     }
                 };
                 if tag != "mrhs_new_from_args" {
-                    println!("got wrong tag");
                     return Err(de::Error::custom("didn't get right tag"));
                 }
 
