@@ -2322,7 +2322,6 @@ pub fn format_expression(ps: &mut ParserState, expression: Expression) {
 }
 
 pub fn format_program(ps: &mut ParserState, program: Program) {
-    println!("{:?}", program);
     ps.on_line(1);
     for expression in program.1 {
         format_expression(ps, expression);

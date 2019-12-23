@@ -88,6 +88,10 @@ pub trait LineToken {
         false
     }
 
+    fn is_breakable_state(&self) -> bool {
+        false
+    }
+
     fn consume_to_string(self: Box<Self>) -> String;
 }
 
@@ -107,6 +111,10 @@ impl BreakableState {
 impl LineToken for BreakableState {
     fn consume_to_string(self: Box<Self>) -> String {
         "".to_string()
+    }
+
+    fn is_breakable_state(&self) -> bool {
+        true
     }
 }
 
