@@ -86,32 +86,30 @@ pub fn format_blockvar(ps: &mut ParserState, bv: BlockVar) {
     }
 
     ps.breakable_of(" |".to_string(), "|".to_string(), |ps| {
-        ps.breakable_entry(|ps| {
-            if let Some(params) = params {
-                inner_format_params(ps, params);
-            }
+        if let Some(params) = params {
+            inner_format_params(ps, params);
+        }
 
-            match f_params {
-                None => {}
-                Some(f_params) => {
-                    if !f_params.is_empty() {
-                        ps.emit_ident(";".to_string());
+        match f_params {
+            None => {}
+            Some(f_params) => {
+                if !f_params.is_empty() {
+                    ps.emit_ident(";".to_string());
 
-                        ps.with_start_of_line(false, |ps| {
-                            format_list_like_thing_items(
-                                ps,
-                                f_params
-                                    .into_iter()
-                                    .map(Expression::Ident)
-                                    .collect(),
-                                true,
-                            );
-                        });
-                    }
+                    ps.with_start_of_line(false, |ps| {
+                        format_list_like_thing_items(
+                            ps,
+                            f_params
+                            .into_iter()
+                            .map(Expression::Ident)
+                            .collect(),
+                            true,
+                        );
+                    });
                 }
             }
-            ps.emit_collapsing_newline();
-        });
+        }
+        ps.emit_collapsing_newline();
     });
 }
 
@@ -127,10 +125,8 @@ pub fn format_params(
     }
 
     ps.breakable_of(open_delim, close_delim, |ps| {
-        ps.breakable_entry(|ps| {
-            inner_format_params(ps, params);
-            ps.emit_collapsing_newline();
-        });
+        inner_format_params(ps, params);
+        ps.emit_collapsing_newline();
     });
 }
 
@@ -869,9 +865,7 @@ pub fn format_array_fast_path(ps: &mut ParserState, a: Option<ArgsAddStarOrExpre
         }
         Some(a) => {
             ps.breakable_of("[".to_string(), "]".to_string(), |ps| {
-                ps.breakable_entry(|ps| {
-                    format_list_like_thing(ps, a, false);
-                });
+                format_list_like_thing(ps, a, false);
             });
         }
     }
@@ -1689,9 +1683,7 @@ pub fn format_hash(ps: &mut ParserState, hash: Hash) {
         None => ps.emit_ident("{}".to_string()),
         Some(assoc_list_from_args) => {
             ps.breakable_of("{".to_string(), "}".to_string(), |ps| {
-                ps.breakable_entry(|ps| {
-                    format_assocs(ps, assoc_list_from_args.1);
-                });
+                format_assocs(ps, assoc_list_from_args.1);
             });
         }
     };
@@ -1959,9 +1951,7 @@ pub fn format_when_or_else(ps: &mut ParserState, tail: WhenOrElse) {
 
             ps.with_start_of_line(false, |ps| {
                 ps.breakable_of("".to_string(), "".to_string(), |ps| {
-                    ps.breakable_entry(|ps| {
-                        format_list_like_thing(ps, conditionals, false);
-                    });
+                    format_list_like_thing(ps, conditionals, false);
                 });
             });
 

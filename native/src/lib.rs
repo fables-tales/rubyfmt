@@ -1,4 +1,4 @@
-#![deny(warnings)]
+//#![deny(warnings, missing_copy_implementations)]
 #[macro_use]
 extern crate lazy_static;
 extern crate regex;
