@@ -99,10 +99,7 @@ pub fn format_blockvar(ps: &mut ParserState, bv: BlockVar) {
                     ps.with_start_of_line(false, |ps| {
                         format_list_like_thing_items(
                             ps,
-                            f_params
-                            .into_iter()
-                            .map(Expression::Ident)
-                            .collect(),
+                            f_params.into_iter().map(Expression::Ident).collect(),
                             true,
                         );
                     });
@@ -336,7 +333,7 @@ pub fn format_rescue_capture(ps: &mut ParserState, rescue_capture: Option<Assign
 
 pub fn format_rescue(ps: &mut ParserState, rescue_part: Option<Rescue>) {
     match rescue_part {
-        None => {},
+        None => {}
         Some(Rescue(_, class, capture, expressions, more_rescue)) => {
             ps.dedent(|ps| {
                 ps.emit_indent();
@@ -369,7 +366,7 @@ pub fn format_rescue(ps: &mut ParserState, rescue_part: Option<Rescue>) {
 
 pub fn format_else(ps: &mut ParserState, else_part: Option<RescueElseOrExpressionList>) {
     match else_part {
-        None => {},
+        None => {}
         Some(RescueElseOrExpressionList::ExpressionList(exprs)) => {
             ps.dedent(|ps| {
                 ps.emit_indent();
@@ -406,7 +403,7 @@ pub fn format_else(ps: &mut ParserState, else_part: Option<RescueElseOrExpressio
 
 pub fn format_ensure(ps: &mut ParserState, ensure_part: Option<Ensure>) {
     match ensure_part {
-        None => {},
+        None => {}
         Some(e) => {
             ps.dedent(|ps| {
                 ps.emit_newline();
@@ -1106,7 +1103,7 @@ pub fn format_assignable(ps: &mut ParserState, v: Assignable) {
         }
         Assignable::TopConstField(tcf) => {
             format_top_const_field(ps, tcf);
-        },
+        }
         Assignable::ArefField(af) => {
             format_aref_field(ps, af);
         }
@@ -1422,7 +1419,7 @@ pub fn format_defs(ps: &mut ParserState, defs: Defs) {
             IdentOrKw::Kw(kw) => {
                 ps.on_line((kw.2).0);
                 ps.emit_ident(kw.1);
-            },
+            }
         }
         format_paren_or_params(ps, paren_or_params);
         ps.emit_newline();
@@ -1592,7 +1589,13 @@ pub fn format_if(ps: &mut ParserState, ifs: If) {
 }
 
 pub fn format_unless(ps: &mut ParserState, unless: Unless) {
-    format_conditional(ps, *unless.1, unless.2, "unless".to_string(), (unless.3).map(ElsifOrElse::Else));
+    format_conditional(
+        ps,
+        *unless.1,
+        unless.2,
+        "unless".to_string(),
+        (unless.3).map(ElsifOrElse::Else),
+    );
     ps.with_start_of_line(true, |ps| {
         ps.emit_end();
     });

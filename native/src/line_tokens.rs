@@ -10,7 +10,7 @@ impl BreakableEntry {
     pub fn new(spaces: ColNumber) -> Self {
         BreakableEntry {
             spaces,
-            tokens: vec!(),
+            tokens: vec![],
         }
     }
 
@@ -42,7 +42,7 @@ pub enum LineToken {
     BreakableEntry(BreakableEntry),
     Op { op: String },
     DoubleQuote,
-    LTStringContent{content: String},
+    LTStringContent { content: String },
     SingleSlash,
     Comment { contents: String },
 }
@@ -50,9 +50,13 @@ pub enum LineToken {
 impl LineToken {
     pub fn as_single_line(self) -> LineToken {
         match self {
-            Self::CollapsingNewLine => LineToken::DirectPart { part: "".to_string() },
+            Self::CollapsingNewLine => LineToken::DirectPart {
+                part: "".to_string(),
+            },
             Self::SoftNewline => LineToken::Space,
-            Self::SoftIndent{depth: _} => LineToken::DirectPart { part: "".to_string() },
+            Self::SoftIndent { depth: _ } => LineToken::DirectPart {
+                part: "".to_string(),
+            },
             x => x,
         }
     }
@@ -66,13 +70,13 @@ impl LineToken {
             Self::HardNewLine => true,
             Self::SoftNewline => true,
             Self::CollapsingNewLine => true,
-            Self::DirectPart{part} => {
+            Self::DirectPart { part } => {
                 if part == "\n" {
                     panic!("shouldn't ever have a single newline direct part");
                 } else {
                     false
                 }
-            },
+            }
             _ => false,
         }
     }
@@ -82,9 +86,9 @@ impl LineToken {
             Self::CollapsingNewLine => "\n".to_string(),
             Self::HardNewLine => "\n".to_string(),
             Self::SoftNewline => "\n".to_string(),
-            Self::Indent{ depth } => (0..depth).map(|_| ' ').collect(),
-            Self::SoftIndent{ depth } => (0..depth).map(|_| ' ').collect(),
-            Self::Keyword{ keyword } => keyword,
+            Self::Indent { depth } => (0..depth).map(|_| ' ').collect(),
+            Self::SoftIndent { depth } => (0..depth).map(|_| ' ').collect(),
+            Self::Keyword { keyword } => keyword,
             Self::DirectPart { part } => part,
             Self::CommaSpace => ", ".to_string(),
             Self::Comma => ",".to_string(),
@@ -96,16 +100,16 @@ impl LineToken {
             Self::CloseSquareBracket => "]".to_string(),
             Self::OpenParen => "(".to_string(),
             Self::CloseParen => ")".to_string(),
-            Self::BreakableEntry(BreakableEntry{spaces: _, tokens}) => {
+            Self::BreakableEntry(BreakableEntry { spaces: _, tokens }) => {
                 tokens.into_iter().fold("".to_string(), |accum, tok| {
                     format!("{}{}", accum, tok.to_string()).to_string()
                 })
-            },
-            Self::Op{op} => op,
+            }
+            Self::Op { op } => op,
             Self::DoubleQuote => "\"".to_string(),
-            Self::LTStringContent{content} => content,
+            Self::LTStringContent { content } => content,
             Self::SingleSlash => "\\".to_string(),
-            Self::Comment{contents} => format!("{}\n", contents),
+            Self::Comment { contents } => format!("{}\n", contents),
         }
     }
 }

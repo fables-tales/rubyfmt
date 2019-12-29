@@ -2,12 +2,12 @@ use crate::comment_block::CommentBlock;
 use crate::format::{format_inner_string, StringType};
 use crate::line_metadata::LineMetadata;
 use crate::line_tokens::*;
+use crate::render_queue_writer::RenderQueueWriter;
 use crate::ripper_tree_types::StringContentPart;
 use crate::types::{ColNumber, LineNumber};
-use crate::render_queue_writer::RenderQueueWriter;
 use std::io::{self, Cursor, Write};
-use std::str;
 use std::mem;
+use std::str;
 
 fn insert_at<T>(idx: usize, target: &mut Vec<T>, input: &mut Vec<T>) {
     let drain = input.drain(..);
@@ -128,11 +128,13 @@ impl ParserState {
     }
 
     pub fn emit_indent(&mut self) {
-        self.push_token(LineToken::Indent{depth: self.current_spaces()});
+        self.push_token(LineToken::Indent {
+            depth: self.current_spaces(),
+        });
     }
 
     pub fn emit_op(&mut self, op: String) {
-        self.push_token(LineToken::Op{op: op});
+        self.push_token(LineToken::Op { op: op });
     }
 
     pub fn emit_double_quote(&mut self) {
@@ -140,7 +142,7 @@ impl ParserState {
     }
 
     pub fn emit_string_content(&mut self, s: String) {
-        self.push_token(LineToken::LTStringContent{content: s});
+        self.push_token(LineToken::LTStringContent { content: s });
     }
 
     fn current_spaces(&self) -> ColNumber {
@@ -152,51 +154,71 @@ impl ParserState {
     }
 
     pub fn emit_ident(&mut self, ident: String) {
-        self.push_token(LineToken::DirectPart{part: ident});
+        self.push_token(LineToken::DirectPart { part: ident });
     }
 
     pub fn emit_keyword(&mut self, kw: String) {
-        self.push_token(LineToken::Keyword{keyword: kw});
+        self.push_token(LineToken::Keyword { keyword: kw });
     }
 
     pub fn emit_def_keyword(&mut self) {
-        self.push_token(LineToken::Keyword{keyword: "def".to_string()});
+        self.push_token(LineToken::Keyword {
+            keyword: "def".to_string(),
+        });
     }
 
     pub fn emit_case_keyword(&mut self) {
-        self.push_token(LineToken::Keyword{keyword: "case".to_string()});
+        self.push_token(LineToken::Keyword {
+            keyword: "case".to_string(),
+        });
     }
 
     pub fn emit_when_keyword(&mut self) {
-        self.push_token(LineToken::Keyword{keyword: "when".to_string()});
+        self.push_token(LineToken::Keyword {
+            keyword: "when".to_string(),
+        });
     }
 
     pub fn emit_do_keyword(&mut self) {
-        self.push_token(LineToken::Keyword{keyword: "do".to_string()});
+        self.push_token(LineToken::Keyword {
+            keyword: "do".to_string(),
+        });
     }
 
     pub fn emit_class_keyword(&mut self) {
-        self.push_token(LineToken::Keyword{keyword: "class".to_string()});
+        self.push_token(LineToken::Keyword {
+            keyword: "class".to_string(),
+        });
     }
 
     pub fn emit_module_keyword(&mut self) {
-        self.push_token(LineToken::Keyword{keyword: "module".to_string()});
+        self.push_token(LineToken::Keyword {
+            keyword: "module".to_string(),
+        });
     }
 
     pub fn emit_rescue(&mut self) {
-        self.push_token(LineToken::Keyword{keyword: "rescue".to_string()});
+        self.push_token(LineToken::Keyword {
+            keyword: "rescue".to_string(),
+        });
     }
 
     pub fn emit_ensure(&mut self) {
-        self.push_token(LineToken::Keyword{keyword: "ensure".to_string()});
+        self.push_token(LineToken::Keyword {
+            keyword: "ensure".to_string(),
+        });
     }
 
     pub fn emit_begin(&mut self) {
-        self.push_token(LineToken::Keyword{keyword: "begin".to_string()});
+        self.push_token(LineToken::Keyword {
+            keyword: "begin".to_string(),
+        });
     }
 
     pub fn emit_soft_indent(&mut self) {
-        self.push_token(LineToken::SoftIndent{depth: self.current_spaces()});
+        self.push_token(LineToken::SoftIndent {
+            depth: self.current_spaces(),
+        });
     }
 
     pub fn emit_comma(&mut self) {
@@ -213,11 +235,13 @@ impl ParserState {
 
     pub fn emit_def(&mut self, def_name: String) {
         self.emit_def_keyword();
-        self.push_token(LineToken::DirectPart{part: format!(" {}", def_name)});
+        self.push_token(LineToken::DirectPart {
+            part: format!(" {}", def_name),
+        });
     }
 
     pub fn emit_int(&mut self, int: String) {
-        self.push_token(LineToken::DirectPart{part: int});
+        self.push_token(LineToken::DirectPart { part: int });
     }
 
     pub fn emit_newline(&mut self) {
@@ -227,13 +251,20 @@ impl ParserState {
     }
 
     pub fn emit_end(&mut self) {
-        if self.render_queue.last().map(|x| x.is_newline()).unwrap_or(false) {
+        if self
+            .render_queue
+            .last()
+            .map(|x| x.is_newline())
+            .unwrap_or(false)
+        {
             self.emit_newline();
         }
         if self.at_start_of_line() {
             self.emit_indent();
         }
-        self.push_token(LineToken::Keyword{keyword: "end".into()});
+        self.push_token(LineToken::Keyword {
+            keyword: "end".into(),
+        });
     }
 
     pub fn shift_comments(&mut self) {
@@ -241,20 +272,26 @@ impl ParserState {
 
         if self.comments_to_insert.has_comments() {
             let insert_index = match idx_of_prev_hard_newline {
-                Some(idx) => idx+1,
+                Some(idx) => idx + 1,
                 None => 0,
             };
 
-            let mut new_comments = CommentBlock::new(vec!());
+            let mut new_comments = CommentBlock::new(vec![]);
             mem::swap(&mut new_comments, &mut self.comments_to_insert);
 
-            insert_at(insert_index, &mut self.render_queue, &mut new_comments.into_line_tokens());
-            self.comments_to_insert = CommentBlock::new(vec!());
+            insert_at(
+                insert_index,
+                &mut self.render_queue,
+                &mut new_comments.into_line_tokens(),
+            );
+            self.comments_to_insert = CommentBlock::new(vec![]);
         }
     }
 
     pub fn emit_else(&mut self) {
-        self.push_token(LineToken::Keyword{keyword: "else".into()});
+        self.push_token(LineToken::Keyword {
+            keyword: "else".into(),
+        });
     }
 
     pub fn emit_comma_space(&mut self) {
@@ -339,13 +376,15 @@ impl ParserState {
     }
 
     pub fn at_start_of_line(&self) -> bool {
-        *self.start_of_line
+        *self
+            .start_of_line
             .last()
             .expect("start of line is never_empty")
     }
 
     pub fn current_formatting_context(&self) -> FormattingContext {
-        *self.formatting_context
+        *self
+            .formatting_context
             .last()
             .expect("formatting context is never empty")
     }
@@ -430,8 +469,7 @@ impl ParserState {
                 next_heredoc.buf.pop();
             };
 
-
-            self.push_token(LineToken::DirectPart{
+            self.push_token(LineToken::DirectPart {
                 part: String::from_utf8(next_heredoc.buf).expect("hereoc is utf8"),
             });
             self.emit_newline();

@@ -7,9 +7,7 @@ pub struct RenderQueueWriter {
 
 impl RenderQueueWriter {
     pub fn new(tokens: Vec<LineToken>) -> Self {
-        RenderQueueWriter {
-            tokens: tokens,
-        }
+        RenderQueueWriter { tokens: tokens }
     }
 
     pub fn write<W: Write>(self, writer: &mut W) -> io::Result<()> {
@@ -28,8 +26,7 @@ impl RenderQueueWriter {
         Self::write_final_tokens(writer, final_tokens)
     }
 
-    fn format_breakable_entry<I>(accum: &mut Vec<LineToken>, be: BreakableEntry) {
-    }
+    fn format_breakable_entry<I>(accum: &mut Vec<LineToken>, be: BreakableEntry) {}
 
     fn write_final_tokens<W: Write>(writer: &mut W, tokens: Vec<LineToken>) -> io::Result<()> {
         for line_token in tokens.into_iter() {
