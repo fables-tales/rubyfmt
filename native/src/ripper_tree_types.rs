@@ -48,6 +48,10 @@ macro_rules! def_tag {
     };
 }
 
+def_tag!(undeserializable, "qoweifjqowifjeqwoifjqweoifhqwofja");
+#[derive(Deserialize, Debug, Clone)]
+pub struct SymbolToProc(pub undeserializable, pub SymbolLiteral);
+
 def_tag!(program_tag, "program");
 #[derive(Deserialize, Debug, Clone)]
 pub struct Program(pub program_tag, pub Vec<Expression>);
@@ -55,6 +59,7 @@ pub struct Program(pub program_tag, pub Vec<Expression>);
 #[derive(Deserialize, Debug, Clone)]
 #[serde(untagged)]
 pub enum Expression {
+    SymbolToProc(SymbolToProc),
     Class(Class),
     If(If),
     Unary(Unary),
@@ -1082,7 +1087,28 @@ pub fn normalize_args_add_block(aab: ArgsAddBlock) -> ArgsAddStarOrExpressionLis
     // .2 is block
     match aab.2 {
         MaybeBlock::NoBlock(_) => aab.1,
-        MaybeBlock::ToProcExpr(e) => ArgsAddStarOrExpressionList::ExpressionList(vec![*e]),
+        MaybeBlock::ToProcExpr(e) => {
+            let trailing_expr_as_vec = vec![match *e {
+                Expression::SymbolLiteral(sl) => Expression::SymbolToProc(
+                    SymbolToProc(undeserializable, sl)
+                ),
+                x => x,
+            }];
+
+            match aab.1 {
+                ArgsAddStarOrExpressionList::ExpressionList(items) => {
+                    ArgsAddStarOrExpressionList::ExpressionList(vec![
+                        items,
+                        trailing_expr_as_vec,
+                    ].concat())
+                },
+                ArgsAddStarOrExpressionList::ArgsAddStar(aas) => {
+                    let mut new_aas = aas;
+                    new_aas.3 = vec![new_aas.3, trailing_expr_as_vec].concat();
+                    ArgsAddStarOrExpressionList::ArgsAddStar(new_aas)
+                },
+            }
+        }
     }
 }
 

@@ -130,16 +130,7 @@ class Parser < Ripper::SexpBuilderPP
   end
 end
 
-ts = Time.now.to_f
 file_data = File.read(ARGV[0])
-puts Time.now.to_f - ts
-ts = Time.now.to_f
 parsed = Parser.new(file_data).parse
-puts Time.now.to_f - ts
-ts = Time.now.to_f
 inspected_parsed = JSON.dump(parsed)
-puts Time.now.to_f - ts
-ts = Time.now.to_f
 Rubyfmt::format_to_stdout(file_data, inspected_parsed)
-puts Time.now.to_f - ts
-ts = Time.now.to_f

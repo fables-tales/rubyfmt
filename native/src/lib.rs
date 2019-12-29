@@ -84,7 +84,6 @@ fn toplevel_format_program<W: Write>(mut writer: W, buf: &[u8], tree: &[u8]) -> 
     let mut ps = ParserState::new(line_metadata);
     let v: ripper_tree_types::Program =
         serde_json::from_slice(tree).map_err(|_| Status::BadJson)?;
-    println!("{:?}", v);
 
     format::format_program(&mut ps, v);
 

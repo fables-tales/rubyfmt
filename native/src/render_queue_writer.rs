@@ -18,7 +18,6 @@ impl RenderQueueWriter {
     }
 
     pub fn write<W: Write>(self, writer: &mut W) -> io::Result<()> {
-        println!("{:?}", self.tokens);
         let mut accum = vec!();
         Self::render_as(&mut accum, self.tokens, ConvertType::MultiLine);
         Self::write_final_tokens(writer, accum)
@@ -40,13 +39,11 @@ impl RenderQueueWriter {
 
     fn format_breakable_entry(accum: &mut Vec<LineToken>, be: BreakableEntry) {
         let length = be.single_line_string_length();
-        println!("------------ {}", length);
 
         if length > MAX_LINE_LENGTH {
             Self::render_as(accum, be.as_tokens(), ConvertType::MultiLine);
         } else {
             Self::render_as(accum, be.as_tokens(), ConvertType::SingleLine);
-            println!("-------------- {:?}", accum);
             // after running accum looks like this (or some variant):
             // [.., Comma, Space, DirectPart {part: ""}, <close_delimiter>]
             // so we remove items at positions length-2 until there is nothing

@@ -1360,7 +1360,6 @@ pub fn format_string_concat(ps: &mut ParserState, sc: StringConcat) {
             format_string_literal(ps, sl);
         });
     });
-    println!("absorbing: {}", ps.is_absorbing_indents());
     if ps.at_start_of_line() && !ps.is_absorbing_indents() {
         ps.emit_newline();
     }
@@ -2265,6 +2264,11 @@ pub fn format_opassign(ps: &mut ParserState, opassign: OpAssign) {
     }
 }
 
+pub fn format_symbol_to_proc(ps: &mut ParserState, sl: SymbolLiteral) {
+    ps.emit_ident("&".to_string());
+    ps.with_start_of_line(false, |ps| format_symbol_literal(ps, sl));
+}
+
 pub fn format_expression(ps: &mut ParserState, expression: Expression) {
     let expression = normalize(expression);
     match expression {
@@ -2328,6 +2332,7 @@ pub fn format_expression(ps: &mut ParserState, expression: Expression) {
         Expression::Return0(r) => format_return0(ps, r),
         Expression::OpAssign(op) => format_opassign(ps, op),
         Expression::Unless(u) => format_unless(ps, u),
+        Expression::SymbolToProc(SymbolToProc(_, sl)) => format_symbol_to_proc(ps, sl),
         e => {
             panic!("got unknown token: {:?}", e);
         }
