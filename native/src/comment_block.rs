@@ -1,4 +1,4 @@
-use crate::line_tokens::{Comment, LineToken};
+use crate::line_tokens::LineToken;
 
 pub struct CommentBlock {
     comments: Vec<String>,
@@ -9,8 +9,8 @@ impl CommentBlock {
         CommentBlock { comments }
     }
 
-    pub fn into_line_tokens(self) -> Vec<Box<dyn LineToken>> {
-        self.comments.into_iter().map(|v| Box::new(Comment::new(v)) as Box<dyn LineToken>).collect()
+    pub fn into_line_tokens(self) -> Vec<LineToken> {
+        self.comments.into_iter().map(|v| LineToken::Comment{contents: v}).collect()
     }
 
     pub fn has_comments(&self) -> bool {
