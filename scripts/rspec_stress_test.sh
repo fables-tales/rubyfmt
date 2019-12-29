@@ -1,7 +1,7 @@
 #!/bin/bash
 set -ex
 
-RUBYFMT=$(pwd)/build/rubyfmt.rb
+RUBYFMT=$(pwd)/native/test.rb
 make
 
 cd "$(mktemp -d)"
