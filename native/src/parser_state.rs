@@ -249,7 +249,7 @@ impl ParserState {
     }
 
     pub fn emit_end(&mut self) {
-        if self
+        if !self
             .render_queue
             .last()
             .map(|x| x.is_newline())

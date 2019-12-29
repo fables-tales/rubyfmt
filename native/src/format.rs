@@ -13,7 +13,9 @@ pub fn format_def(ps: &mut ParserState, def: Def) {
 
     ps.with_formatting_context(FormattingContext::Def, |ps| {
         ps.new_block(|ps| {
-            format_bodystmt(ps, body);
+            ps.with_start_of_line(true, |ps| {
+                format_bodystmt(ps, body);
+            });
         });
     });
 
@@ -63,7 +65,7 @@ pub fn inner_format_params(ps: &mut ParserState, params: Params) {
 
         if did_emit && have_more {
             ps.emit_comma();
-            ps.emit_soft_newline();
+            ps.emit_collapsing_newline();
         }
     }
 }
@@ -523,18 +525,19 @@ pub fn format_method_call(ps: &mut ParserState, method_call: MethodCall) {
             Expression::Const(c) => format_const(ps, c),
             x => panic!("got unexpecxted struct {:?}", x),
         };
-        if use_parens {
-            ps.emit_open_paren();
-        } else if !args.is_empty() {
-            ps.emit_ident(" ".to_string());
-        }
 
-        ps.with_formatting_context(FormattingContext::ArgsList, |ps| {
-            format_list_like_thing(ps, args, true);
-        });
+        let (open_delim, close_delim) = if use_parens {
+            ("(".to_string(), ")".to_string())
+        } else {
+            (" ".to_string(), "".to_string())
+        };
 
-        if use_parens {
-            ps.emit_close_paren();
+        if !args.is_empty() {
+            ps.breakable_of(open_delim, close_delim, |ps| {
+                ps.with_formatting_context(FormattingContext::ArgsList, |ps| {
+                    format_list_like_thing(ps, args, false);
+                });
+            });
         }
     });
 
@@ -696,7 +699,11 @@ pub fn format_begin(ps: &mut ParserState, begin: Begin) {
 
     ps.emit_begin();
     ps.emit_newline();
-    ps.new_block(|ps| format_bodystmt(ps, begin.1));
+    ps.new_block(|ps| {
+        ps.with_start_of_line(true, |ps| {
+            format_bodystmt(ps, begin.1)
+        });
+    });
 
     ps.with_start_of_line(true, |ps| {
         ps.emit_end();
@@ -754,9 +761,11 @@ pub fn format_paren(ps: &mut ParserState, paren: ParenExpr) {
     } else {
         ps.emit_newline();
         ps.new_block(|ps| {
-            for expr in (paren.1).into_iter() {
-                format_expression(ps, expr);
-            }
+            ps.with_start_of_line(true, |ps| {
+                for expr in (paren.1).into_iter() {
+                    format_expression(ps, expr);
+                }
+            });
         });
     }
 
@@ -879,6 +888,7 @@ pub fn format_list_like_thing(
             let star = aas.2;
             let right = aas.3;
             let mut emitted_args = format_list_like_thing(ps, *left, single_line);
+
             if single_line {
                 // if we're single line, our predecessor didn't emit a trailing comma
                 // space because rubyfmt terminates single line arg lists without the
@@ -905,7 +915,7 @@ pub fn format_list_like_thing(
                 }
 
                 ps.emit_comma();
-                ps.emit_soft_newline();
+                ps.emit_collapsing_newline();
             });
 
             emitted_args
@@ -1346,7 +1356,8 @@ pub fn format_string_concat(ps: &mut ParserState, sc: StringConcat) {
         ps.emit_slash();
         ps.emit_newline();
 
-        ps.with_start_of_line(true, |ps| {
+        ps.with_start_of_line(false, |ps| {
+            ps.emit_indent();
             format_string_literal(ps, sl);
         });
     });
@@ -1427,7 +1438,9 @@ pub fn format_defs(ps: &mut ParserState, defs: Defs) {
 
     ps.with_formatting_context(FormattingContext::Def, |ps| {
         ps.new_block(|ps| {
-            format_bodystmt(ps, bodystmt);
+            ps.with_start_of_line(true, |ps| {
+                format_bodystmt(ps, bodystmt);
+            });
         });
     });
 
@@ -1478,8 +1491,10 @@ pub fn format_class(ps: &mut ParserState, class: Class) {
 
     ps.emit_newline();
     ps.new_block(|ps| {
-        ps.with_formatting_context(FormattingContext::ClassOrModule, |ps| {
-            format_bodystmt(ps, bodystmt);
+        ps.with_start_of_line(true, |ps| {
+            ps.with_formatting_context(FormattingContext::ClassOrModule, |ps| {
+                format_bodystmt(ps, bodystmt);
+            });
         });
     });
 
@@ -1514,8 +1529,10 @@ pub fn format_module(ps: &mut ParserState, module: Module) {
 
     ps.emit_newline();
     ps.new_block(|ps| {
-        ps.with_formatting_context(FormattingContext::ClassOrModule, |ps| {
-            format_bodystmt(ps, bodystmt);
+        ps.with_start_of_line(true, |ps| {
+            ps.with_formatting_context(FormattingContext::ClassOrModule, |ps| {
+                format_bodystmt(ps, bodystmt);
+            });
         });
     });
 
@@ -1764,10 +1781,12 @@ pub fn format_brace_block(ps: &mut ParserState, brace_block: BraceBlock) {
 
     let is_multiline = ps.will_render_as_multiline(|next_ps| {
         next_ps.new_block(|next_ps| {
-            next_ps.with_formatting_context(FormattingContext::CurlyBlock, |next_ps| {
-                for expr in new_body.into_iter() {
-                    format_expression(next_ps, expr);
-                }
+            next_ps.with_start_of_line(true, |next_ps| {
+                next_ps.with_formatting_context(FormattingContext::CurlyBlock, |next_ps| {
+                    for expr in new_body.into_iter() {
+                        format_expression(next_ps, expr);
+                    }
+                });
             });
         });
     });
@@ -1813,7 +1832,9 @@ pub fn format_do_block(ps: &mut ParserState, do_block: DoBlock) {
 
     ps.emit_newline();
     ps.new_block(|ps| {
-        format_bodystmt(ps, body);
+        ps.with_start_of_line(true, |ps| {
+            format_bodystmt(ps, body);
+        });
     });
 
     ps.with_start_of_line(true, |ps| ps.emit_end());
