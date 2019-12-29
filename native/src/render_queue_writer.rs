@@ -18,6 +18,7 @@ impl RenderQueueWriter {
     }
 
     pub fn write<W: Write>(self, writer: &mut W) -> io::Result<()> {
+        println!("{:?}", self.tokens);
         let mut accum = vec!();
         Self::render_as(&mut accum, self.tokens, ConvertType::MultiLine);
         Self::write_final_tokens(writer, accum)
@@ -39,20 +40,20 @@ impl RenderQueueWriter {
 
     fn format_breakable_entry(accum: &mut Vec<LineToken>, be: BreakableEntry) {
         let length = be.single_line_string_length();
+        println!("------------ {}", length);
 
         if length > MAX_LINE_LENGTH {
             Self::render_as(accum, be.as_tokens(), ConvertType::MultiLine);
         } else {
             Self::render_as(accum, be.as_tokens(), ConvertType::SingleLine);
-            // after running accum looks like this:
+            println!("-------------- {:?}", accum);
+            // after running accum looks like this (or some variant):
             // [.., Comma, Space, DirectPart {part: ""}, <close_delimiter>]
-            // so we remove items at positions length-2, length-3, and length-4.
-            // The reason that we have to do it in that order is that the length
-            // of the vector changes as we run removal operations.
-            let len = accum.len();
-            accum.remove(len-2);
-            accum.remove(len-3);
-            accum.remove(len-4);
+            // so we remove items at positions length-2 until there is nothing
+            // in that position that is garbage.
+            while accum[accum.len()-2].is_single_line_breakable_garbage() {
+                accum.remove(accum.len()-2);
+            }
         }
     }
 

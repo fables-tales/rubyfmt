@@ -134,4 +134,14 @@ impl LineToken {
             Self::Comment { contents } => format!("{}\n", contents),
         }
     }
+
+    pub fn is_single_line_breakable_garbage(&self) -> bool {
+        match self {
+            Self::Comma => true,
+            Self::Space => true,
+            Self::SoftNewline => true,
+            Self::DirectPart{part} => (part == &"".to_string()),
+            _ => false,
+        }
+    }
 }
