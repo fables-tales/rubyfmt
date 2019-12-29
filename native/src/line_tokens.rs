@@ -24,11 +24,7 @@ impl BreakableEntry {
 
     pub fn single_line_string_length(&self) -> usize {
         self.tokens.iter().map(|tok| {
-            if tok.is_indent() {
-                tok.clone().as_multi_line()
-            } else {
-                tok.clone().as_single_line()
-            }
+            tok.clone().as_single_line()
         }).map(|tok| tok.to_string().len()).sum()
     }
 }
@@ -79,13 +75,13 @@ impl LineToken {
         self
     }
 
-    pub fn is_indent(&self) -> bool {
-        match self {
-            Self::SoftIndent{..} => true,
-            Self::Indent{..} => true,
-            _ => false,
-        }
-    }
+    //pub fn is_indent(&self) -> bool {
+    //    match self {
+    //        Self::SoftIndent{..} => true,
+    //        Self::Indent{..} => true,
+    //        _ => false,
+    //    }
+    //}
 
     pub fn is_newline(&self) -> bool {
         match self {
