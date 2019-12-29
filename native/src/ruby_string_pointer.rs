@@ -1,6 +1,7 @@
 use std::slice;
 
 #[repr(C)]
+#[derive(Debug, Copy, Clone)]
 pub struct RubyStringPointer {
     bytes: *const char,
     length: i64,
