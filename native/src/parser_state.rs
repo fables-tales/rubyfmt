@@ -78,7 +78,6 @@ pub struct ParserState {
     heredoc_strings: Vec<HeredocString>,
     comments_to_insert: CommentBlock,
     breakable_entry_stack: Vec<BreakableEntry>,
-    next_breakable_state_id: u32,
     formatting_context: Vec<FormattingContext>,
     absorbing_indents: i32,
 }
@@ -95,7 +94,6 @@ impl ParserState {
             heredoc_strings: vec![],
             comments_to_insert: CommentBlock::new(vec![]),
             breakable_entry_stack: vec![],
-            next_breakable_state_id: 0,
             formatting_context: vec![FormattingContext::Main],
             absorbing_indents: 0,
         }
@@ -493,6 +491,7 @@ impl ParserState {
         self.breakable_entry_stack.push(be);
 
         self.emit_ident(start_delim);
+        self.emit_collapsing_newline();
         self.new_block(|ps| {
             f(ps);
         });

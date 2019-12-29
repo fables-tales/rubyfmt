@@ -1,4 +1,4 @@
 require "mkmf"
 
-$LDFLAGS << " -L./target/release -lrubyfmt "
+$LDFLAGS << " -L./target/debug -lrubyfmt "
 create_makefile("rubyfmt")

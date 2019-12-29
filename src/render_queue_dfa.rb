@@ -142,7 +142,7 @@ class RenderQueueDFA
     else
       token_collection[idx + 1] = NULL_DIRECT_PART
       q, idx = render_as(q, token_collection, idx, &:as_single_line)
-     gq.pop while [
+      q.pop while [
         q.last.is_a_comma?,
         SoftNewLine === q.last,
         BreakableState === q.last,
