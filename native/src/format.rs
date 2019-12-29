@@ -1099,6 +1099,22 @@ pub fn format_aref_field(ps: &mut ParserState, af: ArefField) {
     }
 }
 
+pub fn format_field(ps: &mut ParserState, f: Field) {
+    if ps.at_start_of_line() {
+        ps.emit_indent();
+    }
+
+    ps.with_start_of_line(false, |ps| {
+        format_expression(ps, *f.1);
+        format_dot(ps, f.2);
+        format_ident(ps, f.3);
+    });
+
+    if ps.at_start_of_line() {
+        ps.emit_newline();
+    }
+}
+
 pub fn format_assignable(ps: &mut ParserState, v: Assignable) {
     match v {
         Assignable::VarField(vf) => {
@@ -1115,6 +1131,9 @@ pub fn format_assignable(ps: &mut ParserState, v: Assignable) {
         }
         Assignable::ArefField(af) => {
             format_aref_field(ps, af);
+        },
+        Assignable::Field(field) => {
+            format_field(ps, field);
         }
     }
 }
@@ -1750,6 +1769,7 @@ pub fn format_method_add_block(ps: &mut ParserState, mab: MethodAddBlock) {
     let method_call = match mab.1 {
         MethodAddArgOrCall::MethodAddArg(maa) => maa.to_method_call(),
         MethodAddArgOrCall::Call(call) => call.to_method_call(),
+        MethodAddArgOrCall::CommandCall(call) => call.to_method_call(),
     };
 
     ps.with_start_of_line(false, |ps| {

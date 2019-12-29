@@ -34,8 +34,10 @@ macro_rules! def_tag {
                         E: de::Error,
                     {
                         if s == $tag {
+                            eprintln!("accepted at: {}", s);
                             Ok(())
                         } else {
+                            eprintln!("rejected at: {}", s);
                             Err(E::custom("mismatched tag"))
                         }
                     }
@@ -432,6 +434,7 @@ pub enum Assignable {
     RestParam(RestParam),
     TopConstField(TopConstField),
     ArefField(ArefField),
+    Field(Field),
 }
 
 def_tag!(aref_field_tag, "aref_field");
@@ -445,6 +448,10 @@ pub struct ConstPathField(pub const_path_field_tag, pub Box<Expression>, pub Con
 def_tag!(var_field_tag, "var_field");
 #[derive(Deserialize, Debug, Clone)]
 pub struct VarField(pub var_field_tag, pub VarRefType);
+
+def_tag!(field_tag, "field");
+#[derive(Deserialize, Debug, Clone)]
+pub struct Field(pub field_tag, pub Box<Expression>, pub DotTypeOrOp, pub Ident);
 
 def_tag!(var_ref_tag, "var_ref");
 #[derive(Deserialize, Debug, Clone)]
@@ -1538,6 +1545,7 @@ pub struct MethodAddBlock(method_add_block_tag, pub MethodAddArgOrCall, pub Bloc
 pub enum MethodAddArgOrCall {
     MethodAddArg(MethodAddArg),
     Call(Call),
+    CommandCall(CommandCall),
 }
 
 #[derive(Deserialize, Debug, Clone)]

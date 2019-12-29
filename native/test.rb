@@ -1,4 +1,5 @@
-$: << "."
+$: << File.dirname(__FILE__)
+puts $:.last
 require "rubyfmt.so"
 require "ripper"
 require "json"
