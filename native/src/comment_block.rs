@@ -10,7 +10,10 @@ impl CommentBlock {
     }
 
     pub fn into_line_tokens(self) -> Vec<LineToken> {
-        self.comments.into_iter().map(|v| LineToken::Comment{contents: v}).collect()
+        self.comments
+            .into_iter()
+            .map(|v| LineToken::Comment { contents: v })
+            .collect()
     }
 
     pub fn has_comments(&self) -> bool {
