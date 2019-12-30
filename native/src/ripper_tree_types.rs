@@ -1548,14 +1548,26 @@ pub struct YieldParen(yield_paren_tag, pub Box<ArgNode>);
 
 def_tag!(method_add_block_tag, "method_add_block");
 #[derive(Deserialize, Debug, Clone)]
-pub struct MethodAddBlock(method_add_block_tag, pub MethodAddArgOrCall, pub Block);
+pub struct MethodAddBlock(method_add_block_tag, pub CallType, pub Block);
 
 #[derive(Deserialize, Debug, Clone)]
 #[serde(untagged)]
-pub enum MethodAddArgOrCall {
+pub enum CallType {
     MethodAddArg(MethodAddArg),
     Call(Call),
     CommandCall(CommandCall),
+    Command(Command),
+}
+
+impl CallType {
+    pub fn to_method_call(self) -> MethodCall {
+        match self {
+            Self::MethodAddArg(maa) => maa.to_method_call(),
+            Self::Call(call) => call.to_method_call(),
+            Self::CommandCall(cc) => cc.to_method_call(),
+            Self::Command(command) => command.to_method_call(),
+        }
+    }
 }
 
 #[derive(Deserialize, Debug, Clone)]
