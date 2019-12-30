@@ -2289,6 +2289,18 @@ pub fn format_symbol_to_proc(ps: &mut ParserState, sl: SymbolLiteral) {
     ps.with_start_of_line(false, |ps| format_symbol_literal(ps, sl));
 }
 
+pub fn format_zsuper(ps: &mut ParserState) {
+    if ps.at_start_of_line() {
+        ps.emit_indent();
+    }
+
+    ps.emit_keyword("super".to_string());
+
+    if ps.at_start_of_line() {
+        ps.emit_newline();
+    }
+}
+
 pub fn format_expression(ps: &mut ParserState, expression: Expression) {
     let expression = normalize(expression);
     match expression {
@@ -2353,6 +2365,7 @@ pub fn format_expression(ps: &mut ParserState, expression: Expression) {
         Expression::OpAssign(op) => format_opassign(ps, op),
         Expression::Unless(u) => format_unless(ps, u),
         Expression::SymbolToProc(SymbolToProc(_, sl)) => format_symbol_to_proc(ps, sl),
+        Expression::ZSuper(..) => format_zsuper(ps),
         e => {
             panic!("got unknown token: {:?}", e);
         }
