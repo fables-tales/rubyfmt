@@ -1766,11 +1766,7 @@ pub fn format_method_add_block(ps: &mut ParserState, mab: MethodAddBlock) {
         ps.emit_indent();
     }
 
-    let method_call = match mab.1 {
-        MethodAddArgOrCall::MethodAddArg(maa) => maa.to_method_call(),
-        MethodAddArgOrCall::Call(call) => call.to_method_call(),
-        MethodAddArgOrCall::CommandCall(call) => call.to_method_call(),
-    };
+    let method_call = (mab.1).to_method_call();
 
     ps.with_start_of_line(false, |ps| {
         format_method_call(ps, method_call);
