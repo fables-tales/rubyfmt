@@ -546,6 +546,12 @@ pub fn format_method_call(ps: &mut ParserState, method_call: MethodCall) {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SpecialCase {
+    NoSpecialCase,
+    NoLeadingTrailingCollectionMarkers,
+}
+
 pub fn format_list_like_thing_items(
     ps: &mut ParserState,
     args: Vec<Expression>,
@@ -568,7 +574,10 @@ pub fn format_list_like_thing_items(
         } else {
             ps.emit_soft_indent();
             ps.with_start_of_line(false, |ps| {
-                format_expression(ps, expr);
+                match expr {
+                    Expression::BareAssocHash(bah) => format_assocs(ps, bah.1, SpecialCase::NoLeadingTrailingCollectionMarkers),
+                    expr => format_expression(ps, expr),
+                }
                 ps.emit_comma();
                 ps.emit_soft_newline();
             });
@@ -609,7 +618,7 @@ pub fn format_int(ps: &mut ParserState, int: Int) {
 }
 
 pub fn format_bare_assoc_hash(ps: &mut ParserState, bah: BareAssocHash) {
-    format_assocs(ps, bah.1)
+    format_assocs(ps, bah.1, SpecialCase::NoSpecialCase)
 }
 
 pub fn format_alias(ps: &mut ParserState, alias: Alias) {
@@ -663,9 +672,11 @@ pub fn format_symbol_literal(ps: &mut ParserState, symbol_literal: SymbolLiteral
     }
 }
 
-pub fn format_assocs(ps: &mut ParserState, assocs: Vec<AssocNewOrAssocSplat>) {
+pub fn format_assocs(ps: &mut ParserState, assocs: Vec<AssocNewOrAssocSplat>, sc: SpecialCase) {
     for assoc in assocs.into_iter() {
-        ps.emit_soft_indent();
+        if sc != SpecialCase::NoLeadingTrailingCollectionMarkers {
+            ps.emit_soft_indent();
+        }
         ps.with_start_of_line(false, |ps| match assoc {
             AssocNewOrAssocSplat::AssocNew(new) => {
                 match new.1 {
@@ -687,8 +698,10 @@ pub fn format_assocs(ps: &mut ParserState, assocs: Vec<AssocNewOrAssocSplat>) {
                 format_expression(ps, splat.1);
             }
         });
-        ps.emit_comma();
-        ps.emit_soft_newline();
+        if sc != SpecialCase::NoLeadingTrailingCollectionMarkers {
+            ps.emit_comma();
+            ps.emit_soft_newline();
+        }
     }
 }
 
@@ -707,6 +720,7 @@ pub fn format_begin(ps: &mut ParserState, begin: Begin) {
 
     ps.with_start_of_line(true, |ps| {
         ps.emit_end();
+        ps.emit_newline()
     });
 }
 
@@ -1720,7 +1734,7 @@ pub fn format_hash(ps: &mut ParserState, hash: Hash) {
         None => ps.emit_ident("{}".to_string()),
         Some(assoc_list_from_args) => {
             ps.breakable_of("{".to_string(), "}".to_string(), |ps| {
-                format_assocs(ps, assoc_list_from_args.1);
+                format_assocs(ps, assoc_list_from_args.1, SpecialCase::NoSpecialCase);
             });
         }
     };
