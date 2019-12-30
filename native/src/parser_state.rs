@@ -155,6 +155,10 @@ impl ParserState {
         self.push_token(LineToken::DirectPart { part: ident });
     }
 
+    pub fn emit_delim(&mut self, contents: String) {
+        self.push_token(LineToken::Delim { contents });
+    }
+
     pub fn emit_keyword(&mut self, kw: String) {
         self.push_token(LineToken::Keyword { keyword: kw });
     }
@@ -490,14 +494,14 @@ impl ParserState {
 
         self.breakable_entry_stack.push(be);
 
-        self.emit_ident(start_delim);
+        self.emit_delim(start_delim);
         self.emit_collapsing_newline();
         self.new_block(|ps| {
             f(ps);
         });
 
         self.emit_soft_indent();
-        self.emit_ident(end_delim);
+        self.emit_delim(end_delim);
 
         let insert_be = self
             .breakable_entry_stack
