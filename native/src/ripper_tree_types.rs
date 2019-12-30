@@ -1326,7 +1326,7 @@ pub enum Operator {
 
 def_tag!(opassign_tag, "opassign");
 #[derive(Deserialize, Debug, Clone)]
-pub struct OpAssign(pub opassign_tag, pub VarField, pub Op, pub Box<Expression>);
+pub struct OpAssign(pub opassign_tag, pub Assignable, pub Op, pub Box<Expression>);
 
 def_tag!(next_tag, "next");
 #[derive(Deserialize, Debug, Clone)]
