@@ -2268,7 +2268,7 @@ pub fn format_opassign(ps: &mut ParserState, opassign: OpAssign) {
     }
 
     ps.with_start_of_line(false, |ps| {
-        format_var_field(ps, opassign.1);
+        format_assignable(ps, opassign.1);
         ps.emit_space();
         format_op(ps, opassign.2);
         ps.emit_space();
