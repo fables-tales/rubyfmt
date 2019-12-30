@@ -18,6 +18,7 @@ impl RenderQueueWriter {
     }
 
     pub fn write<W: Write>(self, writer: &mut W) -> io::Result<()> {
+        eprintln!("{:?}", self.tokens);
         let mut accum = vec!();
         Self::render_as(&mut accum, self.tokens, ConvertType::MultiLine);
         Self::write_final_tokens(writer, accum)
@@ -41,7 +42,11 @@ impl RenderQueueWriter {
         let length = be.single_line_string_length();
 
         if length > MAX_LINE_LENGTH {
-            Self::render_as(accum, be.as_tokens(), ConvertType::MultiLine);
+            Self::render_as(
+                accum,
+                be.tr_delims().as_tokens(),
+                ConvertType::MultiLine,
+            );
         } else {
             Self::render_as(accum, be.as_tokens(), ConvertType::SingleLine);
             // after running accum looks like this (or some variant):

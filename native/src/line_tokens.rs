@@ -18,6 +18,37 @@ impl BreakableEntry {
         self.tokens.push(lt);
     }
 
+    pub fn tr_delims(self) -> Self {
+        let mut new_be = BreakableEntry{spaces: self.spaces, tokens: self.tokens};
+        let new_open = match &new_be.tokens[0] {
+            LineToken::Delim{contents} => LineToken::Delim{contents:
+                if contents == " " {
+                    "(".to_string()
+                } else {
+                    contents.clone()
+                }
+            },
+            _ => panic!("got wrong token type at start of be")
+        };
+
+        let new_close = match &new_be.tokens[new_be.tokens.len()-1] {
+            LineToken::Delim{contents} => LineToken::Delim{contents:
+                if contents == "" {
+                    ")".to_string()
+                } else {
+                    contents.clone()
+                }
+            },
+            _ => panic!("got wrong token type at start of be")
+        };
+
+        new_be.tokens[0] = new_open;
+        let idx = new_be.tokens.len()-1;
+        new_be.tokens[idx] = new_close;
+
+        new_be
+    }
+
     pub fn as_tokens(self) -> Vec<LineToken> {
         self.tokens
     }
@@ -55,6 +86,7 @@ pub enum LineToken {
     LTStringContent { content: String },
     SingleSlash,
     Comment { contents: String },
+    Delim { contents: String },
 }
 
 impl LineToken {
@@ -128,6 +160,7 @@ impl LineToken {
             Self::LTStringContent { content } => content,
             Self::SingleSlash => "\\".to_string(),
             Self::Comment { contents } => format!("{}\n", contents),
+            Self::Delim { contents } => contents,
         }
     }
 
