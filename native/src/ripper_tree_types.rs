@@ -134,6 +134,7 @@ pub enum Expression {
     IfOp(IfOp),
     OpAssign(OpAssign),
     Unless(Unless),
+    ZSuper(ZSuper),
 }
 
 #[derive(Debug, Clone)]
@@ -182,6 +183,10 @@ impl<'de> Deserialize<'de> for MLhs {
         deserializer.deserialize_seq(MLhsVisitor)
     }
 }
+
+def_tag!(zsuper_tag, "zsuper");
+#[derive(Deserialize, Debug, Clone)]
+pub struct ZSuper((zsuper_tag,));
 
 def_tag!(if_tag, "if");
 #[derive(Deserialize, Debug, Clone)]
