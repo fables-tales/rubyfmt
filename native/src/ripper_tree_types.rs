@@ -135,6 +135,7 @@ pub enum Expression {
     OpAssign(OpAssign),
     Unless(Unless),
     ZSuper(ZSuper),
+    Yield0(Yield0),
 }
 
 #[derive(Debug, Clone)]
@@ -187,6 +188,10 @@ impl<'de> Deserialize<'de> for MLhs {
 def_tag!(zsuper_tag, "zsuper");
 #[derive(Deserialize, Debug, Clone)]
 pub struct ZSuper((zsuper_tag,));
+
+def_tag!(yield0_tag, "yield0");
+#[derive(Deserialize, Debug, Clone)]
+pub struct Yield0((yield0_tag,));
 
 def_tag!(if_tag, "if");
 #[derive(Deserialize, Debug, Clone)]
