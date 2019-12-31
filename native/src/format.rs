@@ -648,11 +648,25 @@ pub fn format_op(ps: &mut ParserState, op: Op) {
     }
 }
 
+pub fn format_kw(ps: &mut ParserState, kw: Kw) {
+    if ps.at_start_of_line() {
+        ps.emit_indent();
+    }
+
+    ps.on_line((kw.2).0);
+    ps.emit_ident(kw.1);
+
+    if ps.at_start_of_line() {
+        ps.emit_newline();
+    }
+}
+
 pub fn format_symbol(ps: &mut ParserState, symbol: Symbol) {
     ps.emit_ident(":".to_string());
     match symbol.1 {
-        IdentOrConst::Ident(i) => format_ident(ps, i),
-        IdentOrConst::Const(c) => format_const(ps, c),
+        IdentOrConstOrKw::Ident(i) => format_ident(ps, i),
+        IdentOrConstOrKw::Const(c) => format_const(ps, c),
+        IdentOrConstOrKw::Keyword(kw) => format_kw(ps, kw),
     }
 }
 
