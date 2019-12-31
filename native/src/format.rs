@@ -687,8 +687,9 @@ pub fn format_symbol_literal(ps: &mut ParserState, symbol_literal: SymbolLiteral
 }
 
 pub fn format_assocs(ps: &mut ParserState, assocs: Vec<AssocNewOrAssocSplat>, sc: SpecialCase) {
-    for assoc in assocs.into_iter() {
-        if sc != SpecialCase::NoLeadingTrailingCollectionMarkers {
+    let len = assocs.len();
+    for (idx, assoc) in assocs.into_iter().enumerate() {
+        if sc != SpecialCase::NoLeadingTrailingCollectionMarkers || idx != 0 {
             ps.emit_soft_indent();
         }
         ps.with_start_of_line(false, |ps| match assoc {
@@ -712,7 +713,7 @@ pub fn format_assocs(ps: &mut ParserState, assocs: Vec<AssocNewOrAssocSplat>, sc
                 format_expression(ps, splat.1);
             }
         });
-        if sc != SpecialCase::NoLeadingTrailingCollectionMarkers {
+        if sc != SpecialCase::NoLeadingTrailingCollectionMarkers || idx != len - 1 {
             ps.emit_comma();
             ps.emit_soft_newline();
         }
