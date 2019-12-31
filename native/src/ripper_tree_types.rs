@@ -1265,9 +1265,17 @@ pub enum IdentOrConst {
     Const(Const),
 }
 
+#[derive(Deserialize, Debug, Clone)]
+#[serde(untagged)]
+pub enum IdentOrConstOrKw {
+    Ident(Ident),
+    Const(Const),
+    Keyword(Kw),
+}
+
 def_tag!(symbol_tag, "symbol");
 #[derive(Deserialize, Debug, Clone)]
-pub struct Symbol(pub symbol_tag, pub IdentOrConst);
+pub struct Symbol(pub symbol_tag, pub IdentOrConstOrKw);
 
 def_tag!(call_tag, "call");
 #[derive(Deserialize, Debug, Clone)]
