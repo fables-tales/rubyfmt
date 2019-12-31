@@ -810,7 +810,23 @@ impl MethodCall {
 
 def_tag!(def_tag, "def");
 #[derive(Deserialize, Debug, Clone)]
-pub struct Def(pub def_tag, pub Ident, pub ParenOrParams, pub BodyStmt);
+pub struct Def(pub def_tag, pub IdentOrOp, pub ParenOrParams, pub BodyStmt);
+
+#[derive(Deserialize, Debug, Clone)]
+#[serde(untagged)]
+pub enum IdentOrOp {
+    Ident(Ident),
+    Op((op_tag, String, LineCol)),
+}
+
+impl IdentOrOp {
+    pub fn to_def_parts(self) -> (String, LineCol) {
+        match self {
+            Self::Ident(Ident(_, string, linecol)) => (string, linecol),
+            Self::Op((_, string, linecol)) => (string, linecol),
+        }
+    }
+}
 
 def_tag!(begin_tag, "begin");
 #[derive(Deserialize, Debug, Clone)]
