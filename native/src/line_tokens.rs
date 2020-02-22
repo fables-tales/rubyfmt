@@ -1,64 +1,4 @@
-use crate::types::ColNumber;
-
-#[derive(Debug, Clone)]
-pub struct BreakableEntry {
-    spaces: ColNumber,
-    tokens: Vec<LineToken>,
-}
-
-impl BreakableEntry {
-    pub fn new(spaces: ColNumber) -> Self {
-        BreakableEntry {
-            spaces,
-            tokens: vec![],
-        }
-    }
-
-    pub fn push(&mut self, lt: LineToken) {
-        self.tokens.push(lt);
-    }
-
-    pub fn tr_delims(self) -> Self {
-        let mut new_be = BreakableEntry{spaces: self.spaces, tokens: self.tokens};
-        let new_open = match &new_be.tokens[0] {
-            LineToken::Delim{contents} => LineToken::Delim{contents:
-                if contents == " " {
-                    "(".to_string()
-                } else {
-                    contents.clone()
-                }
-            },
-            _ => panic!("got wrong token type at start of be")
-        };
-
-        let new_close = match &new_be.tokens[new_be.tokens.len()-1] {
-            LineToken::Delim{contents} => LineToken::Delim{contents:
-                if contents == "" {
-                    ")".to_string()
-                } else {
-                    contents.clone()
-                }
-            },
-            _ => panic!("got wrong token type at start of be")
-        };
-
-        new_be.tokens[0] = new_open;
-        let idx = new_be.tokens.len()-1;
-        new_be.tokens[idx] = new_close;
-
-        new_be
-    }
-
-    pub fn as_tokens(self) -> Vec<LineToken> {
-        self.tokens
-    }
-
-    pub fn single_line_string_length(&self) -> usize {
-        self.tokens.iter().map(|tok| {
-            tok.clone().as_single_line()
-        }).map(|tok| tok.to_string().len()).sum()
-    }
-}
+use crate::breakable_entry::{BreakableEntry, ConvertType};
 
 #[derive(Debug, Clone)]
 pub enum LineToken {
@@ -150,8 +90,8 @@ impl LineToken {
             Self::CloseSquareBracket => "]".to_string(),
             Self::OpenParen => "(".to_string(),
             Self::CloseParen => ")".to_string(),
-            Self::BreakableEntry(BreakableEntry { spaces: _, tokens }) => {
-                tokens.into_iter().fold("".to_string(), |accum, tok| {
+            Self::BreakableEntry(be) => {
+                be.as_tokens(ConvertType::SingleLine).into_iter().fold("".to_string(), |accum, tok| {
                     format!("{}{}", accum, tok.to_string()).to_string()
                 })
             }
