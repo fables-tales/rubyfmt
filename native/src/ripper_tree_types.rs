@@ -34,10 +34,10 @@ macro_rules! def_tag {
                         E: de::Error,
                     {
                         if s == $tag {
-                            eprintln!("accepted at: {}", s);
+                            eprintln!("accepted at {}", s);
                             Ok(())
                         } else {
-                            eprintln!("rejected at: {}", s);
+                            eprintln!("rejected at {}", s);
                             Err(E::custom("mismatched tag"))
                         }
                     }
@@ -1267,15 +1267,17 @@ pub enum IdentOrConst {
 
 #[derive(Deserialize, Debug, Clone)]
 #[serde(untagged)]
-pub enum IdentOrConstOrKw {
+pub enum IdentOrConstOrKwOrOpOrIvar {
     Ident(Ident),
     Const(Const),
     Keyword(Kw),
+    Op(Op),
+    IVar(IVar),
 }
 
 def_tag!(symbol_tag, "symbol");
 #[derive(Deserialize, Debug, Clone)]
-pub struct Symbol(pub symbol_tag, pub IdentOrConstOrKw);
+pub struct Symbol(pub symbol_tag, pub IdentOrConstOrKwOrOpOrIvar);
 
 def_tag!(call_tag, "call");
 #[derive(Deserialize, Debug, Clone)]
@@ -1517,18 +1519,7 @@ pub struct Char(char_tag, pub String, pub LineCol);
 
 def_tag!(return_tag, "return");
 #[derive(Deserialize, Debug, Clone)]
-pub struct Return(return_tag, pub ArgNode);
-
-impl Return {
-    pub fn to_method_call(self) -> MethodCall {
-        MethodCall::new(
-            vec![],
-            Box::new(Expression::Ident(Ident::new("return".to_string()))),
-            false,
-            normalize_args(self.1),
-        )
-    }
-}
+pub struct Return(return_tag, pub ArgNode, pub LineCol);
 
 def_tag!(return0_tag, "return0");
 #[derive(Deserialize, Debug, Clone)]
@@ -1552,11 +1543,11 @@ pub struct Backref(backref_tag, pub String, pub LineCol);
 
 def_tag!(yield_tag, "yield");
 #[derive(Deserialize, Debug, Clone)]
-pub struct Yield(yield_tag, pub ParenOrArgsAddBlock);
+pub struct Yield(yield_tag, pub ParenOrArgsAddBlock, pub LineCol);
 
 def_tag!(break_tag, "break");
 #[derive(Deserialize, Debug, Clone)]
-pub struct Break(break_tag, pub ParenOrArgsAddBlock);
+pub struct Break(break_tag, pub ParenOrArgsAddBlock, pub LineCol);
 
 #[derive(Deserialize, Debug, Clone)]
 #[serde(untagged)]
@@ -1656,6 +1647,7 @@ pub struct When(
     pub ArgsAddStarOrExpressionList,
     pub Vec<Expression>,
     pub Option<Box<WhenOrElse>>,
+    pub LineCol,
 );
 
 #[derive(Deserialize, Debug, Clone)]

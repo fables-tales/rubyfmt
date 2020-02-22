@@ -1,10 +1,12 @@
 use crate::comment_block::CommentBlock;
 use crate::format::{format_inner_string, StringType};
 use crate::line_metadata::LineMetadata;
+use crate::delimiters::BreakableDelims;
 use crate::line_tokens::*;
 use crate::render_queue_writer::RenderQueueWriter;
 use crate::ripper_tree_types::StringContentPart;
 use crate::types::{ColNumber, LineNumber};
+use crate::breakable_entry::BreakableEntry;
 use std::io::{self, Cursor, Write};
 use std::mem;
 use std::str;
@@ -104,6 +106,15 @@ impl ParserState {
     }
 
     pub fn on_line(&mut self, line_number: LineNumber) {
+        eprintln!("{} {}", line_number, self.current_orig_line_number);
+        if line_number < self.current_orig_line_number {
+            return;
+        }
+
+        if let Some(be) = self.breakable_entry_stack.last_mut() {
+            be.push_line_number(line_number);
+        }
+
         let comments = self.comments_hash.extract_comments_to_line(line_number);
         if comments.is_none() {
             return;
@@ -153,10 +164,6 @@ impl ParserState {
 
     pub fn emit_ident(&mut self, ident: String) {
         self.push_token(LineToken::DirectPart { part: ident });
-    }
-
-    pub fn emit_delim(&mut self, contents: String) {
-        self.push_token(LineToken::Delim { contents });
     }
 
     pub fn emit_keyword(&mut self, kw: String) {
@@ -394,6 +401,7 @@ impl ParserState {
     pub fn new_with_depth_stack_from(ps: &ParserState) -> Self {
         let mut next_ps = ParserState::new(LineMetadata::new());
         next_ps.depth_stack = ps.depth_stack.clone();
+        next_ps.current_orig_line_number = ps.current_orig_line_number;
         next_ps
     }
 
@@ -486,22 +494,24 @@ impl ParserState {
         }
     }
 
-    pub fn breakable_of<F>(&mut self, start_delim: String, end_delim: String, f: F)
+    pub fn breakable_of<F>(&mut self, delims: BreakableDelims, f: F)
     where
         F: FnOnce(&mut ParserState),
     {
-        let be = BreakableEntry::new(self.current_spaces());
+        let mut be = BreakableEntry::new(
+            self.current_spaces(),
+            delims,
+        );
+        be.push_line_number(self.current_orig_line_number);
 
         self.breakable_entry_stack.push(be);
 
-        self.emit_delim(start_delim);
         self.emit_collapsing_newline();
         self.new_block(|ps| {
             f(ps);
         });
 
         self.emit_soft_indent();
-        self.emit_delim(end_delim);
 
         let insert_be = self
             .breakable_entry_stack

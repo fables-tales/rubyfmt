@@ -1,5 +1,6 @@
 use crate::parser_state::{FormattingContext, ParserState};
 use crate::ripper_tree_types::*;
+use crate::delimiters::BreakableDelims;
 
 pub fn format_def(ps: &mut ParserState, def: Def) {
     let def_expression = (def.1).to_def_parts();
@@ -87,7 +88,7 @@ pub fn format_blockvar(ps: &mut ParserState, bv: BlockVar) {
         return;
     }
 
-    ps.breakable_of(" |".to_string(), "|".to_string(), |ps| {
+    ps.breakable_of(BreakableDelims::for_block_params(), |ps| {
         if let Some(params) = params {
             inner_format_params(ps, params);
         }
@@ -115,15 +116,14 @@ pub fn format_blockvar(ps: &mut ParserState, bv: BlockVar) {
 pub fn format_params(
     ps: &mut ParserState,
     params: Params,
-    open_delim: String,
-    close_delim: String,
+    delims: BreakableDelims,
 ) {
     let have_any_params = params.non_null_positions().iter().any(|&x| x);
     if !have_any_params {
         return;
     }
 
-    ps.breakable_of(open_delim, close_delim, |ps| {
+    ps.breakable_of(delims, |ps| {
         inner_format_params(ps, params);
         ps.emit_collapsing_newline();
     });
@@ -526,14 +526,14 @@ pub fn format_method_call(ps: &mut ParserState, method_call: MethodCall) {
             x => panic!("got unexpecxted struct {:?}", x),
         };
 
-        let (open_delim, close_delim) = if use_parens {
-            ("(".to_string(), ")".to_string())
+        let delims = if use_parens {
+            BreakableDelims::for_method_call()
         } else {
-            (" ".to_string(), "".to_string())
+            BreakableDelims::for_kw()
         };
 
         if !args.is_empty() {
-            ps.breakable_of(open_delim, close_delim, |ps| {
+            ps.breakable_of(delims, |ps| {
                 ps.with_formatting_context(FormattingContext::ArgsList, |ps| {
                     format_list_like_thing(ps, args, false);
                 });
@@ -609,7 +609,7 @@ pub fn format_int(ps: &mut ParserState, int: Int) {
     if ps.at_start_of_line() {
         ps.emit_indent();
     }
-
+    ps.on_line((int.2).0);
     ps.emit_int(int.1);
 
     if ps.at_start_of_line() {
@@ -664,9 +664,11 @@ pub fn format_kw(ps: &mut ParserState, kw: Kw) {
 pub fn format_symbol(ps: &mut ParserState, symbol: Symbol) {
     ps.emit_ident(":".to_string());
     match symbol.1 {
-        IdentOrConstOrKw::Ident(i) => format_ident(ps, i),
-        IdentOrConstOrKw::Const(c) => format_const(ps, c),
-        IdentOrConstOrKw::Keyword(kw) => format_kw(ps, kw),
+        IdentOrConstOrKwOrOpOrIvar::Ident(i) => format_ident(ps, i),
+        IdentOrConstOrKwOrOpOrIvar::Const(c) => format_const(ps, c),
+        IdentOrConstOrKwOrOpOrIvar::Keyword(kw) => format_kw(ps, kw),
+        IdentOrConstOrKwOrOpOrIvar::Op(op) => format_op(ps, op),
+        IdentOrConstOrKwOrOpOrIvar::IVar(ivar) => format_var_ref_type(ps, VarRefType::IVar(ivar)),
     }
 }
 
@@ -762,10 +764,6 @@ pub fn normalize(e: Expression) -> Expression {
         Expression::CommandCall(call) => Expression::MethodCall(call.to_method_call()),
         Expression::Call(call) => Expression::MethodCall(call.to_method_call()),
         Expression::Super(sup) => Expression::MethodCall(sup.to_method_call()),
-        Expression::Return(ret) => Expression::MethodCall(ret.to_method_call()),
-        //"fcall" => unimplemented!(),
-        //"zsuper" => unimplemented!(),
-        //"yield" => unimplemented!(),
         e => e,
     }
 }
@@ -898,7 +896,7 @@ pub fn format_array_fast_path(ps: &mut ParserState, a: Option<ArgsAddStarOrExpre
             ps.emit_close_square_bracket();
         }
         Some(a) => {
-            ps.breakable_of("[".to_string(), "]".to_string(), |ps| {
+            ps.breakable_of(BreakableDelims::for_array(), |ps| {
                 format_list_like_thing(ps, a, false);
             });
         }
@@ -1502,7 +1500,7 @@ pub fn format_paren_or_params(ps: &mut ParserState, pp: ParenOrParams) {
         ParenOrParams::Paren(p) => p.1,
         ParenOrParams::Params(p) => p,
     };
-    format_params(ps, params, "(".to_string(), ")".to_string());
+    format_params(ps, params, BreakableDelims::for_method_call());
 }
 
 pub fn format_class(ps: &mut ParserState, class: Class) {
@@ -1748,7 +1746,7 @@ pub fn format_hash(ps: &mut ParserState, hash: Hash) {
     match hash.1 {
         None => ps.emit_ident("{}".to_string()),
         Some(assoc_list_from_args) => {
-            ps.breakable_of("{".to_string(), "}".to_string(), |ps| {
+            ps.breakable_of(BreakableDelims::for_hash(), |ps| {
                 format_assocs(ps, assoc_list_from_args.1, SpecialCase::NoSpecialCase);
             });
         }
@@ -1883,7 +1881,12 @@ pub fn format_do_block(ps: &mut ParserState, do_block: DoBlock) {
     ps.with_start_of_line(true, |ps| ps.emit_end());
 }
 
-pub fn format_kw_with_args(ps: &mut ParserState, args: ParenOrArgsAddBlock, kw: String) {
+pub fn format_kw_with_args(
+    ps: &mut ParserState,
+    args: ParenOrArgsAddBlock,
+    kw: String,
+    linecol: LineCol
+) {
     if ps.at_start_of_line() {
         ps.emit_indent();
     }
@@ -1910,6 +1913,7 @@ pub fn format_kw_with_args(ps: &mut ParserState, args: ParenOrArgsAddBlock, kw: 
             )
         }
     };
+    ps.on_line(linecol.0);
 
     ps.with_start_of_line(false, |ps| {
         format_list_like_thing(ps, yield_args.1, true);
@@ -1957,9 +1961,6 @@ pub fn format_mod_statement(
     body: Box<Expression>,
     name: String,
 ) {
-    if ps.at_start_of_line() {
-        ps.emit_indent();
-    }
 
     let new_body = body.clone();
 
@@ -1974,35 +1975,50 @@ pub fn format_mod_statement(
         }
     });
 
-    ps.with_start_of_line(false, |ps| {
-        if is_multiline {
-            ps.emit_open_paren();
+    if is_multiline {
+        format_conditional(ps, *conditional, vec![*body], name, None);
+        ps.with_start_of_line(true, |ps| {
+            ps.emit_end();
+        });
+
+        if ps.at_start_of_line() {
             ps.emit_newline();
-
-            ps.new_block(|ps| {
-                ps.with_start_of_line(true, |ps| {
-                    let exprs = match *body {
-                        Expression::Paren(p) => p.1,
-                        e => vec![e],
-                    };
-                    for expr in exprs {
-                        format_expression(ps, expr);
-                    }
-                });
-            });
-
+        }
+    } else {
+        if ps.at_start_of_line() {
             ps.emit_indent();
-            ps.emit_close_paren();
-        } else {
-            format_expression(ps, *body);
         }
 
-        ps.emit_ident(format!(" {} ", name));
-        format_expression(ps, *conditional);
-    });
+        ps.with_start_of_line(false, |ps| {
+            if is_multiline {
+                ps.emit_open_paren();
+                ps.emit_newline();
 
-    if ps.at_start_of_line() {
-        ps.emit_newline();
+                ps.new_block(|ps| {
+                    ps.with_start_of_line(true, |ps| {
+                        let exprs = match *body {
+                            Expression::Paren(p) => p.1,
+                            e => vec![e],
+                        };
+                        for expr in exprs {
+                            format_expression(ps, expr);
+                        }
+                    });
+                });
+
+                ps.emit_indent();
+                ps.emit_close_paren();
+            } else {
+                format_expression(ps, *body);
+            }
+
+            ps.emit_ident(format!(" {} ", name));
+            format_expression(ps, *conditional);
+        });
+
+        if ps.at_start_of_line() {
+            ps.emit_newline();
+        }
     }
 }
 
@@ -2012,12 +2028,13 @@ pub fn format_when_or_else(ps: &mut ParserState, tail: WhenOrElse) {
             let conditionals = when.1;
             let body = when.2;
             let tail = when.3;
+            let linecol = when.4;
+            ps.on_line(linecol.0);
             ps.emit_indent();
             ps.emit_when_keyword();
-            ps.emit_space();
 
             ps.with_start_of_line(false, |ps| {
-                ps.breakable_of("".to_string(), "".to_string(), |ps| {
+                ps.breakable_of(BreakableDelims::for_when(), |ps| {
                     format_list_like_thing(ps, conditionals, false);
                 });
             });
@@ -2338,6 +2355,32 @@ pub fn format_yield0(ps: &mut ParserState) {
     }
 }
 
+pub fn format_return(ps: &mut ParserState, ret: Return) {
+    if ps.at_start_of_line() {
+        ps.emit_indent();
+    }
+
+    let args = ret.1;
+    let line = (ret.2).0;
+    ps.on_line(line);
+    let args = normalize_args(args);
+    ps.emit_keyword("return".to_string());
+
+    ps.with_start_of_line(false, |ps| {
+        if !args.is_empty() {
+            ps.breakable_of(BreakableDelims::for_return_kw(), |ps| {
+                ps.with_formatting_context(FormattingContext::ArgsList, |ps| {
+                    format_list_like_thing(ps, args, false);
+                });
+            });
+        }
+    });
+
+    if ps.at_start_of_line() {
+        ps.emit_newline();
+    }
+}
+
 pub fn format_expression(ps: &mut ParserState, expression: Expression) {
     let expression = normalize(expression);
     match expression {
@@ -2380,8 +2423,8 @@ pub fn format_expression(ps: &mut ParserState, expression: Expression) {
         Expression::Hash(h) => format_hash(ps, h),
         Expression::RegexpLiteral(regexp) => format_regexp_literal(ps, regexp),
         Expression::Backref(backref) => format_backref(ps, backref),
-        Expression::Yield(y) => format_kw_with_args(ps, y.1, "yield".to_string()),
-        Expression::Break(b) => format_kw_with_args(ps, b.1, "break".to_string()),
+        Expression::Yield(y) => format_kw_with_args(ps, y.1, "yield".to_string(), y.2),
+        Expression::Break(b) => format_kw_with_args(ps, b.1, "break".to_string(), b.2),
         Expression::MethodAddBlock(mab) => format_method_add_block(ps, mab),
         Expression::While(w) => format_while(ps, w.1, w.2, "while".to_string()),
         Expression::Until(u) => format_while(ps, u.1, u.2, "until".to_string()),
@@ -2404,6 +2447,7 @@ pub fn format_expression(ps: &mut ParserState, expression: Expression) {
         Expression::SymbolToProc(SymbolToProc(_, sl)) => format_symbol_to_proc(ps, sl),
         Expression::ZSuper(..) => format_zsuper(ps),
         Expression::Yield0(..) => format_yield0(ps),
+        Expression::Return(ret) => format_return(ps, ret),
         e => {
             panic!("got unknown token: {:?}", e);
         }
