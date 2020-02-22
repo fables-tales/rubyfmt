@@ -1111,10 +1111,10 @@ pub fn format_aref_field(ps: &mut ParserState, af: ArefField) {
         ps.emit_open_square_bracket();
         let aab = af.2;
         match aab.2 {
-            MaybeBlock::ToProcExpr(_) => {
-                panic!("got a block in a next, should be impossible");
+            ToProcExpr::Present(_) => {
+                panic!("got a to_proc in an aref_field, should be impossible");
             }
-            MaybeBlock::NoBlock(_) => {
+            ToProcExpr::NotPresent(_) => {
                 format_list_like_thing(ps, aab.1, true);
             }
         }
@@ -1337,10 +1337,10 @@ pub fn format_next(ps: &mut ParserState, next: Next) {
                 }
             }
             ArgsAddBlockOrExpressionList::ArgsAddBlock(aab) => match aab.2 {
-                MaybeBlock::ToProcExpr(_) => {
+                ToProcExpr::Present(_) => {
                     panic!("got a block in a next, should be impossible");
                 }
-                MaybeBlock::NoBlock(_) => {
+                ToProcExpr::NotPresent(_) => {
                     ps.emit_space();
                     format_list_like_thing(ps, aab.1, true);
                 }
@@ -1909,7 +1909,7 @@ pub fn format_kw_with_args(
             ArgsAddBlock(
                 args_add_block_tag,
                 ArgsAddStarOrExpressionList::ExpressionList(vec![]),
-                MaybeBlock::NoBlock(false),
+                ToProcExpr::NotPresent(false),
             )
         }
     };
@@ -2325,10 +2325,9 @@ pub fn format_opassign(ps: &mut ParserState, opassign: OpAssign) {
         ps.emit_newline();
     }
 }
-
-pub fn format_symbol_to_proc(ps: &mut ParserState, sl: SymbolLiteral) {
+pub fn format_to_proc(ps: &mut ParserState, e: Box<Expression>) {
     ps.emit_ident("&".to_string());
-    ps.with_start_of_line(false, |ps| format_symbol_literal(ps, sl));
+    ps.with_start_of_line(false, |ps| format_expression(ps, *e));
 }
 
 pub fn format_zsuper(ps: &mut ParserState) {
@@ -2444,7 +2443,7 @@ pub fn format_expression(ps: &mut ParserState, expression: Expression) {
         Expression::Return0(r) => format_return0(ps, r),
         Expression::OpAssign(op) => format_opassign(ps, op),
         Expression::Unless(u) => format_unless(ps, u),
-        Expression::SymbolToProc(SymbolToProc(_, sl)) => format_symbol_to_proc(ps, sl),
+        Expression::ToProc(ToProc(_, e)) => format_to_proc(ps, e),
         Expression::ZSuper(..) => format_zsuper(ps),
         Expression::Yield0(..) => format_yield0(ps),
         Expression::Return(ret) => format_return(ps, ret),
@@ -2455,6 +2454,7 @@ pub fn format_expression(ps: &mut ParserState, expression: Expression) {
 }
 
 pub fn format_program(ps: &mut ParserState, program: Program) {
+    eprintln!("{:?}", program);
     ps.on_line(1);
     for expression in program.1 {
         format_expression(ps, expression);

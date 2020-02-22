@@ -50,18 +50,18 @@ macro_rules! def_tag {
     };
 }
 
-def_tag!(undeserializable, "qoweifjqowifjeqwoifjqweoifhqwofja");
-#[derive(Deserialize, Debug, Clone)]
-pub struct SymbolToProc(pub undeserializable, pub SymbolLiteral);
-
 def_tag!(program_tag, "program");
 #[derive(Deserialize, Debug, Clone)]
 pub struct Program(pub program_tag, pub Vec<Expression>);
 
+def_tag!(undeserializable, "oiqjweoifjqwoeifjwqoiefjqwoiej");
+#[derive(Deserialize, Debug, Clone)]
+pub struct ToProc(pub undeserializable, pub Box<Expression>);
+
 #[derive(Deserialize, Debug, Clone)]
 #[serde(untagged)]
 pub enum Expression {
-    SymbolToProc(SymbolToProc),
+    ToProc(ToProc),
     Class(Class),
     If(If),
     Unary(Unary),
@@ -1119,14 +1119,11 @@ pub fn normalize_args_add_block(aab: ArgsAddBlock) -> ArgsAddStarOrExpressionLis
     // .1 is expression list
     // .2 is block
     match aab.2 {
-        MaybeBlock::NoBlock(_) => aab.1,
-        MaybeBlock::ToProcExpr(e) => {
-            let trailing_expr_as_vec = vec![match *e {
-                Expression::SymbolLiteral(sl) => Expression::SymbolToProc(
-                    SymbolToProc(undeserializable, sl)
-                ),
-                x => x,
-            }];
+        ToProcExpr::NotPresent(_) => aab.1,
+        ToProcExpr::Present(e) => {
+            let trailing_expr_as_vec = vec![Expression::ToProc(
+                ToProc(undeserializable, e)
+            )];
 
             match aab.1 {
                 ArgsAddStarOrExpressionList::ExpressionList(items) => {
@@ -1189,19 +1186,21 @@ def_tag!(arg_paren_tag, "arg_paren");
 #[derive(Deserialize, Debug, Clone)]
 pub struct ArgParen(pub arg_paren_tag, pub Box<ArgNode>);
 
+// See: https://dev.to/penelope_zone/understanding-ruby-s-block-proc-parsing-4a89
 #[derive(Deserialize, Debug, Clone)]
 #[serde(untagged)]
-pub enum MaybeBlock {
-    NoBlock(bool),
-    ToProcExpr(Box<Expression>),
+pub enum ToProcExpr {
+    NotPresent(bool),
+    Present(Box<Expression>),
 }
 
+// ArgsAddBlock
 def_tag!(args_add_block_tag, "args_add_block");
 #[derive(Deserialize, Debug, Clone)]
 pub struct ArgsAddBlock(
     pub args_add_block_tag,
     pub ArgsAddStarOrExpressionList,
-    pub MaybeBlock,
+    pub ToProcExpr,
 );
 
 def_tag!(int_tag, "@int");
