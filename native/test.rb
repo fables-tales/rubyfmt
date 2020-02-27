@@ -172,7 +172,6 @@ end
 
 file_data = File.read(ARGV[0])
 parsed = Parser.new(file_data).parse
-p parsed
 inspected_parsed = JSON.dump(parsed)
 Rubyfmt::format_to_stdout(file_data, inspected_parsed)
 STDOUT.close
