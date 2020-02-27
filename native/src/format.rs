@@ -536,6 +536,7 @@ pub fn format_method_call(ps: &mut ParserState, method_call: MethodCall) {
             ps.breakable_of(delims, |ps| {
                 ps.with_formatting_context(FormattingContext::ArgsList, |ps| {
                     format_list_like_thing(ps, args, false);
+                    ps.emit_collapsing_newline();
                 });
             });
         }
@@ -578,8 +579,10 @@ pub fn format_list_like_thing_items(
                     Expression::BareAssocHash(bah) => format_assocs(ps, bah.1, SpecialCase::NoLeadingTrailingCollectionMarkers),
                     expr => format_expression(ps, expr),
                 }
-                ps.emit_comma();
-                ps.emit_soft_newline();
+                if idx != args_count - 1 {
+                    ps.emit_comma();
+                    ps.emit_soft_newline();
+                }
             });
         };
         emitted_args = true;
@@ -715,10 +718,10 @@ pub fn format_assocs(ps: &mut ParserState, assocs: Vec<AssocNewOrAssocSplat>, sc
                 format_expression(ps, splat.1);
             }
         });
-        if sc != SpecialCase::NoLeadingTrailingCollectionMarkers || idx != len - 1 {
+        if idx != len - 1 {
             ps.emit_comma();
-            ps.emit_soft_newline();
         }
+        ps.emit_soft_newline();
     }
 }
 
@@ -866,6 +869,10 @@ pub fn format_array(ps: &mut ParserState, array: Array) {
         ps.emit_indent();
     }
 
+    if let Some(location) = array.2 {
+        ps.on_line(location.0);
+    }
+
     match array.1 {
         SimpleArrayOrPercentArray::SimpleArray(a) => format_array_fast_path(ps, a),
         SimpleArrayOrPercentArray::LowerPercentArray(pa) => {
@@ -898,6 +905,7 @@ pub fn format_array_fast_path(ps: &mut ParserState, a: Option<ArgsAddStarOrExpre
         Some(a) => {
             ps.breakable_of(BreakableDelims::for_array(), |ps| {
                 format_list_like_thing(ps, a, false);
+                ps.emit_collapsing_newline();
             });
         }
     }
@@ -926,6 +934,10 @@ pub fn format_list_like_thing(
                 // similarly if we're multi line, we emit a newline but not an indent
                 // at the end our formatting spree, because we might be at a terminator
                 // so fix up the indent
+                if emitted_args {
+                    ps.emit_comma();
+                    ps.emit_soft_newline();
+                }
                 ps.emit_soft_indent();
             }
 
@@ -939,9 +951,6 @@ pub fn format_list_like_thing(
                     emit_intermediate_array_separator(ps);
                     format_expression(ps, expr);
                 }
-
-                ps.emit_comma();
-                ps.emit_collapsing_newline();
             });
 
             emitted_args
@@ -2367,9 +2376,11 @@ pub fn format_return(ps: &mut ParserState, ret: Return) {
 
     ps.with_start_of_line(false, |ps| {
         if !args.is_empty() {
-            ps.breakable_of(BreakableDelims::for_return_kw(), |ps| {
-                ps.with_formatting_context(FormattingContext::ArgsList, |ps| {
-                    format_list_like_thing(ps, args, false);
+            ps.dedent(|ps| {
+                ps.breakable_of(BreakableDelims::for_return_kw(), |ps| {
+                    ps.with_formatting_context(FormattingContext::ArgsList, |ps| {
+                        format_list_like_thing(ps, args, false);
+                    });
                 });
             });
         }

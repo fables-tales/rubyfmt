@@ -37,6 +37,7 @@ class Parser < Ripper::SexpBuilderPP
       "yield" => [],
       "break" => [],
     }
+    @array_location_stacks = []
   end
 
   attr_reader :comments_delete
@@ -54,6 +55,16 @@ class Parser < Ripper::SexpBuilderPP
         node[1] << part
       end
     end
+  end
+
+  def on_lbracket(*args)
+    @array_location_stacks << [lineno, column]
+  end
+
+  def on_array(*args)
+    res = super
+    res << @array_location_stacks.pop
+    res
   end
 
   def on_kw(kw)
@@ -161,6 +172,7 @@ end
 
 file_data = File.read(ARGV[0])
 parsed = Parser.new(file_data).parse
+p parsed
 inspected_parsed = JSON.dump(parsed)
 Rubyfmt::format_to_stdout(file_data, inspected_parsed)
 STDOUT.close
