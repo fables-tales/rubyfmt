@@ -1643,7 +1643,6 @@ pub fn format_conditional(
     ps.with_start_of_line(true, |ps| match tail {
         None => {}
         Some(ElsifOrElse::Elsif(elsif)) => {
-            ps.emit_newline();
             format_conditional(
                 ps,
                 *elsif.1,
@@ -1653,7 +1652,6 @@ pub fn format_conditional(
             );
         }
         Some(ElsifOrElse::Else(els)) => {
-            ps.emit_newline();
             ps.emit_indent();
             ps.emit_else();
             ps.emit_newline();
