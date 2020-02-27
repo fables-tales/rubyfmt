@@ -1,5 +1,9 @@
 $: << File.dirname(__FILE__) + "/target/"
-require "rubyfmt.so"
+if ENV["RUBYFMT_USE_RELEASE"]
+  require "rubyfmt_release.so"
+else
+  require "rubyfmt_debug.so"
+end
 require "ripper"
 require "json"
 
