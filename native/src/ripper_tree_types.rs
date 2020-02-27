@@ -34,10 +34,8 @@ macro_rules! def_tag {
                         E: de::Error,
                     {
                         if s == $tag {
-                            eprintln!("accepted at {}", s);
                             Ok(())
                         } else {
-                            eprintln!("rejected at {}", s);
                             Err(E::custom("mismatched tag"))
                         }
                     }

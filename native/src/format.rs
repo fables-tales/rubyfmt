@@ -293,6 +293,9 @@ pub fn format_bodystmt(ps: &mut ParserState, bodystmt: BodyStmt) {
 }
 
 pub fn format_mrhs(ps: &mut ParserState, mrhs: Option<MRHS>) {
+    eprintln!("-------------------!!!!!");
+    eprintln!("{:?}", mrhs);
+    eprintln!("-------------------!!!!!");
     match mrhs {
         None => {}
         Some(MRHS::Single(expr)) => {
@@ -326,6 +329,7 @@ pub fn format_rescue_capture(ps: &mut ParserState, rescue_capture: Option<Assign
     match rescue_capture {
         None => {}
         Some(expr) => {
+            ps.emit_space();
             ps.emit_ident("=>".to_string());
             ps.emit_space();
             format_assignable(ps, expr);
@@ -346,7 +350,6 @@ pub fn format_rescue(ps: &mut ParserState, rescue_part: Option<Rescue>) {
                     }
 
                     format_mrhs(ps, class);
-                    ps.emit_space();
                     format_rescue_capture(ps, capture);
                 });
             });
@@ -451,14 +454,13 @@ pub fn use_parens_for_method_call(
         return false;
     }
 
+    eprintln!("name: {} original: {}", name, original_used_parens);
     if name == "super" || name == "yield" || name == "require" {
+        eprintln!("returning: {}", original_used_parens);
         return original_used_parens;
     }
 
-    if name == "new" {
-        return true;
-    }
-
+    eprintln!("name: {:?}, args: {:?}", name, args);
     if args.is_empty() {
         return false;
     }
@@ -539,6 +541,9 @@ pub fn format_method_call(ps: &mut ParserState, method_call: MethodCall) {
                     ps.emit_collapsing_newline();
                 });
             });
+        } else if use_parens {
+            ps.emit_open_paren();
+            ps.emit_close_paren();
         }
     });
 
@@ -1311,7 +1316,12 @@ pub fn format_rescue_mod(ps: &mut ParserState, rescue_mod: RescueMod) {
 }
 
 pub fn format_mrhs_new_from_args(ps: &mut ParserState, mnfa: MRHSNewFromArgs) {
+    eprintln!("iwqjfoiwqjfeqwfe: {:?}", mnfa.1);
     format_list_like_thing(ps, mnfa.1, true);
+    if let Some(expr) = mnfa.2 {
+        ps.emit_comma_space();
+        format_expression(ps, *expr);
+    }
 }
 
 pub fn format_mrhs_add_star(ps: &mut ParserState, mrhs: MRHSAddStar) {
