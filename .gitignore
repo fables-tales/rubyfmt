@@ -2,3 +2,7 @@ hi.rb
 out.rb
 tmp
 .env
+target/
+Makefile
+*.o
+*.bundle

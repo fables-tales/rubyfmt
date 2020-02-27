@@ -1,3 +1,8 @@
+$: << File.dirname(__FILE__) + "/target/"
+require "rubyfmt.so"
+require "ripper"
+require "json"
+
 class Parser < Ripper::SexpBuilderPP
   ARRAY_SYMBOLS = {qsymbols: "%i", qwords: "%w", symbols: "%I", words: "%W"}.freeze
 
@@ -26,6 +31,13 @@ class Parser < Ripper::SexpBuilderPP
     @comments_delete = []
     @regexp_stack = []
     @string_stack = []
+    @kw_stacks = {
+      "return" => [],
+      "when" => [],
+      "yield" => [],
+      "break" => [],
+    }
+    @array_location_stacks = []
   end
 
   attr_reader :comments_delete
@@ -43,6 +55,39 @@ class Parser < Ripper::SexpBuilderPP
         node[1] << part
       end
     end
+  end
+
+  def on_lbracket(*args)
+    @array_location_stacks << [lineno, column]
+  end
+
+  def on_array(*args)
+    res = super
+    res << @array_location_stacks.pop
+    res
+  end
+
+  def on_kw(kw)
+    if stack = @kw_stacks[kw]
+      stack << [lineno, column]
+    end
+    super
+  end
+
+  def on_return(args)
+    [:return, args, @kw_stacks["return"].pop]
+  end
+
+  def on_when(cond, body, tail)
+    [:when, cond, body, tail, @kw_stacks["when"].pop]
+  end
+
+  def on_yield(arg)
+    [:yield, arg, @kw_stacks["yield"].pop]
+  end
+
+  def on_break(arg)
+    [:break, arg, @kw_stacks["break"].pop]
   end
 
   def on_heredoc_beg(*args, &blk)
@@ -124,3 +169,9 @@ class Parser < Ripper::SexpBuilderPP
     super(*args)
   end
 end
+
+file_data = File.read(ARGV[0])
+parsed = Parser.new(file_data).parse
+inspected_parsed = JSON.dump(parsed)
+Rubyfmt::format_to_stdout(file_data, inspected_parsed)
+STDOUT.close
