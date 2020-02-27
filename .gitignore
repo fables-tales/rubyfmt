@@ -3,6 +3,6 @@ out.rb
 tmp
 .env
 target/
-Makefile
 *.o
 *.bundle
+ext/Makefile
