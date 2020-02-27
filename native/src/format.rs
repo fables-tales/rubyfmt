@@ -411,7 +411,6 @@ pub fn format_ensure(ps: &mut ParserState, ensure_part: Option<Ensure>) {
         None => {}
         Some(e) => {
             ps.dedent(|ps| {
-                ps.emit_newline();
                 ps.emit_indent();
                 ps.emit_ensure();
             });
