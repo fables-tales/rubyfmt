@@ -659,7 +659,7 @@ impl<'de> Deserialize<'de> for StringContent {
 
 def_tag!(array_tag, "array");
 #[derive(Deserialize, Debug, Clone)]
-pub struct Array(pub array_tag, pub SimpleArrayOrPercentArray);
+pub struct Array(pub array_tag, pub SimpleArrayOrPercentArray, pub Option<LineCol>);
 
 #[derive(Deserialize, Debug, Clone)]
 #[serde(untagged)]
