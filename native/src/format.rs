@@ -953,7 +953,7 @@ pub fn format_list_like_thing(
                 format_expression(ps, *star);
 
                 for expr in right {
-                    emit_intermediate_array_separator(ps);
+                    emit_intermediate_array_separator(ps, single_line);
                     format_expression(ps, expr);
                 }
             });
@@ -966,10 +966,14 @@ pub fn format_list_like_thing(
     }
 }
 
-pub fn emit_intermediate_array_separator(ps: &mut ParserState) {
-    ps.emit_comma();
-    ps.emit_soft_newline();
-    ps.emit_soft_indent();
+pub fn emit_intermediate_array_separator(ps: &mut ParserState, single_line: bool) {
+    if single_line {
+        ps.emit_comma_space();
+    } else {
+        ps.emit_comma();
+        ps.emit_soft_newline();
+        ps.emit_soft_indent();
+    }
 }
 
 #[derive(PartialEq, Debug)]
@@ -1318,6 +1322,7 @@ pub fn format_rescue_mod(ps: &mut ParserState, rescue_mod: RescueMod) {
 pub fn format_mrhs_new_from_args(ps: &mut ParserState, mnfa: MRHSNewFromArgs) {
     eprintln!("iwqjfoiwqjfeqwfe: {:?}", mnfa.1);
     format_list_like_thing(ps, mnfa.1, true);
+
     if let Some(expr) = mnfa.2 {
         ps.emit_comma_space();
         format_expression(ps, *expr);
@@ -1325,8 +1330,10 @@ pub fn format_mrhs_new_from_args(ps: &mut ParserState, mnfa: MRHSNewFromArgs) {
 }
 
 pub fn format_mrhs_add_star(ps: &mut ParserState, mrhs: MRHSAddStar) {
+    let first = mrhs.1;
+    let second = mrhs.2;
     ps.with_start_of_line(false, |ps| {
-        match mrhs.1 {
+        match first {
             MRHSNewFromArgsOrEmpty::Empty(e) => {
                 if !e.is_empty() {
                     panic!("this should be impossible, got non-empty mrhs empty");
@@ -1338,7 +1345,9 @@ pub fn format_mrhs_add_star(ps: &mut ParserState, mrhs: MRHSAddStar) {
             }
         }
         ps.emit_ident("*".to_string());
-        format_expression(ps, *mrhs.2);
+        ps.with_start_of_line(false, |ps| {
+            format_expression(ps, *second);
+        });
     });
 }
 
