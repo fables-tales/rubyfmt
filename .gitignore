@@ -6,3 +6,5 @@ target/
 *.o
 *.bundle
 ext/Makefile
+.success
+.failure

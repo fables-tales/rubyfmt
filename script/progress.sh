@@ -1,9 +1,8 @@
 #!/bin/bash
-set -ex
-
-make
+set -x
 
 test_folder() {
+	find "$1" -name "*_expected.rb" -maxdepth 1 | wc -l
     find "$1" -name "*_expected.rb" -maxdepth 1 | while read -r file
     do
         # shellcheck disable=SC2001
@@ -12,7 +11,7 @@ test_folder() {
         if ! diff -u /tmp/out.rb "$file"
         then
             echo "got diff between formated actual and expected"
-            exit 1
+            echo "$file" >> .failure
         fi
 
         time ruby --disable=gems rubyfmt.rb "$file" > /tmp/out.rb
@@ -20,14 +19,17 @@ test_folder() {
         if ! diff -u /tmp/out.rb "$file"
         then
             echo "got diff between formatted expected and expected (not idempotent)"
-            exit 1
+            echo "$file" >> .failure
         fi
+
+        echo "$file" >> .success
     done
 }
 
+make
+rm -f .success .failure
+
 test_folder fixtures/
-wc -l .success
-wc -l .failure
 
 RUBY_VERSION=$(ruby -v | grep -o "[0-9].[0-9]" | head -n 1)
 echo "$RUBY_VERSION"
@@ -40,3 +42,5 @@ do
         test_folder "$dir"
     fi
 done
+wc -l .success
+wc -l .failure
