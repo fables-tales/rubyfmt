@@ -27,6 +27,7 @@ pub enum LineToken {
     SingleSlash,
     Comment { contents: String },
     Delim { contents: String },
+    End,
 }
 
 impl LineToken {
@@ -46,14 +47,6 @@ impl LineToken {
     pub fn as_multi_line(self) -> LineToken {
         self
     }
-
-    //pub fn is_indent(&self) -> bool {
-    //    match self {
-    //        Self::SoftIndent{..} => true,
-    //        Self::Indent{..} => true,
-    //        _ => false,
-    //    }
-    //}
 
     pub fn is_newline(&self) -> bool {
         match self {
@@ -101,6 +94,7 @@ impl LineToken {
             Self::SingleSlash => "\\".to_string(),
             Self::Comment { contents } => format!("{}\n", contents),
             Self::Delim { contents } => contents,
+            Self::End => "end".to_string(),
         }
     }
 

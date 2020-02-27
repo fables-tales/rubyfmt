@@ -15,6 +15,7 @@ impl RenderQueueWriter {
 
     pub fn write<W: Write>(self, writer: &mut W) -> io::Result<()> {
         let mut accum = vec!();
+        eprintln!("{:?}", self.tokens.clone());
         Self::render_as(
             &mut accum,
             self.tokens.into_iter().map(|t| t.as_multi_line()).collect(),
@@ -30,14 +31,24 @@ impl RenderQueueWriter {
                 LineToken::BreakableEntry(be) => Self::format_breakable_entry(accum, be),
                 x => accum.push(x),
             }
+
+            if accum.len() >= 4 {
+                match accum[accum.len()-4..accum.len()] {
+                    // do nothing in the case we're in an end cascade
+                    [LineToken::End, LineToken::HardNewLine, LineToken::Indent { .. }, LineToken::End] => { }
+                    // in this case we have an end followed by something that isn't
+                    // an end, so insert an extra blankline
+                    [LineToken::End, LineToken::HardNewLine, LineToken::Indent { ..  }, _] => {
+                        accum.insert(accum.len()-2, LineToken::HardNewLine);
+                    },
+                    _ => {}
+                }
+            }
         }
     }
 
     fn format_breakable_entry(accum: &mut Vec<LineToken>, be: BreakableEntry) {
         let length = be.single_line_string_length();
-        eprintln!("----------------");
-        eprintln!("{:?}", be);
-        eprintln!("----------------");
 
         if length > MAX_LINE_LENGTH  || be.is_multiline() {
             Self::render_as(

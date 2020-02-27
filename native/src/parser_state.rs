@@ -271,9 +271,7 @@ impl ParserState {
         if self.at_start_of_line() {
             self.emit_indent();
         }
-        self.push_token(LineToken::Keyword {
-            keyword: "end".into(),
-        });
+        self.push_token(LineToken::End);
     }
 
     pub fn shift_comments(&mut self) {
