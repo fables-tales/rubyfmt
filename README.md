@@ -5,10 +5,9 @@ Ruby format
 
 If you want to see the incredibly janky debug version:
 
-```bash
-cd native
-ruby extconf.rb && cargo build && touch *.c && make && ruby test.rb [some_file_name]
-```
+1. have cargo installed
+2. type make
+3. `ruby --disable=gems rubyfmt.rb [the_file_name]`
 
 ## Does it work right now?
 
