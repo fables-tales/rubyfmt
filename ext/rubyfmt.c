@@ -56,3 +56,11 @@ void Init_rubyfmt() {
         3
     );
 }
+
+void Init_rubyfmt_debug() {
+    Init_rubyfmt();
+}
+
+void Init_rubyfmt_release() {
+    Init_rubyfmt();
+}
