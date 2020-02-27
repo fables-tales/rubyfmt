@@ -1599,7 +1599,9 @@ pub fn format_module(ps: &mut ParserState, module: Module) {
         });
     });
 
-    ps.emit_end();
+    ps.with_start_of_line(true, |ps| {
+        ps.emit_end();
+    });
     if ps.at_start_of_line() {
         ps.emit_newline();
     }
@@ -2147,6 +2149,8 @@ pub fn format_sclass(ps: &mut ParserState, sc: SClass) {
                 format_bodystmt(ps, body);
             });
         });
+    });
+    ps.with_start_of_line(true, |ps| {
         ps.emit_end();
     });
 
