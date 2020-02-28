@@ -1,5 +1,6 @@
 use crate::line_tokens::LineToken;
 
+#[derive(Debug)]
 pub struct CommentBlock {
     comments: Vec<String>,
 }

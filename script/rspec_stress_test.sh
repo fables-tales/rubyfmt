@@ -1,7 +1,7 @@
 #!/bin/bash
 set -ex
 
-RUBYFMT=$(pwd)/native/test.rb
+RUBYFMT=$(pwd)/rubyfmt.rb
 make
 
 #cd "$(mktemp -d)"
@@ -12,8 +12,7 @@ make
 #else
 #    rm -rf tmp/rspec-core
 #fi
-#ls tmp/rspec-core/lib || git clone --depth=1 https://github.com/rspec/rspec-core tmp/rspec-core
-#
+ls tmp/rspec-core/lib || git clone --depth=1 https://github.com/rspec/rspec-core tmp/rspec-core
 cd tmp/rspec-core
 git reset --hard
 bundle
@@ -25,11 +24,11 @@ do
     echo "running rubyfmt on $FN"
     ruby --disable=gems "$RUBYFMT" "$FN" > /tmp/this_one.rb
     ruby --disable=gems "$RUBYFMT" /tmp/this_one.rb > "$FN"
-done
     cd tmp/rspec-core
     bundle exec rspec --exclude-pattern ./spec/integration/persistence_failures_spec.rb
     git reset --hard
     cd ../../
+done
 
 ## refmt.rb replaces rubyfmt.rb
 #ruby --disable=gems "$RUBYFMT" "$RUBYFMT" > tmp/refmt.rb
