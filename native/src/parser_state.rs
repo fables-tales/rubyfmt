@@ -129,7 +129,24 @@ impl ParserState {
                 comments.expect("we checked it was none at the top of the function"),
             )
         }
+        if line_number - self.current_orig_line_number >= 2 {
+            self.insert_extra_newline_at_last_newline();
+        }
         self.current_orig_line_number = line_number;
+    }
+
+    fn insert_extra_newline_at_last_newline(&mut self) {
+        let idx = self.index_of_prev_hard_newline();
+        let insert_idx = match idx {
+            Some(idx) => idx + 1,
+            None => 0,
+        };
+
+        insert_at(
+            insert_idx,
+            &mut self.render_queue,
+            &mut vec!(LineToken::HardNewLine)
+        );
     }
 
     pub fn insert_comment_collection(&mut self, comments: CommentBlock) {
@@ -249,10 +266,6 @@ impl ParserState {
         });
     }
 
-    pub fn emit_int(&mut self, int: String) {
-        self.push_token(LineToken::DirectPart { part: int });
-    }
-
     pub fn emit_newline(&mut self) {
         self.shift_comments();
         self.push_token(LineToken::HardNewLine);
@@ -275,7 +288,7 @@ impl ParserState {
     }
 
     pub fn shift_comments(&mut self) {
-        let idx_of_prev_hard_newline = self.render_queue.iter().rposition(|v| v.is_newline());
+        let idx_of_prev_hard_newline = self.index_of_prev_hard_newline();
 
         if self.comments_to_insert.has_comments() {
             let insert_index = match idx_of_prev_hard_newline {
@@ -293,6 +306,10 @@ impl ParserState {
             );
             self.comments_to_insert = CommentBlock::new(vec![]);
         }
+    }
+
+    pub fn index_of_prev_hard_newline(&self) -> Option<usize> {
+        self.render_queue.iter().rposition(|v| v.is_newline())
     }
 
     pub fn emit_else(&mut self) {
@@ -557,5 +574,9 @@ impl ParserState {
 
     pub fn is_absorbing_indents(&self) -> bool {
         self.absorbing_indents >= 1
+    }
+
+    pub fn wind_line_forward(&mut self) {
+        self.current_orig_line_number += 1;
     }
 }

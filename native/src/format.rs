@@ -168,7 +168,8 @@ pub fn format_kwargs(ps: &mut ParserState, kwargs: Vec<(Label, ExpressionOrFalse
         let len = kwargs.len();
         for (idx, (label, expr_or_false)) in kwargs.into_iter().enumerate() {
             ps.emit_soft_indent();
-            ps.emit_ident(label.1);
+            handle_string_and_linecol(ps, label.1, label.2);
+
             match expr_or_false {
                 ExpressionOrFalse::Expression(e) => {
                     ps.emit_space();
@@ -411,6 +412,7 @@ pub fn format_ensure(ps: &mut ParserState, ensure_part: Option<Ensure>) {
         None => {}
         Some(e) => {
             ps.dedent(|ps| {
+                ps.wind_line_forward();
                 ps.emit_indent();
                 ps.emit_ensure();
             });
@@ -595,29 +597,35 @@ pub fn format_list_like_thing_items(
 }
 
 pub fn format_ident(ps: &mut ParserState, ident: Ident) {
-    ps.on_line(ident.line_number());
     if ps.at_start_of_line() {
         ps.emit_indent();
     }
 
-    ps.emit_ident(ident.1);
+    handle_string_and_linecol(ps, ident.1, ident.2);
+
+    if ps.at_start_of_line() {
+        ps.emit_newline();
+    }
 }
 
 pub fn format_const(ps: &mut ParserState, c: Const) {
-    ps.on_line(c.line_number());
     if ps.at_start_of_line() {
         ps.emit_indent();
     }
 
-    ps.emit_ident(c.1);
+    handle_string_and_linecol(ps, c.1, c.2);
+
+    if ps.at_start_of_line() {
+        ps.emit_newline();
+    }
 }
 
 pub fn format_int(ps: &mut ParserState, int: Int) {
     if ps.at_start_of_line() {
         ps.emit_indent();
     }
-    ps.on_line((int.2).0);
-    ps.emit_int(int.1);
+
+    handle_string_and_linecol(ps, int.1, int.2);
 
     if ps.at_start_of_line() {
         ps.emit_newline();
@@ -660,8 +668,7 @@ pub fn format_kw(ps: &mut ParserState, kw: Kw) {
         ps.emit_indent();
     }
 
-    ps.on_line((kw.2).0);
-    ps.emit_ident(kw.1);
+    handle_string_and_linecol(ps, kw.1, kw.2);
 
     if ps.at_start_of_line() {
         ps.emit_newline();
@@ -705,7 +712,7 @@ pub fn format_assocs(ps: &mut ParserState, assocs: Vec<AssocNewOrAssocSplat>, sc
             AssocNewOrAssocSplat::AssocNew(new) => {
                 match new.1 {
                     AssocKey::Label(label) => {
-                        ps.emit_ident(label.1);
+                        handle_string_and_linecol(ps, label.1, label.2);
                         ps.emit_space();
                     }
                     AssocKey::Expression(expression) => {
@@ -734,6 +741,7 @@ pub fn format_begin(ps: &mut ParserState, begin: Begin) {
         ps.emit_indent()
     }
 
+    ps.wind_line_forward();
     ps.emit_begin();
     ps.emit_newline();
     ps.new_block(|ps| {
@@ -911,6 +919,7 @@ pub fn format_array_fast_path(ps: &mut ParserState, a: Option<ArgsAddStarOrExpre
                 format_list_like_thing(ps, a, false);
                 ps.emit_collapsing_newline();
             });
+            ps.wind_line_forward();
         }
     }
 }
@@ -988,7 +997,10 @@ pub fn format_inner_string(ps: &mut ParserState, parts: Vec<StringContentPart>, 
     while peekable.peek().is_some() {
         let part = peekable.next().expect("we peeked");
         match part {
-            StringContentPart::TStringContent(t) => ps.emit_string_content(t.1),
+            StringContentPart::TStringContent(t) => {
+                ps.on_line((t.2).0);
+                ps.emit_string_content(t.1);
+            },
             StringContentPart::StringEmbexpr(e) => {
                 ps.emit_string_content("#{".to_string());
                 ps.with_start_of_line(false, |ps| {
@@ -1235,13 +1247,27 @@ pub fn format_var_ref_type(ps: &mut ParserState, vr: VarRefType) {
     }
 
     match vr {
-        VarRefType::CVar(c) => ps.emit_ident(c.1),
-        VarRefType::GVar(g) => ps.emit_ident(g.1),
-        VarRefType::IVar(i) => ps.emit_ident(i.1),
-        VarRefType::Ident(i) => ps.emit_ident(i.1),
-        VarRefType::Const(c) => ps.emit_ident(c.1),
-        VarRefType::Kw(kw) => ps.emit_ident(kw.1),
+        VarRefType::CVar(c) => handle_string_and_linecol(ps, c.1, c.2),
+        VarRefType::GVar(g) => handle_string_and_linecol(ps, g.1, g.2),
+        VarRefType::IVar(i) => handle_string_and_linecol(ps, i.1, i.2),
+        VarRefType::Ident(i) => handle_string_and_linecol(ps, i.1, i.2),
+        VarRefType::Const(c) => handle_string_and_linecol(ps, c.1, c.2),
+        VarRefType::Kw(kw) => handle_string_and_linecol(ps, kw.1, kw.2),
     }
+
+    if ps.at_start_of_line() {
+        ps.emit_newline();
+    }
+}
+
+pub fn handle_string_and_linecol(ps: &mut ParserState, ident: String, lc: LineCol) {
+    ps.on_line(lc.0);
+
+    if ps.at_start_of_line() {
+        ps.emit_indent()
+    }
+
+    ps.emit_ident(ident);
 
     if ps.at_start_of_line() {
         ps.emit_newline();
@@ -1499,8 +1525,7 @@ pub fn format_defs(ps: &mut ParserState, defs: Defs) {
         match ident_or_kw {
             IdentOrKw::Ident(ident) => format_ident(ps, ident),
             IdentOrKw::Kw(kw) => {
-                ps.on_line((kw.2).0);
-                ps.emit_ident(kw.1);
+                handle_string_and_linecol(ps, kw.1, kw.2);
             }
         }
         format_paren_or_params(ps, paren_or_params);
@@ -1548,8 +1573,7 @@ pub fn format_class(ps: &mut ParserState, class: Class) {
                 format_const_path_ref(ps, cpr);
             }
             ConstPathRefOrConstRef::ConstRef(cr) => {
-                ps.on_line(((cr.1).2).0);
-                ps.emit_ident((cr.1).1);
+                handle_string_and_linecol(ps, (cr.1).1, (cr.1).2);
             }
         }
 
@@ -1592,8 +1616,7 @@ pub fn format_module(ps: &mut ParserState, module: Module) {
                 format_const_path_ref(ps, cpr);
             }
             ConstPathRefOrConstRef::ConstRef(cr) => {
-                ps.on_line(((cr.1).2).0);
-                ps.emit_ident((cr.1).1);
+                handle_string_and_linecol(ps, (cr.1).1, (cr.1).2);
             }
         }
     });
@@ -1651,6 +1674,7 @@ pub fn format_conditional(
             );
         }
         Some(ElsifOrElse::Else(els)) => {
+            ps.wind_line_forward();
             ps.emit_indent();
             ps.emit_else();
             ps.emit_newline();
@@ -1718,8 +1742,7 @@ pub fn format_float(ps: &mut ParserState, float: Float) {
         ps.emit_indent();
     }
 
-    ps.on_line((float.2).0);
-    ps.emit_ident(float.1);
+    handle_string_and_linecol(ps, float.1, float.2);
 
     if ps.at_start_of_line() {
         ps.emit_newline();
@@ -1757,6 +1780,7 @@ pub fn format_char(ps: &mut ParserState, c: Char) {
     }
 
     ps.emit_double_quote();
+    ps.on_line((c.2).0);
     ps.emit_ident(c.1[1..].to_string());
     ps.emit_double_quote();
 
@@ -1807,8 +1831,7 @@ pub fn format_backref(ps: &mut ParserState, backref: Backref) {
         ps.emit_indent();
     }
 
-    ps.on_line((backref.2).0);
-    ps.emit_ident(backref.1);
+    handle_string_and_linecol(ps, backref.1, backref.2);
 
     if ps.at_start_of_line() {
         ps.emit_newline();
@@ -2233,8 +2256,7 @@ pub fn format_imaginary(ps: &mut ParserState, imaginary: Imaginary) {
         ps.emit_indent();
     }
 
-    ps.on_line((imaginary.2).0);
-    ps.emit_ident(imaginary.1);
+    handle_string_and_linecol(ps, imaginary.1, imaginary.2);
 
     if ps.at_start_of_line() {
         ps.emit_newline();
@@ -2246,8 +2268,7 @@ pub fn format_rational(ps: &mut ParserState, rational: Rational) {
         ps.emit_indent();
     }
 
-    ps.on_line((rational.2).0);
-    ps.emit_ident(rational.1);
+    handle_string_and_linecol(ps, rational.1, rational.2);
 
     if ps.at_start_of_line() {
         ps.emit_newline();
@@ -2384,13 +2405,14 @@ pub fn format_yield0(ps: &mut ParserState) {
 }
 
 pub fn format_return(ps: &mut ParserState, ret: Return) {
+    let args = ret.1;
+    let line = (ret.2).0;
+    ps.on_line(line);
+
     if ps.at_start_of_line() {
         ps.emit_indent();
     }
 
-    let args = ret.1;
-    let line = (ret.2).0;
-    ps.on_line(line);
     let args = normalize_args(args);
     ps.emit_keyword("return".to_string());
 
