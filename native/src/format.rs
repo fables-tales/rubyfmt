@@ -2396,19 +2396,42 @@ pub fn format_return(ps: &mut ParserState, ret: Return) {
 
     ps.with_start_of_line(false, |ps| {
         if !args.is_empty() {
-            ps.dedent(|ps| {
-                ps.breakable_of(BreakableDelims::for_return_kw(), |ps| {
-                    ps.with_formatting_context(FormattingContext::ArgsList, |ps| {
-                        format_list_like_thing(ps, args, false);
-                    });
-                });
-            });
+            match args {
+                ArgsAddStarOrExpressionList::ArgsAddStar(aas) => {
+                    format_bare_return_args(ps, ArgsAddStarOrExpressionList::ArgsAddStar(aas));
+                },
+                ArgsAddStarOrExpressionList::ExpressionList(mut el) => {
+                    if el.len() == 1 {
+                        let element = el.remove(0);
+                        match element {
+                            Expression::Array(Array(array_tag, contents, linecol)) => {
+                                ps.emit_space();
+                                format_array(ps, Array(array_tag, contents, linecol));
+                            },
+                            x => {
+                                format_bare_return_args(ps, ArgsAddStarOrExpressionList::ExpressionList(vec!(x)));
+                            }
+                        }
+                    } else {
+                        format_bare_return_args(ps, ArgsAddStarOrExpressionList::ExpressionList(el));
+                    }
+                }
+            }
         }
     });
 
     if ps.at_start_of_line() {
         ps.emit_newline();
     }
+}
+
+pub fn format_bare_return_args(ps: &mut ParserState, args: ArgsAddStarOrExpressionList) {
+    ps.breakable_of(BreakableDelims::for_return_kw(), |ps| {
+        ps.with_formatting_context(FormattingContext::ArgsList, |ps| {
+            format_list_like_thing(ps, args, false);
+            ps.emit_collapsing_newline();
+        });
+    });
 }
 
 pub fn format_expression(ps: &mut ParserState, expression: Expression) {
