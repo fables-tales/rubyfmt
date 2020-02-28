@@ -106,14 +106,19 @@ impl ParserState {
     }
 
     pub fn on_line(&mut self, line_number: LineNumber) {
-        eprintln!("{} {}", line_number, self.current_orig_line_number);
         if line_number < self.current_orig_line_number {
             return;
+        }
+
+        if line_number - self.current_orig_line_number >= 2 {
+            self.insert_extra_newline_at_last_newline();
         }
 
         if let Some(be) = self.breakable_entry_stack.last_mut() {
             be.push_line_number(line_number);
         }
+
+        self.current_orig_line_number = line_number;
 
         let comments = self.comments_hash.extract_comments_to_line(line_number);
         if comments.is_none() {
@@ -129,10 +134,6 @@ impl ParserState {
                 comments.expect("we checked it was none at the top of the function"),
             )
         }
-        if line_number - self.current_orig_line_number >= 2 {
-            self.insert_extra_newline_at_last_newline();
-        }
-        self.current_orig_line_number = line_number;
     }
 
     fn insert_extra_newline_at_last_newline(&mut self) {
@@ -142,11 +143,14 @@ impl ParserState {
             None => 0,
         };
 
-        insert_at(
-            insert_idx,
-            &mut self.render_queue,
-            &mut vec!(LineToken::HardNewLine)
-        );
+        if self.formatting_context.last() != Some(&FormattingContext::Heredoc) {
+            eprintln!("actually writing extra newline {:?}", self.formatting_context);
+            insert_at(
+                insert_idx,
+                &mut self.render_queue,
+                &mut vec!(LineToken::HardNewLine)
+            );
+        }
     }
 
     pub fn insert_comment_collection(&mut self, comments: CommentBlock) {
@@ -494,6 +498,9 @@ impl ParserState {
                 next_heredoc.buf.pop();
             };
 
+            self.with_formatting_context(FormattingContext::Heredoc, |ps| {
+                ps.wind_n_lines(next_heredoc.buf.iter().filter(|c| c == &&b'\n').count());
+            });
             self.push_token(LineToken::DirectPart {
                 part: String::from_utf8(next_heredoc.buf).expect("hereoc is utf8"),
             });
@@ -577,6 +584,10 @@ impl ParserState {
     }
 
     pub fn wind_line_forward(&mut self) {
-        self.current_orig_line_number += 1;
+        self.on_line(self.current_orig_line_number + 1);
+    }
+
+    pub fn wind_n_lines(&mut self, n: usize) {
+        self.on_line(self.current_orig_line_number + (n as u64));
     }
 }

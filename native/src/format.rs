@@ -998,7 +998,9 @@ pub fn format_inner_string(ps: &mut ParserState, parts: Vec<StringContentPart>, 
         let part = peekable.next().expect("we peeked");
         match part {
             StringContentPart::TStringContent(t) => {
-                ps.on_line((t.2).0);
+                if tipe != StringType::Heredoc {
+                    ps.on_line((t.2).0);
+                }
                 ps.emit_string_content(t.1);
             },
             StringContentPart::StringEmbexpr(e) => {
