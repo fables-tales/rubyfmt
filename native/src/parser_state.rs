@@ -112,31 +112,37 @@ impl ParserState {
             return;
         }
 
-        if line_number - self.current_orig_line_number >= 2 && self.insert_user_newlines {
-            self.insert_extra_newline_at_last_newline();
-        }
-
         if let Some(be) = self.breakable_entry_stack.last_mut() {
             be.push_line_number(line_number);
         }
 
-        self.current_orig_line_number = line_number;
 
         let comments = self.comments_hash.extract_comments_to_line(line_number);
-        if comments.is_none() {
-            return;
+        match comments {
+            None => {}
+            Some(comments) => {
+                if !self
+                    .surpress_comments_stack
+                    .last()
+                    .expect("comments stack is never empty")
+                {
+                    eprintln!("comments: {:?}", comments);
+                    let len = comments.len();
+                    self.insert_comment_collection(
+                        comments,
+                    );
+                    self.current_orig_line_number += len as u64;
+                }
+            }
         }
 
-        if !self
-            .surpress_comments_stack
-            .last()
-            .expect("comments stack is never empty")
-        {
-            let comments = comments.expect("We've already checked it's not none");
-            self.insert_comment_collection(
-                comments,
-            );
+        if line_number - self.current_orig_line_number >= 2 && self.insert_user_newlines {
+            eprintln!("inserting extra newline");
+            self.insert_extra_newline_at_last_newline();
         }
+
+
+        self.current_orig_line_number = line_number;
     }
 
     fn insert_extra_newline_at_last_newline(&mut self) {
