@@ -143,14 +143,11 @@ impl ParserState {
             None => 0,
         };
 
-        if self.formatting_context.last() != Some(&FormattingContext::Heredoc) {
-            eprintln!("actually writing extra newline {:?}", self.formatting_context);
-            insert_at(
-                insert_idx,
-                &mut self.render_queue,
-                &mut vec!(LineToken::HardNewLine)
-            );
-        }
+        insert_at(
+            insert_idx,
+            &mut self.render_queue,
+            &mut vec!(LineToken::HardNewLine)
+        );
     }
 
     pub fn insert_comment_collection(&mut self, comments: CommentBlock) {
@@ -498,9 +495,10 @@ impl ParserState {
                 next_heredoc.buf.pop();
             };
 
-            self.with_formatting_context(FormattingContext::Heredoc, |ps| {
-                ps.wind_n_lines(next_heredoc.buf.iter().filter(|c| c == &&b'\n').count());
+            self.with_surpress_comments(true, |ps| {
+                ps.wind_n_lines(next_heredoc.buf.iter().filter(|c| c == &&b'\n').count() + 1);
             });
+
             self.push_token(LineToken::DirectPart {
                 part: String::from_utf8(next_heredoc.buf).expect("hereoc is utf8"),
             });
