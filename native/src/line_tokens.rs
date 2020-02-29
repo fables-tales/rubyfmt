@@ -83,11 +83,12 @@ impl LineToken {
             Self::CloseSquareBracket => "]".to_string(),
             Self::OpenParen => "(".to_string(),
             Self::CloseParen => ")".to_string(),
-            Self::BreakableEntry(be) => {
-                be.as_tokens(ConvertType::SingleLine).into_iter().fold("".to_string(), |accum, tok| {
+            Self::BreakableEntry(be) => be
+                .as_tokens(ConvertType::SingleLine)
+                .into_iter()
+                .fold("".to_string(), |accum, tok| {
                     format!("{}{}", accum, tok.to_string()).to_string()
-                })
-            }
+                }),
             Self::Op { op } => op,
             Self::DoubleQuote => "\"".to_string(),
             Self::LTStringContent { content } => content,
@@ -103,7 +104,7 @@ impl LineToken {
             Self::Comma => true,
             Self::Space => true,
             Self::SoftNewline => true,
-            Self::DirectPart{part} => (part == &"".to_string()),
+            Self::DirectPart { part } => (part == &"".to_string()),
             _ => false,
         }
     }

@@ -12,8 +12,11 @@ use std::str;
 
 pub type RawStatus = i64;
 
+mod breakable_entry;
 mod comment_block;
+mod delimiters;
 mod format;
+mod intermediary;
 mod line_metadata;
 mod line_tokens;
 mod parser_state;
@@ -21,9 +24,6 @@ mod render_queue_writer;
 mod ripper_tree_types;
 mod ruby_string_pointer;
 mod types;
-mod delimiters;
-mod breakable_entry;
-mod intermediary;
 
 use line_metadata::LineMetadata;
 use parser_state::ParserState;
