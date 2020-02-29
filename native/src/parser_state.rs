@@ -82,6 +82,7 @@ pub struct ParserState {
     breakable_entry_stack: Vec<BreakableEntry>,
     formatting_context: Vec<FormattingContext>,
     absorbing_indents: i32,
+    insert_user_newlines: bool,
 }
 
 impl ParserState {
@@ -98,6 +99,7 @@ impl ParserState {
             breakable_entry_stack: vec![],
             formatting_context: vec![FormattingContext::Main],
             absorbing_indents: 0,
+            insert_user_newlines: true,
         }
     }
 
@@ -110,7 +112,7 @@ impl ParserState {
             return;
         }
 
-        if line_number - self.current_orig_line_number >= 2 {
+        if line_number - self.current_orig_line_number >= 2 && self.insert_user_newlines {
             self.insert_extra_newline_at_last_newline();
         }
 
@@ -437,6 +439,7 @@ impl ParserState {
         parts: Vec<StringContentPart>,
     ) {
         let mut next_ps = ParserState::render_with_blank_state(self, |n| {
+            n.insert_user_newlines = false;
             format_inner_string(n, parts, StringType::Heredoc);
             n.emit_newline();
         });
@@ -496,7 +499,9 @@ impl ParserState {
             };
 
             self.with_surpress_comments(true, |ps| {
+                ps.insert_user_newlines = false;
                 ps.wind_n_lines(next_heredoc.buf.iter().filter(|c| c == &&b'\n').count() + 1);
+                ps.insert_user_newlines = true;
             });
 
             self.push_token(LineToken::DirectPart {
