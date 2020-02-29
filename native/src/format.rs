@@ -1264,16 +1264,7 @@ pub fn format_var_ref_type(ps: &mut ParserState, vr: VarRefType) {
 
 pub fn handle_string_and_linecol(ps: &mut ParserState, ident: String, lc: LineCol) {
     ps.on_line(lc.0);
-
-    if ps.at_start_of_line() {
-        ps.emit_indent()
-    }
-
     ps.emit_ident(ident);
-
-    if ps.at_start_of_line() {
-        ps.emit_newline();
-    }
 }
 
 pub fn format_var_ref(ps: &mut ParserState, vr: VarRef) {

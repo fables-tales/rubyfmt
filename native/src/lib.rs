@@ -23,6 +23,7 @@ mod ruby_string_pointer;
 mod types;
 mod delimiters;
 mod breakable_entry;
+mod intermediary;
 
 use line_metadata::LineMetadata;
 use parser_state::ParserState;
