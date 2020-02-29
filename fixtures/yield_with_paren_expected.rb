@@ -1,1 +1,1 @@
-return path if yield(path)
+return path if yield path

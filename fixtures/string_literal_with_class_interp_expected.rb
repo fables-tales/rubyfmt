@@ -1,2 +1,2 @@
 a = "bees" \
-    "bees #{e.class} bees"
+  "bees #{e.class} bees"
