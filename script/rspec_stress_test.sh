@@ -24,11 +24,11 @@ do
     echo "running rubyfmt on $FN"
     ruby --disable=gems "$RUBYFMT" "$FN" > /tmp/this_one.rb
     ruby --disable=gems "$RUBYFMT" /tmp/this_one.rb > "$FN"
-    cd tmp/rspec-core
-    bundle exec rspec --exclude-pattern ./spec/integration/persistence_failures_spec.rb
-    git reset --hard
-    cd ../../
 done
+cd tmp/rspec-core
+bundle exec rspec --exclude-pattern ./spec/integration/persistence_failures_spec.rb
+git reset --hard
+cd ../../
 
 ## refmt.rb replaces rubyfmt.rb
 #ruby --disable=gems "$RUBYFMT" "$RUBYFMT" > tmp/refmt.rb
