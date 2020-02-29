@@ -29,6 +29,7 @@ pub enum FormattingContext {
     Def,
     CurlyBlock,
     ArgsList,
+    Heredoc
 }
 
 #[derive(Clone, Copy)]
