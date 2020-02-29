@@ -1,6 +1,6 @@
+use crate::delimiters::BreakableDelims;
 use crate::parser_state::{FormattingContext, ParserState};
 use crate::ripper_tree_types::*;
-use crate::delimiters::BreakableDelims;
 
 pub fn format_def(ps: &mut ParserState, def: Def) {
     let def_expression = (def.1).to_def_parts();
@@ -113,11 +113,7 @@ pub fn format_blockvar(ps: &mut ParserState, bv: BlockVar) {
     });
 }
 
-pub fn format_params(
-    ps: &mut ParserState,
-    params: Params,
-    delims: BreakableDelims,
-) {
+pub fn format_params(ps: &mut ParserState, params: Params, delims: BreakableDelims) {
     let have_any_params = params.non_null_positions().iter().any(|&x| x);
     if !have_any_params {
         return;
@@ -582,7 +578,9 @@ pub fn format_list_like_thing_items(
             ps.emit_soft_indent();
             ps.with_start_of_line(false, |ps| {
                 match expr {
-                    Expression::BareAssocHash(bah) => format_assocs(ps, bah.1, SpecialCase::NoLeadingTrailingCollectionMarkers),
+                    Expression::BareAssocHash(bah) => {
+                        format_assocs(ps, bah.1, SpecialCase::NoLeadingTrailingCollectionMarkers)
+                    }
                     expr => format_expression(ps, expr),
                 }
                 if idx != args_count - 1 {
@@ -745,9 +743,7 @@ pub fn format_begin(ps: &mut ParserState, begin: Begin) {
     ps.emit_begin();
     ps.emit_newline();
     ps.new_block(|ps| {
-        ps.with_start_of_line(true, |ps| {
-            format_bodystmt(ps, begin.1)
-        });
+        ps.with_start_of_line(true, |ps| format_bodystmt(ps, begin.1));
     });
 
     ps.with_start_of_line(true, |ps| {
@@ -1002,7 +998,7 @@ pub fn format_inner_string(ps: &mut ParserState, parts: Vec<StringContentPart>, 
                     ps.on_line((t.2).0);
                 }
                 ps.emit_string_content(t.1);
-            },
+            }
             StringContentPart::StringEmbexpr(e) => {
                 ps.emit_string_content("#{".to_string());
                 ps.with_start_of_line(false, |ps| {
@@ -1189,7 +1185,7 @@ pub fn format_assignable(ps: &mut ParserState, v: Assignable) {
         }
         Assignable::ArefField(af) => {
             format_aref_field(ps, af);
-        },
+        }
         Assignable::Field(field) => {
             format_field(ps, field);
         }
@@ -1928,7 +1924,7 @@ pub fn format_kw_with_args(
     ps: &mut ParserState,
     args: ParenOrArgsAddBlock,
     kw: String,
-    linecol: LineCol
+    linecol: LineCol,
 ) {
     if ps.at_start_of_line() {
         ps.emit_indent();
@@ -2004,7 +2000,6 @@ pub fn format_mod_statement(
     body: Box<Expression>,
     name: String,
 ) {
-
     let new_body = body.clone();
 
     let is_multiline = ps.will_render_as_multiline(|next_ps| {
@@ -2414,7 +2409,7 @@ pub fn format_return(ps: &mut ParserState, ret: Return) {
             match args {
                 ArgsAddStarOrExpressionList::ArgsAddStar(aas) => {
                     format_bare_return_args(ps, ArgsAddStarOrExpressionList::ArgsAddStar(aas));
-                },
+                }
                 ArgsAddStarOrExpressionList::ExpressionList(mut el) => {
                     if el.len() == 1 {
                         let element = el.remove(0);
@@ -2422,13 +2417,19 @@ pub fn format_return(ps: &mut ParserState, ret: Return) {
                             Expression::Array(Array(array_tag, contents, linecol)) => {
                                 ps.emit_space();
                                 format_array(ps, Array(array_tag, contents, linecol));
-                            },
+                            }
                             x => {
-                                format_bare_return_args(ps, ArgsAddStarOrExpressionList::ExpressionList(vec!(x)));
+                                format_bare_return_args(
+                                    ps,
+                                    ArgsAddStarOrExpressionList::ExpressionList(vec![x]),
+                                );
                             }
                         }
                     } else {
-                        format_bare_return_args(ps, ArgsAddStarOrExpressionList::ExpressionList(el));
+                        format_bare_return_args(
+                            ps,
+                            ArgsAddStarOrExpressionList::ExpressionList(el),
+                        );
                     }
                 }
             }

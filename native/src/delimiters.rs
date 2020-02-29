@@ -3,12 +3,12 @@ use crate::line_tokens::LineToken;
 #[derive(Debug, Clone)]
 struct DelimiterPair {
     open: String,
-    close: String
+    close: String,
 }
 
 impl DelimiterPair {
     fn new(open: String, close: String) -> Self {
-        DelimiterPair{open, close}
+        DelimiterPair { open, close }
     }
 }
 
@@ -69,19 +69,26 @@ impl BreakableDelims {
     }
 
     pub fn single_line_open(&self) -> LineToken {
-        LineToken::Delim {contents: self.single_line.open.clone ()}
+        LineToken::Delim {
+            contents: self.single_line.open.clone(),
+        }
     }
 
     pub fn single_line_close(&self) -> LineToken {
-        LineToken::Delim {contents: self.single_line.close.clone()}
+        LineToken::Delim {
+            contents: self.single_line.close.clone(),
+        }
     }
 
     pub fn multi_line_open(&self) -> LineToken {
-        LineToken::Delim {contents: self.multi_line.open.clone()}
+        LineToken::Delim {
+            contents: self.multi_line.open.clone(),
+        }
     }
 
     pub fn multi_line_close(&self) -> LineToken {
-        LineToken::Delim {contents: self.multi_line.close.clone()}
+        LineToken::Delim {
+            contents: self.multi_line.close.clone(),
+        }
     }
 }
-

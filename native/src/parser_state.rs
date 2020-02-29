@@ -1,12 +1,12 @@
+use crate::breakable_entry::BreakableEntry;
 use crate::comment_block::CommentBlock;
+use crate::delimiters::BreakableDelims;
 use crate::format::{format_inner_string, StringType};
 use crate::line_metadata::LineMetadata;
-use crate::delimiters::BreakableDelims;
 use crate::line_tokens::*;
 use crate::render_queue_writer::RenderQueueWriter;
 use crate::ripper_tree_types::StringContentPart;
 use crate::types::{ColNumber, LineNumber};
-use crate::breakable_entry::BreakableEntry;
 use std::io::{self, Cursor, Write};
 use std::mem;
 use std::str;
@@ -116,7 +116,6 @@ impl ParserState {
             be.push_line_number(line_number);
         }
 
-
         let comments = self.comments_hash.extract_comments_to_line(line_number);
         match comments {
             None => {}
@@ -128,9 +127,7 @@ impl ParserState {
                 {
                     eprintln!("comments: {:?}", comments);
                     let len = comments.len();
-                    self.insert_comment_collection(
-                        comments,
-                    );
+                    self.insert_comment_collection(comments);
                     self.current_orig_line_number += len as u64;
                 }
             }
@@ -140,7 +137,6 @@ impl ParserState {
             eprintln!("inserting extra newline");
             self.insert_extra_newline_at_last_newline();
         }
-
 
         self.current_orig_line_number = line_number;
     }
@@ -155,7 +151,7 @@ impl ParserState {
         insert_at(
             insert_idx,
             &mut self.render_queue,
-            &mut vec!(LineToken::HardNewLine)
+            &mut vec![LineToken::HardNewLine],
         );
     }
 
@@ -530,11 +526,7 @@ impl ParserState {
     where
         F: FnOnce(&mut ParserState),
     {
-        eprintln!("called: {:?}", delims);
-        let mut be = BreakableEntry::new(
-            self.current_spaces(),
-            delims,
-        );
+        let mut be = BreakableEntry::new(self.current_spaces(), delims);
         be.push_line_number(self.current_orig_line_number);
 
         self.breakable_entry_stack.push(be);

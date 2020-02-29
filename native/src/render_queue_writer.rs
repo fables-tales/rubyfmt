@@ -1,6 +1,6 @@
-use crate::line_tokens::*;
-use crate::intermediary::Intermediary;
 use crate::breakable_entry::{BreakableEntry, ConvertType};
+use crate::intermediary::Intermediary;
+use crate::line_tokens::*;
 use std::io::{self, Write};
 
 const MAX_LINE_LENGTH: usize = 120;
@@ -36,12 +36,17 @@ impl RenderQueueWriter {
             if accum.len() >= 4 {
                 match accum.last_4().expect("we checked length") {
                     // do nothing in the case we're in an end cascade
-                    (&LineToken::End, &LineToken::HardNewLine, &LineToken::Indent { .. }, &LineToken::End) => { }
+                    (
+                        &LineToken::End,
+                        &LineToken::HardNewLine,
+                        &LineToken::Indent { .. },
+                        &LineToken::End,
+                    ) => {}
                     // in this case we have an end followed by something that isn't
                     // an end, so insert an extra blankline
-                    (&LineToken::End, &LineToken::HardNewLine, &LineToken::Indent { ..  }, &_) => {
-                        accum.insert(accum.len()-2, LineToken::HardNewLine);
-                    },
+                    (&LineToken::End, &LineToken::HardNewLine, &LineToken::Indent { .. }, &_) => {
+                        accum.insert(accum.len() - 2, LineToken::HardNewLine);
+                    }
                     _ => {}
                 }
             }
@@ -51,11 +56,8 @@ impl RenderQueueWriter {
     fn format_breakable_entry(accum: &mut Intermediary, be: BreakableEntry) {
         let length = be.single_line_string_length();
 
-        if length > MAX_LINE_LENGTH  || be.is_multiline() {
-            Self::render_as(
-                accum,
-                be.as_tokens(ConvertType::MultiLine),
-            );
+        if length > MAX_LINE_LENGTH || be.is_multiline() {
+            Self::render_as(accum, be.as_tokens(ConvertType::MultiLine));
         } else {
             Self::render_as(accum, be.as_tokens(ConvertType::SingleLine));
             // after running accum looks like this (or some variant):

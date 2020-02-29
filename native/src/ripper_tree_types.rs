@@ -459,7 +459,12 @@ pub struct VarField(pub var_field_tag, pub VarRefType);
 
 def_tag!(field_tag, "field");
 #[derive(Deserialize, Debug, Clone)]
-pub struct Field(pub field_tag, pub Box<Expression>, pub DotTypeOrOp, pub Ident);
+pub struct Field(
+    pub field_tag,
+    pub Box<Expression>,
+    pub DotTypeOrOp,
+    pub Ident,
+);
 
 def_tag!(var_ref_tag, "var_ref");
 #[derive(Deserialize, Debug, Clone)]
@@ -657,7 +662,11 @@ impl<'de> Deserialize<'de> for StringContent {
 
 def_tag!(array_tag, "array");
 #[derive(Deserialize, Debug, Clone)]
-pub struct Array(pub array_tag, pub SimpleArrayOrPercentArray, pub Option<LineCol>);
+pub struct Array(
+    pub array_tag,
+    pub SimpleArrayOrPercentArray,
+    pub Option<LineCol>,
+);
 
 #[derive(Deserialize, Debug, Clone)]
 #[serde(untagged)]
@@ -1119,22 +1128,19 @@ pub fn normalize_args_add_block(aab: ArgsAddBlock) -> ArgsAddStarOrExpressionLis
     match aab.2 {
         ToProcExpr::NotPresent(_) => aab.1,
         ToProcExpr::Present(e) => {
-            let trailing_expr_as_vec = vec![Expression::ToProc(
-                ToProc(undeserializable, e)
-            )];
+            let trailing_expr_as_vec = vec![Expression::ToProc(ToProc(undeserializable, e))];
 
             match aab.1 {
                 ArgsAddStarOrExpressionList::ExpressionList(items) => {
-                    ArgsAddStarOrExpressionList::ExpressionList(vec![
-                        items,
-                        trailing_expr_as_vec,
-                    ].concat())
-                },
+                    ArgsAddStarOrExpressionList::ExpressionList(
+                        vec![items, trailing_expr_as_vec].concat(),
+                    )
+                }
                 ArgsAddStarOrExpressionList::ArgsAddStar(aas) => {
                     let mut new_aas = aas;
                     new_aas.3 = vec![new_aas.3, trailing_expr_as_vec].concat();
                     ArgsAddStarOrExpressionList::ArgsAddStar(new_aas)
-                },
+                }
             }
         }
     }
@@ -1349,7 +1355,12 @@ pub enum Operator {
 
 def_tag!(opassign_tag, "opassign");
 #[derive(Deserialize, Debug, Clone)]
-pub struct OpAssign(pub opassign_tag, pub Assignable, pub Op, pub Box<Expression>);
+pub struct OpAssign(
+    pub opassign_tag,
+    pub Assignable,
+    pub Op,
+    pub Box<Expression>,
+);
 
 def_tag!(next_tag, "next");
 #[derive(Deserialize, Debug, Clone)]
