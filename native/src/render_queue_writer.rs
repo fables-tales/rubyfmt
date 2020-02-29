@@ -1,4 +1,5 @@
 use crate::line_tokens::*;
+use crate::intermediary::Intermediary;
 use crate::breakable_entry::{BreakableEntry, ConvertType};
 use std::io::{self, Write};
 
@@ -14,16 +15,16 @@ impl RenderQueueWriter {
     }
 
     pub fn write<W: Write>(self, writer: &mut W) -> io::Result<()> {
-        let mut accum = vec!();
+        let mut accum = Intermediary::new();
         eprintln!("{:?}", self.tokens.clone());
         Self::render_as(
             &mut accum,
             self.tokens.into_iter().map(|t| t.as_multi_line()).collect(),
         );
-        Self::write_final_tokens(writer, accum)
+        Self::write_final_tokens(writer, accum.to_tokens())
     }
 
-    fn render_as(accum: &mut Vec<LineToken>, tokens: Vec<LineToken>) {
+    fn render_as(accum: &mut Intermediary, tokens: Vec<LineToken>) {
         let mut token_iter = tokens.into_iter();
 
         while let Some(next_token) = token_iter.next() {
@@ -33,12 +34,12 @@ impl RenderQueueWriter {
             }
 
             if accum.len() >= 4 {
-                match accum[accum.len()-4..accum.len()] {
+                match accum.last_4().expect("we checked length") {
                     // do nothing in the case we're in an end cascade
-                    [LineToken::End, LineToken::HardNewLine, LineToken::Indent { .. }, LineToken::End] => { }
+                    (&LineToken::End, &LineToken::HardNewLine, &LineToken::Indent { .. }, &LineToken::End) => { }
                     // in this case we have an end followed by something that isn't
                     // an end, so insert an extra blankline
-                    [LineToken::End, LineToken::HardNewLine, LineToken::Indent { ..  }, _] => {
+                    (&LineToken::End, &LineToken::HardNewLine, &LineToken::Indent { ..  }, &_) => {
                         accum.insert(accum.len()-2, LineToken::HardNewLine);
                     },
                     _ => {}
@@ -47,7 +48,7 @@ impl RenderQueueWriter {
         }
     }
 
-    fn format_breakable_entry(accum: &mut Vec<LineToken>, be: BreakableEntry) {
+    fn format_breakable_entry(accum: &mut Intermediary, be: BreakableEntry) {
         let length = be.single_line_string_length();
 
         if length > MAX_LINE_LENGTH  || be.is_multiline() {
@@ -61,9 +62,7 @@ impl RenderQueueWriter {
             // [.., Comma, Space, DirectPart {part: ""}, <close_delimiter>]
             // so we remove items at positions length-2 until there is nothing
             // in that position that is garbage.
-            while accum[accum.len()-2].is_single_line_breakable_garbage() {
-                accum.remove(accum.len()-2);
-            }
+            accum.clear_breakable_garbage();
         }
     }
 

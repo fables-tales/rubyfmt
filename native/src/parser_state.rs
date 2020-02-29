@@ -132,9 +132,10 @@ impl ParserState {
             .last()
             .expect("comments stack is never empty")
         {
+            let comments = comments.expect("We've already checked it's not none");
             self.insert_comment_collection(
-                comments.expect("we checked it was none at the top of the function"),
-            )
+                comments,
+            );
         }
     }
 
