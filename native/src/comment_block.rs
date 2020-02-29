@@ -21,6 +21,10 @@ impl CommentBlock {
         !self.comments.is_empty()
     }
 
+    pub fn len(&self) -> usize {
+        self.comments.len()
+    }
+
     pub fn merge(&mut self, mut other: CommentBlock) {
         self.comments.append(&mut other.comments);
     }
