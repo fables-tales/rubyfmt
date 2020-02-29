@@ -66,7 +66,7 @@ pub fn inner_format_params(ps: &mut ParserState, params: Params) {
 
         if did_emit && have_more {
             ps.emit_comma();
-            ps.emit_collapsing_newline();
+            ps.emit_soft_newline();
         }
     }
 }
