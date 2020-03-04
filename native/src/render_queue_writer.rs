@@ -16,6 +16,7 @@ impl RenderQueueWriter {
 
     pub fn write<W: Write>(self, writer: &mut W) -> io::Result<()> {
         let mut accum = Intermediary::new();
+        eprintln!("first tokens");
         eprintln!("{:?}", self.tokens.clone());
         Self::render_as(
             &mut accum,
@@ -44,8 +45,10 @@ impl RenderQueueWriter {
                     ) => {}
                     // in this case we have an end followed by something that isn't
                     // an end, so insert an extra blankline
-                    (&LineToken::End, &LineToken::HardNewLine, &LineToken::Indent { .. }, &_) => {
-                        accum.insert(accum.len() - 2, LineToken::HardNewLine);
+                    (&LineToken::End, &LineToken::HardNewLine, &LineToken::Indent { .. }, x) => {
+                        eprintln!(">>>>>>>>>>>>>>>>>>>> {:?}", x);
+                        eprintln!("coming from cleanup");
+                        accum.insert_trailing_blankline();
                     }
                     _ => {}
                 }
@@ -69,6 +72,8 @@ impl RenderQueueWriter {
     }
 
     fn write_final_tokens<W: Write>(writer: &mut W, tokens: Vec<LineToken>) -> io::Result<()> {
+        eprintln!("last tokens");
+        eprintln!("{:?}", tokens);
         for line_token in tokens.into_iter() {
             let s = line_token.to_string();
             write!(writer, "{}", s)?
