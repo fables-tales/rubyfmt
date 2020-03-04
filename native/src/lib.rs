@@ -19,6 +19,7 @@ mod format;
 mod intermediary;
 mod file_comments;
 mod line_tokens;
+mod line_metadata;
 mod parser_state;
 mod render_queue_writer;
 mod ripper_tree_types;

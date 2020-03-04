@@ -290,9 +290,6 @@ pub fn format_bodystmt(ps: &mut ParserState, bodystmt: BodyStmt) {
 }
 
 pub fn format_mrhs(ps: &mut ParserState, mrhs: Option<MRHS>) {
-    eprintln!("-------------------!!!!!");
-    eprintln!("{:?}", mrhs);
-    eprintln!("-------------------!!!!!");
     match mrhs {
         None => {}
         Some(MRHS::Single(expr)) => {
@@ -443,6 +440,8 @@ pub fn use_parens_for_method_call(
             method
         ),
     };
+    eprintln!("-------------");
+    eprintln!("name: {}", name);
     if name.starts_with("attr_") && context == FormattingContext::ClassOrModule {
         return false;
     }
@@ -2155,7 +2154,7 @@ pub fn format_sclass(ps: &mut ParserState, sc: SClass) {
     let body = sc.2;
 
     ps.with_start_of_line(false, |ps| {
-        ps.emit_class_keyword();
+        ps.emit_keyword("class".into());
         ps.emit_space();
         ps.emit_ident("<<".to_string());
         ps.emit_space();

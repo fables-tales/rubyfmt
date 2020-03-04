@@ -108,6 +108,10 @@ impl ParserState {
     }
 
     pub fn on_line(&mut self, line_number: LineNumber) {
+        eprintln!(
+            "------------------- ln current: {}, new: {}",
+            self.current_orig_line_number, line_number
+        );
         if line_number < self.current_orig_line_number {
             return;
         }
@@ -125,7 +129,6 @@ impl ParserState {
                     .last()
                     .expect("comments stack is never empty")
                 {
-                    eprintln!("comments: {:?}", comments);
                     let len = comments.len();
                     self.insert_comment_collection(comments);
                     self.current_orig_line_number += len as u64;
@@ -134,7 +137,6 @@ impl ParserState {
         }
 
         if line_number - self.current_orig_line_number >= 2 && self.insert_user_newlines {
-            eprintln!("inserting extra newline");
             self.insert_extra_newline_at_last_newline();
         }
 
@@ -218,15 +220,11 @@ impl ParserState {
     }
 
     pub fn emit_class_keyword(&mut self) {
-        self.push_token(LineToken::Keyword {
-            keyword: "class".to_string(),
-        });
+        self.push_token(LineToken::ClassKeyword);
     }
 
     pub fn emit_module_keyword(&mut self) {
-        self.push_token(LineToken::Keyword {
-            keyword: "module".to_string(),
-        });
+        self.push_token(LineToken::ModuleKeyword);
     }
 
     pub fn emit_rescue(&mut self) {
