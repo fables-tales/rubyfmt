@@ -1,5 +1,5 @@
-use crate::line_tokens::*;
 use crate::line_metadata::LineMetadata;
+use crate::line_tokens::*;
 use std::mem;
 
 pub struct Intermediary {
@@ -43,15 +43,15 @@ impl Intermediary {
     pub fn push(&mut self, lt: LineToken) {
         self.debug_assert_newlines();
         match lt {
-            LineToken::ModuleKeyword | LineToken::ClassKeyword  => {
+            LineToken::ModuleKeyword | LineToken::ClassKeyword => {
                 self.handle_class_or_module();
-            },
+            }
             LineToken::HardNewLine => {
                 let mut md = LineMetadata::new();
                 mem::swap(&mut md, &mut self.current_line_metadata);
                 self.previous_line_metadata = Some(md);
                 self.index_of_last_hard_newline = self.tokens.len();
-            },
+            }
             _ => {}
         }
         self.tokens.push(lt);
@@ -78,10 +78,14 @@ impl Intermediary {
     }
 
     pub fn insert_trailing_blankline(&mut self) {
-        match (self.tokens.get(self.index_of_last_hard_newline-1), self.tokens.get(self.index_of_last_hard_newline)) {
-            (Some(&LineToken::HardNewLine), Some(&LineToken::HardNewLine)) => {},
+        match (
+            self.tokens.get(self.index_of_last_hard_newline - 1),
+            self.tokens.get(self.index_of_last_hard_newline),
+        ) {
+            (Some(&LineToken::HardNewLine), Some(&LineToken::HardNewLine)) => {}
             _ => {
-                self.tokens.insert(self.index_of_last_hard_newline, LineToken::HardNewLine);
+                self.tokens
+                    .insert(self.index_of_last_hard_newline, LineToken::HardNewLine);
                 self.index_of_last_hard_newline += 1;
                 self.debug_assert_newlines();
             }
@@ -94,12 +98,11 @@ impl Intermediary {
             return;
         }
         match self.tokens.get(self.index_of_last_hard_newline) {
-            Some(&LineToken::HardNewLine) => {},
+            Some(&LineToken::HardNewLine) => {}
             _ => panic!("newlines are fucked"),
         }
     }
 
     #[cfg(not(debug_assertions))]
-    fn debug_assert_newlines(&self) {
-    }
+    fn debug_assert_newlines(&self) {}
 }
