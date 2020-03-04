@@ -7,14 +7,14 @@ use crate::types::LineNumber;
 use regex::Regex;
 
 #[derive(Debug)]
-pub struct LineMetadata {
+pub struct FileComments {
     comment_blocks: BTreeMap<LineNumber, String>,
     lowest_key: LineNumber,
 }
 
-impl LineMetadata {
+impl FileComments {
     pub fn new() -> Self {
-        LineMetadata {
+        FileComments {
             comment_blocks: BTreeMap::new(),
             lowest_key: 0,
         }

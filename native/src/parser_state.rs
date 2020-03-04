@@ -2,7 +2,7 @@ use crate::breakable_entry::BreakableEntry;
 use crate::comment_block::CommentBlock;
 use crate::delimiters::BreakableDelims;
 use crate::format::{format_inner_string, StringType};
-use crate::line_metadata::LineMetadata;
+use crate::file_comments::FileComments;
 use crate::line_tokens::*;
 use crate::render_queue_writer::RenderQueueWriter;
 use crate::ripper_tree_types::StringContentPart;
@@ -76,7 +76,7 @@ pub struct ParserState {
     surpress_comments_stack: Vec<bool>,
     render_queue: Vec<LineToken>,
     current_orig_line_number: LineNumber,
-    comments_hash: LineMetadata,
+    comments_hash: FileComments,
     heredoc_strings: Vec<HeredocString>,
     comments_to_insert: CommentBlock,
     breakable_entry_stack: Vec<BreakableEntry>,
@@ -86,14 +86,14 @@ pub struct ParserState {
 }
 
 impl ParserState {
-    pub fn new(lm: LineMetadata) -> Self {
+    pub fn new(fc: FileComments) -> Self {
         ParserState {
             depth_stack: vec![IndentDepth::new()],
             start_of_line: vec![true],
             surpress_comments_stack: vec![false],
             render_queue: vec![],
             current_orig_line_number: 0,
-            comments_hash: lm,
+            comments_hash: fc,
             heredoc_strings: vec![],
             comments_to_insert: CommentBlock::new(vec![]),
             breakable_entry_stack: vec![],
@@ -420,7 +420,7 @@ impl ParserState {
     }
 
     pub fn new_with_depth_stack_from(ps: &ParserState) -> Self {
-        let mut next_ps = ParserState::new(LineMetadata::new());
+        let mut next_ps = ParserState::new(FileComments::new());
         next_ps.depth_stack = ps.depth_stack.clone();
         next_ps.current_orig_line_number = ps.current_orig_line_number;
         next_ps
