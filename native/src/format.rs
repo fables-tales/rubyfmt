@@ -747,8 +747,10 @@ pub fn format_begin(ps: &mut ParserState, begin: Begin) {
 
     ps.with_start_of_line(true, |ps| {
         ps.emit_end();
-        ps.emit_newline()
     });
+    if ps.at_start_of_line() {
+        ps.emit_newline();
+    }
 }
 
 trait ToMethodCall {

@@ -235,12 +235,13 @@ module RSpec::Core
       #   RSpec's built-in formatters emit.
       def fully_formatted(pending_number, colorizer = ::RSpec::Core::Formatters::ConsoleCodes)
         formatted_caller = RSpec.configuration.backtrace_formatter.backtrace_line(example.location)
+
         [
           colorizer.wrap("\n  #{pending_number}) #{example.full_description}", :pending),
           "\n     ",
           Formatters::ExceptionPresenter::PENDING_DETAIL_FORMATTER.call(example, colorizer),
           "\n",
-          colorizer.wrap("     # #{formatted_caller}\n", :detail),
+          colorizer.wrap("     # #{formatted_caller}\n", :detail)
         ].join("")
       end
     end
@@ -299,7 +300,14 @@ module RSpec::Core
     # @attr errors_outside_of_examples_count [Integer] the number of errors that
     #                                                  have occurred processing
     #                                                  the spec suite
-    SummaryNotification = Struct.new(:duration, :examples, :failed_examples, :pending_examples, :load_time, :errors_outside_of_examples_count)
+    SummaryNotification = Struct.new(
+      :duration,
+      :examples,
+      :failed_examples,
+      :pending_examples,
+      :load_time,
+      :errors_outside_of_examples_count
+    )
 
     class SummaryNotification
       # @api
@@ -381,8 +389,8 @@ module RSpec::Core
       #   RSpec's built-in formatters emit.
       def fully_formatted(colorizer = ::RSpec::Core::Formatters::ConsoleCodes)
         formatted = "\nFinished in #{formatted_duration} " \
-                    "(files took #{formatted_load_time} to load)\n" \
-                    "#{colorized_totals_line(colorizer)}\n"
+          "(files took #{formatted_load_time} to load)\n" \
+          "#{colorized_totals_line(colorizer)}\n"
 
         unless failed_examples.empty?
           formatted += (colorized_rerun_commands(colorizer) + "\n")
