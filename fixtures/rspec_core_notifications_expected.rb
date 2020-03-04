@@ -41,6 +41,7 @@ module RSpec::Core
       # @private
       def self.for(example)
         execution_result = example.execution_result
+
         return SkippedExampleNotification.new(example) if execution_result.example_skipped?
         return new(example) unless execution_result.status == :pending || execution_result.status == :failed
 
@@ -208,10 +209,7 @@ module RSpec::Core
 
       private
 
-      def initialize(
-        example,
-        exception_presenter = Formatters::ExceptionPresenter::Factory.new(example).build
-      )
+      def initialize(example, exception_presenter = Formatters::ExceptionPresenter::Factory.new(example).build)
         @exception_presenter = exception_presenter
         super(example)
       end

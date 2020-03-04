@@ -932,8 +932,8 @@ def_tag!(ident_tag, "@ident");
 pub struct Ident(pub ident_tag, pub String, pub LineCol);
 
 impl Ident {
-    pub fn new(s: String) -> Self {
-        Ident(ident_tag, s, LineCol(0, 0))
+    pub fn new(s: String, l: LineCol) -> Self {
+        Ident(ident_tag, s, l)
     }
     pub fn line_number(&self) -> LineNumber {
         (self.2).0
@@ -1434,13 +1434,13 @@ impl<'de> Deserialize<'de> for Unary {
 
 def_tag!(super_tag, "super");
 #[derive(Deserialize, Debug, Clone)]
-pub struct Super(pub super_tag, pub ArgNode);
+pub struct Super(pub super_tag, pub ArgNode, pub LineCol);
 
 impl Super {
     pub fn to_method_call(self) -> MethodCall {
         MethodCall::new(
             vec![],
-            Box::new(Expression::Ident(Ident::new("super".to_string()))),
+            Box::new(Expression::Ident(Ident::new("super".to_string(), self.2))),
             true,
             normalize_args(self.1),
         )
