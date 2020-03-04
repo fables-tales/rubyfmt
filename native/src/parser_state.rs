@@ -1,8 +1,8 @@
 use crate::breakable_entry::BreakableEntry;
 use crate::comment_block::CommentBlock;
 use crate::delimiters::BreakableDelims;
-use crate::format::{format_inner_string, StringType};
 use crate::file_comments::FileComments;
+use crate::format::{format_inner_string, StringType};
 use crate::line_tokens::*;
 use crate::render_queue_writer::RenderQueueWriter;
 use crate::ripper_tree_types::StringContentPart;
