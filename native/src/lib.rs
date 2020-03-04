@@ -17,7 +17,7 @@ mod comment_block;
 mod delimiters;
 mod format;
 mod intermediary;
-mod line_metadata;
+mod file_comments;
 mod line_tokens;
 mod parser_state;
 mod render_queue_writer;
@@ -25,7 +25,7 @@ mod ripper_tree_types;
 mod ruby_string_pointer;
 mod types;
 
-use line_metadata::LineMetadata;
+use file_comments::FileComments;
 use parser_state::ParserState;
 use ruby_string_pointer::RubyStringPointer;
 
@@ -82,7 +82,7 @@ fn raw_format_program<T: Write>(
 }
 
 fn toplevel_format_program<W: Write>(mut writer: W, buf: &[u8], tree: &[u8]) -> Result<(), Status> {
-    let line_metadata = LineMetadata::from_buf(BufReader::new(buf))
+    let line_metadata = FileComments::from_buf(BufReader::new(buf))
         .expect("failed to load line metadata from memory");
     let mut ps = ParserState::new(line_metadata);
     let v: ripper_tree_types::Program =
