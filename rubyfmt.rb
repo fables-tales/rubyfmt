@@ -40,6 +40,7 @@ class Parser < Ripper::SexpBuilderPP
       "when" => [],
       "yield" => [],
       "break" => [],
+      "super" => [],
     }
     @array_location_stacks = []
   end
@@ -76,6 +77,10 @@ class Parser < Ripper::SexpBuilderPP
       stack << [lineno, column]
     end
     super
+  end
+
+  def on_super(args)
+    [:super, args, @kw_stacks["super"].pop]
   end
 
   def on_return(args)
