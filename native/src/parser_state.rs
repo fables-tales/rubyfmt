@@ -195,6 +195,10 @@ impl ParserState {
         self.push_token(LineToken::Keyword { keyword: kw });
     }
 
+    pub fn emit_mod_keyword(&mut self, contents: String) {
+        self.push_token(LineToken::ModKeyword { contents });
+    }
+
     pub fn emit_def_keyword(&mut self) {
         self.push_token(LineToken::Keyword {
             keyword: "def".to_string(),

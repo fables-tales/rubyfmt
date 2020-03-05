@@ -2031,7 +2031,7 @@ pub fn format_mod_statement(
         ps.with_start_of_line(false, |ps| {
             format_expression(ps, *body);
 
-            ps.emit_ident(format!(" {} ", name));
+            ps.emit_mod_keyword(format!(" {} ", name));
             format_expression(ps, *conditional);
         });
 
