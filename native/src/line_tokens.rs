@@ -30,6 +30,7 @@ pub enum LineToken {
     Comment { contents: String },
     Delim { contents: String },
     End,
+    ModKeyword { contents: String },
 }
 
 impl LineToken {
@@ -66,13 +67,6 @@ impl LineToken {
         }
     }
 
-    //pub fn is_hard_newline(&self) -> bool {
-    //    match self {
-    //        Self::HardNewLine => true,
-    //        _ => false,
-    //    }
-    //}
-
     pub fn to_string(self) -> String {
         match self {
             Self::CollapsingNewLine => "\n".to_string(),
@@ -81,6 +75,7 @@ impl LineToken {
             Self::Indent { depth } => (0..depth).map(|_| ' ').collect(),
             Self::SoftIndent { depth } => (0..depth).map(|_| ' ').collect(),
             Self::Keyword { keyword } => keyword,
+            Self::ModKeyword { contents } => contents,
             Self::ClassKeyword => "class".to_string(),
             Self::ModuleKeyword => "module".to_string(),
             Self::DirectPart { part } => part,
