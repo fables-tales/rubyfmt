@@ -200,6 +200,10 @@ impl ParserState {
         self.push_token(LineToken::ModKeyword { contents });
     }
 
+    pub fn emit_conditional_keyword(&mut self, contents: String) {
+        self.push_token(LineToken::ConditionalKeyword { contents });
+    }
+
     pub fn emit_def_keyword(&mut self) {
         self.push_token(LineToken::Keyword {
             keyword: "def".to_string(),
@@ -322,9 +326,7 @@ impl ParserState {
     }
 
     pub fn emit_else(&mut self) {
-        self.push_token(LineToken::Keyword {
-            keyword: "else".into(),
-        });
+        self.emit_conditional_keyword("else".to_string());
     }
 
     pub fn emit_comma_space(&mut self) {

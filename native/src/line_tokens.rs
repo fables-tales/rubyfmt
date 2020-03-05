@@ -11,6 +11,8 @@ pub enum LineToken {
     Keyword { keyword: String },
     ClassKeyword,
     ModuleKeyword,
+    ModKeyword { contents: String },
+    ConditionalKeyword { contents: String },
     DirectPart { part: String },
     CommaSpace,
     Comma,
@@ -30,7 +32,6 @@ pub enum LineToken {
     Comment { contents: String },
     Delim { contents: String },
     End,
-    ModKeyword { contents: String },
 }
 
 impl LineToken {
@@ -76,6 +77,7 @@ impl LineToken {
             Self::SoftIndent { depth } => (0..depth).map(|_| ' ').collect(),
             Self::Keyword { keyword } => keyword,
             Self::ModKeyword { contents } => contents,
+            Self::ConditionalKeyword { contents } => contents,
             Self::ClassKeyword => "class".to_string(),
             Self::ModuleKeyword => "module".to_string(),
             Self::DirectPart { part } => part,
