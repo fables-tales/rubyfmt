@@ -2029,27 +2029,7 @@ pub fn format_mod_statement(
         }
 
         ps.with_start_of_line(false, |ps| {
-            if is_multiline {
-                ps.emit_open_paren();
-                ps.emit_newline();
-
-                ps.new_block(|ps| {
-                    ps.with_start_of_line(true, |ps| {
-                        let exprs = match *body {
-                            Expression::Paren(p) => p.1,
-                            e => vec![e],
-                        };
-                        for expr in exprs {
-                            format_expression(ps, expr);
-                        }
-                    });
-                });
-
-                ps.emit_indent();
-                ps.emit_close_paren();
-            } else {
-                format_expression(ps, *body);
-            }
+            format_expression(ps, *body);
 
             ps.emit_ident(format!(" {} ", name));
             format_expression(ps, *conditional);
