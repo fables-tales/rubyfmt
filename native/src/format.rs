@@ -1682,6 +1682,7 @@ pub fn format_conditional(
 pub fn format_if(ps: &mut ParserState, ifs: If) {
     format_conditional(ps, *ifs.1, ifs.2, "if".to_string(), ifs.3);
     ps.with_start_of_line(true, |ps| {
+        ps.wind_line_forward();
         ps.emit_end();
     });
 

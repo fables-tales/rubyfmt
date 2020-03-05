@@ -205,9 +205,7 @@ impl ParserState {
     }
 
     pub fn emit_def_keyword(&mut self) {
-        self.push_token(LineToken::Keyword {
-            keyword: "def".to_string(),
-        });
+        self.push_token(LineToken::DefKeyword);
     }
 
     pub fn emit_case_keyword(&mut self) {

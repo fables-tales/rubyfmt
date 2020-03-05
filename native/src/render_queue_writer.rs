@@ -44,9 +44,11 @@ impl RenderQueueWriter {
                     // in this case we have an end followed by something that isn't
                     // an end, so insert an extra blankline
                     (&LineToken::End, &LineToken::HardNewLine, &LineToken::Indent { .. }, x) => {
-                        eprintln!(">>>>>>>>>>>>>>>>>>>> {:?}", x);
-                        eprintln!("coming from cleanup");
-                        accum.insert_trailing_blankline();
+                        if x.wants_spacer_for_conditional() {
+                            eprintln!(">>>>>>>>>>>>>>>>>>>> {:?}", x);
+                            eprintln!("coming from cleanup");
+                            accum.insert_trailing_blankline();
+                        }
                     }
                     _ => {}
                 }
