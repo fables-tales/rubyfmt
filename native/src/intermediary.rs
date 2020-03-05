@@ -36,7 +36,7 @@ impl Intermediary {
         ))
     }
 
-    pub fn to_tokens(self) -> Vec<LineToken> {
+    pub fn into_tokens(self) -> Vec<LineToken> {
         self.tokens
     }
 

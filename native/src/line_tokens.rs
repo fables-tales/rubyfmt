@@ -34,20 +34,20 @@ pub enum LineToken {
 }
 
 impl LineToken {
-    pub fn as_single_line(self) -> LineToken {
+    pub fn into_single_line(self) -> LineToken {
         match self {
             Self::CollapsingNewLine => LineToken::DirectPart {
                 part: "".to_string(),
             },
             Self::SoftNewline => LineToken::Space,
-            Self::SoftIndent { depth: _ } => LineToken::DirectPart {
+            Self::SoftIndent { .. } => LineToken::DirectPart {
                 part: "".to_string(),
             },
             x => x,
         }
     }
 
-    pub fn as_multi_line(self) -> LineToken {
+    pub fn into_multi_line(self) -> LineToken {
         self
     }
 
@@ -67,7 +67,7 @@ impl LineToken {
         }
     }
 
-    pub fn to_string(self) -> String {
+    pub fn into_ruby(self) -> String {
         match self {
             Self::CollapsingNewLine => "\n".to_string(),
             Self::HardNewLine => "\n".to_string(),
@@ -90,10 +90,10 @@ impl LineToken {
             Self::OpenParen => "(".to_string(),
             Self::CloseParen => ")".to_string(),
             Self::BreakableEntry(be) => be
-                .as_tokens(ConvertType::SingleLine)
+                .into_tokens(ConvertType::SingleLine)
                 .into_iter()
                 .fold("".to_string(), |accum, tok| {
-                    format!("{}{}", accum, tok.to_string()).to_string()
+                    format!("{}{}", accum, tok.into_ruby())
                 }),
             Self::Op { op } => op,
             Self::DoubleQuote => "\"".to_string(),

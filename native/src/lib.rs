@@ -5,6 +5,7 @@ extern crate regex;
 
 extern crate serde;
 extern crate serde_json;
+extern crate bytecount;
 
 use std::fs::File;
 use std::io::{self, BufReader, Write};

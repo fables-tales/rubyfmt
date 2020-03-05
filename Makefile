@@ -1,4 +1,4 @@
-.PHONY: clean
+.PHONY: clean clippy
 
 debug: target/rubyfmt_debug.bundle
 
@@ -25,3 +25,6 @@ target/release/librubyfmt.a: native/src/*.rs native/Cargo.toml
 
 clean:
 	rm -rf target/
+
+clippy:
+	cd native && cargo clippy
