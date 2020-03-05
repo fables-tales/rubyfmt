@@ -10,6 +10,7 @@ use crate::types::{ColNumber, LineNumber};
 use std::io::{self, Cursor, Write};
 use std::mem;
 use std::str;
+use bytecount;
 
 fn insert_at<T>(idx: usize, target: &mut Vec<T>, input: &mut Vec<T>) {
     let drain = input.drain(..);
@@ -168,7 +169,7 @@ impl ParserState {
     }
 
     pub fn emit_op(&mut self, op: String) {
-        self.push_token(LineToken::Op { op: op });
+        self.push_token(LineToken::Op { op });
     }
 
     pub fn emit_double_quote(&mut self) {
@@ -505,7 +506,7 @@ impl ParserState {
 
             self.with_surpress_comments(true, |ps| {
                 ps.insert_user_newlines = false;
-                ps.wind_n_lines(next_heredoc.buf.iter().filter(|c| c == &&b'\n').count() + 1);
+                ps.wind_n_lines(bytecount::count(&next_heredoc.buf, b'\n') + 1);
                 ps.insert_user_newlines = true;
             });
 

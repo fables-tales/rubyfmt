@@ -30,16 +30,16 @@ impl BreakableEntry {
         self.tokens.push(lt);
     }
 
-    pub fn as_tokens(self, ct: ConvertType) -> Vec<LineToken> {
+    pub fn into_tokens(self, ct: ConvertType) -> Vec<LineToken> {
         let mut tokens = self.tokens;
         match ct {
             ConvertType::MultiLine => {
-                tokens = tokens.into_iter().map(|t| t.as_multi_line()).collect();
+                tokens = tokens.into_iter().map(|t| t.into_multi_line()).collect();
                 tokens.insert(0, self.delims.multi_line_open());
                 tokens.push(self.delims.multi_line_close());
             }
             ConvertType::SingleLine => {
-                tokens = tokens.into_iter().map(|t| t.as_single_line()).collect();
+                tokens = tokens.into_iter().map(|t| t.into_single_line()).collect();
                 tokens.insert(0, self.delims.single_line_open());
                 tokens.push(self.delims.single_line_close());
             }
@@ -50,8 +50,8 @@ impl BreakableEntry {
     pub fn single_line_string_length(&self) -> usize {
         self.tokens
             .iter()
-            .map(|tok| tok.clone().as_single_line())
-            .map(|tok| tok.to_string().len())
+            .map(|tok| tok.clone().into_single_line())
+            .map(|tok| tok.into_ruby().len())
             .sum()
     }
 
