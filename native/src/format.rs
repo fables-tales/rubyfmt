@@ -1638,7 +1638,7 @@ pub fn format_conditional(
     if ps.at_start_of_line() {
         ps.emit_indent();
     }
-    ps.emit_keyword(kw);
+    ps.emit_conditional_keyword(kw);
     ps.emit_space();
     ps.with_start_of_line(false, |ps| {
         format_expression(ps, cond_expr);
