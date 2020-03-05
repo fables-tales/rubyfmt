@@ -9,6 +9,7 @@ pub enum LineToken {
     Indent { depth: u32 },
     SoftIndent { depth: u32 },
     Keyword { keyword: String },
+    DefKeyword,
     ClassKeyword,
     ModuleKeyword,
     ModKeyword { contents: String },
@@ -79,6 +80,7 @@ impl LineToken {
             Self::ModKeyword { contents } => contents,
             Self::ConditionalKeyword { contents } => contents,
             Self::ClassKeyword => "class".to_string(),
+            Self::DefKeyword => "def".to_string(),
             Self::ModuleKeyword => "module".to_string(),
             Self::DirectPart { part } => part,
             Self::CommaSpace => ", ".to_string(),
@@ -104,6 +106,17 @@ impl LineToken {
             Self::Comment { contents } => format!("{}\n", contents),
             Self::Delim { contents } => contents,
             Self::End => "end".to_string(),
+        }
+    }
+
+    pub fn wants_spacer_for_conditional(&self) -> bool {
+        match self {
+            Self::ConditionalKeyword { contents } => {
+                !(contents == "else" || contents == "elsif")
+            },
+            _ => {
+                true
+            }
         }
     }
 

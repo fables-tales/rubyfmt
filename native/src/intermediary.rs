@@ -45,7 +45,10 @@ impl Intermediary {
         match lt {
             LineToken::ModuleKeyword | LineToken::ClassKeyword => {
                 self.handle_class_or_module();
-            }
+            },
+            LineToken::ConditionalKeyword { .. } => self.handle_conditional(),
+            LineToken::End => self.handle_end(),
+            LineToken::DefKeyword => self.handle_def(),
             LineToken::HardNewLine => {
                 let mut md = LineMetadata::new();
                 mem::swap(&mut md, &mut self.current_line_metadata);
@@ -58,10 +61,27 @@ impl Intermediary {
         self.debug_assert_newlines();
     }
 
+    fn handle_end(&mut self) {
+        self.current_line_metadata.set_has_end();
+    }
+
+    fn handle_def(&mut self) {
+        self.current_line_metadata.set_has_def();
+    }
+
     fn handle_class_or_module(&mut self) {
         self.current_line_metadata.set_defines_class_or_module();
         if let Some(prev) = &self.previous_line_metadata {
             if !prev.has_class_or_module_definition() {
+                self.insert_trailing_blankline();
+            }
+        }
+    }
+
+    fn handle_conditional(&mut self) {
+        self.current_line_metadata.set_has_conditional();
+        if let Some(prev) = &self.previous_line_metadata {
+            if prev.wants_spacer_for_conditional() {
                 self.insert_trailing_blankline();
             }
         }
