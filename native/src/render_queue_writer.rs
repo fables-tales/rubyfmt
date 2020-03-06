@@ -2,6 +2,7 @@ use crate::breakable_entry::{BreakableEntry, ConvertType};
 use crate::intermediary::Intermediary;
 use crate::line_tokens::*;
 use std::io::{self, Write};
+use std::env;
 
 const MAX_LINE_LENGTH: usize = 120;
 
@@ -16,13 +17,27 @@ impl RenderQueueWriter {
 
     pub fn write<W: Write>(self, writer: &mut W) -> io::Result<()> {
         let mut accum = Intermediary::new();
-        eprintln!("first tokens");
-        eprintln!("{:?}", self.tokens.clone());
-        Self::render_as(
-            &mut accum,
-            self.tokens.into_iter().map(|t| t.into_multi_line()).collect(),
-        );
-        Self::write_final_tokens(writer, accum.into_tokens())
+        let key = "RUBYFMT_DISABLE_SZUSZ";
+        let run = match env::var(key) {
+            Err(_) => true,
+            Ok(x) => {
+                x != "1"
+            },
+        };
+        eprintln!("run: {}", run);
+
+        if run {
+            eprintln!("first tokens");
+            eprintln!("{:?}", self.tokens);
+            Self::render_as(
+                &mut accum,
+                self.tokens.into_iter().map(|t| t.into_multi_line()).collect(),
+            );
+            Self::write_final_tokens(writer, accum.into_tokens())
+        } else {
+            eprintln!("disabled path");
+            Self::write_final_tokens(writer, self.tokens)
+        }
     }
 
     fn render_as(accum: &mut Intermediary, tokens: Vec<LineToken>) {
@@ -34,19 +49,9 @@ impl RenderQueueWriter {
 
             if accum.len() >= 4 {
                 match accum.last_4().expect("we checked length") {
-                    // do nothing in the case we're in an end cascade
-                    (
-                        &LineToken::End,
-                        &LineToken::HardNewLine,
-                        &LineToken::Indent { .. },
-                        &LineToken::End,
-                    ) => {}
-                    // in this case we have an end followed by something that isn't
-                    // an end, so insert an extra blankline
                     (&LineToken::End, &LineToken::HardNewLine, &LineToken::Indent { .. }, x) => {
-                        if x.wants_spacer_for_conditional() {
-                            eprintln!(">>>>>>>>>>>>>>>>>>>> {:?}", x);
-                            eprintln!("coming from cleanup");
+                        if x.is_in_need_of_a_trailing_blankline() {
+                            eprintln!("inserting trailer");
                             accum.insert_trailing_blankline();
                         }
                     }
