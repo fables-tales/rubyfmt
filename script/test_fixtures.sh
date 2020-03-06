@@ -1,10 +1,6 @@
 #!/bin/bash
 set -e
 
-make
-
-RUBY_VERSION=$(ruby -v | grep -o "[0-9].[0-9]" | head -n 1)
-
 test_folder() {
     current_dir="$1"
 
@@ -50,4 +46,16 @@ test_folder() {
     done
 }
 
-test_folder fixtures
+
+RUBY_VERSION=$(ruby -v | grep -o "[0-9].[0-9]" | head -n 1)
+
+if [ $# -eq 0 ]; then
+    TEST_DIR="fixtures"
+else
+    [ -d "fixtures/$1" ] || (echo "fixtures/$1 dir does not exist" && exit 1)
+    TEST_DIR="fixtures/$1"
+fi
+
+make
+
+test_folder "$TEST_DIR"
