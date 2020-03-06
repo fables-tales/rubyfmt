@@ -9,9 +9,9 @@ test_folder() {
     current_dir="$1"
 
     ## Check that both files or neither exist
-    if [ -f 'expected.rb' ] || [ -f 'actual.rb' ]; then
-      [ -f 'expected.rb' ] || (echo "$current_dir is missing the expected.rb file" && exit 1)
-      [ -f 'actual.rb' ] || (echo "$current_dir is missing the actual.rb file" && exit 1)
+    if [ -f "$current_dir/expected.rb" ] || [ -f "$current_dir/actual.rb" ]; then
+      [ -f "$current_dir/expected.rb" ] || (echo "$current_dir is missing the expected.rb file" && exit 1)
+      [ -f "$current_dir/actual.rb" ] || (echo "$current_dir is missing the actual.rb file" && exit 1)
 
       ## Test if the formatting works as expected
       time ruby --disable=gems rubyfmt.rb "$current_dir/actual.rb" > /tmp/out.rb
