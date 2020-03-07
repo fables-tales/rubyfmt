@@ -1,5 +1,5 @@
 #!/bin/bash
-set -e
+set -ex
 
 RUBY_VERSION=$(ruby -v | grep -o "[0-9].[0-9]" | head -n 1)
 

@@ -1,5 +1,5 @@
 #!/bin/bash
-set -e
+set -ex
 
 lint_dir_deep() {
     current_dir="$1"
