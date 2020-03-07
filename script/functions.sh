@@ -7,6 +7,3 @@ f_md5() {
         md5
     fi
 }
-
-find_fixtures_for_current_ruby_version() {
-}
