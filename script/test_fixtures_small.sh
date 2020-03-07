@@ -9,4 +9,3 @@ source "$GIT_ROOT/script/_test_fixtures_dir.sh"
 make
 
 test_folder "$GIT_ROOT/fixtures/small"
-test_folder "$GIT_ROOT/fixtures/large"
