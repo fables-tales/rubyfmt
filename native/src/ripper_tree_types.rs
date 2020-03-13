@@ -947,6 +947,15 @@ pub enum ParenOrParams {
     Params(Params),
 }
 
+impl ParenOrParams {
+    pub fn is_present(&self) -> bool {
+        match self {
+            ParenOrParams::Paren(p) => { p.is_present() },
+            ParenOrParams::Params(p) => { p.is_present() },
+        }
+    }
+}
+
 #[derive(Deserialize, Debug, Clone)]
 #[serde(untagged)]
 pub enum IdentOrMLhs {
@@ -957,6 +966,12 @@ pub enum IdentOrMLhs {
 def_tag!(paren_tag, "paren");
 #[derive(Deserialize, Debug, Clone)]
 pub struct Paren(pub paren_tag, pub Params);
+
+impl Paren {
+    fn is_present(&self) -> bool {
+        (self.1).is_present()
+    }
+}
 
 def_tag!(params_tag, "params");
 #[derive(Deserialize, Debug, Clone)]
@@ -970,6 +985,18 @@ pub struct Params(
     pub Option<KwRestParam>,
     pub Option<BlockArg>,
 );
+
+impl Params {
+    fn is_present(&self) -> bool {
+        (self.1).is_some() ||
+            (self.2).is_some() ||
+            (self.3).is_some() ||
+            (self.4).is_some() ||
+            (self.5).is_some() ||
+            (self.6).is_some() ||
+            (self.7).is_some()
+    }
+}
 
 // on ruby 2.5 and 2.6 the params lists for blocks (only), permit a trailing
 // comma (presumably because of f params). Params lists for functions do
@@ -1693,6 +1720,7 @@ pub struct StabbyLambda(
     pub ParenOrParams,
     pub String,
     pub ExpressionListOrBodyStmt,
+    pub LineCol,
 );
 
 def_tag!(imaginary_tag, "@imaginary");
