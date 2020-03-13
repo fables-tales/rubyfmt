@@ -7,6 +7,7 @@ pub enum BlanklineReason {
     ComesAfterEnd,
     Conditional,
     ClassOrModule,
+    DoKeyword,
 }
 
 pub struct Intermediary {
@@ -53,10 +54,11 @@ impl Intermediary {
             LineToken::ModuleKeyword | LineToken::ClassKeyword => {
                 self.handle_class_or_module();
             },
+            LineToken::DoKeyword => {
+                self.handle_do_keyword();
+            }
             LineToken::ConditionalKeyword { contents } => {
-                if contents == "if" {
-                    self.handle_conditional()
-                }
+                self.handle_conditional(contents)
             },
             LineToken::End => self.handle_end(),
             LineToken::DefKeyword => self.handle_def(),
@@ -80,6 +82,15 @@ impl Intermediary {
         self.current_line_metadata.set_has_def();
     }
 
+    fn handle_do_keyword(&mut self) {
+        self.current_line_metadata.set_has_do_keyword();
+        if let Some(prev) = &self.previous_line_metadata {
+            if prev.wants_spacer_for_conditional() {
+                self.insert_trailing_blankline(BlanklineReason::DoKeyword);
+            }
+        }
+    }
+
     fn handle_class_or_module(&mut self) {
         self.current_line_metadata.set_defines_class_or_module();
         if let Some(prev) = &self.previous_line_metadata {
@@ -89,11 +100,13 @@ impl Intermediary {
         }
     }
 
-    fn handle_conditional(&mut self) {
+    fn handle_conditional(&mut self, cond: &String) {
         self.current_line_metadata.set_has_conditional();
         if let Some(prev) = &self.previous_line_metadata {
             if prev.wants_spacer_for_conditional() {
-                self.insert_trailing_blankline(BlanklineReason::Conditional);
+                if cond == "if" {
+                    self.insert_trailing_blankline(BlanklineReason::Conditional);
+                }
             }
         }
     }
