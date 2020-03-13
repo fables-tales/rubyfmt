@@ -2,6 +2,13 @@ use crate::line_metadata::LineMetadata;
 use crate::line_tokens::*;
 use std::mem;
 
+#[derive(Debug)]
+pub enum BlanklineReason {
+    ComesAfterEnd,
+    Conditional,
+    ClassOrModule,
+}
+
 pub struct Intermediary {
     tokens: Vec<LineToken>,
     index_of_last_hard_newline: usize,
@@ -42,11 +49,15 @@ impl Intermediary {
 
     pub fn push(&mut self, lt: LineToken) {
         self.debug_assert_newlines();
-        match lt {
+        match &lt {
             LineToken::ModuleKeyword | LineToken::ClassKeyword => {
                 self.handle_class_or_module();
             },
-            LineToken::ConditionalKeyword { .. } => self.handle_conditional(),
+            LineToken::ConditionalKeyword { contents } => {
+                if contents == "if" {
+                    self.handle_conditional()
+                }
+            },
             LineToken::End => self.handle_end(),
             LineToken::DefKeyword => self.handle_def(),
             LineToken::HardNewLine => {
@@ -73,7 +84,7 @@ impl Intermediary {
         self.current_line_metadata.set_defines_class_or_module();
         if let Some(prev) = &self.previous_line_metadata {
             if !prev.has_class_or_module_definition() {
-                self.insert_trailing_blankline();
+                self.insert_trailing_blankline(BlanklineReason::ClassOrModule);
             }
         }
     }
@@ -82,7 +93,7 @@ impl Intermediary {
         self.current_line_metadata.set_has_conditional();
         if let Some(prev) = &self.previous_line_metadata {
             if prev.wants_spacer_for_conditional() {
-                self.insert_trailing_blankline();
+                self.insert_trailing_blankline(BlanklineReason::Conditional);
             }
         }
     }
@@ -97,13 +108,17 @@ impl Intermediary {
         }
     }
 
-    pub fn insert_trailing_blankline(&mut self) {
+    pub fn insert_trailing_blankline(&mut self, bl: BlanklineReason) {
         match (
             self.tokens.get(self.index_of_last_hard_newline - 1),
             self.tokens.get(self.index_of_last_hard_newline),
         ) {
             (Some(&LineToken::HardNewLine), Some(&LineToken::HardNewLine)) => {}
             _ => {
+                #[cfg(debug_assertions)]
+                {
+                    eprintln!("blankline for reason: {:?}", bl);
+                }
                 self.tokens
                     .insert(self.index_of_last_hard_newline, LineToken::HardNewLine);
                 self.index_of_last_hard_newline += 1;
