@@ -1,5 +1,5 @@
 use crate::breakable_entry::{BreakableEntry, ConvertType};
-use crate::intermediary::Intermediary;
+use crate::intermediary::{Intermediary, BlanklineReason};
 use crate::line_tokens::*;
 use std::io::{self, Write};
 use std::env;
@@ -52,7 +52,7 @@ impl RenderQueueWriter {
                     (&LineToken::End, &LineToken::HardNewLine, &LineToken::Indent { .. }, x) => {
                         if x.is_in_need_of_a_trailing_blankline() {
                             eprintln!("inserting trailer");
-                            accum.insert_trailing_blankline();
+                            accum.insert_trailing_blankline(BlanklineReason::ComesAfterEnd);
                         }
                     }
                     _ => {}
