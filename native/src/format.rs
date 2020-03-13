@@ -1933,16 +1933,19 @@ pub fn format_kw_with_args(
     }
 
     ps.emit_keyword(kw);
-    ps.emit_space();
     let yield_args = match args {
         ParenOrArgsAddBlock::YieldParen(p) => {
+            ps.emit_space();
             let arg = *p.1;
             match arg {
                 ArgNode::ArgsAddBlock(aab) => aab,
                 _ => panic!("should not have anything other than aab in yield"),
             }
         }
-        ParenOrArgsAddBlock::ArgsAddBlock(aab) => aab,
+        ParenOrArgsAddBlock::ArgsAddBlock(aab) => {
+            ps.emit_space();
+            aab
+        },
         ParenOrArgsAddBlock::Empty(v) => {
             if !v.is_empty() {
                 panic!("got non empty empty in break/yield");
@@ -2169,8 +2172,13 @@ pub fn format_stabby_lambda(ps: &mut ParserState, sl: StabbyLambda) {
     debug_assert!(tpe == "do" || tpe == "curly");
 
     let body = sl.3;
+    let linecol = sl.4;
+    ps.on_line(linecol.0);
     ps.with_start_of_line(false, |ps| {
         ps.emit_keyword("->".to_string());
+        if params.is_present() {
+            ps.emit_space();
+        }
         format_paren_or_params(ps, params);
 
         let (open_delim, close_delim) = if tpe == "do" {

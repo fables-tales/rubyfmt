@@ -42,6 +42,7 @@ class Parser < Ripper::SexpBuilderPP
       "break" => [],
       "super" => [],
     }
+    @tlambda_stack = []
     @array_location_stacks = []
   end
 
@@ -97,6 +98,11 @@ class Parser < Ripper::SexpBuilderPP
 
   def on_break(arg)
     [:break, arg, @kw_stacks["break"].pop]
+  end
+
+  def on_tlambda(*args)
+    @tlambda_stack << [lineno, column]
+    super
   end
 
   def on_heredoc_beg(*args, &blk)
@@ -155,8 +161,8 @@ class Parser < Ripper::SexpBuilderPP
     else
       args.insert(1, :do)
     end
-
-    super
+    args.insert(args.length, @tlambda_stack.pop)
+    [:lambda, *args]
   end
 
   def on_tstring_beg(*args, &blk)
@@ -182,5 +188,6 @@ end
 file_data = File.read(ARGV[0])
 parsed = Parser.new(file_data).parse
 inspected_parsed = JSON.dump(parsed)
+STDERR.puts(parsed.inspect)
 Rubyfmt::format_to_stdout(file_data, inspected_parsed)
 STDOUT.close
