@@ -1,4 +1,6 @@
 #!/bin/bash
+REPO_BASE=$(git rev-parse --show-toplevel)
+
 f_md5() {
     if command -v md5sum >/dev/null
     then
@@ -9,7 +11,7 @@ f_md5() {
 }
 
 f_rubyfmt() {
-    ruby --disable=gems rubyfmt.rb "$1"
+    ruby --disable=gems "${REPO_BASE}/rubyfmt.rb" "$1"
 }
 
 test_fixtures_folder() {
