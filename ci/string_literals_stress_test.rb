@@ -16,6 +16,7 @@ puts %^\\"#{'\a^'}\^^
 puts <<EOD
 "abc"\"
 EOD
+
 @foo = 3
 puts '#@foo'
 puts '#{3}'

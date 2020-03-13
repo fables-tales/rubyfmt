@@ -8,6 +8,10 @@ f_md5() {
     fi
 }
 
+f_rubyfmt() {
+    ruby --disable=gems rubyfmt.rb "$1"
+}
+
 test_fixtures_folder() {
     current_dir="$1"
 

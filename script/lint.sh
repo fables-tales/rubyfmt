@@ -1,3 +1,3 @@
 #!/bin/bash
 set -exou pipefail
-git grep -l "bin\/bash" | xargs shellcheck -x -f gcc
+find ./script -type f -print0 | xargs -0 shellcheck -x -f gcc
