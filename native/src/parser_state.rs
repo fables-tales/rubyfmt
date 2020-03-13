@@ -221,9 +221,7 @@ impl ParserState {
     }
 
     pub fn emit_do_keyword(&mut self) {
-        self.push_token(LineToken::Keyword {
-            keyword: "do".to_string(),
-        });
+        self.push_token(LineToken::DoKeyword);
     }
 
     pub fn emit_class_keyword(&mut self) {

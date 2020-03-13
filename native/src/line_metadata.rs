@@ -4,6 +4,7 @@ pub struct LineMetadata {
     conditional: bool,
     end: bool,
     def: bool,
+    do_keyword: bool,
 }
 
 impl LineMetadata {
@@ -13,6 +14,7 @@ impl LineMetadata {
             conditional: false,
             end: false,
             def: false,
+            do_keyword: false,
         }
     }
 
@@ -36,12 +38,17 @@ impl LineMetadata {
         self.def = true;
     }
 
+    pub fn set_has_do_keyword(&mut self) {
+        self.do_keyword = true;
+    }
+
     pub fn wants_spacer_for_conditional(&self) -> bool {
         !(
             self.conditional ||
             self.class_or_module ||
             self.end ||
-            self.def
+            self.def ||
+            self.do_keyword
         )
     }
 }
