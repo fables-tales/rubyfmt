@@ -1,12 +1,13 @@
 #!/bin/bash
 set -x
 
+source "./script/functions.sh"
+
 test_folder() {
-	find "$1" -name "*_expected.rb" -maxdepth 1 | wc -l
     find "$1" -name "*_expected.rb" -maxdepth 1 | while read -r file
     do
         # shellcheck disable=SC2001
-        time ruby --disable=gems rubyfmt.rb "$(echo "$file" | sed s/expected/actual/)" > /tmp/out.rb
+        time f_rubyfmt "$(echo "$file" | sed s/expected/actual/)" > /tmp/out.rb
 
         if ! diff -u /tmp/out.rb "$file"
         then
@@ -14,7 +15,7 @@ test_folder() {
             echo "$file" >> .failure
         fi
 
-        time ruby --disable=gems rubyfmt.rb "$file" > /tmp/out.rb
+        time f_rubyfmt "$file" > /tmp/out.rb
 
         if ! diff -u /tmp/out.rb "$file"
         then
@@ -29,7 +30,7 @@ test_folder() {
 make
 rm -f .success .failure
 
-test_folder fixtures/
+test_folder fixtures/small
 
 RUBY_VERSION=$(ruby -v | grep -o "[0-9].[0-9]" | head -n 1)
 echo "$RUBY_VERSION"
