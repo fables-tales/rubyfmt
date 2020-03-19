@@ -1,7 +1,7 @@
 [package]
 name = "native"
 version = "0.1.0"
-authors = ["Sam Phippen <samphippen@googlemail.com>"]
+authors = ["Penelope Phippen <penelopedotzone@gmail.com>"]
 edition = "2018"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -12,6 +12,7 @@ serde = { version = "1.0", features=["derive"] }
 serde_json = "1.0.40"
 lazy_static = "1.3.0"
 bytecount = "0.6.0"
+backtrace = "0.3.45"
 
 [lib]
 name = "rubyfmt"
