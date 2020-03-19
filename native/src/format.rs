@@ -2095,6 +2095,7 @@ pub fn format_case(ps: &mut ParserState, case: Case) {
     if ps.at_start_of_line() {
         ps.emit_indent();
     }
+    ps.on_line((case.3).0);
 
     ps.emit_case_keyword();
 

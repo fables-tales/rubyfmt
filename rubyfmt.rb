@@ -38,6 +38,7 @@ class Parser < Ripper::SexpBuilderPP
     @kw_stacks = {
       "return" => [],
       "when" => [],
+      "case" => [],
       "yield" => [],
       "break" => [],
       "super" => [],
@@ -90,6 +91,10 @@ class Parser < Ripper::SexpBuilderPP
 
   def on_when(cond, body, tail)
     [:when, cond, body, tail, @kw_stacks["when"].pop]
+  end
+
+  def on_case(cond, body)
+    [:case, cond, body, @kw_stacks["case"].pop]
   end
 
   def on_yield(arg)
