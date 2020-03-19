@@ -1673,7 +1673,7 @@ pub struct UntilMod(until_mod_tag, pub Box<Expression>, pub Box<Expression>);
 
 def_tag!(case_tag, "case");
 #[derive(Deserialize, Debug, Clone)]
-pub struct Case(case_tag, pub Option<Box<Expression>>, pub When);
+pub struct Case(case_tag, pub Option<Box<Expression>>, pub When, pub LineCol);
 
 def_tag!(when_tag, "when");
 #[derive(Deserialize, Debug, Clone)]
