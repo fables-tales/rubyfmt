@@ -915,8 +915,12 @@ pub fn format_array_fast_path(ps: &mut ParserState, a: Option<ArgsAddStarOrExpre
             ps.breakable_of(BreakableDelims::for_array(), |ps| {
                 format_list_like_thing(ps, a, false);
                 ps.emit_collapsing_newline();
+
+                if ps.last_breakable_is_multiline() {
+                    eprintln!("array winding forward");
+                    ps.wind_line_forward();
+                }
             });
-            ps.wind_line_forward();
         }
     }
 }
