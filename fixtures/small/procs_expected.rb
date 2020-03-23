@@ -1,6 +1,6 @@
 foo(&a)
 foo(&:b)
-foo(&(x||z))
+foo(&(x || z))
 
 foo do
 end
