@@ -33,8 +33,9 @@ end
   wer,
   qwer,
   qwe,
-  r,
+  r
 ]
+
 [a, *b, c, *d]
 [
   a,
@@ -56,5 +57,5 @@ end
   fqwe,
   fqw,
   efwqe,
-  fqe,
+  fqe
 ]

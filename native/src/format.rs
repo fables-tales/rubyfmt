@@ -2028,7 +2028,12 @@ pub fn format_mod_statement(
     });
 
     if is_multiline {
-        format_conditional(ps, *conditional, vec![*body], name, None);
+        let exps = match *body {
+            Expression::Paren(ParenExpr(_, exps)) => exps,
+            x => vec![x],
+        };
+        format_conditional(ps, *conditional, exps, name, None);
+
         ps.with_start_of_line(true, |ps| {
             ps.emit_end();
         });
