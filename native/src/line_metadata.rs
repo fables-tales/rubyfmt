@@ -13,7 +13,7 @@ impl LineMetadata {
         prev: &LineMetadata,
         current: &LineMetadata
     ) -> bool {
-        prev.indent_level.expect("should be indented") < current.indent_level.expect("should be indented")
+        prev.indent_level < current.indent_level
     }
 
     pub fn new() -> Self {
