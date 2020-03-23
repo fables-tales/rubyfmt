@@ -1,25 +1,25 @@
 a = %w[
-a
-b
-c
-d
+  a
+  b
+  c
+  d
 ]
 
 b = %W[
-a#{"string_literal"}
-b
+  a#{"string_literal"}
+  b
 ]
 
 c = %i[
-a
-b
-c
+  a
+  b
+  c
 ]
 
 d = %I[
-a
-b
-c
+  a
+  b
+  c
 ]
 
 p(a)

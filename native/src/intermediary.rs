@@ -67,7 +67,19 @@ impl Intermediary {
                 mem::swap(&mut md, &mut self.current_line_metadata);
                 self.previous_line_metadata = Some(md);
                 self.index_of_last_hard_newline = self.tokens.len();
-            }
+            },
+            LineToken::Indent { depth } => {
+                self.current_line_metadata.observe_indent_level(*depth);
+
+                if let Some(prev) = &mut self.previous_line_metadata {
+                    if LineMetadata::indent_level_increases_between(
+                        &prev,
+                        &self.current_line_metadata,
+                    ) {
+                        prev.set_gets_indented()
+                    }
+                }
+            },
             _ => {}
         }
         self.tokens.push(lt);
@@ -92,9 +104,8 @@ impl Intermediary {
     }
 
     fn handle_class_or_module(&mut self) {
-        self.current_line_metadata.set_defines_class_or_module();
         if let Some(prev) = &self.previous_line_metadata {
-            if !prev.has_class_or_module_definition() {
+            if !prev.gets_indented() {
                 self.insert_trailing_blankline(BlanklineReason::ClassOrModule);
             }
         }

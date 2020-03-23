@@ -1593,6 +1593,7 @@ pub fn format_class(ps: &mut ParserState, class: Class) {
     });
 
     ps.emit_end();
+    ps.wind_line_forward();
     if ps.at_start_of_line() {
         ps.emit_newline();
     }
