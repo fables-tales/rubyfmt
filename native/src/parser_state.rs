@@ -520,8 +520,9 @@ impl ParserState {
             self.emit_newline();
             if next_heredoc.squiggly {
                 self.emit_indent();
+            } else {
+                self.push_token(LineToken::Indent{depth: 0});
             }
-
             self.emit_ident(next_heredoc.symbol.replace("'", ""));
             if !skip {
                 self.emit_newline();
