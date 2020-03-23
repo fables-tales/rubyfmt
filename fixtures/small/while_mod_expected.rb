@@ -2,10 +2,10 @@ class Foo
   def bees
     true while false
 
-    (
+    while true
       a
       b
-    ) while true
+    end
   end
 end
 
