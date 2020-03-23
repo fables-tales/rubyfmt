@@ -443,6 +443,8 @@ pub enum Assignable {
     TopConstField(TopConstField),
     ArefField(ArefField),
     Field(Field),
+    // 2.6+
+    Ident(Ident),
 }
 
 def_tag!(aref_field_tag, "aref_field");
