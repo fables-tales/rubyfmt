@@ -1,29 +1,46 @@
 #[derive(Debug)]
 pub struct LineMetadata {
-    class_or_module: bool,
+    gets_indented: bool,
     conditional: bool,
     end: bool,
     def: bool,
     do_keyword: bool,
+    indent_level: Option<u32>,
 }
 
 impl LineMetadata {
+    pub fn indent_level_increases_between(
+        prev: &LineMetadata,
+        current: &LineMetadata
+    ) -> bool {
+        prev.indent_level.expect("should be indented") < current.indent_level.expect("should be indented")
+    }
+
     pub fn new() -> Self {
         LineMetadata {
-            class_or_module: false,
+            gets_indented: false,
             conditional: false,
             end: false,
             def: false,
             do_keyword: false,
+            indent_level: None,
         }
     }
 
-    pub fn has_class_or_module_definition(&self) -> bool {
-        self.class_or_module
+    pub fn observe_indent_level(&mut self, level: u32) {
+        if self.indent_level.is_some() {
+            panic!("indent_level should be impossible");
+        }
+
+        self.indent_level = Some(level);
     }
 
-    pub fn set_defines_class_or_module(&mut self) {
-        self.class_or_module = true;
+    pub fn gets_indented(&self) -> bool {
+        self.gets_indented
+    }
+
+    pub fn set_gets_indented(&mut self) {
+        self.gets_indented = true;
     }
 
     pub fn set_has_conditional(&mut self) {
@@ -45,7 +62,7 @@ impl LineMetadata {
     pub fn wants_spacer_for_conditional(&self) -> bool {
         !(
             self.conditional ||
-            self.class_or_module ||
+            self.gets_indented ||
             self.end ||
             self.def ||
             self.do_keyword
