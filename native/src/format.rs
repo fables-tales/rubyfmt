@@ -860,17 +860,19 @@ pub fn percent_symbol_for(tag: String) -> String {
 
 pub fn format_percent_array(ps: &mut ParserState, tag: String, parts: Vec<Vec<StringContentPart>>) {
     ps.emit_ident(percent_symbol_for(tag));
-    ps.emit_open_square_bracket();
     ps.with_start_of_line(false, |ps| {
-        let parts_length = parts.len();
-        for (idx, part) in parts.into_iter().enumerate() {
-            format_inner_string(ps, part, StringType::Array);
-            if idx != parts_length - 1 {
-                ps.emit_space();
-            }
-        }
+        ps.breakable_of(BreakableDelims::for_array(), |ps| {
+            let parts_length = parts.len();
+            for (idx, part) in parts.into_iter().enumerate() {
+                ps.emit_soft_indent();
+                format_inner_string(ps, part, StringType::Array);
+                if idx != parts_length - 1 {
+                    ps.emit_soft_newline();
+                }
+            };
+            ps.emit_collapsing_newline();
+        });
     });
-    ps.emit_close_square_bracket();
 }
 
 pub fn format_array(ps: &mut ParserState, array: Array) {
@@ -1193,6 +1195,9 @@ pub fn format_assignable(ps: &mut ParserState, v: Assignable) {
         }
         Assignable::Field(field) => {
             format_field(ps, field);
+        },
+        Assignable::Ident(ident) => {
+            format_ident(ps, ident);
         }
     }
 }
