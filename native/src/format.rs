@@ -1398,7 +1398,6 @@ pub fn format_next(ps: &mut ParserState, next: Next) {
                 }
             },
         }
-        ps.emit_space();
     });
 
     if ps.at_start_of_line() {
