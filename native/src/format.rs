@@ -370,6 +370,7 @@ pub fn format_else(ps: &mut ParserState, else_part: Option<RescueElseOrExpressio
             ps.dedent(|ps| {
                 ps.emit_indent();
                 ps.emit_else();
+                ps.wind_line_forward();
             });
             ps.emit_newline();
             ps.with_start_of_line(true, |ps| {
@@ -387,6 +388,7 @@ pub fn format_else(ps: &mut ParserState, else_part: Option<RescueElseOrExpressio
             match re.1 {
                 None => {}
                 Some(exprs) => {
+                    ps.wind_line_forward();
                     ps.emit_newline();
                     ps.wind_line_forward();
                     ps.with_start_of_line(true, |ps| {
