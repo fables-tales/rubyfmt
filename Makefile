@@ -1,10 +1,14 @@
-.PHONY: clean clippy
+.PHONY: clean clippy lint
 
 debug: target/rubyfmt_debug.bundle
 
 all: release debug
 
 release: target/rubyfmt_release.bundle
+
+lint: clippy
+	./script/lints/lint_fixtures.sh
+	./script/lints/lint_scripts.sh
 
 target/rubyfmt_debug.bundle: target/debug/librubyfmt.a
 	cp ext/* ./target

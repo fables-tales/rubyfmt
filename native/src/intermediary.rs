@@ -67,16 +67,13 @@ impl Intermediary {
                 self.index_of_last_hard_newline = self.tokens.len();
 
                 if self.tokens.len() >= 2 {
-                    match (
+                    if let (Some(&LineToken::HardNewLine), Some(&LineToken::HardNewLine)) = (
                         self.tokens.get(self.index_of_last_hard_newline - 2),
                         self.tokens.get(self.index_of_last_hard_newline - 1),
                     ) {
-                        (Some(&LineToken::HardNewLine), Some(&LineToken::HardNewLine)) => {
-                            do_push = false;
-                            self.index_of_last_hard_newline = self.tokens.len() - 1;
-                        },
-                        _ => {},
-                    };
+                        do_push = false;
+                        self.index_of_last_hard_newline = self.tokens.len() - 1;
+                    }
                 }
             },
             LineToken::ModuleKeyword | LineToken::ClassKeyword => {
@@ -142,13 +139,11 @@ impl Intermediary {
         }
     }
 
-    fn handle_conditional(&mut self, cond: &String) {
+    fn handle_conditional(&mut self, cond: &str) {
         self.current_line_metadata.set_has_conditional();
         if let Some(prev) = &self.previous_line_metadata {
-            if prev.wants_spacer_for_conditional() {
-                if cond == "if" {
-                    self.insert_trailing_blankline(BlanklineReason::Conditional);
-                }
+            if prev.wants_spacer_for_conditional() && cond == "if" {
+                self.insert_trailing_blankline(BlanklineReason::Conditional);
             }
         }
     }
