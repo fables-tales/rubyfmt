@@ -1,7 +1,13 @@
-def foo(aqwoeifjqwoiefjqwoifjoqiwfjoiqwefj, cqwefqwefqwjeofijqwoeifjqwoiefjqwoiefjoiqwejfoqiwejfoi = nil)
+def foo(
+  aqwoeifjqwoiefjqwoifjoqiwfjoiqwefj,
+  cqwefqwefqwjeofijqwoeifjqwoiefjqwoiefjoiqwejfoqiwejfoi = nil
+)
 end
 
-def foo(a, b = nil)
+def foo(
+  a,
+  b = nil
+)
 end
 
 {:a => :b}
@@ -21,5 +27,5 @@ a = [
   fqewfqwef,
   qwefqwefewq,
   qwefqwef,
-  qewfweq,
+  qewfweq
 ]

@@ -45,6 +45,7 @@ class Parser < Ripper::SexpBuilderPP
     }
     @tlambda_stack = []
     @array_location_stacks = []
+    @lbrace_stack = []
   end
 
   attr_reader :comments_delete
@@ -62,6 +63,19 @@ class Parser < Ripper::SexpBuilderPP
         node[1] << part
       end
     end
+  end
+
+  def on_lbrace(*args)
+    @lbrace_stack << [lineno, column]
+  end
+
+  def on_brace_block(params, body)
+    @lbrace_stack.pop
+    super
+  end
+
+  def on_hash(assocs)
+    [:hash, assocs, @lbrace_stack.pop]
   end
 
   def on_lbracket(*args)
@@ -183,6 +197,7 @@ class Parser < Ripper::SexpBuilderPP
   def on_regexp_beg(re_part)
     @regexp_stack << re_part
   end
+
 
   def on_regexp_literal(*args)
     args[1] << @regexp_stack.pop

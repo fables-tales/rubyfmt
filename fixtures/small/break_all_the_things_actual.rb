@@ -13,11 +13,19 @@ end
 {:a => :b}
 
 a do |;x|
-
 end
 
-a do |;qwioefijqwoiefjoqiwefjoqwiejfqwe,qwoiefjqowiejfoiqwejfoiqwjfoiqwejfiowqejfqwieqwoeifjoqwiejfiowqefjoijf|
-
+a do |
+;qwioefijqwoiefjoqiwefjoqwiejfqwe, qwoiefjqowiejfoiqwejfoiqwjfoiqwejfiowqejfqwieqwoeifjoqwiejfiowqefjoijf
+|
 end
 
-a = [fqwoijfqwoiefjqwioefjqw, qwefoijqwefoiweq, qwefqwefewq, fqewfqwef, qwefqwefewq, qwefqwef, qewfweq]
+a = [
+  fqwoijfqwoiefjqwioefjqw,
+  qwefoijqwefoiweq,
+  qwefqwefewq,
+  fqewfqwef,
+  qwefqwefewq,
+  qwefqwef,
+  qewfweq
+]

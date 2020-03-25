@@ -6,6 +6,7 @@ pub struct LineMetadata {
     def: bool,
     do_keyword: bool,
     indent_level: Option<u32>,
+    require: bool
 }
 
 impl LineMetadata {
@@ -24,7 +25,16 @@ impl LineMetadata {
             def: false,
             do_keyword: false,
             indent_level: None,
+            require: false,
         }
+    }
+
+    pub fn set_has_require(&mut self) {
+        self.require = true;
+    }
+
+    pub fn has_require(&self) -> bool {
+        self.require
     }
 
     pub fn observe_indent_level(&mut self, level: u32) {

@@ -8,6 +8,7 @@ pub enum BlanklineReason {
     Conditional,
     ClassOrModule,
     DoKeyword,
+    EndOfRequireBlock,
 }
 
 pub struct Intermediary {
@@ -50,8 +51,36 @@ impl Intermediary {
 
     pub fn push(&mut self, lt: LineToken) {
         self.debug_assert_newlines();
+        let mut do_push = true;
+
         match &lt {
+            LineToken::HardNewLine => {
+                if let Some(prev) = &self.previous_line_metadata {
+                    if !self.current_line_metadata.has_require() && prev.has_require() {
+                        self.insert_trailing_blankline(BlanklineReason::EndOfRequireBlock);
+                    }
+                }
+
+                let mut md = LineMetadata::new();
+                mem::swap(&mut md, &mut self.current_line_metadata);
+                self.previous_line_metadata = Some(md);
+                self.index_of_last_hard_newline = self.tokens.len();
+
+                if self.tokens.len() >= 2 {
+                    match (
+                        self.tokens.get(self.index_of_last_hard_newline - 2),
+                        self.tokens.get(self.index_of_last_hard_newline - 1),
+                    ) {
+                        (Some(&LineToken::HardNewLine), Some(&LineToken::HardNewLine)) => {
+                            do_push = false;
+                            self.index_of_last_hard_newline = self.tokens.len() - 1;
+                        },
+                        _ => {},
+                    };
+                }
+            },
             LineToken::ModuleKeyword | LineToken::ClassKeyword => {
+                eprintln!("mod {:?}", self.tokens);
                 self.handle_class_or_module();
             },
             LineToken::DoKeyword => {
@@ -62,12 +91,6 @@ impl Intermediary {
             },
             LineToken::End => self.handle_end(),
             LineToken::DefKeyword => self.handle_def(),
-            LineToken::HardNewLine => {
-                let mut md = LineMetadata::new();
-                mem::swap(&mut md, &mut self.current_line_metadata);
-                self.previous_line_metadata = Some(md);
-                self.index_of_last_hard_newline = self.tokens.len();
-            },
             LineToken::Indent { depth } => {
                 self.current_line_metadata.observe_indent_level(*depth);
 
@@ -80,9 +103,17 @@ impl Intermediary {
                     }
                 }
             },
+            LineToken::DirectPart { part } => {
+                if part == "require" {
+                    self.current_line_metadata.set_has_require();
+                }
+            }
             _ => {}
         }
-        self.tokens.push(lt);
+
+        if do_push {
+            self.tokens.push(lt);
+        }
         self.debug_assert_newlines();
     }
 
@@ -138,10 +169,10 @@ impl Intermediary {
             self.tokens.get(self.index_of_last_hard_newline),
         ) {
             (Some(&LineToken::HardNewLine), Some(&LineToken::HardNewLine)) => {}
-            _ => {
+            (a, b) => {
                 #[cfg(debug_assertions)]
                 {
-                    eprintln!("blankline for reason: {:?}", bl);
+                    eprintln!("blankline for reason: {:?}, {:?}", (a,b), bl);
                 }
                 self.tokens
                     .insert(self.index_of_last_hard_newline, LineToken::HardNewLine);

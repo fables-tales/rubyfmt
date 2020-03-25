@@ -1,5 +1,5 @@
 y = 12
-lambda { |x;y|
+lambda { |x, ;y|
   puts(x)
   puts(y)
   y = 19
