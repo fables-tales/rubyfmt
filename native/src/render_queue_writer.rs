@@ -48,14 +48,11 @@ impl RenderQueueWriter {
             }
 
             if accum.len() >= 4 {
-                match accum.last_4().expect("we checked length") {
-                    (&LineToken::End, &LineToken::HardNewLine, &LineToken::Indent { .. }, x) => {
-                        if x.is_in_need_of_a_trailing_blankline() {
-                            eprintln!("inserting trailer");
-                            accum.insert_trailing_blankline(BlanklineReason::ComesAfterEnd);
-                        }
+                if let (&LineToken::End, &LineToken::HardNewLine, &LineToken::Indent { .. }, x) = accum.last_4().expect("we checked length") {
+                    if x.is_in_need_of_a_trailing_blankline() {
+                        eprintln!("inserting trailer");
+                        accum.insert_trailing_blankline(BlanklineReason::ComesAfterEnd);
                     }
-                    _ => {}
                 }
             }
         }
