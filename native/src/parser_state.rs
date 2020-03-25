@@ -7,10 +7,10 @@ use crate::line_tokens::*;
 use crate::render_queue_writer::RenderQueueWriter;
 use crate::ripper_tree_types::StringContentPart;
 use crate::types::{ColNumber, LineNumber};
+use bytecount;
 use std::io::{self, Cursor, Write};
 use std::mem;
 use std::str;
-use bytecount;
 
 fn insert_at<T>(idx: usize, target: &mut Vec<T>, input: &mut Vec<T>) {
     let drain = input.drain(..);
@@ -110,7 +110,10 @@ impl ParserState {
 
     pub fn last_breakable_is_multiline(&self) -> bool {
         eprintln!("{:?}", self.breakable_entry_stack.last());
-        self.breakable_entry_stack.last().map(|o| o.is_multiline()).unwrap_or(false)
+        self.breakable_entry_stack
+            .last()
+            .map(|o| o.is_multiline())
+            .unwrap_or(false)
     }
 
     pub fn on_line(&mut self, line_number: LineNumber) {
@@ -521,7 +524,7 @@ impl ParserState {
             if next_heredoc.squiggly {
                 self.emit_indent();
             } else {
-                self.push_token(LineToken::Indent{depth: 0});
+                self.push_token(LineToken::Indent { depth: 0 });
             }
             self.emit_ident(next_heredoc.symbol.replace("'", ""));
             if !skip {

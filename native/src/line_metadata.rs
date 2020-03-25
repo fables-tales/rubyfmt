@@ -6,14 +6,11 @@ pub struct LineMetadata {
     def: bool,
     do_keyword: bool,
     indent_level: Option<u32>,
-    require: bool
+    require: bool,
 }
 
 impl LineMetadata {
-    pub fn indent_level_increases_between(
-        prev: &LineMetadata,
-        current: &LineMetadata
-    ) -> bool {
+    pub fn indent_level_increases_between(prev: &LineMetadata, current: &LineMetadata) -> bool {
         prev.indent_level < current.indent_level
     }
 
@@ -70,12 +67,6 @@ impl LineMetadata {
     }
 
     pub fn wants_spacer_for_conditional(&self) -> bool {
-        !(
-            self.conditional ||
-            self.gets_indented ||
-            self.end ||
-            self.def ||
-            self.do_keyword
-        )
+        !(self.conditional || self.gets_indented || self.end || self.def || self.do_keyword)
     }
 }

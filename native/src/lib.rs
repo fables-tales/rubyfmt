@@ -1,12 +1,12 @@
 #![deny(warnings, missing_copy_implementations)]
 #[macro_use]
 extern crate lazy_static;
-extern crate regex;
 extern crate backtrace;
+extern crate regex;
 
+extern crate bytecount;
 extern crate serde;
 extern crate serde_json;
-extern crate bytecount;
 
 use std::fs::File;
 use std::io::{self, BufReader, Write};

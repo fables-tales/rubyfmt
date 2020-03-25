@@ -112,28 +112,21 @@ impl LineToken {
     }
 
     pub fn is_in_need_of_a_trailing_blankline(&self) -> bool {
-        self.is_conditional_spaced_token() &&
-            !self.is_block_closing_token()
+        self.is_conditional_spaced_token() && !self.is_block_closing_token()
     }
 
     pub fn is_block_closing_token(&self) -> bool {
         match self {
             Self::End => true,
-            Self::DirectPart { part } => {
-                part == "}" || part == "]"
-            }
+            Self::DirectPart { part } => part == "}" || part == "]",
             _ => false,
         }
     }
 
     pub fn is_conditional_spaced_token(&self) -> bool {
         match self {
-            Self::ConditionalKeyword { contents } => {
-                !(contents == "else" || contents == "elsif")
-            },
-            _ => {
-                true
-            }
+            Self::ConditionalKeyword { contents } => !(contents == "else" || contents == "elsif"),
+            _ => true,
         }
     }
 

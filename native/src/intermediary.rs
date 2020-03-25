@@ -75,17 +75,15 @@ impl Intermediary {
                         self.index_of_last_hard_newline = self.tokens.len() - 1;
                     }
                 }
-            },
+            }
             LineToken::ModuleKeyword | LineToken::ClassKeyword => {
                 eprintln!("mod {:?}", self.tokens);
                 self.handle_class_or_module();
-            },
+            }
             LineToken::DoKeyword => {
                 self.handle_do_keyword();
             }
-            LineToken::ConditionalKeyword { contents } => {
-                self.handle_conditional(contents)
-            },
+            LineToken::ConditionalKeyword { contents } => self.handle_conditional(contents),
             LineToken::End => self.handle_end(),
             LineToken::DefKeyword => self.handle_def(),
             LineToken::Indent { depth } => {
@@ -99,7 +97,7 @@ impl Intermediary {
                         prev.set_gets_indented()
                     }
                 }
-            },
+            }
             LineToken::DirectPart { part } => {
                 if part == "require" {
                     self.current_line_metadata.set_has_require();
@@ -167,7 +165,7 @@ impl Intermediary {
             (a, b) => {
                 #[cfg(debug_assertions)]
                 {
-                    eprintln!("blankline for reason: {:?}, {:?}", (a,b), bl);
+                    eprintln!("blankline for reason: {:?}, {:?}", (a, b), bl);
                 }
                 self.tokens
                     .insert(self.index_of_last_hard_newline, LineToken::HardNewLine);
