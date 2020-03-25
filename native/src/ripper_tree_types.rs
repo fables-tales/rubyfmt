@@ -34,8 +34,10 @@ macro_rules! def_tag {
                         E: de::Error,
                     {
                         if s == $tag {
+                            eprintln!("accepted at {}, {}", s, $tag);
                             Ok(())
                         } else {
+                            eprintln!("rejected at {}, {}", s, $tag);
                             Err(E::custom("mismatched tag"))
                         }
                     }
@@ -984,7 +986,7 @@ pub struct Params(
     pub Option<RestParamOr0OrExcessedComma>,
     pub Option<Vec<IdentOrMLhs>>,
     pub Option<Vec<(Label, ExpressionOrFalse)>>,
-    pub Option<KwRestParam>,
+    pub Option<KwRestParamOrIdent>,
     pub Option<BlockArg>,
 );
 
@@ -998,6 +1000,16 @@ impl Params {
             (self.6).is_some() ||
             (self.7).is_some()
     }
+}
+
+#[derive(Deserialize, Debug, Clone)]
+#[serde(untagged)]
+pub enum KwRestParamOrIdent {
+    KwRestParam(KwRestParam),
+    Ident(Ident),
+    // on 2.6 if the user does def `foo(**); end` this will be the literal
+    // integer 183
+    EmptyKwRestParamOn26(u8),
 }
 
 // on ruby 2.5 and 2.6 the params lists for blocks (only), permit a trailing
@@ -1651,7 +1663,7 @@ pub struct BlockVar(block_var_tag, pub Option<Params>, pub BlockLocalVariables);
 
 def_tag!(do_block_tag, "do_block");
 #[derive(Deserialize, Debug, Clone)]
-pub struct DoBlock(do_block_tag, pub Option<BlockVar>, pub BodyStmt);
+pub struct DoBlock(do_block_tag, pub Option<BlockVar>, pub ExpressionListOrBodyStmt);
 
 def_tag!(brace_block_tag, "brace_block");
 #[derive(Deserialize, Debug, Clone)]
