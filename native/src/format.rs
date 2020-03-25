@@ -372,7 +372,6 @@ pub fn format_else(ps: &mut ParserState, else_part: Option<RescueElseOrExpressio
                 ps.emit_else();
             });
             ps.emit_newline();
-
             ps.with_start_of_line(true, |ps| {
                 for expr in exprs {
                     format_expression(ps, expr);
@@ -389,6 +388,7 @@ pub fn format_else(ps: &mut ParserState, else_part: Option<RescueElseOrExpressio
                 None => {}
                 Some(exprs) => {
                     ps.emit_newline();
+                    ps.wind_line_forward();
                     ps.with_start_of_line(true, |ps| {
                         for expr in exprs {
                             format_expression(ps, expr);
@@ -1439,20 +1439,17 @@ pub fn format_string_concat(ps: &mut ParserState, sc: StringConcat) {
     ps.with_absorbing_indent_block(|ps| {
         let nested = sc.1;
         let sl = sc.2;
-        if ps.at_start_of_line() {
-            ps.emit_indent();
-        }
-
-        match nested {
-            StringConcatOrStringLiteral::StringConcat(sc) => format_string_concat(ps, *sc),
-            StringConcatOrStringLiteral::StringLiteral(sl) => format_string_literal(ps, sl),
-        }
-
-        ps.emit_space();
-        ps.emit_slash();
-        ps.emit_newline();
 
         ps.with_start_of_line(false, |ps| {
+            match nested {
+                StringConcatOrStringLiteral::StringConcat(sc) => format_string_concat(ps, *sc),
+                StringConcatOrStringLiteral::StringLiteral(sl) => format_string_literal(ps, sl),
+            }
+
+            ps.emit_space();
+            ps.emit_slash();
+            ps.emit_newline();
+
             ps.emit_indent();
             format_string_literal(ps, sl);
         });
@@ -1793,6 +1790,7 @@ pub fn format_hash(ps: &mut ParserState, hash: Hash) {
     if ps.at_start_of_line() {
         ps.emit_indent();
     }
+    ps.on_line((hash.2).0);
 
     match hash.1 {
         None => ps.emit_ident("{}".to_string()),
@@ -1819,7 +1817,7 @@ pub fn format_regexp_literal(ps: &mut ParserState, regexp: RegexpLiteral) {
 
     ps.emit_ident(start_delimiter);
     format_inner_string(ps, parts, StringType::Regexp);
-    ps.emit_ident(end_delimiter);
+    handle_string_and_linecol(ps, end_delimiter, (regexp.2).2);
 
     if ps.at_start_of_line() {
         ps.emit_newline();
