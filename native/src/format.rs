@@ -125,7 +125,7 @@ pub fn format_params(ps: &mut ParserState, params: Params, delims: BreakableDeli
     });
 }
 
-pub fn format_kwrest_params(ps: &mut ParserState, kwrest_params: Option<KwRestParamOrIdent>) -> bool {
+pub fn format_kwrest_params(ps: &mut ParserState, kwrest_params: Option<KwRestParam>) -> bool {
     if kwrest_params.is_none() {
         return false;
     }
@@ -133,18 +133,7 @@ pub fn format_kwrest_params(ps: &mut ParserState, kwrest_params: Option<KwRestPa
     ps.with_start_of_line(false, |ps| {
         ps.emit_soft_indent();
         ps.emit_ident("**".to_string());
-        let ident = match kwrest_params {
-            Some(KwRestParamOrIdent::KwRestParam(kwrest_params)) => (kwrest_params).1,
-            Some(KwRestParamOrIdent::Ident(ident)) => Some(ident),
-            Some(KwRestParamOrIdent::EmptyKwRestParamOn26(v)) => {
-                if v != 183 {
-                    panic!("should be impossible");
-                }
-
-                None
-            }
-            None => None,
-        };
+        let ident = (kwrest_params.unwrap()).1;
         if let Some(ident) = ident {
             format_ident(ps, ident);
         }
@@ -1933,16 +1922,7 @@ pub fn format_do_block(ps: &mut ParserState, do_block: DoBlock) {
     ps.emit_newline();
     ps.new_block(|ps| {
         ps.with_start_of_line(true, |ps| {
-            match body {
-                ExpressionListOrBodyStmt::BodyStmt(body) => {
-                    format_bodystmt(ps, body);
-                },
-                ExpressionListOrBodyStmt::ExpresionList(el) => {
-                    for expression in el.into_iter() {
-                        format_expression(ps, expression);
-                    }
-                }
-            }
+            format_bodystmt(ps, body);
         });
     });
 
