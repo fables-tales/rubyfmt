@@ -952,8 +952,8 @@ pub enum ParenOrParams {
 impl ParenOrParams {
     pub fn is_present(&self) -> bool {
         match self {
-            ParenOrParams::Paren(p) => { p.is_present() },
-            ParenOrParams::Params(p) => { p.is_present() },
+            ParenOrParams::Paren(p) => p.is_present(),
+            ParenOrParams::Params(p) => p.is_present(),
         }
     }
 }
@@ -990,13 +990,13 @@ pub struct Params(
 
 impl Params {
     fn is_present(&self) -> bool {
-        (self.1).is_some() ||
-            (self.2).is_some() ||
-            (self.3).is_some() ||
-            (self.4).is_some() ||
-            (self.5).is_some() ||
-            (self.6).is_some() ||
-            (self.7).is_some()
+        (self.1).is_some()
+            || (self.2).is_some()
+            || (self.3).is_some()
+            || (self.4).is_some()
+            || (self.5).is_some()
+            || (self.6).is_some()
+            || (self.7).is_some()
     }
 }
 

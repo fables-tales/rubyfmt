@@ -871,7 +871,7 @@ pub fn format_percent_array(ps: &mut ParserState, tag: String, parts: Vec<Vec<St
                 if idx != parts_length - 1 {
                     ps.emit_soft_newline();
                 }
-            };
+            }
             ps.emit_collapsing_newline();
         });
     });
@@ -1197,7 +1197,7 @@ pub fn format_assignable(ps: &mut ParserState, v: Assignable) {
         }
         Assignable::Field(field) => {
             format_field(ps, field);
-        },
+        }
         Assignable::Ident(ident) => {
             format_ident(ps, ident);
         }
@@ -1954,7 +1954,7 @@ pub fn format_kw_with_args(
         ParenOrArgsAddBlock::ArgsAddBlock(aab) => {
             ps.emit_space();
             aab
-        },
+        }
         ParenOrArgsAddBlock::Empty(v) => {
             if !v.is_empty() {
                 panic!("got non empty empty in break/yield");

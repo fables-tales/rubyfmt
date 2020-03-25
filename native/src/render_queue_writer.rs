@@ -1,8 +1,8 @@
 use crate::breakable_entry::{BreakableEntry, ConvertType};
-use crate::intermediary::{Intermediary, BlanklineReason};
+use crate::intermediary::{BlanklineReason, Intermediary};
 use crate::line_tokens::*;
-use std::io::{self, Write};
 use std::env;
+use std::io::{self, Write};
 
 const MAX_LINE_LENGTH: usize = 120;
 
@@ -20,9 +20,7 @@ impl RenderQueueWriter {
         let key = "RUBYFMT_DISABLE_SZUSZ";
         let run = match env::var(key) {
             Err(_) => true,
-            Ok(x) => {
-                x != "1"
-            },
+            Ok(x) => x != "1",
         };
         eprintln!("run: {}", run);
 
@@ -31,7 +29,10 @@ impl RenderQueueWriter {
             eprintln!("{:?}", self.tokens);
             Self::render_as(
                 &mut accum,
-                self.tokens.into_iter().map(|t| t.into_multi_line()).collect(),
+                self.tokens
+                    .into_iter()
+                    .map(|t| t.into_multi_line())
+                    .collect(),
             );
             Self::write_final_tokens(writer, accum.into_tokens())
         } else {
@@ -48,7 +49,9 @@ impl RenderQueueWriter {
             }
 
             if accum.len() >= 4 {
-                if let (&LineToken::End, &LineToken::HardNewLine, &LineToken::Indent { .. }, x) = accum.last_4().expect("we checked length") {
+                if let (&LineToken::End, &LineToken::HardNewLine, &LineToken::Indent { .. }, x) =
+                    accum.last_4().expect("we checked length")
+                {
                     if x.is_in_need_of_a_trailing_blankline() {
                         eprintln!("inserting trailer");
                         accum.insert_trailing_blankline(BlanklineReason::ComesAfterEnd);
