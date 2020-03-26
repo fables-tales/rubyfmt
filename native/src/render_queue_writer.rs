@@ -22,11 +22,8 @@ impl RenderQueueWriter {
             Err(_) => true,
             Ok(x) => x != "1",
         };
-        eprintln!("run: {}", run);
 
         if run {
-            eprintln!("first tokens");
-            eprintln!("{:?}", self.tokens);
             Self::render_as(
                 &mut accum,
                 self.tokens
@@ -36,7 +33,6 @@ impl RenderQueueWriter {
             );
             Self::write_final_tokens(writer, accum.into_tokens())
         } else {
-            eprintln!("disabled path");
             Self::write_final_tokens(writer, self.tokens)
         }
     }
@@ -53,7 +49,6 @@ impl RenderQueueWriter {
                     accum.last_4().expect("we checked length")
                 {
                     if x.is_in_need_of_a_trailing_blankline() {
-                        eprintln!("inserting trailer");
                         accum.insert_trailing_blankline(BlanklineReason::ComesAfterEnd);
                     }
                 }
@@ -77,8 +72,6 @@ impl RenderQueueWriter {
     }
 
     fn write_final_tokens<W: Write>(writer: &mut W, tokens: Vec<LineToken>) -> io::Result<()> {
-        eprintln!("last tokens");
-        eprintln!("{:?}", tokens);
         for line_token in tokens.into_iter() {
             let s = line_token.into_ruby();
             write!(writer, "{}", s)?

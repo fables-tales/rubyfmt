@@ -77,7 +77,6 @@ impl Intermediary {
                 }
             }
             LineToken::ModuleKeyword | LineToken::ClassKeyword => {
-                eprintln!("mod {:?}", self.tokens);
                 self.handle_class_or_module();
             }
             LineToken::DoKeyword => {
@@ -156,16 +155,16 @@ impl Intermediary {
         }
     }
 
-    pub fn insert_trailing_blankline(&mut self, bl: BlanklineReason) {
+    pub fn insert_trailing_blankline(&mut self, _bl: BlanklineReason) {
         match (
             self.tokens.get(self.index_of_last_hard_newline - 1),
             self.tokens.get(self.index_of_last_hard_newline),
         ) {
             (Some(&LineToken::HardNewLine), Some(&LineToken::HardNewLine)) => {}
-            (a, b) => {
+            (_, _) => {
                 #[cfg(debug_assertions)]
                 {
-                    eprintln!("blankline for reason: {:?}, {:?}", (a, b), bl);
+                    eprintln!("{:?}", _bl);
                 }
                 self.tokens
                     .insert(self.index_of_last_hard_newline, LineToken::HardNewLine);
