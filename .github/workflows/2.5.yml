@@ -29,9 +29,10 @@ jobs:
     - name: Cache cargo build
       uses: actions/cache@v1
       with:
-        path: $GITHUB_WORKSPACE/native/target
-        key: ${{ runner.os }}-cargo-builde-target-${{ hashFiles('**/Cargo.lock') }}
+        path: ~/target
+        key: ${{ runner.os }}-cargo-build25-target-${{ hashFiles('**/Cargo.lock') }}
 
     - run: cd $GITHUB_WORKSPACE && make
     - run: cd $GITHUB_WORKSPACE && make lint
     - run: cd $GITHUB_WORKSPACE && ./script/test.sh
+    - run: cp -r $GITHUB_WORKSPACE/native/target ~/target
