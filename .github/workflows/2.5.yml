@@ -32,7 +32,7 @@ jobs:
         path: ~/target
         key: ${{ runner.os }}-cargo-build25-target-${{ hashFiles('**/Cargo.lock') }}
 
-    - run: cp ~/target $GITHUB_WORKSPACE/native/target
+    - run: cp -r ~/target $GITHUB_WORKSPACE/native/target
     - run: cd $GITHUB_WORKSPACE && make
     - run: cd $GITHUB_WORKSPACE && make lint
     - run: cd $GITHUB_WORKSPACE && ./script/test.sh
