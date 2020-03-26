@@ -26,6 +26,5 @@ jobs:
       with:
         version: 2.5
     # Runs a single command using the runners shell
-    - working-directory: $GITHUB_WORKSPACE
-    - run: make
-    - run: ./script/test.sh
+    - run: cd $GITHUB_WORKSPACE && make
+    - run: cd $GITHUB_WORKSPACE && ./script/test.sh
