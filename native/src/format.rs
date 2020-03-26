@@ -442,8 +442,6 @@ pub fn use_parens_for_method_call(
             method
         ),
     };
-    eprintln!("-------------");
-    eprintln!("name: {}", name);
     if name.starts_with("attr_") && context == FormattingContext::ClassOrModule {
         return false;
     }
@@ -452,13 +450,10 @@ pub fn use_parens_for_method_call(
         return false;
     }
 
-    eprintln!("name: {} original: {}", name, original_used_parens);
     if name == "super" || name == "yield" || name == "require" {
-        eprintln!("returning: {}", original_used_parens);
         return original_used_parens;
     }
 
-    eprintln!("name: {:?}, args: {:?}", name, args);
     if args.is_empty() {
         return false;
     }
@@ -921,7 +916,6 @@ pub fn format_array_fast_path(ps: &mut ParserState, a: Option<ArgsAddStarOrExpre
                 ps.emit_collapsing_newline();
 
                 if ps.last_breakable_is_multiline() {
-                    eprintln!("array winding forward");
                     ps.wind_line_forward();
                 }
             });
@@ -1346,7 +1340,6 @@ pub fn format_rescue_mod(ps: &mut ParserState, rescue_mod: RescueMod) {
 }
 
 pub fn format_mrhs_new_from_args(ps: &mut ParserState, mnfa: MRHSNewFromArgs) {
-    eprintln!("iwqjfoiwqjfeqwfe: {:?}", mnfa.1);
     format_list_like_thing(ps, mnfa.1, true);
 
     if let Some(expr) = mnfa.2 {
@@ -2529,7 +2522,6 @@ pub fn format_expression(ps: &mut ParserState, expression: Expression) {
 }
 
 pub fn format_program(ps: &mut ParserState, program: Program) {
-    eprintln!("{:?}", program);
     ps.on_line(1);
     for expression in program.1 {
         format_expression(ps, expression);

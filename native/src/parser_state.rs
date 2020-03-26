@@ -109,7 +109,6 @@ impl ParserState {
     }
 
     pub fn last_breakable_is_multiline(&self) -> bool {
-        eprintln!("{:?}", self.breakable_entry_stack.last());
         self.breakable_entry_stack
             .last()
             .map(|o| o.is_multiline())
@@ -117,11 +116,6 @@ impl ParserState {
     }
 
     pub fn on_line(&mut self, line_number: LineNumber) {
-        eprintln!(
-            "------------------- ln current: {}, new: {}",
-            self.current_orig_line_number, line_number
-        );
-
         if line_number < self.current_orig_line_number {
             return;
         }
