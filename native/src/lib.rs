@@ -12,6 +12,9 @@ use std::fs::File;
 use std::io::{self, BufReader, Write};
 use std::str;
 
+#[global_allocator]
+static ALLOC: jemallocator::Jemalloc = jemallocator::Jemalloc;
+
 pub type RawStatus = i64;
 
 mod breakable_entry;

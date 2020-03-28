@@ -13,6 +13,7 @@ serde_json = "1.0.40"
 lazy_static = "1.3.0"
 bytecount = "0.6.0"
 backtrace = "0.3.45"
+jemallocator = { version = "0.3.0", features = ["disable_initial_exec_tls"] }
 
 [lib]
 name = "rubyfmt"
