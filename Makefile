@@ -10,11 +10,11 @@ lint: clippy
 	./script/lints/lint_fixtures.sh
 	./script/lints/lint_scripts.sh
 
-target/rubyfmt_debug.bundle: target/debug/librubyfmt.a
+target/rubyfmt_debug.bundle: ext/extconf.rb target/debug/librubyfmt.a
 	cp ext/* ./target
 	cd target && ruby extconf.rb && make
 
-target/rubyfmt_release.bundle: target/release/librubyfmt.a
+target/rubyfmt_release.bundle: ext/extconf.rb target/release/librubyfmt.a
 	cp ext/* ./target
 	cd target && ruby extconf.rb --release && make
 
