@@ -34,8 +34,16 @@ macro_rules! def_tag {
                         E: de::Error,
                     {
                         if s == $tag {
+                            #[cfg(debug_assertions)]
+                            {
+                                eprintln!("accepted at {:?} {:?}", s, $tag);
+                            }
                             Ok(())
                         } else {
+                            #[cfg(debug_assertions)]
+                            {
+                                eprintln!("rejectd at {:?} {:?}", s, $tag);
+                            }
                             Err(E::custom("mismatched tag"))
                         }
                     }
