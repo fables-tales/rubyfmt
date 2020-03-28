@@ -11,6 +11,7 @@ extern crate serde_json;
 use std::fs::File;
 use std::io::{self, BufReader, Write};
 use std::str;
+use rutie::rubysys::value::Value;
 
 #[global_allocator]
 static ALLOC: jemallocator::Jemalloc = jemallocator::Jemalloc;
@@ -19,6 +20,7 @@ pub type RawStatus = i64;
 
 mod breakable_entry;
 mod comment_block;
+mod de;
 mod delimiters;
 mod file_comments;
 mod format;
@@ -35,66 +37,79 @@ use file_comments::FileComments;
 use parser_state::ParserState;
 use ruby_string_pointer::RubyStringPointer;
 
-enum Status {
-    Ok = 0,
-    BadFileName,
-    CouldntCreatefile,
-    BadJson,
-    CouldntWriteFile,
-}
+type Result<T = ()> = std::result::Result<T, Box<dyn std::error::Error>>;
 
 #[no_mangle]
 pub extern "C" fn format_sexp_tree_to_stdout(
+    runtime_error: Value,
     buf: RubyStringPointer,
-    tree: RubyStringPointer,
-) -> RawStatus {
-    raw_format_program(io::stdout(), buf, tree)
+    tree: Value,
+) {
+    raise_if_error(
+        runtime_error,
+        raw_format_program(None, buf, tree),
+    )
 }
 
 #[no_mangle]
 pub extern "C" fn format_sexp_tree_to_file(
+    runtime_error: Value,
     filename: RubyStringPointer,
     buf: RubyStringPointer,
-    tree: RubyStringPointer,
-) -> RawStatus {
-    let b = filename.into_buf();
-    let filename = match str::from_utf8(b) {
-        Ok(x) => x,
-        Err(_) => return Status::BadFileName as RawStatus,
-    };
-
-    let fp = match File::create(filename) {
-        Ok(x) => x,
-        Err(_) => return Status::CouldntCreatefile as RawStatus,
-    };
-
-    raw_format_program(fp, buf, tree)
+    tree: Value,
+) {
+    raise_if_error(
+        runtime_error,
+        raw_format_program(Some(filename), buf, tree),
+    )
 }
 
-fn raw_format_program<T: Write>(
-    writer: T,
+fn raw_format_program(
+    filename: Option<RubyStringPointer>,
     buf: RubyStringPointer,
-    tree: RubyStringPointer,
-) -> RawStatus {
+    tree: Value,
+) -> Result {
     let buf = buf.into_buf();
-    let tree = tree.into_buf();
-
-    let res = match toplevel_format_program(writer, buf, tree) {
-        Ok(()) => Status::Ok,
-        Err(status) => status,
+    let mut file;
+    let mut stdout = io::stdout();
+    let writer: &mut dyn Write = match filename {
+        Some(fp) => {
+            // FIXME: We should try to do an OsStr here
+            let name = str::from_utf8(fp.into_buf())?;
+            file = File::create(name)?;
+            &mut file
+        },
+        None => &mut stdout,
     };
 
-    res as RawStatus
+    toplevel_format_program(writer, buf, tree)
 }
 
-fn toplevel_format_program<W: Write>(mut writer: W, buf: &[u8], tree: &[u8]) -> Result<(), Status> {
+fn toplevel_format_program<W: Write>(mut writer: W, buf: &[u8], tree: Value) -> Result {
     let line_metadata = FileComments::from_buf(BufReader::new(buf))
         .expect("failed to load line metadata from memory");
     let mut ps = ParserState::new(line_metadata);
-    let v: ripper_tree_types::Program =
-        serde_json::from_slice(tree).map_err(|_| Status::BadJson)?;
+    let v: ripper_tree_types::Program = de::from_value(tree)?;
 
     format::format_program(&mut ps, v);
 
-    ps.write(&mut writer).map_err(|_| Status::CouldntWriteFile)
+    ps.write(&mut writer)?;
+    Ok(())
+}
+
+fn raise_if_error(runtime_error: Value, value: Result) {
+    use rutie::rubysys::vm::rb_raise;
+    use std::ffi::CString;
+
+    if let Err(e) = value {
+        unsafe {
+            // If the string contains nul, just display the error leading up to
+            // the nul bytes
+            let c_string = CString::from_vec_unchecked(e.to_string().into_bytes());
+            rb_raise(
+                runtime_error,
+                c_string.as_ptr(),
+            );
+        }
+    }
 }
