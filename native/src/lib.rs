@@ -11,7 +11,7 @@ extern crate serde_json;
 use std::fs::File;
 use std::io::{self, BufReader, Write};
 use std::str;
-use rutie::rubysys::value::Value;
+use crate::ruby::*;
 
 #[global_allocator]
 static ALLOC: jemallocator::Jemalloc = jemallocator::Jemalloc;
@@ -30,6 +30,7 @@ mod line_tokens;
 mod parser_state;
 mod render_queue_writer;
 mod ripper_tree_types;
+mod ruby;
 mod ruby_string_pointer;
 mod types;
 
@@ -41,33 +42,25 @@ type Result<T = ()> = std::result::Result<T, Box<dyn std::error::Error>>;
 
 #[no_mangle]
 pub extern "C" fn format_sexp_tree_to_stdout(
-    runtime_error: Value,
     buf: RubyStringPointer,
-    tree: Value,
+    tree: VALUE,
 ) {
-    raise_if_error(
-        runtime_error,
-        raw_format_program(None, buf, tree),
-    )
+    raise_if_error(raw_format_program(None, buf, tree))
 }
 
 #[no_mangle]
 pub extern "C" fn format_sexp_tree_to_file(
-    runtime_error: Value,
     filename: RubyStringPointer,
     buf: RubyStringPointer,
-    tree: Value,
+    tree: VALUE,
 ) {
-    raise_if_error(
-        runtime_error,
-        raw_format_program(Some(filename), buf, tree),
-    )
+    raise_if_error(raw_format_program(Some(filename), buf, tree))
 }
 
 fn raw_format_program(
     filename: Option<RubyStringPointer>,
     buf: RubyStringPointer,
-    tree: Value,
+    tree: VALUE,
 ) -> Result {
     let buf = buf.into_buf();
     let mut file;
@@ -85,7 +78,7 @@ fn raw_format_program(
     toplevel_format_program(writer, buf, tree)
 }
 
-fn toplevel_format_program<W: Write>(mut writer: W, buf: &[u8], tree: Value) -> Result {
+fn toplevel_format_program<W: Write>(mut writer: W, buf: &[u8], tree: VALUE) -> Result {
     let line_metadata = FileComments::from_buf(BufReader::new(buf))
         .expect("failed to load line metadata from memory");
     let mut ps = ParserState::new(line_metadata);
@@ -97,8 +90,7 @@ fn toplevel_format_program<W: Write>(mut writer: W, buf: &[u8], tree: Value) -> 
     Ok(())
 }
 
-fn raise_if_error(runtime_error: Value, value: Result) {
-    use rutie::rubysys::vm::rb_raise;
+fn raise_if_error(value: Result) {
     use std::ffi::CString;
 
     if let Err(e) = value {
@@ -107,7 +99,7 @@ fn raise_if_error(runtime_error: Value, value: Result) {
             // the nul bytes
             let c_string = CString::from_vec_unchecked(e.to_string().into_bytes());
             rb_raise(
-                runtime_error,
+                rb_eRuntimeError,
                 c_string.as_ptr(),
             );
         }

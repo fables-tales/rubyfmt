@@ -1,13 +1,11 @@
-use rutie::rubysys::array::*;
-use rutie::rubysys::value::*;
+use crate::ruby::*;
 use serde::de::{*, Error as _};
-use rutie::rubysys::fixnum::*;
 
-pub fn from_value<T: DeserializeOwned>(v: Value) -> Result<T> {
+pub fn from_value<T: DeserializeOwned>(v: VALUE) -> Result<T> {
     T::deserialize(Deserializer(v))
 }
 
-struct Deserializer(Value);
+struct Deserializer(VALUE);
 
 type Result<T> = std::result::Result<T, serde::de::value::Error>;
 type Error = serde::de::value::Error;
@@ -16,14 +14,16 @@ impl<'de> serde::Deserializer<'de> for Deserializer {
     type Error = Error;
 
     fn deserialize_any<V: Visitor<'de>>(self, visitor: V) -> Result<V::Value> {
-        match self.0.ty() {
-            ValueType::Symbol => visitor.visit_borrowed_str(sym_to_str(self.0)?),
-            ValueType::RString => visitor.visit_borrowed_str(rstring_to_str(self.0)?),
-            ValueType::Array => visitor.visit_seq(SeqAccess::new(self.0)),
-            ValueType::Nil => visitor.visit_none(),
-            ValueType::True => visitor.visit_bool(true),
-            ValueType::False => visitor.visit_bool(false),
-            ValueType::Fixnum => visitor.visit_i64(unsafe { rb_num2ll(self.0) }),
+        pub use self::ruby_value_type::*;
+
+        match unsafe { rubyfmt_rb_type(self.0) } {
+            RUBY_T_SYMBOL => visitor.visit_borrowed_str(sym_to_str(self.0)?),
+            RUBY_T_STRING => visitor.visit_borrowed_str(rstring_to_str(self.0)?),
+            RUBY_T_ARRAY => visitor.visit_seq(SeqAccess::new(self.0)),
+            RUBY_T_NIL => visitor.visit_none(),
+            RUBY_T_TRUE => visitor.visit_bool(true),
+            RUBY_T_FALSE => visitor.visit_bool(false),
+            RUBY_T_FIXNUM => visitor.visit_i64(unsafe { rubyfmt_rb_num2ll(self.0) }),
             other => {
                 Err(serde::de::Error::custom(format_args!("Unexpected type {:?}", other)))
             }
@@ -38,14 +38,14 @@ impl<'de> serde::Deserializer<'de> for Deserializer {
 }
 
 struct SeqAccess {
-    arr: Value,
+    arr: VALUE,
     idx: usize,
     len: usize,
 }
 
 impl SeqAccess {
-    fn new(arr: Value) -> Self {
-        let len = unsafe { rb_ary_len(arr) } as usize;
+    fn new(arr: VALUE) -> Self {
+        let len = unsafe { rubyfmt_rb_ary_len(arr) } as usize;
         Self { arr, len, idx: 0 }
     }
 }
@@ -68,8 +68,7 @@ impl<'de> serde::de::SeqAccess<'de> for SeqAccess {
     }
 }
 
-fn sym_to_str(v: Value) -> Result<&'static str> {
-    use rutie::rubysys::symbol::*;
+fn sym_to_str(v: VALUE) -> Result<&'static str> {
     use std::ffi::CStr;
 
     unsafe {
@@ -80,13 +79,13 @@ fn sym_to_str(v: Value) -> Result<&'static str> {
     }
 }
 
-fn rstring_to_str(v: Value) -> Result<&'static str> {
-    use rutie::rubysys::string::*;
+fn rstring_to_str(v: VALUE) -> Result<&'static str> {
+    use crate::ruby::*;
 
     unsafe {
         let bytes = std::slice::from_raw_parts(
-            rstring_ptr(v) as _,
-            rstring_len(v) as _,
+            rubyfmt_rstring_ptr(v) as _,
+            rubyfmt_rstring_len(v) as _,
         );
         std::str::from_utf8(bytes)
             .map_err(|_| invalid_utf8(bytes))
