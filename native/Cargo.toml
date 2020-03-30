@@ -19,8 +19,3 @@ libc = "0.2.68"
 [lib]
 name = "rubyfmt"
 crate-type = ["staticlib"]
-
-[build]
-rustflags = [
-  "-C", "link-args=-Wl,-undefined,dynamic_lookup"
-]

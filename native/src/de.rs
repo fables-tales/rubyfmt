@@ -1,7 +1,7 @@
-use crate::ruby::*;
-use serde::de::{*, Error as _};
+use crate::ruby::{self, VALUE};
+use serde::de::{self, Error as _};
 
-pub fn from_value<T: DeserializeOwned>(v: VALUE) -> Result<T> {
+pub fn from_value<T: de::DeserializeOwned>(v: VALUE) -> Result<T> {
     T::deserialize(Deserializer(v))
 }
 
@@ -13,17 +13,17 @@ type Error = serde::de::value::Error;
 impl<'de> serde::Deserializer<'de> for Deserializer {
     type Error = Error;
 
-    fn deserialize_any<V: Visitor<'de>>(self, visitor: V) -> Result<V::Value> {
-        pub use self::ruby_value_type::*;
+    fn deserialize_any<V: de::Visitor<'de>>(self, visitor: V) -> Result<V::Value> {
+        pub use ruby::ruby_value_type::*;
 
-        match unsafe { rubyfmt_rb_type(self.0) } {
+        match unsafe { ruby::rubyfmt_rb_type(self.0) } {
             RUBY_T_SYMBOL => visitor.visit_borrowed_str(sym_to_str(self.0)?),
             RUBY_T_STRING => visitor.visit_borrowed_str(rstring_to_str(self.0)?),
             RUBY_T_ARRAY => visitor.visit_seq(SeqAccess::new(self.0)),
             RUBY_T_NIL => visitor.visit_none(),
             RUBY_T_TRUE => visitor.visit_bool(true),
             RUBY_T_FALSE => visitor.visit_bool(false),
-            RUBY_T_FIXNUM => visitor.visit_i64(unsafe { rubyfmt_rb_num2ll(self.0) }),
+            RUBY_T_FIXNUM => visitor.visit_i64(unsafe { ruby::rubyfmt_rb_num2ll(self.0) }),
             other => {
                 Err(serde::de::Error::custom(format_args!("Unexpected type {:?}", other)))
             }
@@ -45,17 +45,17 @@ struct SeqAccess {
 
 impl SeqAccess {
     fn new(arr: VALUE) -> Self {
-        let len = unsafe { rubyfmt_rb_ary_len(arr) } as usize;
+        let len = unsafe { ruby::rubyfmt_rb_ary_len(arr) } as usize;
         Self { arr, len, idx: 0 }
     }
 }
 
-impl<'de> serde::de::SeqAccess<'de> for SeqAccess {
+impl<'de> de::SeqAccess<'de> for SeqAccess {
     type Error = Error;
 
-    fn next_element_seed<T: DeserializeSeed<'de>>(&mut self, seed: T) -> Result<Option<T::Value>> {
+    fn next_element_seed<T: de::DeserializeSeed<'de>>(&mut self, seed: T) -> Result<Option<T::Value>> {
         if self.idx < self.len {
-            let elem = unsafe { rb_ary_entry(self.arr, self.idx as _) };
+            let elem = unsafe { ruby::rb_ary_entry(self.arr, self.idx as _) };
             self.idx += 1;
             seed.deserialize(Deserializer(elem)).map(Some)
         } else {
@@ -72,20 +72,18 @@ fn sym_to_str(v: VALUE) -> Result<&'static str> {
     use std::ffi::CStr;
 
     unsafe {
-        let id = rb_sym2id(v);
-        let c_str = CStr::from_ptr(rb_id2name(id));
+        let id = ruby::rb_sym2id(v);
+        let c_str = CStr::from_ptr(ruby::rb_id2name(id));
         c_str.to_str()
             .map_err(|_| invalid_utf8(c_str.to_bytes()))
     }
 }
 
 fn rstring_to_str(v: VALUE) -> Result<&'static str> {
-    use crate::ruby::*;
-
     unsafe {
         let bytes = std::slice::from_raw_parts(
-            rubyfmt_rstring_ptr(v) as _,
-            rubyfmt_rstring_len(v) as _,
+            ruby::rubyfmt_rstring_ptr(v) as _,
+            ruby::rubyfmt_rstring_len(v) as _,
         );
         std::str::from_utf8(bytes)
             .map_err(|_| invalid_utf8(bytes))
@@ -94,7 +92,7 @@ fn rstring_to_str(v: VALUE) -> Result<&'static str> {
 
 fn invalid_utf8(bytes: &[u8]) -> Error {
     Error::invalid_value(
-        Unexpected::Bytes(bytes),
+        de::Unexpected::Bytes(bytes),
         &"a valid UTF-8 string",
     )
 }

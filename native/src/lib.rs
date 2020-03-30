@@ -11,7 +11,6 @@ extern crate serde_json;
 use std::fs::File;
 use std::io::{self, BufReader, Write};
 use std::str;
-use crate::ruby::*;
 
 #[global_allocator]
 static ALLOC: jemallocator::Jemalloc = jemallocator::Jemalloc;
@@ -37,6 +36,7 @@ mod types;
 use file_comments::FileComments;
 use parser_state::ParserState;
 use ruby_string_pointer::RubyStringPointer;
+use ruby::VALUE;
 
 type Result<T = ()> = std::result::Result<T, Box<dyn std::error::Error>>;
 
@@ -98,8 +98,8 @@ fn raise_if_error(value: Result) {
             // If the string contains nul, just display the error leading up to
             // the nul bytes
             let c_string = CString::from_vec_unchecked(e.to_string().into_bytes());
-            rb_raise(
-                rb_eRuntimeError,
+            ruby::rb_raise(
+                ruby::rb_eRuntimeError,
                 c_string.as_ptr(),
             );
         }
