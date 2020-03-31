@@ -86,6 +86,7 @@ impl<'de> de::Deserialize<'de> for VALUE {
                     // `visit_borrowed_bytes` when we tell it to deserialize a
                     // newtype struct. We've checked the size as a last ditch
                     // protection
+                    #[allow(clippy::cast_ptr_alignment)]
                     unsafe { Ok(*(bytes.as_ptr() as *const VALUE)) }
                 } else {
                     Err(de::Error::custom("not a VALUE"))
