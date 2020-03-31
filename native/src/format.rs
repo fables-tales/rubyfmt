@@ -237,8 +237,16 @@ pub fn format_mlhs(ps: &mut ParserState, mlhs: MLhs) {
 
     ps.with_start_of_line(false, |ps| {
         let len = (mlhs.0).len();
-        for (idx, expr) in (mlhs.0).into_iter().enumerate() {
-            format_expression(ps, expr);
+        for (idx, inner) in (mlhs.0).into_iter().enumerate() {
+            match inner {
+                MLhsInner::Field(f) => format_field(ps, f),
+                MLhsInner::Ident(i) => format_ident(ps, i),
+                MLhsInner::RestParam(rp) => {
+                    format_rest_param(ps, Some(RestParamOr0OrExcessedComma::RestParam(rp)));
+                }
+                MLhsInner::VarField(vf) => format_var_field(ps, vf),
+                MLhsInner::MLhs(mlhs) => format_mlhs(ps, *mlhs),
+            }
             if idx != len - 1 {
                 ps.emit_comma_space();
             }
@@ -1227,17 +1235,29 @@ pub fn format_massign(ps: &mut ParserState, massign: MAssign) {
     }
 
     ps.with_start_of_line(false, |ps| {
-        let length = massign.1.len();
-        for (idx, v) in massign.1.into_iter().enumerate() {
-            format_assignable(ps, v);
-            if idx != length - 1 {
-                ps.emit_comma_space();
+        match massign.1 {
+            AssignableListOrMLhs::AssignableList(al) => {
+                let length = al.len();
+                for (idx, v) in al.into_iter().enumerate() {
+                    format_assignable(ps, v);
+                    if idx != length - 1 {
+                        ps.emit_comma_space();
+                    }
+                }
             }
+            AssignableListOrMLhs::MLhs(mlhs) => format_mlhs(ps, mlhs),
         }
         ps.emit_space();
         ps.emit_ident("=".to_string());
         ps.emit_space();
-        format_mrhs(ps, Some(massign.2));
+        match massign.2 {
+            MRHSOrArray::MRHS(mrhs) => {
+                format_mrhs(ps, Some(mrhs));
+            }
+            MRHSOrArray::Array(array) => {
+                format_array(ps, array);
+            }
+        }
     });
 
     if ps.at_start_of_line() {

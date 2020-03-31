@@ -24,9 +24,10 @@ impl<'de> serde::Deserializer<'de> for Deserializer {
             RUBY_T_TRUE => visitor.visit_bool(true),
             RUBY_T_FALSE => visitor.visit_bool(false),
             RUBY_T_FIXNUM => visitor.visit_i64(unsafe { ruby::rubyfmt_rb_num2ll(self.0) }),
-            other => {
-                Err(serde::de::Error::custom(format_args!("Unexpected type {:?}", other)))
-            }
+            other => Err(serde::de::Error::custom(format_args!(
+                "Unexpected type {:?}",
+                other
+            ))),
         }
     }
 
@@ -53,7 +54,10 @@ impl SeqAccess {
 impl<'de> de::SeqAccess<'de> for SeqAccess {
     type Error = Error;
 
-    fn next_element_seed<T: de::DeserializeSeed<'de>>(&mut self, seed: T) -> Result<Option<T::Value>> {
+    fn next_element_seed<T: de::DeserializeSeed<'de>>(
+        &mut self,
+        seed: T,
+    ) -> Result<Option<T::Value>> {
         if self.idx < self.len {
             let elem = unsafe { ruby::rb_ary_entry(self.arr, self.idx as _) };
             self.idx += 1;
@@ -74,8 +78,7 @@ fn sym_to_str(v: VALUE) -> Result<&'static str> {
     unsafe {
         let id = ruby::rb_sym2id(v);
         let c_str = CStr::from_ptr(ruby::rb_id2name(id));
-        c_str.to_str()
-            .map_err(|_| invalid_utf8(c_str.to_bytes()))
+        c_str.to_str().map_err(|_| invalid_utf8(c_str.to_bytes()))
     }
 }
 
@@ -85,14 +88,10 @@ fn rstring_to_str(v: VALUE) -> Result<&'static str> {
             ruby::rubyfmt_rstring_ptr(v) as _,
             ruby::rubyfmt_rstring_len(v) as _,
         );
-        std::str::from_utf8(bytes)
-            .map_err(|_| invalid_utf8(bytes))
+        std::str::from_utf8(bytes).map_err(|_| invalid_utf8(bytes))
     }
 }
 
 fn invalid_utf8(bytes: &[u8]) -> Error {
-    Error::invalid_value(
-        de::Unexpected::Bytes(bytes),
-        &"a valid UTF-8 string",
-    )
+    Error::invalid_value(de::Unexpected::Bytes(bytes), &"a valid UTF-8 string")
 }

@@ -145,7 +145,17 @@ pub enum Expression {
 }
 
 #[derive(Debug, Clone)]
-pub struct MLhs(pub Vec<Expression>);
+pub struct MLhs(pub Vec<MLhsInner>);
+
+#[derive(Deserialize, Debug, Clone)]
+#[serde(untagged)]
+pub enum MLhsInner {
+    VarField(VarField),
+    Field(Field),
+    RestParam(RestParam),
+    Ident(Ident),
+    MLhs(Box<MLhs>),
+}
 
 impl<'de> Deserialize<'de> for MLhs {
     fn deserialize<D>(deserializer: D) -> Result<MLhs, D::Error>
@@ -171,13 +181,15 @@ impl<'de> Deserialize<'de> for MLhs {
                         return Err(de::Error::custom("didn't get right tag"));
                     }
                 };
+                eprintln!("trying mls: {:?}", tag);
 
                 if tag != "mlhs" {
                     return Err(de::Error::custom("didn't get right tag"));
                 }
+                eprintln!("got mls");
 
                 let mut elements = Vec::new();
-                let mut expr: Option<Expression> = seq.next_element()?;
+                let mut expr: Option<MLhsInner> = seq.next_element()?;
                 while expr.is_some() {
                     elements.push(expr.expect("we checked it's some"));
                     expr = seq.next_element()?;
@@ -433,7 +445,21 @@ pub struct Assign(pub assign_tag, pub Assignable, pub Box<Expression>);
 
 def_tag!(massign_tag, "massign");
 #[derive(Deserialize, Debug, Clone)]
-pub struct MAssign(pub massign_tag, pub Vec<Assignable>, pub MRHS);
+pub struct MAssign(pub massign_tag, pub AssignableListOrMLhs, pub MRHSOrArray);
+
+#[derive(Deserialize, Debug, Clone)]
+#[serde(untagged)]
+pub enum AssignableListOrMLhs {
+    AssignableList(Vec<Assignable>),
+    MLhs(MLhs),
+}
+
+#[derive(Deserialize, Debug, Clone)]
+#[serde(untagged)]
+pub enum MRHSOrArray {
+    MRHS(MRHS),
+    Array(Array),
+}
 
 #[derive(Deserialize, Debug, Clone)]
 #[serde(untagged)]
