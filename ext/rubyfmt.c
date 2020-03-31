@@ -49,6 +49,10 @@ long rubyfmt_rb_ary_len(VALUE v) {
   return rb_array_len(v);
 }
 
+int rubyfmt_rb_nil_p(VALUE v) {
+  return RB_NIL_P(v);
+}
+
 void Init_rubyfmt() {
     rubyfmt_rb_module_rubyfmt = rb_define_module("Rubyfmt");
     rb_define_module_function(

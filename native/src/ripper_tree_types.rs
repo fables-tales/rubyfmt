@@ -1,4 +1,5 @@
 #![allow(warnings)]
+use ripper_deserialize::RipperDeserialize;
 use serde::*;
 use serde_json::Value;
 
@@ -64,8 +65,7 @@ def_tag!(undeserializable, "oiqjweoifjqwoeifjwqoiefjqwoiej");
 #[derive(Deserialize, Debug, Clone)]
 pub struct ToProc(pub undeserializable, pub Box<Expression>);
 
-#[derive(Deserialize, Debug, Clone)]
-#[serde(untagged)]
+#[derive(RipperDeserialize, Debug, Clone)]
 pub enum Expression {
     ToProc(ToProc),
     Class(Class),
@@ -78,8 +78,8 @@ pub enum Expression {
     Ident(Ident),
     Params(Params),
     MethodCall(MethodCall),
-    DotCall(DotCall),
     Call(Call),
+    DotCall(DotCall),
     CommandCall(CommandCall),
     MethodAddArg(MethodAddArg),
     Int(Int),
@@ -147,8 +147,7 @@ pub enum Expression {
 #[derive(Debug, Clone)]
 pub struct MLhs(pub Vec<MLhsInner>);
 
-#[derive(Deserialize, Debug, Clone)]
-#[serde(untagged)]
+#[derive(RipperDeserialize, Debug, Clone)]
 pub enum MLhsInner {
     VarField(VarField),
     Field(Field),
@@ -209,7 +208,7 @@ pub struct ZSuper((zsuper_tag,));
 
 def_tag!(yield0_tag, "yield0");
 #[derive(Deserialize, Debug, Clone)]
-pub struct Yield0((yield0_tag,));
+pub struct Yield0(yield0_tag);
 
 def_tag!(if_tag, "if");
 #[derive(Deserialize, Debug, Clone)]
@@ -229,8 +228,7 @@ pub struct Unless(
     pub Option<Else>,
 );
 
-#[derive(Deserialize, Debug, Clone)]
-#[serde(untagged)]
+#[derive(RipperDeserialize, Debug, Clone)]
 pub enum ElsifOrElse {
     Elsif(Elsif),
     Else(Else),
@@ -261,8 +259,7 @@ pub struct StringConcat(
     pub StringLiteral,
 );
 
-#[derive(Deserialize, Debug, Clone)]
-#[serde(untagged)]
+#[derive(RipperDeserialize, Debug, Clone)]
 pub enum StringConcatOrStringLiteral {
     StringConcat(Box<StringConcat>),
     StringLiteral(StringLiteral),
@@ -276,8 +273,7 @@ pub struct MRHSAddStar(
     pub Box<Expression>,
 );
 
-#[derive(Deserialize, Debug, Clone)]
-#[serde(untagged)]
+#[derive(RipperDeserialize, Debug, Clone)]
 pub enum MRHSNewFromArgsOrEmpty {
     MRHSNewFromArgs(MRHSNewFromArgs),
     Empty(Vec<Expression>),
@@ -412,8 +408,7 @@ pub struct Command(
     pub ArgsAddBlockOrExpressionList,
 );
 
-#[derive(Deserialize, Debug, Clone)]
-#[serde(untagged)]
+#[derive(RipperDeserialize, Debug, Clone)]
 pub enum ArgsAddBlockOrExpressionList {
     ArgsAddBlock(ArgsAddBlock),
     ExpressionList(Vec<Expression>),
@@ -447,29 +442,25 @@ def_tag!(massign_tag, "massign");
 #[derive(Deserialize, Debug, Clone)]
 pub struct MAssign(pub massign_tag, pub AssignableListOrMLhs, pub MRHSOrArray);
 
-#[derive(Deserialize, Debug, Clone)]
-#[serde(untagged)]
+#[derive(RipperDeserialize, Debug, Clone)]
 pub enum AssignableListOrMLhs {
     AssignableList(Vec<Assignable>),
     MLhs(MLhs),
 }
 
-#[derive(Deserialize, Debug, Clone)]
-#[serde(untagged)]
+#[derive(RipperDeserialize, Debug, Clone)]
 pub enum MRHSOrArray {
     MRHS(MRHS),
     Array(Array),
 }
 
-#[derive(Deserialize, Debug, Clone)]
-#[serde(untagged)]
+#[derive(RipperDeserialize, Debug, Clone)]
 pub enum IdentOrVarField {
     Ident(Ident),
     VarField(VarField),
 }
 
-#[derive(Deserialize, Debug, Clone)]
-#[serde(untagged)]
+#[derive(RipperDeserialize, Debug, Clone)]
 pub enum Assignable {
     VarField(VarField),
     ConstPathField(ConstPathField),
@@ -506,8 +497,7 @@ def_tag!(var_ref_tag, "var_ref");
 #[derive(Deserialize, Debug, Clone)]
 pub struct VarRef(pub var_ref_tag, pub VarRefType);
 
-#[derive(Deserialize, Debug, Clone)]
-#[serde(untagged)]
+#[derive(RipperDeserialize, Debug, Clone)]
 pub enum VarRefType {
     GVar(GVar),
     IVar(IVar),
@@ -548,8 +538,7 @@ impl<'de> Deserialize<'de> for StringLiteral {
     {
         struct StringLiteralVisitor;
 
-        #[derive(Deserialize, Debug, Clone)]
-        #[serde(untagged)]
+        #[derive(RipperDeserialize, Debug, Clone)]
         enum HeredocOrStringContent {
             Heredoc(HeredocStringLiteral),
             StringContent(StringContent),
@@ -621,8 +610,7 @@ impl DynaSymbol {
     }
 }
 
-#[derive(Deserialize, Debug, Clone)]
-#[serde(untagged)]
+#[derive(RipperDeserialize, Debug, Clone)]
 pub enum StringContentOrStringContentParts {
     StringContent(StringContent),
     StringContentParts(Vec<StringContentPart>),
@@ -640,8 +628,7 @@ def_tag!(string_dvar_tag, "string_dvar");
 #[derive(Deserialize, Debug, Clone)]
 pub struct StringDVar(pub string_dvar_tag, pub Box<Expression>);
 
-#[derive(Deserialize, Debug, Clone)]
-#[serde(untagged)]
+#[derive(RipperDeserialize, Debug, Clone)]
 pub enum StringContentPart {
     TStringContent(TStringContent),
     StringEmbexpr(StringEmbexpr),
@@ -704,16 +691,14 @@ pub struct Array(
     pub Option<LineCol>,
 );
 
-#[derive(Deserialize, Debug, Clone)]
-#[serde(untagged)]
+#[derive(RipperDeserialize, Debug, Clone)]
 pub enum SimpleArrayOrPercentArray {
     SimpleArray(Option<ArgsAddStarOrExpressionList>),
     LowerPercentArray((String, Vec<TStringContent>, LineCol)),
     UpperPercentArray((String, Vec<Vec<StringContentPart>>, LineCol)),
 }
 
-#[derive(Deserialize, Debug, Clone)]
-#[serde(untagged)]
+#[derive(RipperDeserialize, Debug, Clone)]
 pub enum ArgsAddStarOrExpressionList {
     ExpressionList(Vec<Expression>),
     ArgsAddStar(ArgsAddStar),
@@ -827,7 +812,7 @@ pub struct Dot3(
 
 def_tag!(void_stmt_tag, "void_stmt");
 #[derive(Deserialize, Debug, Clone)]
-pub struct VoidStmt(pub (void_stmt_tag,));
+pub struct VoidStmt(void_stmt_tag);
 
 // isn't parsable, but we do create it in our "normalized tree"
 def_tag!(method_call_tag, "method_call");
@@ -855,8 +840,7 @@ def_tag!(def_tag, "def");
 #[derive(Deserialize, Debug, Clone)]
 pub struct Def(pub def_tag, pub IdentOrOp, pub ParenOrParams, pub BodyStmt);
 
-#[derive(Deserialize, Debug, Clone)]
-#[serde(untagged)]
+#[derive(RipperDeserialize, Debug, Clone)]
 pub enum IdentOrOp {
     Ident(Ident),
     Op((op_tag, String, LineCol)),
@@ -886,8 +870,7 @@ pub struct BodyStmt(
 );
 
 // deals with 2.6, where else is a vec expression and not an else
-#[derive(Deserialize, Debug, Clone)]
-#[serde(untagged)]
+#[derive(RipperDeserialize, Debug, Clone)]
 pub enum RescueElseOrExpressionList {
     RescueElse(RescueElse),
     ExpressionList(Vec<Expression>),
@@ -903,8 +886,7 @@ pub struct Rescue(
     pub Option<Box<Rescue>>,
 );
 
-#[derive(Deserialize, Debug, Clone)]
-#[serde(untagged)]
+#[derive(RipperDeserialize, Debug, Clone)]
 pub enum MRHS {
     Single(Box<Expression>),
     SingleAsArray(Vec<Expression>),
@@ -976,8 +958,7 @@ impl Ident {
     }
 }
 
-#[derive(Deserialize, Debug, Clone)]
-#[serde(untagged)]
+#[derive(RipperDeserialize, Debug, Clone)]
 pub enum ParenOrParams {
     Paren(Paren),
     Params(Params),
@@ -992,8 +973,7 @@ impl ParenOrParams {
     }
 }
 
-#[derive(Deserialize, Debug, Clone)]
-#[serde(untagged)]
+#[derive(RipperDeserialize, Debug, Clone)]
 pub enum IdentOrMLhs {
     Ident(Ident),
     MLhs(MLhs),
@@ -1088,8 +1068,7 @@ impl Params {
 //   deals with the 2.6 case, I will note that I tried to collapse them in to
 //   a single representative node, but that didn't work with the serde setup
 //   we have for some reason.
-#[derive(Deserialize, Debug, Clone)]
-#[serde(untagged)]
+#[derive(RipperDeserialize, Debug, Clone)]
 pub enum RestParamOr0OrExcessedComma {
     Zero(i64),
     RestParam(RestParam),
@@ -1114,8 +1093,7 @@ impl Params {
     }
 }
 
-#[derive(Deserialize, Debug, Clone)]
-#[serde(untagged)]
+#[derive(RipperDeserialize, Debug, Clone)]
 pub enum ExpressionOrFalse {
     Expression(Expression),
     False(bool),
@@ -1136,20 +1114,16 @@ pub struct BlockArg(pub blockarg_tag, pub Ident);
 #[derive(Deserialize, Debug, Clone)]
 pub struct LineCol(pub LineNumber, pub u64);
 
-def_tag!(dotCall, "call");
-#[derive(Deserialize, Debug, Clone)]
-pub struct DotCall(pub dotCall);
+pub type DotCall = call_tag;
 
-#[derive(Deserialize, Debug, Clone)]
-#[serde(untagged)]
+#[derive(RipperDeserialize, Debug, Clone)]
 pub enum CallExpr {
     FCall(FCall),
     Call(Call),
     Expression(Box<Expression>),
 }
 
-#[derive(Deserialize, Debug, Clone)]
-#[serde(untagged)]
+#[derive(RipperDeserialize, Debug, Clone)]
 pub enum CallChainElement {
     Expression(Box<Expression>),
     Dot(DotTypeOrOp),
@@ -1237,8 +1211,7 @@ def_tag!(fcall_tag, "fcall");
 #[derive(Deserialize, Debug, Clone)]
 pub struct FCall(pub fcall_tag, pub IdentOrConst);
 
-#[derive(Deserialize, Debug, Clone)]
-#[serde(untagged)]
+#[derive(RipperDeserialize, Debug, Clone)]
 pub enum ArgNode {
     ArgParen(ArgParen),
     ArgsAddBlock(ArgsAddBlock),
@@ -1254,8 +1227,7 @@ def_tag!(arg_paren_tag, "arg_paren");
 pub struct ArgParen(pub arg_paren_tag, pub Box<ArgNode>);
 
 // See: https://dev.to/penelope_zone/understanding-ruby-s-block-proc-parsing-4a89
-#[derive(Deserialize, Debug, Clone)]
-#[serde(untagged)]
+#[derive(RipperDeserialize, Debug, Clone)]
 pub enum ToProcExpr {
     NotPresent(bool),
     Present(Box<Expression>),
@@ -1286,8 +1258,7 @@ def_tag!(assoclist_from_args_tag, "assoclist_from_args");
 #[derive(Deserialize, Debug, Clone)]
 pub struct AssocListFromArgs(pub assoclist_from_args_tag, pub Vec<AssocNewOrAssocSplat>);
 
-#[derive(Deserialize, Debug, Clone)]
-#[serde(untagged)]
+#[derive(RipperDeserialize, Debug, Clone)]
 pub enum AssocNewOrAssocSplat {
     AssocNew(AssocNew),
     AssocSplat(AssocSplat),
@@ -1301,8 +1272,7 @@ def_tag!(assoc_splat_tag, "assoc_splat");
 #[derive(Deserialize, Debug, Clone)]
 pub struct AssocSplat(pub assoc_splat_tag, pub Expression);
 
-#[derive(Deserialize, Debug, Clone)]
-#[serde(untagged)]
+#[derive(RipperDeserialize, Debug, Clone)]
 pub enum AssocKey {
     Label(Label),
     Expression(Expression),
@@ -1316,23 +1286,20 @@ def_tag!(symbol_literal_tag, "symbol_literal");
 #[derive(Deserialize, Debug, Clone)]
 pub struct SymbolLiteral(pub symbol_literal_tag, pub SymbolOrBare);
 
-#[derive(Deserialize, Debug, Clone)]
-#[serde(untagged)]
+#[derive(RipperDeserialize, Debug, Clone)]
 pub enum SymbolOrBare {
     Ident(Ident),
     Op(Op),
     Symbol(Symbol),
 }
 
-#[derive(Deserialize, Debug, Clone)]
-#[serde(untagged)]
+#[derive(RipperDeserialize, Debug, Clone)]
 pub enum IdentOrConst {
     Ident(Ident),
     Const(Const),
 }
 
-#[derive(Deserialize, Debug, Clone)]
-#[serde(untagged)]
+#[derive(RipperDeserialize, Debug, Clone)]
 pub enum IdentOrConstOrKwOrOpOrIvar {
     Ident(Ident),
     Const(Const),
@@ -1366,15 +1333,13 @@ impl Call {
     }
 }
 
-#[derive(Deserialize, Debug, Clone)]
-#[serde(untagged)]
+#[derive(RipperDeserialize, Debug, Clone)]
 pub enum DotType {
     Dot(Dot),
     LonelyOperator(LonelyOperator),
 }
 
-#[derive(Deserialize, Debug, Clone)]
-#[serde(untagged)]
+#[derive(RipperDeserialize, Debug, Clone)]
 pub enum DotTypeOrOp {
     DotType(DotType),
     Period(Period),
@@ -1407,8 +1372,7 @@ def_tag!(op_tag, "@op");
 #[derive(Deserialize, Debug, Clone)]
 pub struct Op(pub op_tag, pub Operator, pub LineCol);
 
-#[derive(Deserialize, Debug, Clone)]
-#[serde(untagged)]
+#[derive(RipperDeserialize, Debug, Clone)]
 pub enum Operator {
     Equals(Equals),
     Dot(Dot),
@@ -1514,8 +1478,7 @@ def_tag!(kw_tag, "@kw");
 #[derive(Deserialize, Debug, Clone)]
 pub struct Kw(pub kw_tag, pub String, pub LineCol);
 
-#[derive(Deserialize, Debug, Clone)]
-#[serde(untagged)]
+#[derive(RipperDeserialize, Debug, Clone)]
 pub enum ConstPathRefOrConstRef {
     ConstPathRef(ConstPathRef),
     ConstRef(ConstRef),
@@ -1545,23 +1508,20 @@ pub struct Defs(
     pub BodyStmt,
 );
 
-#[derive(Deserialize, Debug, Clone)]
-#[serde(untagged)]
+#[derive(RipperDeserialize, Debug, Clone)]
 pub enum IdentOrKw {
     Ident(Ident),
     Kw(Kw),
 }
 
-#[derive(Deserialize, Debug, Clone)]
-#[serde(untagged)]
+#[derive(RipperDeserialize, Debug, Clone)]
 pub enum Singleton {
     VarRef(VarRef),
     Paren(ParenExpr),
 }
 
 // can only occur in defs, Op is always `::`
-#[derive(Deserialize, Debug, Clone)]
-#[serde(untagged)]
+#[derive(RipperDeserialize, Debug, Clone)]
 pub enum DotOrColon {
     Period(Period),
     Op(Operator),
@@ -1594,7 +1554,7 @@ pub struct Return(return_tag, pub ArgNode, pub LineCol);
 
 def_tag!(return0_tag, "return0");
 #[derive(Deserialize, Debug, Clone)]
-pub struct Return0((return0_tag,));
+pub struct Return0(return0_tag);
 
 def_tag!(regexp_literal_tag, "regexp_literal");
 #[derive(Deserialize, Debug, Clone)]
@@ -1620,8 +1580,7 @@ def_tag!(break_tag, "break");
 #[derive(Deserialize, Debug, Clone)]
 pub struct Break(break_tag, pub ParenOrArgsAddBlock, pub LineCol);
 
-#[derive(Deserialize, Debug, Clone)]
-#[serde(untagged)]
+#[derive(RipperDeserialize, Debug, Clone)]
 pub enum ParenOrArgsAddBlock {
     YieldParen(YieldParen),
     ArgsAddBlock(ArgsAddBlock),
@@ -1636,8 +1595,7 @@ def_tag!(method_add_block_tag, "method_add_block");
 #[derive(Deserialize, Debug, Clone)]
 pub struct MethodAddBlock(method_add_block_tag, pub CallType, pub Block);
 
-#[derive(Deserialize, Debug, Clone)]
-#[serde(untagged)]
+#[derive(RipperDeserialize, Debug, Clone)]
 pub enum CallType {
     MethodAddArg(MethodAddArg),
     Call(Call),
@@ -1656,8 +1614,7 @@ impl CallType {
     }
 }
 
-#[derive(Deserialize, Debug, Clone)]
-#[serde(untagged)]
+#[derive(RipperDeserialize, Debug, Clone)]
 pub enum Block {
     BraceBlock(BraceBlock),
     DoBlock(DoBlock),
@@ -1671,8 +1628,7 @@ pub enum Block {
 // 2. false if params are present, and block local variables are not present
 // 3. a vec of idents either if params are or are not present, and block local
 //    variables are present
-#[derive(Deserialize, Debug, Clone)]
-#[serde(untagged)]
+#[derive(RipperDeserialize, Debug, Clone)]
 pub enum BlockLocalVariables {
     EmptyBecauseParamsWerePresent(bool),
     NilBecauseParamsWereNotPresent(Option<()>),
@@ -1721,8 +1677,7 @@ pub struct When(
     pub LineCol,
 );
 
-#[derive(Deserialize, Debug, Clone)]
-#[serde(untagged)]
+#[derive(RipperDeserialize, Debug, Clone)]
 pub enum WhenOrElse {
     When(When),
     Else(CaseElse),
@@ -1742,8 +1697,7 @@ pub struct SClass(sclass_tag, pub Box<Expression>, pub BodyStmt);
 
 // some constructs were expressionlist in 2.5 and bodystmt in 2.6 so this
 // deals with both cases
-#[derive(Deserialize, Debug, Clone)]
-#[serde(untagged)]
+#[derive(RipperDeserialize, Debug, Clone)]
 pub enum ExpressionListOrBodyStmt {
     ExpresionList(Vec<Expression>),
     BodyStmt(BodyStmt),
@@ -1776,8 +1730,7 @@ pub struct For(
     pub Vec<Expression>,
 );
 
-#[derive(Deserialize, Debug, Clone)]
-#[serde(untagged)]
+#[derive(RipperDeserialize, Debug, Clone)]
 pub enum VarFieldOrVarFields {
     VarField(VarField),
     VarFields(Vec<VarField>),
