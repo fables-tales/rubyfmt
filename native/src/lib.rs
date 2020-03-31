@@ -35,16 +35,13 @@ mod types;
 
 use file_comments::FileComments;
 use parser_state::ParserState;
-use ruby_string_pointer::RubyStringPointer;
 use ruby::VALUE;
+use ruby_string_pointer::RubyStringPointer;
 
 type Result<T = ()> = std::result::Result<T, Box<dyn std::error::Error>>;
 
 #[no_mangle]
-pub extern "C" fn format_sexp_tree_to_stdout(
-    buf: RubyStringPointer,
-    tree: VALUE,
-) {
+pub extern "C" fn format_sexp_tree_to_stdout(buf: RubyStringPointer, tree: VALUE) {
     raise_if_error(raw_format_program(None, buf, tree))
 }
 
@@ -71,7 +68,7 @@ fn raw_format_program(
             let name = str::from_utf8(fp.into_buf())?;
             file = File::create(name)?;
             &mut file
-        },
+        }
         None => &mut stdout,
     };
 
@@ -98,10 +95,7 @@ fn raise_if_error(value: Result) {
             // If the string contains nul, just display the error leading up to
             // the nul bytes
             let c_string = CString::from_vec_unchecked(e.to_string().into_bytes());
-            ruby::rb_raise(
-                ruby::rb_eRuntimeError,
-                c_string.as_ptr(),
-            );
+            ruby::rb_raise(ruby::rb_eRuntimeError, c_string.as_ptr());
         }
     }
 }
