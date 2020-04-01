@@ -204,7 +204,7 @@ impl<'de> Deserialize<'de> for MLhs {
 
 def_tag!(zsuper_tag, "zsuper");
 #[derive(Deserialize, Debug, Clone)]
-pub struct ZSuper(zsuper_tag,);
+pub struct ZSuper(zsuper_tag);
 
 def_tag!(yield0_tag, "yield0");
 #[derive(Deserialize, Debug, Clone)]
@@ -1077,7 +1077,7 @@ pub enum RestParamOr0OrExcessedComma {
 
 def_tag!(excessed_comma_tag, "excessed_comma");
 #[derive(Deserialize, Debug, Clone)]
-pub struct ExcessedComma(excessed_comma_tag,);
+pub struct ExcessedComma(excessed_comma_tag);
 
 impl Params {
     pub fn non_null_positions(&self) -> Vec<bool> {
@@ -1689,7 +1689,7 @@ pub struct CaseElse(case_else_tag, pub Vec<Expression>);
 
 def_tag!(retry_tag, "retry");
 #[derive(Deserialize, Debug, Clone)]
-pub struct Retry(retry_tag,);
+pub struct Retry(retry_tag);
 
 def_tag!(sclass_tag, "sclass");
 #[derive(Deserialize, Debug, Clone)]
