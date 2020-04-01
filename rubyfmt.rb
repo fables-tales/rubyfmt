@@ -5,7 +5,6 @@ else
   require "rubyfmt_debug.so"
 end
 require "ripper"
-require "json"
 
 class Parser < Ripper::SexpBuilderPP
   ARRAY_SYMBOLS = {qsymbols: "%i", qwords: "%w", symbols: "%I", words: "%W"}.freeze

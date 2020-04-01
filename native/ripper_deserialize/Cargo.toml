@@ -1,0 +1,14 @@
+[package]
+name = "ripper_deserialize"
+version = "0.1.0"
+authors = ["Siân Griffin <sean@seantheprogrammer.com>"]
+license = "MIT OR Apache-2.0"
+edition = "2018"
+
+[dependencies]
+syn = { version = "1", features = ["full"] }
+quote = "1"
+proc-macro2 = "1"
+
+[lib]
+proc-macro = true

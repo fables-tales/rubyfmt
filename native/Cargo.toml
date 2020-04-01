@@ -15,6 +15,7 @@ bytecount = "0.6.0"
 backtrace = "0.3.45"
 jemallocator = { version = "0.3.0", features = ["disable_initial_exec_tls"] }
 libc = "0.2.68"
+ripper_deserialize = { path = "ripper_deserialize" }
 
 [lib]
 name = "rubyfmt"
