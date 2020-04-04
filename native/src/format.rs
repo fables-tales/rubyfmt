@@ -526,6 +526,8 @@ pub fn format_method_call(ps: &mut ParserState, method_call: MethodCall) {
         match *method {
             Expression::Ident(i) => format_ident(ps, i),
             Expression::Const(c) => format_const(ps, c),
+            Expression::DotCall(_) => {
+            },
             x => panic!("got unexpecxted struct {:?}", x),
         };
 
@@ -1241,8 +1243,11 @@ pub fn format_massign(ps: &mut ParserState, massign: MAssign) {
                 for (idx, v) in al.into_iter().enumerate() {
                     format_assignable(ps, v);
                     let last = idx == length - 1;
-                    if !last || length == 1 {
+                    if !last {
                         ps.emit_comma_space();
+                    }
+                    if length == 1 {
+                        ps.emit_comma();
                     }
                 }
             }
