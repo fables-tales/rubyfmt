@@ -1,0 +1,4 @@
+#!/bin/bash
+rm -rf tmp/
+make lint
+./script/test.sh
