@@ -1240,7 +1240,8 @@ pub fn format_massign(ps: &mut ParserState, massign: MAssign) {
                 let length = al.len();
                 for (idx, v) in al.into_iter().enumerate() {
                     format_assignable(ps, v);
-                    if idx != length - 1 {
+                    let last = idx == length - 1;
+                    if !last || length == 1 {
                         ps.emit_comma_space();
                     }
                 }
