@@ -526,8 +526,7 @@ pub fn format_method_call(ps: &mut ParserState, method_call: MethodCall) {
         match *method {
             Expression::Ident(i) => format_ident(ps, i),
             Expression::Const(c) => format_const(ps, c),
-            Expression::DotCall(_) => {
-            },
+            Expression::DotCall(_) => {}
             x => panic!("got unexpecxted struct {:?}", x),
         };
 
