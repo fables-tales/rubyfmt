@@ -180,12 +180,18 @@ impl<'de> Deserialize<'de> for MLhs {
                         return Err(de::Error::custom("didn't get right tag"));
                     }
                 };
-                eprintln!("trying mls: {:?}", tag);
+                #[cfg(debug_assertions)]
+                {
+                    eprintln!("trying mls: {:?}", tag);
+                }
 
                 if tag != "mlhs" {
                     return Err(de::Error::custom("didn't get right tag"));
                 }
-                eprintln!("got mls");
+                #[cfg(debug_assertions)]
+                {
+                    eprintln!("got mls");
+                }
 
                 let mut elements = Vec::new();
                 let mut expr: Option<MLhsInner> = seq.next_element()?;
