@@ -666,19 +666,26 @@ impl MethodCall {
 
 def_tag!(def_tag, "def");
 #[derive(Deserialize, Debug, Clone)]
-pub struct Def(pub def_tag, pub IdentOrOp, pub ParenOrParams, pub BodyStmt);
+pub struct Def(
+    pub def_tag,
+    pub IdentOrOpOrKeyword,
+    pub ParenOrParams,
+    pub BodyStmt,
+);
 
 #[derive(RipperDeserialize, Debug, Clone)]
-pub enum IdentOrOp {
+pub enum IdentOrOpOrKeyword {
     Ident(Ident),
     Op((op_tag, String, LineCol)),
+    Keyword(Kw),
 }
 
-impl IdentOrOp {
+impl IdentOrOpOrKeyword {
     pub fn to_def_parts(self) -> (String, LineCol) {
         match self {
             Self::Ident(Ident(_, string, linecol)) => (string, linecol),
             Self::Op((_, string, linecol)) => (string, linecol),
+            Self::Keyword((Kw(_, string, linecol))) => (string, linecol),
         }
     }
 }
@@ -1375,6 +1382,28 @@ pub struct Backref(backref_tag, pub String, pub LineCol);
 def_tag!(yield_tag, "yield");
 #[derive(Deserialize, Debug, Clone)]
 pub struct Yield(yield_tag, pub ParenOrArgsAddBlock, pub LineCol);
+
+impl Yield {
+    pub fn to_method_call(self) -> MethodCall {
+        let (used_paren, args) = match self.1 {
+            ParenOrArgsAddBlock::YieldParen(yp) => (true, normalize_args(*yp.1)),
+            ParenOrArgsAddBlock::ArgsAddBlock(aab) => {
+                (false, normalize_args(ArgNode::ArgsAddBlock(aab)))
+            }
+            Empty => (false, ArgsAddStarOrExpressionList::ExpressionList(vec![])),
+        };
+        MethodCall::new(
+            vec![],
+            Box::new(Expression::Ident(Ident(
+                ident_tag,
+                "yield".to_string(),
+                self.2,
+            ))),
+            used_paren,
+            args,
+        )
+    }
+}
 
 def_tag!(break_tag, "break");
 #[derive(Deserialize, Debug, Clone)]

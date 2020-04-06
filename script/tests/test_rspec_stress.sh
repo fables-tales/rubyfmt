@@ -5,28 +5,49 @@ source "./script/functions.sh"
 
 make
 
-#cd "$(mktemp -d)"
-#mkdir -p tmp
-#if [ -z "${GITHUB_REF+x}" ]
-#then
-#    echo "not on github"
-#else
-#    rm -rf tmp/rspec-core
-#fi
-ls tmp/rspec-core/lib || git clone --depth=1 https://github.com/rspec/rspec-core tmp/rspec-core
-cd tmp/rspec-core
-git reset --hard
-bundle
-cd ../..
+test_rspec_repo() {
+    (
+    ls "tmp/$1/lib" || git clone --depth=1 "https://github.com/rspec/$1" "tmp/$1"
+    cd "tmp/$1"
+    git reset --hard
+    bundle
+    cd ../..
 
-FILES=$(find tmp/rspec-core/lib -type f | grep -i '\.rb$')
-for FN in $FILES
-do
-    echo "running rubyfmt on $FN"
-    f_rubyfmt "$FN" > /tmp/this_one.rb
-    f_rubyfmt /tmp/this_one.rb > "$FN"
-done
-cd tmp/rspec-core
-bundle exec rspec --exclude-pattern ./spec/integration/persistence_failures_spec.rb
-git reset --hard
-cd ../../
+    FILES=$(find "tmp/$1/lib" -type f | grep -i '\.rb$')
+    for FN in $FILES
+    do
+        echo "running rubyfmt on $FN"
+        f_rubyfmt "$FN" > /tmp/this_one.rb
+        f_rubyfmt /tmp/this_one.rb > "$FN"
+    done
+    cd "tmp/$1"
+    bundle exec rspec --exclude-pattern ./spec/integration/persistence_failures_spec.rb
+    git reset --hard
+    cd ../../
+    )
+}
+
+test_rspec_repo_incrementally() {
+    (
+    ls tmp/"$1"/lib || git clone --depth=1 "https://github.com/rspec/$1" "tmp/$1"
+    cd "tmp/$1"
+    git reset --hard
+    bundle
+    cd ../..
+
+    FILES=$(find "tmp/$1/lib" -type f | grep -i '\.rb$')
+    for FN in $FILES
+    do
+        echo "running rubyfmt on $FN"
+        f_rubyfmt "$FN" > /tmp/this_one.rb
+        f_rubyfmt /tmp/this_one.rb > "$FN"
+        cd "tmp/$1"
+        bundle exec rspec --exclude-pattern ./spec/integration/persistence_failures_spec.rb
+        git reset --hard
+        cd ../../
+    done
+    )
+}
+
+test_rspec_repo rspec-core
+test_rspec_repo rspec-mocks
