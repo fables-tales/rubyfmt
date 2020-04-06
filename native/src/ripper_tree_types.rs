@@ -144,6 +144,7 @@ pub enum Expression {
     Yield0(Yield0),
 }
 
+def_tag!(mlhs_tag, "mlhs");
 #[derive(Debug, Clone)]
 pub struct MLhs(pub Vec<MLhsInner>);
 
@@ -174,30 +175,11 @@ impl<'de> Deserialize<'de> for MLhs {
             where
                 A: de::SeqAccess<'de>,
             {
-                let tag: &str = match seq.next_element() {
-                    Ok(Some(s)) => s,
-                    _ => {
-                        return Err(de::Error::custom("didn't get right tag"));
-                    }
-                };
-                #[cfg(debug_assertions)]
-                {
-                    eprintln!("trying mls: {:?}", tag);
-                }
+                seq.next_element::<mlhs_tag>()?;
 
-                if tag != "mlhs" {
-                    return Err(de::Error::custom("didn't get right tag"));
-                }
-                #[cfg(debug_assertions)]
-                {
-                    eprintln!("got mls");
-                }
-
-                let mut elements = Vec::new();
-                let mut expr: Option<MLhsInner> = seq.next_element()?;
-                while expr.is_some() {
-                    elements.push(expr.expect("we checked it's some"));
-                    expr = seq.next_element()?;
+                let mut elements = Vec::with_capacity(seq.size_hint().unwrap_or_default());
+                while let Some(expr) = seq.next_element()? {
+                    elements.push(expr)
                 }
 
                 Ok(MLhs(elements))
