@@ -120,7 +120,7 @@ impl ParserState {
             return;
         }
 
-        if let Some(be) = self.breakable_entry_stack.last_mut() {
+        for be in self.breakable_entry_stack.iter_mut().rev() {
             be.push_line_number(line_number);
         }
 
@@ -268,7 +268,9 @@ impl ParserState {
     }
 
     pub fn emit_collapsing_newline(&mut self) {
-        self.push_token(LineToken::CollapsingNewLine);
+        if !self.last_token_is_a_hard_newline() {
+            self.push_token(LineToken::CollapsingNewLine);
+        }
     }
 
     pub fn emit_def(&mut self, def_name: String) {
@@ -285,18 +287,24 @@ impl ParserState {
     }
 
     pub fn emit_end(&mut self) {
-        if !self
-            .render_queue
-            .last()
-            .map(|x| x.is_newline())
-            .unwrap_or(false)
-        {
+        if !self.last_token_is_a_hard_newline() {
             self.emit_newline();
         }
         if self.at_start_of_line() {
             self.emit_indent();
         }
         self.push_token(LineToken::End);
+    }
+
+    fn last_token_is_a_hard_newline(&self) -> bool {
+        if let Some(be) = self.breakable_entry_stack.last() {
+            be.last_token_is_a_hard_newline()
+        } else {
+            self.render_queue
+                .last()
+                .map(|x| x.is_newline())
+                .unwrap_or(false)
+        }
     }
 
     pub fn shift_comments(&mut self) {

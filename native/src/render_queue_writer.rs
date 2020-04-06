@@ -22,7 +22,10 @@ impl RenderQueueWriter {
             Err(_) => true,
             Ok(x) => x != "1",
         };
-
+        #[cfg(debug_assertions)]
+        {
+            eprintln!("first tokens {:?}", self.tokens);
+        }
         if run {
             Self::render_as(
                 &mut accum,
