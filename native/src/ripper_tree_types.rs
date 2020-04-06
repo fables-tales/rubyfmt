@@ -175,14 +175,9 @@ impl<'de> Deserialize<'de> for MLhs {
             where
                 A: de::SeqAccess<'de>,
             {
-                seq.next_element::<mlhs_tag>()?;
-
-                let mut elements = Vec::with_capacity(seq.size_hint().unwrap_or_default());
-                while let Some(expr) = seq.next_element()? {
-                    elements.push(expr)
-                }
-
-                Ok(MLhs(elements))
+                seq.next_element::<mlhs_tag>()?
+                    .ok_or_else(|| de::Error::invalid_length(0, &self))?;
+                Deserialize::deserialize(de::value::SeqAccessDeserializer::new(&mut seq)).map(MLhs)
             }
         }
 
@@ -503,22 +498,12 @@ impl<'de> Deserialize<'de> for StringContent {
             where
                 A: de::SeqAccess<'de>,
             {
-                let tag: &str = match seq.next_element()? {
-                    Some(x) => x,
-                    None => return Err(de::Error::custom("got no tag")),
-                };
-                if tag != "string_content" {
-                    return Err(de::Error::custom("didn't get right tag"));
-                }
-
-                let mut elements = vec![];
-                let mut t_or_e: Option<StringContentPart> = seq.next_element()?;
-                while t_or_e.is_some() {
-                    elements.push(t_or_e.expect("we checked it's some"));
-                    t_or_e = seq.next_element()?;
-                }
-
-                Ok(StringContent(string_content_tag, elements))
+                let tag = seq
+                    .next_element()?
+                    .ok_or_else(|| de::Error::invalid_length(0, &self))?;
+                let elements =
+                    Deserialize::deserialize(de::value::SeqAccessDeserializer::new(&mut seq))?;
+                Ok(StringContent(tag, elements))
             }
         }
 
