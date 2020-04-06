@@ -426,67 +426,10 @@ def_tag!(heredoc_string_literal_tag, "heredoc_string_literal");
 pub struct HeredocStringLiteral(pub heredoc_string_literal_tag, pub (String, String));
 
 def_tag!(string_literal_tag, "string_literal");
-#[derive(Debug, Clone)]
-pub struct StringLiteral(
-    pub string_literal_tag,
-    pub Option<HeredocStringLiteral>,
-    pub StringContent,
-);
-
-impl<'de> Deserialize<'de> for StringLiteral {
-    fn deserialize<D>(deserializer: D) -> Result<StringLiteral, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        struct StringLiteralVisitor;
-
-        #[derive(RipperDeserialize, Debug, Clone)]
-        enum HeredocOrStringContent {
-            Heredoc(HeredocStringLiteral),
-            StringContent(StringContent),
-        };
-
-        impl<'de> de::Visitor<'de> for StringLiteralVisitor {
-            type Value = StringLiteral;
-
-            fn expecting(&self, f: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
-                write!(f, "[string_literal, [heredoc]?, string_content]")
-            }
-
-            fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
-            where
-                A: de::SeqAccess<'de>,
-            {
-                let tag: &str = match seq.next_element()? {
-                    Some(x) => x,
-                    None => return Err(de::Error::custom("got no tag")),
-                };
-
-                if tag != "string_literal" {
-                    return Err(de::Error::custom("didn't get right tag"));
-                }
-
-                let mut h_or_sc: Option<HeredocOrStringContent> = seq.next_element()?;
-                let h_or_sc =
-                    h_or_sc.expect("didn't get either string content or heredoc in string literal");
-
-                let sl = match h_or_sc {
-                    HeredocOrStringContent::Heredoc(hd) => {
-                        let sc: Option<StringContent> = seq.next_element()?;
-                        let sc = sc.expect("didn't get string content in heredoc");
-                        StringLiteral(string_literal_tag, Some(hd), sc)
-                    }
-                    HeredocOrStringContent::StringContent(sc) => {
-                        StringLiteral(string_literal_tag, None, sc)
-                    }
-                };
-
-                Ok(sl)
-            }
-        }
-
-        deserializer.deserialize_seq(StringLiteralVisitor)
-    }
+#[derive(RipperDeserialize, Debug, Clone)]
+pub enum StringLiteral {
+    Normal(string_literal_tag, StringContent),
+    Heredoc(string_literal_tag, HeredocStringLiteral, StringContent),
 }
 
 def_tag!(xstring_literal_tag, "xstring_literal");
@@ -501,13 +444,11 @@ impl DynaSymbol {
     pub fn to_string_literal(self) -> StringLiteral {
         match self.1 {
             StringContentOrStringContentParts::StringContent(sc) => {
-                StringLiteral(string_literal_tag, None, sc)
+                StringLiteral::Normal(string_literal_tag, sc)
             }
-            StringContentOrStringContentParts::StringContentParts(scp) => StringLiteral(
-                string_literal_tag,
-                None,
-                StringContent(string_content_tag, scp),
-            ),
+            StringContentOrStringContentParts::StringContentParts(scp) => {
+                StringLiteral::Normal(string_literal_tag, StringContent(string_content_tag, scp))
+            }
         }
     }
 }

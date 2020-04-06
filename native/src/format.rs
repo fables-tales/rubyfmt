@@ -1068,13 +1068,11 @@ pub fn format_heredoc_string_literal(
 }
 
 pub fn format_string_literal(ps: &mut ParserState, sl: StringLiteral) {
-    let parts = (sl.2).1;
-    // some(hd) if we have a heredoc
-    match sl.1 {
-        Some(hd) => {
-            format_heredoc_string_literal(ps, hd, parts);
+    match sl {
+        StringLiteral::Heredoc(_, hd, StringContent(_, parts)) => {
+            format_heredoc_string_literal(ps, hd, parts)
         }
-        None => {
+        StringLiteral::Normal(_, StringContent(_, parts)) => {
             if ps.at_start_of_line() {
                 ps.emit_indent();
             }
