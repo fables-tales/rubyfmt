@@ -1237,55 +1237,27 @@ pub enum UnaryType {
     BooleanNot,
 }
 
-def_tag!(unary_tag, "unary");
-#[derive(Debug, Clone)]
-pub struct Unary(pub unary_tag, pub UnaryType, pub Box<Expression>);
-
-impl<'de> Deserialize<'de> for Unary {
-    fn deserialize<D>(deserializer: D) -> Result<Unary, D::Error>
+impl<'de> Deserialize<'de> for UnaryType {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: Deserializer<'de>,
     {
-        struct UnaryVisitor;
-
-        impl<'de> de::Visitor<'de> for UnaryVisitor {
-            type Value = Unary;
-            fn expecting(&self, f: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
-                write!(f, "a unary operation")
-            }
-
-            fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
-            where
-                A: de::SeqAccess<'de>,
-            {
-                let tag: &str = seq
-                    .next_element()?
-                    .ok_or_else(|| de::Error::custom("didn't get array of expressions"))?;
-                if tag != "unary" {
-                    return Err(de::Error::custom("didn't get right tag"));
-                }
-
-                let unary_type_string: &str = seq
-                    .next_element()?
-                    .ok_or_else(|| de::Error::custom("didn't get array of expressions"))?;
-                let unary_type = match unary_type_string {
-                    "not" => UnaryType::Not,
-                    "-@" => UnaryType::Negative,
-                    "+@" => UnaryType::Positive,
-                    "!" => UnaryType::BooleanNot,
-                    _ => panic!("got unknown unary type {}", unary_type_string),
-                };
-
-                let expression: Expression = seq
-                    .next_element()?
-                    .ok_or_else(|| de::Error::custom("didn't get array of expressions"))?;
-                Ok(Unary(unary_tag, unary_type, Box::new(expression)))
-            }
+        match Deserialize::deserialize(deserializer)? {
+            "not" => Ok(Self::Not),
+            "-@" => Ok(Self::Negative),
+            "+@" => Ok(Self::Positive),
+            "!" => Ok(Self::BooleanNot),
+            s => Err(de::Error::invalid_value(
+                de::Unexpected::Str(s),
+                &"not, -@, +@, or !",
+            )),
         }
-
-        deserializer.deserialize_seq(UnaryVisitor)
     }
 }
+
+def_tag!(unary_tag, "unary");
+#[derive(Deserialize, Debug, Clone)]
+pub struct Unary(pub unary_tag, pub UnaryType, pub Box<Expression>);
 
 def_tag!(super_tag, "super");
 #[derive(Deserialize, Debug, Clone)]
