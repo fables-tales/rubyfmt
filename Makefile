@@ -1,4 +1,4 @@
-.PHONY: clean clippy lint
+.PHONY: clean clippy lint fmt
 
 debug: target/rubyfmt_debug.bundle
 
@@ -29,3 +29,6 @@ target/release/librubyfmt.a: native/src/*.rs native/Cargo.toml
 
 clean:
 	rm -rf target/
+
+fmt:
+	cd native && cargo fmt && git add -u ./

@@ -7,7 +7,9 @@ pub fn format_def(ps: &mut ParserState, def: Def) {
 
     let body = def.3;
     ps.on_line((def_expression.1).0);
-    ps.emit_indent();
+    if ps.at_start_of_line() {
+        ps.emit_indent();
+    }
     ps.emit_def(def_expression.0);
     format_paren_or_params(ps, def.2);
     ps.emit_newline();
@@ -20,7 +22,10 @@ pub fn format_def(ps: &mut ParserState, def: Def) {
         });
     });
 
-    ps.emit_end();
+    ps.with_start_of_line(true, |ps| {
+        ps.emit_end();
+        ps.wind_line_forward();
+    });
     ps.emit_newline();
 }
 
