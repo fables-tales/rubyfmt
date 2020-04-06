@@ -6,6 +6,8 @@ extern crate proc_macro;
 
 use proc_macro::TokenStream;
 use quote::quote;
+use syn::spanned::Spanned;
+use syn::Ident;
 
 #[proc_macro_derive(RipperDeserialize, attributes(tag))]
 pub fn derive_deserialize(input: TokenStream) -> TokenStream {
@@ -15,16 +17,22 @@ pub fn derive_deserialize(input: TokenStream) -> TokenStream {
     );
     let enum_name = item.ident;
 
-    let variant_exprs = item.variants.into_iter().map(|syn::Variant { ident, fields, .. }| {
-        assert_eq!(fields.len(), 1, "#[derive(RipperDeserialize)] requires \
-            all variants to have exactly one field");
+    let variant_exprs = item
+        .variants
+        .into_iter()
+        .map(|syn::Variant { ident, fields, .. }| {
+            let field_names = fields
+                .iter()
+                .enumerate()
+                .map(|(i, field)| Ident::new(&format!("field{}", i), field.ty.span()))
+                .collect::<Vec<_>>();
 
-        quote! {
-            if let Ok(x) =  serde::Deserialize::deserialize(deserializer).map(#enum_name::#ident) {
-                return Ok(x);
+            quote! {
+                if let Ok((#(#field_names),*)) = serde::Deserialize::deserialize(deserializer) {
+                    return Ok(#enum_name::#ident(#(#field_names),*));
+                }
             }
-        }
-    });
+        });
 
     let tokens = quote! {
         impl<'de> serde::Deserialize<'de> for #enum_name {
