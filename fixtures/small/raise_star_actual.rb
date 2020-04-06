@@ -1,0 +1,1 @@
+Proc.new { raise(*args) }

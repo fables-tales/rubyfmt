@@ -457,15 +457,19 @@ pub fn use_parens_for_method_call(
             method
         ),
     };
+    eprintln!("name: {:?}", name);
     if name.starts_with("attr_") && context == FormattingContext::ClassOrModule {
         return false;
     }
 
-    if name == "return" || name == "raise" {
-        return false;
+    if name == "return" || name == "raise" || name == "yield" || name == "break" {
+        match args {
+            ArgsAddStarOrExpressionList::ArgsAddStar(_) => return true,
+            _ => return false,
+        }
     }
 
-    if name == "super" || name == "yield" || name == "require" {
+    if name == "super" || name == "require" {
         return original_used_parens;
     }
 
@@ -515,6 +519,7 @@ pub fn format_method_call(ps: &mut ParserState, method_call: MethodCall) {
     let (chain, method, original_used_parens, args) =
         (method_call.1, method_call.2, method_call.3, method_call.4);
 
+    eprintln!("method call!!");
     let use_parens = use_parens_for_method_call(
         &method,
         &args,
@@ -2420,6 +2425,10 @@ pub fn format_yield0(ps: &mut ParserState) {
     }
 }
 
+pub fn format_yield(ps: &mut ParserState, y: Yield) {
+    format_method_call(ps, y.to_method_call())
+}
+
 pub fn format_return(ps: &mut ParserState, ret: Return) {
     let args = ret.1;
     let line = (ret.2).0;
@@ -2446,11 +2455,9 @@ pub fn format_return(ps: &mut ParserState, ret: Return) {
                                 ps.emit_space();
                                 format_array(ps, Array(array_tag, contents, linecol));
                             }
-                            x => {
-                                format_bare_return_args(
-                                    ps,
-                                    ArgsAddStarOrExpressionList::ExpressionList(vec![x]),
-                                );
+                            elem => {
+                                ps.emit_space();
+                                format_expression(ps, elem);
                             }
                         }
                     } else {
@@ -2520,7 +2527,7 @@ pub fn format_expression(ps: &mut ParserState, expression: Expression) {
         Expression::Hash(h) => format_hash(ps, h),
         Expression::RegexpLiteral(regexp) => format_regexp_literal(ps, regexp),
         Expression::Backref(backref) => format_backref(ps, backref),
-        Expression::Yield(y) => format_kw_with_args(ps, y.1, "yield".to_string(), y.2),
+        Expression::Yield(y) => format_yield(ps, y),
         Expression::Break(b) => format_kw_with_args(ps, b.1, "break".to_string(), b.2),
         Expression::MethodAddBlock(mab) => format_method_add_block(ps, mab),
         Expression::While(w) => format_while(ps, w.1, w.2, "while".to_string()),
@@ -2553,6 +2560,7 @@ pub fn format_expression(ps: &mut ParserState, expression: Expression) {
 
 pub fn format_program(ps: &mut ParserState, program: Program) {
     ps.on_line(1);
+    eprintln!("{:?}", program);
     for expression in program.1 {
         format_expression(ps, expression);
     }
