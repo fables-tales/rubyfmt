@@ -236,8 +236,13 @@ pub fn format_mlhs(ps: &mut ParserState, mlhs: MLhs) {
     ps.emit_open_paren();
 
     ps.with_start_of_line(false, |ps| {
-        let len = (mlhs.0).len();
-        for (idx, inner) in (mlhs.0).into_iter().enumerate() {
+        let mut first = true;
+        for inner in mlhs.0 {
+            if !first {
+                ps.emit_comma_space();
+            }
+            first = false;
+
             match inner {
                 MLhsInner::Field(f) => format_field(ps, f),
                 MLhsInner::Ident(i) => format_ident(ps, i),
@@ -246,9 +251,6 @@ pub fn format_mlhs(ps: &mut ParserState, mlhs: MLhs) {
                 }
                 MLhsInner::VarField(vf) => format_var_field(ps, vf),
                 MLhsInner::MLhs(mlhs) => format_mlhs(ps, *mlhs),
-            }
-            if idx != len - 1 {
-                ps.emit_comma_space();
             }
         }
     });
