@@ -1125,6 +1125,7 @@ pub struct SymbolLiteral(pub symbol_literal_tag, pub SymbolOrBare);
 pub enum SymbolOrBare {
     Ident(Ident),
     Op(Op),
+    Kw(Kw),
     Symbol(Symbol),
 }
 

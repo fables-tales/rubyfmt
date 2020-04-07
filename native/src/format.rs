@@ -713,6 +713,7 @@ pub fn format_symbol_literal(ps: &mut ParserState, symbol_literal: SymbolLiteral
 
     ps.with_start_of_line(false, |ps| match symbol_literal.1 {
         SymbolOrBare::Ident(ident) => format_ident(ps, ident),
+        SymbolOrBare::Kw(kw) => format_kw(ps, kw),
         SymbolOrBare::Op(op) => format_op(ps, op),
         SymbolOrBare::Symbol(symbol) => format_symbol(ps, symbol),
     });
