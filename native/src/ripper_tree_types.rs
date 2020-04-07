@@ -577,34 +577,15 @@ impl<'de> Deserialize<'de> for ArgsAddStar {
             where
                 A: de::SeqAccess<'de>,
             {
-                let tag: &str = match seq.next_element()? {
-                    Some(x) => x,
-                    None => return Err(de::Error::custom("got no tag")),
-                };
-
-                if tag != "args_add_star" {
-                    return Err(de::Error::custom("didn't get right tag"));
-                }
-
-                let left_expressions: ArgsAddStarOrExpressionList = seq
-                    .next_element()?
-                    .ok_or_else(|| de::Error::custom("didn't get array of expressions"))?;
-
-                let star_expression: Expression = seq
-                    .next_element()?
-                    .ok_or_else(|| de::Error::custom("didn't get single star expression"))?;
-
-                let mut right_expressions = vec![];
-                let mut next_expression: Option<Expression> = seq.next_element()?;
-                while next_expression.is_some() {
-                    right_expressions.push(next_expression.expect("we checked it's some"));
-                    next_expression = seq.next_element()?;
-                }
+                let (tag, left_expressions, star_expression) =
+                    Deserialize::deserialize(de::value::SeqAccessDeserializer::new(&mut seq))?;
+                let right_expressions =
+                    Deserialize::deserialize(de::value::SeqAccessDeserializer::new(&mut seq))?;
 
                 Ok(ArgsAddStar(
-                    args_add_star_tag,
-                    Box::new(left_expressions),
-                    Box::new(star_expression),
+                    tag,
+                    left_expressions,
+                    star_expression,
                     right_expressions,
                 ))
             }
