@@ -443,6 +443,7 @@ pub fn format_ensure(ps: &mut ParserState, ensure_part: Option<Ensure>) {
 }
 
 pub fn use_parens_for_method_call(
+    ps: &ParserState,
     method: &Expression,
     args: &ArgsAddStarOrExpressionList,
     original_used_parens: bool,
@@ -463,6 +464,9 @@ pub fn use_parens_for_method_call(
     }
 
     if name == "return" || name == "raise" || name == "yield" || name == "break" {
+        if ps.current_formatting_context() == FormattingContext::Binary {
+            return true;
+        }
         match args {
             ArgsAddStarOrExpressionList::ArgsAddStar(_) => return true,
             _ => return false,
@@ -521,6 +525,7 @@ pub fn format_method_call(ps: &mut ParserState, method_call: MethodCall) {
 
     eprintln!("method call!!");
     let use_parens = use_parens_for_method_call(
+        ps,
         &method,
         &args,
         original_used_parens,
@@ -708,6 +713,7 @@ pub fn format_symbol_literal(ps: &mut ParserState, symbol_literal: SymbolLiteral
 
     ps.with_start_of_line(false, |ps| match symbol_literal.1 {
         SymbolOrBare::Ident(ident) => format_ident(ps, ident),
+        SymbolOrBare::Kw(kw) => format_kw(ps, kw),
         SymbolOrBare::Op(op) => format_op(ps, op),
         SymbolOrBare::Symbol(symbol) => format_symbol(ps, symbol),
     });
@@ -1547,12 +1553,8 @@ pub fn format_defs(ps: &mut ParserState, defs: Defs) {
         }
 
         ps.emit_dot();
-        match ident_or_kw {
-            IdentOrKw::Ident(ident) => format_ident(ps, ident),
-            IdentOrKw::Kw(kw) => {
-                handle_string_and_linecol(ps, kw.1, kw.2);
-            }
-        }
+        let (ident, linecol) = ident_or_kw.to_def_parts();
+        handle_string_and_linecol(ps, ident, linecol);
         format_paren_or_params(ps, paren_or_params);
         ps.emit_newline();
     });
