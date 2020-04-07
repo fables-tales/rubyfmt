@@ -49,5 +49,6 @@ test_rspec_repo_incrementally() {
     )
 }
 
-test_rspec_repo rspec-core
-test_rspec_repo rspec-mocks
+#test_rspec_repo rspec-core
+#test_rspec_repo rspec-mocks
+test_rspec_repo_incrementally rspec-expectations

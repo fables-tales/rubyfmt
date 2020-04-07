@@ -443,6 +443,7 @@ pub fn format_ensure(ps: &mut ParserState, ensure_part: Option<Ensure>) {
 }
 
 pub fn use_parens_for_method_call(
+    ps: &ParserState,
     method: &Expression,
     args: &ArgsAddStarOrExpressionList,
     original_used_parens: bool,
@@ -463,6 +464,9 @@ pub fn use_parens_for_method_call(
     }
 
     if name == "return" || name == "raise" || name == "yield" || name == "break" {
+        if ps.current_formatting_context() == FormattingContext::Binary {
+            return true;
+        }
         match args {
             ArgsAddStarOrExpressionList::ArgsAddStar(_) => return true,
             _ => return false,
@@ -521,6 +525,7 @@ pub fn format_method_call(ps: &mut ParserState, method_call: MethodCall) {
 
     eprintln!("method call!!");
     let use_parens = use_parens_for_method_call(
+        ps,
         &method,
         &args,
         original_used_parens,
