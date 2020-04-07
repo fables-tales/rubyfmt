@@ -1,12 +1,6 @@
 #![deny(warnings, missing_copy_implementations)]
 #[macro_use]
 extern crate lazy_static;
-extern crate backtrace;
-extern crate regex;
-
-extern crate bytecount;
-extern crate serde;
-extern crate serde_json;
 
 use std::fs::File;
 use std::io::{self, BufReader, Write};
@@ -42,7 +36,7 @@ type Result<T = ()> = std::result::Result<T, Box<dyn std::error::Error>>;
 
 #[no_mangle]
 pub extern "C" fn format_sexp_tree_to_stdout(buf: RubyStringPointer, tree: VALUE) {
-    raise_if_error(raw_format_program(None, buf, tree))
+    raise_if_error(raw_format_program(None, buf, tree));
 }
 
 #[no_mangle]

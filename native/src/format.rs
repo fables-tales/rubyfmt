@@ -29,7 +29,7 @@ pub fn format_def(ps: &mut ParserState, def: Def) {
     ps.emit_newline();
 }
 
-pub fn inner_format_params(ps: &mut ParserState, params: Params) {
+pub fn inner_format_params(ps: &mut ParserState, params: Box<Params>) {
     let non_null_positions = params.non_null_positions();
     //def foo(a, b=nil, *args, d, e:, **kwargs, &blk)
     //        ^  ^___^  ^___^  ^  ^    ^_____^   ^
@@ -118,7 +118,7 @@ pub fn format_blockvar(ps: &mut ParserState, bv: BlockVar) {
     });
 }
 
-pub fn format_params(ps: &mut ParserState, params: Params, delims: BreakableDelims) {
+pub fn format_params(ps: &mut ParserState, params: Box<Params>, delims: BreakableDelims) {
     let have_any_params = params.non_null_positions().iter().any(|&x| x);
     if !have_any_params {
         return;
@@ -289,7 +289,7 @@ pub fn emit_params_separator(ps: &mut ParserState, index: usize, length: usize) 
     }
 }
 
-pub fn format_bodystmt(ps: &mut ParserState, bodystmt: BodyStmt) {
+pub fn format_bodystmt(ps: &mut ParserState, bodystmt: Box<BodyStmt>) {
     let expressions = bodystmt.1;
     let rescue_part = bodystmt.2;
     let else_part = bodystmt.3;
@@ -1868,7 +1868,7 @@ pub fn format_backref(ps: &mut ParserState, backref: Backref) {
     }
 }
 
-pub fn format_method_add_block(ps: &mut ParserState, mab: MethodAddBlock) {
+pub fn format_method_add_block(ps: &mut ParserState, mab: Box<MethodAddBlock>) {
     if ps.at_start_of_line() {
         ps.emit_indent();
     }
