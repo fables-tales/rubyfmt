@@ -1,7 +1,7 @@
-#![allow(warnings)]
+#![allow(clippy::wrong_self_convention)]
+
 use ripper_deserialize::RipperDeserialize;
 use serde::*;
-use serde_json::Value;
 
 use crate::types::LineNumber;
 
@@ -12,6 +12,7 @@ macro_rules! def_tag {
 
     ($tag_name:ident, $tag:expr) => {
         #[derive(Serialize, Debug, Clone)]
+        #[allow(non_camel_case_types)]
         pub struct $tag_name;
         impl<'de> Deserialize<'de> for $tag_name {
             fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
@@ -50,7 +51,7 @@ macro_rules! def_tag {
                     }
                 }
 
-                let tag = deserializer.deserialize_str(TagVisitor)?;
+                let _tag = deserializer.deserialize_str(TagVisitor)?;
                 Ok($tag_name)
             }
         }
@@ -76,7 +77,7 @@ pub enum Expression {
     Defs(Defs),
     VCall(VCall),
     Ident(Ident),
-    Params(Params),
+    Params(Box<Params>),
     MethodCall(MethodCall),
     Call(Call),
     DotCall(DotCall),
@@ -121,7 +122,7 @@ pub enum Expression {
     RegexpLiteral(RegexpLiteral),
     Backref(Backref),
     Yield(Yield),
-    MethodAddBlock(MethodAddBlock),
+    MethodAddBlock(Box<MethodAddBlock>),
     While(While),
     WhileMod(WhileMod),
     UntilMod(UntilMod),
@@ -534,14 +535,11 @@ pub enum ArgsAddStarOrExpressionList {
 
 impl ArgsAddStarOrExpressionList {
     pub fn is_empty(&self) -> bool {
-        match self {
-            ArgsAddStarOrExpressionList::ExpressionList(el) => {
-                if el.is_empty() {
-                    return true;
-                }
+        if let ArgsAddStarOrExpressionList::ExpressionList(el) = self {
+            if el.is_empty() {
+                return true;
             }
-            _ => {}
-        };
+        }
 
         false
     }
@@ -651,7 +649,7 @@ pub struct Def(
     pub def_tag,
     pub IdentOrOpOrKeywordOrConst,
     pub ParenOrParams,
-    pub BodyStmt,
+    pub Box<BodyStmt>,
 );
 
 #[derive(RipperDeserialize, Debug, Clone)]
@@ -667,15 +665,15 @@ impl IdentOrOpOrKeywordOrConst {
         match self {
             Self::Ident(Ident(_, string, linecol)) => (string, linecol),
             Self::Op((_, string, linecol)) => (string, linecol),
-            Self::Keyword((Kw(_, string, linecol))) => (string, linecol),
-            Self::Const((Const(_, string, linecol))) => (string, linecol),
+            Self::Keyword(Kw(_, string, linecol)) => (string, linecol),
+            Self::Const(Const(_, string, linecol)) => (string, linecol),
         }
     }
 }
 
 def_tag!(begin_tag, "begin");
 #[derive(Deserialize, Debug, Clone)]
-pub struct Begin(pub begin_tag, pub BodyStmt);
+pub struct Begin(pub begin_tag, pub Box<BodyStmt>);
 
 def_tag!(bodystmt_tag, "bodystmt");
 #[derive(Deserialize, Debug, Clone)]
@@ -757,12 +755,6 @@ def_tag!(const_tag, "@const");
 #[derive(Deserialize, Debug, Clone)]
 pub struct Const(pub const_tag, pub String, pub LineCol);
 
-impl Const {
-    pub fn line_number(&self) -> LineNumber {
-        (self.2).0
-    }
-}
-
 def_tag!(ident_tag, "@ident");
 #[derive(Deserialize, Debug, Clone)]
 pub struct Ident(pub ident_tag, pub String, pub LineCol);
@@ -771,15 +763,12 @@ impl Ident {
     pub fn new(s: String, l: LineCol) -> Self {
         Ident(ident_tag, s, l)
     }
-    pub fn line_number(&self) -> LineNumber {
-        (self.2).0
-    }
 }
 
 #[derive(RipperDeserialize, Debug, Clone)]
 pub enum ParenOrParams {
     Paren(Paren),
-    Params(Params),
+    Params(Box<Params>),
 }
 
 impl ParenOrParams {
@@ -799,7 +788,7 @@ pub enum IdentOrMLhs {
 
 def_tag!(paren_tag, "paren");
 #[derive(Deserialize, Debug, Clone)]
-pub struct Paren(pub paren_tag, pub Params);
+pub struct Paren(pub paren_tag, pub Box<Params>);
 
 impl Paren {
     fn is_present(&self) -> bool {
@@ -1281,12 +1270,16 @@ pub struct Class(
     pub class_tag,
     pub ConstPathRefOrConstRef,
     pub Option<Box<Expression>>,
-    pub BodyStmt,
+    pub Box<BodyStmt>,
 );
 
 def_tag!(module_tag, "module");
 #[derive(Deserialize, Debug, Clone)]
-pub struct Module(pub module_tag, pub ConstPathRefOrConstRef, pub BodyStmt);
+pub struct Module(
+    pub module_tag,
+    pub ConstPathRefOrConstRef,
+    pub Box<BodyStmt>,
+);
 
 def_tag!(defs_tag, "defs");
 #[derive(Deserialize, Debug, Clone)]
@@ -1296,7 +1289,7 @@ pub struct Defs(
     pub DotOrColon,
     pub IdentOrOpOrKeywordOrConst,
     pub ParenOrParams,
-    pub BodyStmt,
+    pub Box<BodyStmt>,
 );
 
 #[derive(RipperDeserialize, Debug, Clone)]
@@ -1374,7 +1367,7 @@ impl Yield {
             ParenOrArgsAddBlock::ArgsAddBlock(aab) => {
                 (false, normalize_args(ArgNode::ArgsAddBlock(aab)))
             }
-            Empty => (false, ArgsAddStarOrExpressionList::ExpressionList(vec![])),
+            _ => (false, ArgsAddStarOrExpressionList::ExpressionList(vec![])),
         };
         MethodCall::new(
             vec![],
@@ -1450,11 +1443,15 @@ pub enum BlockLocalVariables {
 
 def_tag!(block_var_tag, "block_var");
 #[derive(Deserialize, Debug, Clone)]
-pub struct BlockVar(block_var_tag, pub Option<Params>, pub BlockLocalVariables);
+pub struct BlockVar(
+    block_var_tag,
+    pub Option<Box<Params>>,
+    pub BlockLocalVariables,
+);
 
 def_tag!(do_block_tag, "do_block");
 #[derive(Deserialize, Debug, Clone)]
-pub struct DoBlock(do_block_tag, pub Option<BlockVar>, pub BodyStmt);
+pub struct DoBlock(do_block_tag, pub Option<BlockVar>, pub Box<BodyStmt>);
 
 def_tag!(brace_block_tag, "brace_block");
 #[derive(Deserialize, Debug, Clone)]
@@ -1506,14 +1503,14 @@ pub struct Retry(retry_tag);
 
 def_tag!(sclass_tag, "sclass");
 #[derive(Deserialize, Debug, Clone)]
-pub struct SClass(sclass_tag, pub Box<Expression>, pub BodyStmt);
+pub struct SClass(sclass_tag, pub Box<Expression>, pub Box<BodyStmt>);
 
 // some constructs were expressionlist in 2.5 and bodystmt in 2.6 so this
 // deals with both cases
 #[derive(RipperDeserialize, Debug, Clone)]
 pub enum ExpressionListOrBodyStmt {
     ExpresionList(Vec<Expression>),
-    BodyStmt(BodyStmt),
+    BodyStmt(Box<BodyStmt>),
 }
 
 def_tag!(stabby_lambda_tag, "lambda");
