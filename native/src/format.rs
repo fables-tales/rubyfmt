@@ -1553,12 +1553,8 @@ pub fn format_defs(ps: &mut ParserState, defs: Defs) {
         }
 
         ps.emit_dot();
-        match ident_or_kw {
-            IdentOrKw::Ident(ident) => format_ident(ps, ident),
-            IdentOrKw::Kw(kw) => {
-                handle_string_and_linecol(ps, kw.1, kw.2);
-            }
-        }
+        let i = ident_or_kw.to_def_parts();
+        handle_string_and_linecol(ps, i.0, i.1);
         format_paren_or_params(ps, paren_or_params);
         ps.emit_newline();
     });
