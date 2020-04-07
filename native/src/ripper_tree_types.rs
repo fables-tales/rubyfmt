@@ -474,42 +474,11 @@ pub enum StringContentPart {
 }
 
 def_tag!(string_content_tag, "string_content");
-#[derive(Debug, Clone)]
-pub struct StringContent(pub string_content_tag, pub Vec<StringContentPart>);
-
-impl<'de> Deserialize<'de> for StringContent {
-    fn deserialize<D>(deserializer: D) -> Result<StringContent, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        struct StringContentVisitor;
-
-        impl<'de> de::Visitor<'de> for StringContentVisitor {
-            type Value = StringContent;
-
-            fn expecting(&self, f: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
-                write!(
-                    f,
-                    "[string_content, (tstring_content, string_embexpr, string_dvar)*]"
-                )
-            }
-
-            fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
-            where
-                A: de::SeqAccess<'de>,
-            {
-                let tag = seq
-                    .next_element()?
-                    .ok_or_else(|| de::Error::invalid_length(0, &self))?;
-                let elements =
-                    Deserialize::deserialize(de::value::SeqAccessDeserializer::new(&mut seq))?;
-                Ok(StringContent(tag, elements))
-            }
-        }
-
-        deserializer.deserialize_seq(StringContentVisitor)
-    }
-}
+#[derive(Deserialize, Debug, Clone)]
+pub struct StringContent(
+    pub string_content_tag,
+    #[serde(flatten)] pub Vec<StringContentPart>,
+);
 
 def_tag!(array_tag, "array");
 #[derive(Deserialize, Debug, Clone)]
@@ -548,52 +517,13 @@ impl ArgsAddStarOrExpressionList {
 }
 
 def_tag!(args_add_star_tag, "args_add_star");
-#[derive(Debug, Clone)]
+#[derive(Deserialize, Debug, Clone)]
 pub struct ArgsAddStar(
     pub args_add_star_tag,
     pub Box<ArgsAddStarOrExpressionList>,
     pub Box<Expression>,
-    pub Vec<Expression>,
+    #[serde(flatten)] pub Vec<Expression>,
 );
-
-impl<'de> Deserialize<'de> for ArgsAddStar {
-    fn deserialize<D>(deserializer: D) -> Result<ArgsAddStar, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        struct ArgsAddStarVisitor;
-
-        impl<'de> de::Visitor<'de> for ArgsAddStarVisitor {
-            type Value = ArgsAddStar;
-
-            fn expecting(&self, f: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
-                write!(
-                    f,
-                    "[args_add_star, [expression*], expression, expression*] or [args_add_star, [args_add_star, ...], expression, expression*"
-                )
-            }
-
-            fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
-            where
-                A: de::SeqAccess<'de>,
-            {
-                let (tag, left_expressions, star_expression) =
-                    Deserialize::deserialize(de::value::SeqAccessDeserializer::new(&mut seq))?;
-                let right_expressions =
-                    Deserialize::deserialize(de::value::SeqAccessDeserializer::new(&mut seq))?;
-
-                Ok(ArgsAddStar(
-                    tag,
-                    left_expressions,
-                    star_expression,
-                    right_expressions,
-                ))
-            }
-        }
-
-        deserializer.deserialize_seq(ArgsAddStarVisitor)
-    }
-}
 
 def_tag!(alias_tag, "alias");
 #[derive(Deserialize, Debug, Clone)]
