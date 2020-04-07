@@ -668,24 +668,26 @@ def_tag!(def_tag, "def");
 #[derive(Deserialize, Debug, Clone)]
 pub struct Def(
     pub def_tag,
-    pub IdentOrOpOrKeyword,
+    pub IdentOrOpOrKeywordOrConst,
     pub ParenOrParams,
     pub BodyStmt,
 );
 
 #[derive(RipperDeserialize, Debug, Clone)]
-pub enum IdentOrOpOrKeyword {
+pub enum IdentOrOpOrKeywordOrConst {
     Ident(Ident),
     Op((op_tag, String, LineCol)),
     Keyword(Kw),
+    Const(Const),
 }
 
-impl IdentOrOpOrKeyword {
+impl IdentOrOpOrKeywordOrConst {
     pub fn to_def_parts(self) -> (String, LineCol) {
         match self {
             Self::Ident(Ident(_, string, linecol)) => (string, linecol),
             Self::Op((_, string, linecol)) => (string, linecol),
             Self::Keyword((Kw(_, string, linecol))) => (string, linecol),
+            Self::Const((Const(_, string, linecol))) => (string, linecol),
         }
     }
 }
@@ -1125,6 +1127,7 @@ pub struct SymbolLiteral(pub symbol_literal_tag, pub SymbolOrBare);
 pub enum SymbolOrBare {
     Ident(Ident),
     Op(Op),
+    Kw(Kw),
     Symbol(Symbol),
 }
 
@@ -1310,7 +1313,7 @@ pub struct Defs(
     pub defs_tag,
     pub Singleton,
     pub DotOrColon,
-    pub IdentOrKw,
+    pub IdentOrOpOrKeywordOrConst,
     pub ParenOrParams,
     pub BodyStmt,
 );

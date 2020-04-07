@@ -8,3 +8,4 @@ target/
 ext/Makefile
 .success
 .failure
+log

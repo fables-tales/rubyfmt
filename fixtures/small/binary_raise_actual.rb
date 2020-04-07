@@ -1,0 +1,1 @@
+a || raise(Omg)
