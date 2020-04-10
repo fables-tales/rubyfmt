@@ -1,5 +1,6 @@
 use crate::line_metadata::LineMetadata;
 use crate::line_tokens::*;
+use log::debug;
 use std::mem;
 
 #[derive(Debug)]
@@ -164,7 +165,7 @@ impl Intermediary {
             (_, _) => {
                 #[cfg(debug_assertions)]
                 {
-                    eprintln!("{:?}", _bl);
+                    debug!("{:?}", _bl);
                 }
                 self.tokens
                     .insert(self.index_of_last_hard_newline, LineToken::HardNewLine);

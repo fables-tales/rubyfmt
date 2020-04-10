@@ -1,6 +1,7 @@
 use crate::delimiters::BreakableDelims;
 use crate::parser_state::{FormattingContext, ParserState};
 use crate::ripper_tree_types::*;
+use log::debug;
 
 pub fn format_def(ps: &mut ParserState, def: Def) {
     let def_expression = (def.1).to_def_parts();
@@ -458,7 +459,7 @@ pub fn use_parens_for_method_call(
             method
         ),
     };
-    eprintln!("name: {:?}", name);
+    debug!("name: {:?}", name);
     if name.starts_with("attr_") && context == FormattingContext::ClassOrModule {
         return false;
     }
@@ -523,7 +524,7 @@ pub fn format_method_call(ps: &mut ParserState, method_call: MethodCall) {
     let (chain, method, original_used_parens, args) =
         (method_call.1, method_call.2, method_call.3, method_call.4);
 
-    eprintln!("method call!!");
+    debug!("method call!!");
     let use_parens = use_parens_for_method_call(
         ps,
         &method,
@@ -2562,7 +2563,7 @@ pub fn format_expression(ps: &mut ParserState, expression: Expression) {
 
 pub fn format_program(ps: &mut ParserState, program: Program) {
     ps.on_line(1);
-    eprintln!("{:?}", program);
+    debug!("{:?}", program);
     for expression in program.1 {
         format_expression(ps, expression);
     }

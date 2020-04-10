@@ -16,6 +16,7 @@ backtrace = "0.3.45"
 jemallocator = { version = "0.3.0", features = ["disable_initial_exec_tls"] }
 libc = "0.2.68"
 ripper_deserialize = { path = "ripper_deserialize" }
+log = "0.4.8"
 
 [lib]
 name = "rubyfmt"
