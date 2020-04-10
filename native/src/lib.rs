@@ -33,9 +33,9 @@ use ruby::VALUE;
 use ruby_string_pointer::RubyStringPointer;
 
 #[cfg(debug_assertions)]
-use simplelog::{CombinedLogger, Config, LevelFilter, TermLogger, TerminalMode};
-#[cfg(debug_assertions)]
 use log::debug;
+#[cfg(debug_assertions)]
+use simplelog::{CombinedLogger, Config, LevelFilter, TermLogger, TerminalMode};
 
 type Result<T = ()> = std::result::Result<T, Box<dyn std::error::Error>>;
 
@@ -44,10 +44,12 @@ pub extern "C" fn init_logger() {
     #[cfg(debug_assertions)]
     {
         CombinedLogger::init(vec![TermLogger::new(
-                LevelFilter::Debug,
-                Config::default(),
-                TerminalMode::Stderr,
-        ).unwrap()]).unwrap();
+            LevelFilter::Debug,
+            Config::default(),
+            TerminalMode::Stderr,
+        )
+        .unwrap()])
+        .unwrap();
         debug!("logger works");
     }
 }
