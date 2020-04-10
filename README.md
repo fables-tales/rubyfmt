@@ -8,7 +8,7 @@ No, but it's getting really close
 
 ## How do I use it
 
-First build by:
+Build it:
 1. Make sure you've got cargo installed
 2. Run `make all`
 3. Add `export RUBYFMT_USE_RELEASE=1` to your `~/.bashrc` or whichever file gets
@@ -26,7 +26,7 @@ Rubyfmt supports the following CLI invocations:
   to format many file and directory names in place
 
 
-If you're cool, you can set up an alias (if you are an RBenv user please read
+If you'd like, you can set up an alias (if you are an RBenv user please read
 the section below):
 
 ```
@@ -45,3 +45,10 @@ e.g.:
 ```bash
 ~/.rbenv/versions/<ruby-version>/bin/ruby --disable=all rubyfmt.rb
 ```
+
+## Useful environment variables:
+
+* `RUBYFMT_USE_RELEASE=1`: use release rust compile, much faster + no logging
+* `RUBYFMT_DISABLE_SZUSH=1`: disables the backend render queue writer,
+  very useful for debugging, literally useless if you're not developing rubyfmt
+  itself.

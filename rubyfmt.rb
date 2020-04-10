@@ -1,8 +1,7 @@
-$: << File.dirname(__FILE__) + "/target/"
 if ENV["RUBYFMT_USE_RELEASE"]
-  require "rubyfmt_release.so"
+  require_relative "target/rubyfmt_release.so"
 else
-  require "rubyfmt_debug.so"
+  require_relative "target/rubyfmt_debug.so"
 end
 require "ripper"
 

@@ -34,8 +34,23 @@ use ruby_string_pointer::RubyStringPointer;
 
 #[cfg(debug_assertions)]
 use simplelog::{CombinedLogger, Config, LevelFilter, TermLogger, TerminalMode};
+#[cfg(debug_assertions)]
+use log::debug;
 
 type Result<T = ()> = std::result::Result<T, Box<dyn std::error::Error>>;
+
+#[no_mangle]
+pub extern "C" fn init_logger() {
+    #[cfg(debug_assertions)]
+    {
+        CombinedLogger::init(vec![TermLogger::new(
+                LevelFilter::Debug,
+                Config::default(),
+                TerminalMode::Stderr,
+        ).unwrap()]).unwrap();
+        debug!("logger works");
+    }
+}
 
 #[no_mangle]
 pub extern "C" fn format_sexp_tree_to_stdout(buf: RubyStringPointer, tree: VALUE) {
@@ -73,15 +88,6 @@ fn raw_format_program(
 }
 
 fn toplevel_format_program<W: Write>(mut writer: W, buf: &[u8], tree: VALUE) -> Result {
-    #[cfg(debug_assertions)]
-    CombinedLogger::init(vec![TermLogger::new(
-        LevelFilter::Debug,
-        Config::default(),
-        TerminalMode::Stderr,
-    )
-    .unwrap()])
-    .unwrap();
-
     let line_metadata = FileComments::from_buf(BufReader::new(buf))
         .expect("failed to load line metadata from memory");
     let mut ps = ParserState::new(line_metadata);
