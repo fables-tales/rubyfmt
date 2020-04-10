@@ -1,5 +1,6 @@
 use crate::line_metadata::LineMetadata;
 use crate::line_tokens::*;
+#[cfg(debug_assertions)]
 use log::debug;
 use std::mem;
 

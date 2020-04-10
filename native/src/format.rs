@@ -499,10 +499,15 @@ pub fn format_dot_type(ps: &mut ParserState, dt: DotType) {
 pub fn format_dot(ps: &mut ParserState, dot: DotTypeOrOp) {
     match dot {
         DotTypeOrOp::DotType(dt) => format_dot_type(ps, dt),
-        DotTypeOrOp::Op(op) => match op.1 {
-            Operator::Dot(dot) => format_dot_type(ps, DotType::Dot(dot)),
-            Operator::LonelyOperator(dot) => format_dot_type(ps, DotType::LonelyOperator(dot)),
-            _ => panic!("should be impossible, dot position operator parsed as not a dot"),
+        DotTypeOrOp::Op(op) => {
+            let lc = op.2;
+            ps.on_line(lc.0);
+            match op.1 {
+                Operator::Dot(dot) => format_dot_type(ps, DotType::Dot(dot)),
+                Operator::LonelyOperator(dot) => format_dot_type(ps, DotType::LonelyOperator(dot)),
+                Operator::StringOperator(string) => ps.emit_ident(string),
+                x => panic!("should be impossible, dot position operator parsed as not a dot, {:?}", x),
+            }
         },
         DotTypeOrOp::Period(_) => {
             ps.emit_dot();

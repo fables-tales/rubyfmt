@@ -1,6 +1,7 @@
 use crate::breakable_entry::{BreakableEntry, ConvertType};
 use crate::intermediary::{BlanklineReason, Intermediary};
 use crate::line_tokens::*;
+#[cfg(debug_assertions)]
 use log::debug;
 use std::env;
 use std::io::{self, Write};

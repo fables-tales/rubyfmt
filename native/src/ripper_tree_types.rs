@@ -1,5 +1,6 @@
 #![allow(clippy::wrong_self_convention)]
 
+#[cfg(debug_assertions)]
 use log::debug;
 use ripper_deserialize::RipperDeserialize;
 use serde::*;

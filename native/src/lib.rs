@@ -2,6 +2,7 @@
 #[macro_use]
 extern crate lazy_static;
 
+
 use std::fs::File;
 use std::io::{self, BufReader, Write};
 use std::str;
@@ -31,6 +32,9 @@ use file_comments::FileComments;
 use parser_state::ParserState;
 use ruby::VALUE;
 use ruby_string_pointer::RubyStringPointer;
+
+#[cfg(debug_assertions)]
+use simplelog::{CombinedLogger, TermLogger, LevelFilter, Config, TerminalMode};
 
 type Result<T = ()> = std::result::Result<T, Box<dyn std::error::Error>>;
 
@@ -70,6 +74,13 @@ fn raw_format_program(
 }
 
 fn toplevel_format_program<W: Write>(mut writer: W, buf: &[u8], tree: VALUE) -> Result {
+    #[cfg(debug_assertions)]
+    CombinedLogger::init(
+        vec![
+        TermLogger::new(LevelFilter::Debug, Config::default(), TerminalMode::Stderr).unwrap(),
+        ]
+    ).unwrap();
+
     let line_metadata = FileComments::from_buf(BufReader::new(buf))
         .expect("failed to load line metadata from memory");
     let mut ps = ParserState::new(line_metadata);
