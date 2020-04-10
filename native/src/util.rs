@@ -1,9 +1,9 @@
 //#[macro_export]
-//macro_rules! debug_eprintln {
+//macro_rules! debug_debug {
 //    ($($arg:tt)*) => {
 //        #[cfg(debug_assertions)]
 //        {
-//            eprintln!($($arg)*);
+//            debug!($($arg)*);
 //        }
 //        format!($($arg)*);
 //    }

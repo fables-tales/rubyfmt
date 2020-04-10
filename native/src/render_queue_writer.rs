@@ -1,6 +1,8 @@
 use crate::breakable_entry::{BreakableEntry, ConvertType};
 use crate::intermediary::{BlanklineReason, Intermediary};
 use crate::line_tokens::*;
+#[cfg(debug_assertions)]
+use log::debug;
 use std::env;
 use std::io::{self, Write};
 
@@ -24,7 +26,7 @@ impl RenderQueueWriter {
         };
         #[cfg(debug_assertions)]
         {
-            eprintln!("first tokens {:?}", self.tokens);
+            debug!("first tokens {:?}", self.tokens);
         }
         if run {
             Self::render_as(
