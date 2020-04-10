@@ -506,9 +506,12 @@ pub fn format_dot(ps: &mut ParserState, dot: DotTypeOrOp) {
                 Operator::Dot(dot) => format_dot_type(ps, DotType::Dot(dot)),
                 Operator::LonelyOperator(dot) => format_dot_type(ps, DotType::LonelyOperator(dot)),
                 Operator::StringOperator(string) => ps.emit_ident(string),
-                x => panic!("should be impossible, dot position operator parsed as not a dot, {:?}", x),
+                x => panic!(
+                    "should be impossible, dot position operator parsed as not a dot, {:?}",
+                    x
+                ),
             }
-        },
+        }
         DotTypeOrOp::Period(_) => {
             ps.emit_dot();
         }
