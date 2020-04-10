@@ -38,14 +38,14 @@ test_fixtures_folder() {
     done
 
     ## Recurse over ruby version dirs
-    find "$current_dir" -type d -mindepth 1 -maxdepth 1 -name '2.' | while read -r dir
+    find "$current_dir" -type d -mindepth 1 -maxdepth 1 -name '*2.*' | while read -r dir
     do
         RUBY_VERSION=$(ruby -v | grep -o "[0-9].[0-9]" | head -n 1)
         base="$(basename "$dir")"
         fixture_version=${base#"ruby-"}
         if [[ $(echo "$fixture_version<=$RUBY_VERSION" | bc -l) -ne 0 ]]
         then
-            test_folder "$dir"
+            test_fixtures_folder "$dir"
         fi
     done
 }
