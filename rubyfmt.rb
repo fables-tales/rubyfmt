@@ -1,8 +1,7 @@
-$: << File.dirname(__FILE__) + "/target/"
 if ENV["RUBYFMT_USE_RELEASE"]
-  require "rubyfmt_release.so"
+  require_relative "target/rubyfmt_release.so"
 else
-  require "rubyfmt_debug.so"
+  require_relative "target/rubyfmt_debug.so"
 end
 require "ripper"
 
@@ -205,8 +204,37 @@ class Parser < Ripper::SexpBuilderPP
 end
 
 GC.disable
-file_data = File.read(ARGV[0])
-parsed = Parser.new(file_data).parse
-STDERR.puts(parsed.inspect) unless ENV["RUBYFMT_USE_RELEASE"]
-Rubyfmt::format_to_stdout(file_data, parsed)
-STDOUT.close
+
+def parse_file(fn)
+  file_data = File.read(fn)
+  [file_data, Parser.new(file_data).parse]
+end
+
+def rubyfmt_dir(dn)
+  files = Dir[File.join(dn, "**/*.rb")]
+  files.each do |glob_fn|
+    file_data, parsed = parse_file(glob_fn)
+    Rubyfmt::format_to_file(glob_fn, file_data, parsed)
+  end
+end
+
+first = ARGV.shift
+if first == "-i"
+  ARGV.each do |fn|
+    if File.directory?(fn)
+      rubyfmt_dir(fn)
+    else
+      file_data, parsed = parse_file(fn)
+      Rubyfmt::format_to_file(fn, file_data, parsed)
+    end
+  end
+elsif String === first
+  if File.directory?(first)
+    rubyfmt_dir(first)
+  else
+    file_data, parsed = parse_file(first)
+    STDERR.puts(parsed.inspect) unless ENV["RUBYFMT_USE_RELEASE"]
+    Rubyfmt::format_to_stdout(file_data, parsed)
+    STDOUT.close
+  end
+end

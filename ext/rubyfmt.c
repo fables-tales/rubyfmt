@@ -1,5 +1,6 @@
 #include "rubyfmt.h"
 
+extern void init_logger();
 extern void format_sexp_tree_to_stdout(ruby_string_pointer buf, VALUE tree);
 extern void format_sexp_tree_to_file(
     ruby_string_pointer filename,
@@ -55,6 +56,7 @@ int rubyfmt_rb_nil_p(VALUE v) {
 
 void Init_rubyfmt() {
     rubyfmt_rb_module_rubyfmt = rb_define_module("Rubyfmt");
+    init_logger();
     rb_define_module_function(
         rubyfmt_rb_module_rubyfmt,
         "format_to_stdout",

@@ -30,7 +30,7 @@ jobs:
       uses: actions/cache@v1
       with:
         path: ~/target
-        key: ${{ runner.os }}-cargo-build25-target-${{ hashFiles('**/Cargo.lock') }}
+        key: ${{ runner.os }}-cargo-build25-blow-1-target-${{ hashFiles('**/Cargo.lock') }}
 
     - run: cp -r ~/target $GITHUB_WORKSPACE/native/target || echo 'missing cache'
     - run: cd $GITHUB_WORKSPACE && make

@@ -11,8 +11,21 @@ f_md5() {
 }
 
 f_rubyfmt() {
-    ruby --disable=gems "${REPO_BASE}/rubyfmt.rb" "$1"
+    ruby --disable=gems "${REPO_BASE}/rubyfmt.rb" "$@"
 }
+
+
+diff_files() {
+    ACTUAL=$1
+    EXPECTED=$2
+
+    if ! diff -u "$ACTUAL" "$EXPECTED"
+    then
+        echo "got diff between formated formatted actual and expected"
+        exit 1
+    fi
+}
+
 
 test_fixtures_folder() {
     current_dir="$1"
@@ -22,19 +35,11 @@ test_fixtures_folder() {
 
       ## Test if the formatting works as expected
       time f_rubyfmt "$actual_file" > /tmp/out.rb
-      if ! diff -u /tmp/out.rb "$expected_file"
-      then
-        echo "got diff between formated formatted actual and expected"
-        exit 1
-      fi
+      diff_files /tmp/out.rb "$expected_file"
 
       ## Test if the formatting is idempotent
       time f_rubyfmt "$expected_file" > /tmp/out.rb
-      if ! diff -u /tmp/out.rb "$expected_file"
-      then
-        echo "got diff between formatted expected and expected (not idempotent)"
-        exit 1
-      fi
+      diff_files /tmp/out.rb "$expected_file"
     done
 
     ## Recurse over ruby version dirs
