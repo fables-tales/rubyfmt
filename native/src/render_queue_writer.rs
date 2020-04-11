@@ -77,6 +77,11 @@ impl RenderQueueWriter {
     }
 
     fn write_final_tokens<W: Write>(writer: &mut W, tokens: Vec<LineToken>) -> io::Result<()> {
+        #[cfg(debug_assertions)]
+        {
+            debug!("final tokens: {:?}", tokens);
+        }
+
         for line_token in tokens.into_iter() {
             let s = line_token.into_ruby();
             write!(writer, "{}", s)?

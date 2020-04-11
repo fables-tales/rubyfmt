@@ -268,7 +268,7 @@ impl ParserState {
     }
 
     pub fn emit_collapsing_newline(&mut self) {
-        if !self.last_token_is_a_hard_newline() {
+        if !self.last_token_is_a_newline() {
             self.push_token(LineToken::CollapsingNewLine);
         }
     }
@@ -287,7 +287,7 @@ impl ParserState {
     }
 
     pub fn emit_end(&mut self) {
-        if !self.last_token_is_a_hard_newline() {
+        if !self.last_token_is_a_newline() {
             self.emit_newline();
         }
         if self.at_start_of_line() {
@@ -296,9 +296,9 @@ impl ParserState {
         self.push_token(LineToken::End);
     }
 
-    fn last_token_is_a_hard_newline(&self) -> bool {
+    fn last_token_is_a_newline(&self) -> bool {
         if let Some(be) = self.breakable_entry_stack.last() {
-            be.last_token_is_a_hard_newline()
+            be.last_token_is_a_newline()
         } else {
             self.render_queue
                 .last()

@@ -100,7 +100,7 @@ impl Intermediary {
                 }
             }
             LineToken::DirectPart { part } => {
-                if part == "require" {
+                if part == "require" && self.tokens.last().map(|t| t.is_indent()).unwrap_or(false) {
                     self.current_line_metadata.set_has_require();
                 }
             }
