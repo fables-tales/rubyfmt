@@ -13,17 +13,6 @@ env:
 jobs:
   CI_27:
     runs-on: ubuntu-latest
-    services:
-        postgres:
-            image: postgres:11.5
-            ports:
-                - 5432:5432
-            options: >-
-                --health-cmd pg_isready
-                --health-interval 10s
-                --health-timeout 5s
-                --health-retries 5
-
     steps:
     - uses: actions/checkout@v2
     - uses: actions-rs/cargo@v1
@@ -35,7 +24,7 @@ jobs:
       uses: actions/cache@v1
       with:
         path: ~/gems-cache
-        key: ${{ runner.os }}-gems-27-blow-2-${{ hashFiles('./script/tests/test_thoughtbot_rails_apps.sh') }}
+        key: ${{ runner.os }}-gems-27-blow-3-${{ hashFiles('./script/tests/test_thoughtbot_rails_apps.sh') }}
 
     - name: Cache cargo registry
       uses: actions/cache@v1
@@ -51,14 +40,10 @@ jobs:
       uses: actions/cache@v1
       with:
         path: ~/target
-        key: ${{ runner.os }}-cargo-build27-blow-2-target-${{ hashFiles('**/Cargo.lock') }}
+        key: ${{ runner.os }}-cargo-build27-blow-3-target-${{ hashFiles('**/Cargo.lock') }}
 
     - run: cp -r ~/target $GITHUB_WORKSPACE/native/target || echo 'missing cache'
     - run: cp -r ~/gems-cache $BUNDLE_PATH || mkdir -p $BUNDLE_PATH
-    - run: cd $GITHUB_WORKSPACE && make
-    - run: createuser -U postgres -h 127.0.0.1 --superuser --createdb --createrole runner
-    - run: cd $GITHUB_WORKSPACE && make lint
-    - run: ls $GEM_PATH
-    - run: cd $GITHUB_WORKSPACE && export PATH=$PATH:$GEM_PATH/bin && gem install bundler && ./script/test.sh
+    - run: cd $GITHUB_WORKSPACE && export PATH=$PATH:$GEM_PATH/bin && gem install bundler && ./script/ci
     - run: cp -r $GITHUB_WORKSPACE/native/target ~/target
     - run: cp -r $BUNDLE_PATH ~/gems-cache
