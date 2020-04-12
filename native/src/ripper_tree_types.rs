@@ -1409,6 +1409,8 @@ pub enum CallType {
     Call(Call),
     CommandCall(CommandCall),
     Command(Command),
+    Super(Super),
+    ZSuper(ZSuper),
 }
 
 impl CallType {
@@ -1418,6 +1420,16 @@ impl CallType {
             Self::Call(call) => call.to_method_call(),
             Self::CommandCall(cc) => cc.to_method_call(),
             Self::Command(command) => command.to_method_call(),
+            Self::Super(s) => s.to_method_call(),
+            Self::ZSuper(_) => MethodCall::new(
+                vec![],
+                Box::new(Expression::Ident(Ident::new(
+                    "super".to_string(),
+                    LineCol(0, 0),
+                ))),
+                false,
+                ArgsAddStarOrExpressionList::ExpressionList(vec![]),
+            ),
         }
     }
 }
