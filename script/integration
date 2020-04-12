@@ -1,0 +1,5 @@
+#!/bin/bash
+rm -rf tmp/
+export RUBYFMT_USE_RELEASE=1
+./script/ci
+./script/tests/test_thoughtbot_rails_apps.sh
