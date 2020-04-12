@@ -54,6 +54,13 @@ impl LineToken {
         self
     }
 
+    pub fn is_indent(&self) -> bool {
+        match self {
+            Self::Indent { .. } => true,
+            _ => false,
+        }
+    }
+
     pub fn is_newline(&self) -> bool {
         match self {
             Self::HardNewLine => true,

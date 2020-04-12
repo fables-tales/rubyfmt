@@ -63,9 +63,9 @@ impl BreakableEntry {
         self.line_numbers.len() > 1
     }
 
-    pub fn last_token_is_a_hard_newline(&self) -> bool {
+    pub fn last_token_is_a_newline(&self) -> bool {
         match self.tokens.last() {
-            Some(LineToken::HardNewLine) => true,
+            Some(x) => x.is_newline(),
             _ => false,
         }
     }
