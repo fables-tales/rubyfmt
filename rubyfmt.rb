@@ -210,24 +210,29 @@ def parse_file(fn)
   [file_data, Parser.new(file_data).parse]
 end
 
+RUBY_PATHS_PATTERN = "**/{*.rb,*.builder,*.jbuilder,*.ru,*.rake,*.gemspec,Gemfile,Capfile,capfile,Guardfile,.Guardfile,rakefile,Rakefile,Rake,.irbrc,irb.rc,_irbrc,$irbrc,pryrc,.pryrc,.simplecov}"
 def rubyfmt_dir(dn)
-  files = Dir[File.join(dn, "**/*.rb")]
-  files.each do |glob_fn|
-    file_data, parsed = parse_file(glob_fn)
-    Rubyfmt::format_to_file(glob_fn, file_data, parsed)
+  Dir.glob(File.join(dn, RUBY_PATHS_PATTERN), File::FNM_DOTMATCH).each do |glob_fn|
+    rubyfmt_file(glob_fn)
   end
 end
 
+def rubyfmt_file(fn)
+  file_data, parsed = parse_file(fn)
+  Rubyfmt::format_to_file(fn, file_data, parsed)
+end
+
 first = ARGV.shift
+
 if first == "-i"
   ARGV.each do |fn|
     if File.directory?(fn)
       rubyfmt_dir(fn)
     else
-      file_data, parsed = parse_file(fn)
-      Rubyfmt::format_to_file(fn, file_data, parsed)
+      rubyfmt_file(fn)
     end
   end
+
 elsif String === first
   if File.directory?(first)
     rubyfmt_dir(first)
