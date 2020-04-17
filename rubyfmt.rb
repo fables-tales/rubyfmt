@@ -205,20 +205,37 @@ end
 
 GC.disable
 
-def parse_file(fn)
-  file_data = File.read(fn)
-  [file_data, Parser.new(file_data).parse]
+def parse_file(file_data)
+  Parser.new(file_data).parse
 end
 
-RUBY_PATHS_PATTERN = "**/{*.rb,*.builder,*.jbuilder,*.ru,*.rake,*.gemspec,Gemfile,Capfile,capfile,Guardfile,.Guardfile,rakefile,Rakefile,Rake,.irbrc,irb.rc,_irbrc,$irbrc,pryrc,.pryrc,.simplecov}"
-def rubyfmt_dir(dn)
-  Dir.glob(File.join(dn, RUBY_PATHS_PATTERN), File::FNM_DOTMATCH).each do |glob_fn|
-    rubyfmt_file(glob_fn)
+def normalize_dir(path)
+  path.end_with?('/') ? path : "#{path}/"
+end
+
+RUBY_PATHS_PATTERN = "**/{Gemfile,Capfile,capfile,Guardfile,.Guardfile,rakefile,Rakefile,Rake,.irbrc,irb.rc,_irbrc,$irbrc,pryrc,.pryrc,.simplecov,*.rb,*.builder,*.jbuilder,*.ru,*.rake,*.gemspec}"
+SHEBANG_PATTERN = /\A#!.*\bruby\b/
+def rubyfmt_dir(path)
+  Dir.new(path).each do |child|
+    next if child == '.' || child == '..'
+
+    child = path + child
+    if File.directory?(child)
+      rubyfmt_dir("#{child}/")
+    elsif File.fnmatch?(RUBY_PATHS_PATTERN, child, File::FNM_EXTGLOB | File::FNM_DOTMATCH)
+      rubyfmt_file(child)
+    elsif File.extname(child).empty?
+      file_data = File.read(child)
+      if file_data.match?(SHEBANG_PATTERN)
+        rubyfmt_file(child, file_data)
+      end
+    end
   end
+rescue Errno::ENOENT, Errno::EACCES, Errno::ENOTDIR, Errno::ELOOP, Errno::ENAMETOOLONG
 end
 
-def rubyfmt_file(fn)
-  file_data, parsed = parse_file(fn)
+def rubyfmt_file(fn, file_data = File.read(fn))
+  parsed = parse_file(file_data)
   Rubyfmt::format_to_file(fn, file_data, parsed)
 end
 
@@ -227,7 +244,7 @@ first = ARGV.shift
 if first == "-i"
   ARGV.each do |fn|
     if File.directory?(fn)
-      rubyfmt_dir(fn)
+      rubyfmt_dir(normalize_dir(fn))
     else
       rubyfmt_file(fn)
     end
@@ -235,9 +252,10 @@ if first == "-i"
 
 elsif String === first
   if File.directory?(first)
-    rubyfmt_dir(first)
+    rubyfmt_dir(normalize_dir(first))
   else
-    file_data, parsed = parse_file(first)
+    file_data = File.read(first)
+    parsed = parse_file(file_data)
     STDERR.puts(parsed.inspect) unless ENV["RUBYFMT_USE_RELEASE"]
     Rubyfmt::format_to_stdout(file_data, parsed)
     STDOUT.close

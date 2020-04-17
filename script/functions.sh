@@ -22,6 +22,7 @@ diff_files() {
     if ! diff -u "$ACTUAL" "$EXPECTED"
     then
         echo "got diff between formated formatted actual and expected"
+        echo "files are here: $PWD"
         exit 1
     fi
 }
