@@ -61,6 +61,13 @@ impl LineToken {
         }
     }
 
+    pub fn is_comment(&self) -> bool {
+        match self {
+            Self::Comment { .. } => true,
+            _ => false,
+        }
+    }
+
     pub fn is_newline(&self) -> bool {
         match self {
             Self::HardNewLine => true,

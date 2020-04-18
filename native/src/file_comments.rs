@@ -9,6 +9,7 @@ use regex::Regex;
 #[derive(Debug)]
 pub struct FileComments {
     comment_blocks: BTreeMap<LineNumber, String>,
+    contiguous_starting_indices: Vec<LineNumber>,
     lowest_key: LineNumber,
 }
 
@@ -16,6 +17,7 @@ impl FileComments {
     pub fn new() -> Self {
         FileComments {
             comment_blocks: BTreeMap::new(),
+            contiguous_starting_indices: vec![],
             lowest_key: 0,
         }
     }
@@ -32,10 +34,35 @@ impl FileComments {
                 if res.lowest_key == 0 {
                     res.lowest_key = line_number;
                 }
+
+                let last_line = res.contiguous_starting_indices.last();
+
+                let should_push = line_number == 1
+                    || (last_line.is_some() && last_line.unwrap() == &(line_number - 1));
+                if should_push {
+                    res.contiguous_starting_indices.push(line_number);
+                }
                 res.comment_blocks.insert(line_number, l);
             }
         }
         Ok(res)
+    }
+
+    pub fn has_start_of_file_sled(&self) -> bool {
+        self.lowest_key == 1
+    }
+
+    pub fn take_start_of_file_sled(&mut self) -> Option<CommentBlock> {
+        if !self.has_start_of_file_sled() {
+            return None;
+        }
+
+        let mut sled = Vec::with_capacity(self.contiguous_starting_indices.len());
+        for key in self.contiguous_starting_indices.iter() {
+            sled.push(self.comment_blocks.remove(key).expect("we tracked it"));
+        }
+
+        Some(CommentBlock::new(sled))
     }
 
     pub fn extract_comments_to_line(&mut self, line_number: LineNumber) -> Option<CommentBlock> {
