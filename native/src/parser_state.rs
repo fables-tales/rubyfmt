@@ -8,6 +8,7 @@ use crate::render_queue_writer::RenderQueueWriter;
 use crate::ripper_tree_types::StringContentPart;
 use crate::types::{ColNumber, LineNumber};
 use bytecount;
+use log::debug;
 use std::io::{self, Cursor, Write};
 use std::mem;
 use std::str;
@@ -125,6 +126,10 @@ impl ParserState {
         }
 
         let comments = self.comments_hash.extract_comments_to_line(line_number);
+        self.push_comments(line_number, comments);
+    }
+
+    fn push_comments(&mut self, line_number: LineNumber, comments: Option<CommentBlock>) {
         match comments {
             None => {}
             Some(comments) => {
@@ -329,7 +334,9 @@ impl ParserState {
     }
 
     pub fn index_of_prev_hard_newline(&self) -> Option<usize> {
-        self.render_queue.iter().rposition(|v| v.is_newline())
+        self.render_queue
+            .iter()
+            .rposition(|v| v.is_newline() || v.is_comment())
     }
 
     pub fn emit_else(&mut self) {
@@ -604,5 +611,18 @@ impl ParserState {
 
     pub fn wind_n_lines(&mut self, n: usize) {
         self.on_line(self.current_orig_line_number + (n as u64));
+    }
+
+    pub fn flush_start_of_file_comments(&mut self) {
+        match self.comments_hash.take_start_of_file_sled() {
+            None => {
+                self.on_line(1);
+            }
+            Some(comments) => {
+                self.push_comments(comments.len() as LineNumber, Some(comments));
+                self.shift_comments();
+                debug!("rq: {:?}", self.render_queue);
+            }
+        }
     }
 }

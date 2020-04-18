@@ -2570,7 +2570,7 @@ pub fn format_expression(ps: &mut ParserState, expression: Expression) {
 }
 
 pub fn format_program(ps: &mut ParserState, program: Program) {
-    ps.on_line(1);
+    ps.flush_start_of_file_comments();
     debug!("{:?}", program);
     for expression in program.1 {
         format_expression(ps, expression);
