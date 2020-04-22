@@ -1,5 +1,6 @@
 use crate::breakable_entry::{BreakableEntry, ConvertType};
 use crate::intermediary::{BlanklineReason, Intermediary};
+use crate::line_token_collection::LineTokenCollection;
 use crate::line_tokens::*;
 #[cfg(debug_assertions)]
 use log::debug;
@@ -13,8 +14,10 @@ pub struct RenderQueueWriter {
 }
 
 impl RenderQueueWriter {
-    pub fn new(tokens: Vec<LineToken>) -> Self {
-        RenderQueueWriter { tokens }
+    pub fn new(tokens: LineTokenCollection) -> Self {
+        RenderQueueWriter {
+            tokens: tokens.into_line_tokens(),
+        }
     }
 
     pub fn write<W: Write>(self, writer: &mut W) -> io::Result<()> {

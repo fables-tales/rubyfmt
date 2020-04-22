@@ -3,8 +3,10 @@ use crate::comment_block::CommentBlock;
 use crate::delimiters::BreakableDelims;
 use crate::file_comments::FileComments;
 use crate::format::{format_inner_string, StringType};
+use crate::line_token_collection::LineTokenCollection;
 use crate::line_tokens::*;
 use crate::render_queue_writer::RenderQueueWriter;
+use crate::render_target_stack::RenderTargetStack;
 use crate::ripper_tree_types::StringContentPart;
 use crate::types::{ColNumber, LineNumber};
 use bytecount;
@@ -12,27 +14,6 @@ use log::debug;
 use std::io::{self, Cursor, Write};
 use std::mem;
 use std::str;
-
-fn insert_at<T>(idx: usize, target: &mut Vec<T>, input: &mut Vec<T>) {
-    let drain = input.drain(..);
-    let mut idx = idx;
-    for item in drain {
-        target.insert(idx, item);
-        idx += 1;
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn test_insert_at() {
-        let mut a1 = vec![3, 2, 1];
-        let mut a2 = a1.clone();
-        a1.insert(1, 4);
-        super::insert_at(1, &mut a2, &mut vec![4]);
-        assert_eq!(a1, a2);
-    }
-}
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum FormattingContext {
@@ -88,12 +69,12 @@ pub struct ParserState {
     depth_stack: Vec<IndentDepth>,
     start_of_line: Vec<bool>,
     surpress_comments_stack: Vec<bool>,
-    render_queue: Vec<LineToken>,
+    target_stack: RenderTargetStack,
+    breakable_entry_stack: Vec<BreakableEntry>,
     current_orig_line_number: LineNumber,
     comments_hash: FileComments,
     heredoc_strings: Vec<HeredocString>,
     comments_to_insert: CommentBlock,
-    breakable_entry_stack: Vec<BreakableEntry>,
     formatting_context: Vec<FormattingContext>,
     absorbing_indents: i32,
     insert_user_newlines: bool,
@@ -105,11 +86,11 @@ impl ParserState {
             depth_stack: vec![IndentDepth::new()],
             start_of_line: vec![true],
             surpress_comments_stack: vec![false],
-            render_queue: vec![],
             current_orig_line_number: 0,
             comments_hash: fc,
             heredoc_strings: vec![],
             comments_to_insert: CommentBlock::new(vec![]),
+            target_stack: RenderTargetStack::new(),
             breakable_entry_stack: vec![],
             formatting_context: vec![FormattingContext::Main],
             absorbing_indents: 0,
@@ -117,8 +98,8 @@ impl ParserState {
         }
     }
 
-    fn consume_to_render_queue(self) -> Vec<LineToken> {
-        self.render_queue
+    fn consume_to_render_queue(self) -> LineTokenCollection {
+        self.target_stack.into_render_queue()
     }
 
     pub fn last_breakable_is_multiline(&self) -> bool {
@@ -158,20 +139,10 @@ impl ParserState {
         }
 
         if line_number - self.current_orig_line_number >= 2 && self.insert_user_newlines {
-            self.insert_extra_newline_at_last_newline();
+            self.target_stack.insert_extra_newline_at_last_newline();
         }
 
         self.current_orig_line_number = line_number;
-    }
-
-    fn insert_extra_newline_at_last_newline(&mut self) {
-        let idx = self.index_of_prev_hard_newline();
-        let insert_idx = match idx {
-            Some(idx) => idx + 1,
-            None => 0,
-        };
-
-        self.render_queue.insert(insert_idx, LineToken::HardNewLine);
     }
 
     pub fn insert_comment_collection(&mut self, comments: CommentBlock) {
@@ -313,38 +284,17 @@ impl ParserState {
         if let Some(be) = self.breakable_entry_stack.last() {
             be.last_token_is_a_newline()
         } else {
-            self.render_queue
-                .last()
-                .map(|x| x.is_newline())
-                .unwrap_or(false)
+            self.target_stack.last_token_is_a_newline()
         }
     }
 
     pub fn shift_comments(&mut self) {
-        let idx_of_prev_hard_newline = self.index_of_prev_hard_newline();
-
         if self.comments_to_insert.has_comments() {
-            let insert_index = match idx_of_prev_hard_newline {
-                Some(idx) => idx + 1,
-                None => 0,
-            };
-
             let mut new_comments = CommentBlock::new(vec![]);
             mem::swap(&mut new_comments, &mut self.comments_to_insert);
-
-            insert_at(
-                insert_index,
-                &mut self.render_queue,
-                &mut new_comments.into_line_tokens(),
-            );
-            self.comments_to_insert = CommentBlock::new(vec![]);
+            self.target_stack
+                .insert_comments_at_last_hard_newline(new_comments);
         }
-    }
-
-    pub fn index_of_prev_hard_newline(&self) -> Option<usize> {
-        self.render_queue
-            .iter()
-            .rposition(|v| v.is_newline() || v.is_comment())
     }
 
     pub fn emit_else(&mut self) {
@@ -512,10 +462,7 @@ impl ParserState {
     pub fn render_heredocs(&mut self, skip: bool) {
         while !self.heredoc_strings.is_empty() {
             let mut next_heredoc = self.heredoc_strings.pop().expect("we checked it's there");
-            let want_newline = match self.render_queue.last() {
-                Some(x) => !x.is_newline(),
-                None => true,
-            };
+            let want_newline = !self.target_stack.last_token_is_a_newline();
             if want_newline {
                 self.push_token(LineToken::HardNewLine);
             }
@@ -600,7 +547,7 @@ impl ParserState {
 
     pub fn push_token(&mut self, t: LineToken) {
         if self.breakable_entry_stack.is_empty() {
-            self.render_queue.push(t);
+            self.target_stack.push_token(t);
         } else {
             self.breakable_entry_stack
                 .last_mut()
@@ -629,7 +576,7 @@ impl ParserState {
             Some(comments) => {
                 self.push_comments(comments.len() as LineNumber, Some(comments));
                 self.shift_comments();
-                debug!("rq: {:?}", self.render_queue);
+                debug!("rq: {:?}", self.target_stack.render_queue());
             }
         }
     }

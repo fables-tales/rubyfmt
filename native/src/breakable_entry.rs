@@ -1,4 +1,5 @@
 use crate::delimiters::BreakableDelims;
+use crate::line_token_collection::LineTokenCollection;
 use crate::line_tokens::LineToken;
 use crate::types::{ColNumber, LineNumber};
 use std::collections::HashSet;
@@ -11,7 +12,7 @@ pub enum ConvertType {
 #[derive(Debug, Clone)]
 pub struct BreakableEntry {
     spaces: ColNumber,
-    tokens: Vec<LineToken>,
+    tokens: LineTokenCollection,
     line_numbers: HashSet<LineNumber>,
     delims: BreakableDelims,
 }
@@ -20,7 +21,7 @@ impl BreakableEntry {
     pub fn new(spaces: ColNumber, delims: BreakableDelims) -> Self {
         BreakableEntry {
             spaces,
-            tokens: vec![],
+            tokens: LineTokenCollection::new(),
             line_numbers: HashSet::new(),
             delims,
         }
@@ -31,7 +32,7 @@ impl BreakableEntry {
     }
 
     pub fn into_tokens(self, ct: ConvertType) -> Vec<LineToken> {
-        let mut tokens = self.tokens;
+        let mut tokens = self.tokens.into_line_tokens();
         match ct {
             ConvertType::MultiLine => {
                 tokens = tokens.into_iter().map(|t| t.into_multi_line()).collect();
@@ -48,11 +49,7 @@ impl BreakableEntry {
     }
 
     pub fn single_line_string_length(&self) -> usize {
-        self.tokens
-            .iter()
-            .map(|tok| tok.clone().into_single_line())
-            .map(|tok| tok.into_ruby().len())
-            .sum()
+        self.tokens.single_line_string_length()
     }
 
     pub fn push_line_number(&mut self, number: LineNumber) {
@@ -64,9 +61,6 @@ impl BreakableEntry {
     }
 
     pub fn last_token_is_a_newline(&self) -> bool {
-        match self.tokens.last() {
-            Some(x) => x.is_newline(),
-            _ => false,
-        }
+        self.tokens.last_token_is_a_newline()
     }
 }
