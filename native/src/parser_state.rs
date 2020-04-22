@@ -22,6 +22,18 @@ fn insert_at<T>(idx: usize, target: &mut Vec<T>, input: &mut Vec<T>) {
     }
 }
 
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn test_insert_at() {
+        let mut a1 = vec![3, 2, 1];
+        let mut a2 = a1.clone();
+        a1.insert(1, 4);
+        super::insert_at(1, &mut a2, &mut vec![4]);
+        assert_eq!(a1, a2);
+    }
+}
+
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum FormattingContext {
     Main,
@@ -159,11 +171,7 @@ impl ParserState {
             None => 0,
         };
 
-        insert_at(
-            insert_idx,
-            &mut self.render_queue,
-            &mut vec![LineToken::HardNewLine],
-        );
+        self.render_queue.insert(insert_idx, LineToken::HardNewLine);
     }
 
     pub fn insert_comment_collection(&mut self, comments: CommentBlock) {

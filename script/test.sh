@@ -5,6 +5,9 @@ make
 make release
 
 export RUBYFMT_USE_RELEASE=1
+
+cd native && cargo test && cd ..
+
 ./script/tests/test_string_literals.sh
 ./script/tests/test_methods.sh
 ./script/tests/test_fixtures.sh
