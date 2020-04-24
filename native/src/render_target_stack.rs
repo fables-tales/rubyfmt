@@ -2,11 +2,11 @@ use crate::breakable_entry::BreakableEntry;
 use crate::comment_block::CommentBlock;
 use crate::line_token_collection::LineTokenCollection;
 use crate::line_tokens::LineToken;
+use crate::types::LineNumber;
 
 #[derive(Debug)]
 pub enum RenderTarget {
     BaseQueue(LineTokenCollection),
-    #[allow(dead_code)]
     BreakableEntry(BreakableEntry),
 }
 
@@ -14,7 +14,7 @@ impl RenderTarget {
     fn insert_extra_newline_at_last_newline(&mut self) {
         match self {
             Self::BaseQueue(ltc) => ltc.insert_extra_newline_at_last_newline(),
-            Self::BreakableEntry(_) => unimplemented!(),
+            Self::BreakableEntry(be) => be.insert_extra_newline_at_last_newline(),
         }
     }
 
@@ -28,7 +28,7 @@ impl RenderTarget {
     fn insert_comments_at_last_hard_newline(&mut self, comments: CommentBlock) {
         match self {
             RenderTarget::BaseQueue(rq) => rq.insert_comments_at_last_hard_newline(comments),
-            RenderTarget::BreakableEntry(..) => unimplemented!(),
+            RenderTarget::BreakableEntry(be) => be.insert_comments_at_last_hard_newline(comments),
         }
     }
 
@@ -69,8 +69,28 @@ impl RenderTargetStack {
             .insert_extra_newline_at_last_newline();
     }
 
-    #[allow(dead_code)]
-    pub fn current_breakable_is_multiline(&mut self) -> Option<bool> {
+    pub fn push_breakable_entry(&mut self, be: BreakableEntry) {
+        self.target_stack.push(RenderTarget::BreakableEntry(be));
+    }
+
+    pub fn pop_expecting_breakable_entry(&mut self) -> BreakableEntry {
+        if let RenderTarget::BreakableEntry(be) =
+            self.target_stack.pop().expect("should be present")
+        {
+            return be;
+        }
+        panic!("should be impossible")
+    }
+
+    pub fn record_line_number(&mut self, ln: LineNumber) {
+        for item in self.target_stack.iter_mut() {
+            if let RenderTarget::BreakableEntry(be) = item {
+                be.push_line_number(ln)
+            }
+        }
+    }
+
+    pub fn current_breakable_is_multiline(&self) -> Option<bool> {
         match self.current_target() {
             RenderTarget::BreakableEntry(be) => Some(be.is_multiline()),
             _ => None,

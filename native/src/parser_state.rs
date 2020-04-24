@@ -70,7 +70,6 @@ pub struct ParserState {
     start_of_line: Vec<bool>,
     surpress_comments_stack: Vec<bool>,
     target_stack: RenderTargetStack,
-    breakable_entry_stack: Vec<BreakableEntry>,
     current_orig_line_number: LineNumber,
     comments_hash: FileComments,
     heredoc_strings: Vec<HeredocString>,
@@ -91,7 +90,6 @@ impl ParserState {
             heredoc_strings: vec![],
             comments_to_insert: CommentBlock::new(vec![]),
             target_stack: RenderTargetStack::new(),
-            breakable_entry_stack: vec![],
             formatting_context: vec![FormattingContext::Main],
             absorbing_indents: 0,
             insert_user_newlines: true,
@@ -103,10 +101,9 @@ impl ParserState {
     }
 
     pub fn last_breakable_is_multiline(&self) -> bool {
-        self.breakable_entry_stack
-            .last()
-            .map(|o| o.is_multiline())
-            .unwrap_or(false)
+        self.target_stack
+            .current_breakable_is_multiline()
+            .expect("calling this without a breakable is a prgoramming error")
     }
 
     pub fn on_line(&mut self, line_number: LineNumber) {
@@ -114,9 +111,7 @@ impl ParserState {
             return;
         }
 
-        for be in self.breakable_entry_stack.iter_mut().rev() {
-            be.push_line_number(line_number);
-        }
+        self.target_stack.record_line_number(line_number);
 
         let comments = self.comments_hash.extract_comments_to_line(line_number);
         self.push_comments(line_number, comments);
@@ -281,11 +276,7 @@ impl ParserState {
     }
 
     fn last_token_is_a_newline(&self) -> bool {
-        if let Some(be) = self.breakable_entry_stack.last() {
-            be.last_token_is_a_newline()
-        } else {
-            self.target_stack.last_token_is_a_newline()
-        }
+        self.target_stack.last_token_is_a_newline()
     }
 
     pub fn shift_comments(&mut self) {
@@ -504,8 +495,7 @@ impl ParserState {
         let mut be = BreakableEntry::new(self.current_spaces(), delims);
         be.push_line_number(self.current_orig_line_number);
 
-        self.breakable_entry_stack.push(be);
-
+        self.target_stack.push_breakable_entry(be);
         self.emit_collapsing_newline();
         self.new_block(|ps| {
             f(ps);
@@ -513,11 +503,8 @@ impl ParserState {
 
         self.emit_soft_indent();
 
-        let insert_be = self
-            .breakable_entry_stack
-            .pop()
-            .expect("cannot have empty here because we just pushed");
-        self.push_token(LineToken::BreakableEntry(insert_be));
+        let be = self.target_stack.pop_expecting_breakable_entry();
+        self.push_token(LineToken::BreakableEntry(be));
     }
 
     pub fn emit_open_square_bracket(&mut self) {
@@ -546,14 +533,7 @@ impl ParserState {
     }
 
     pub fn push_token(&mut self, t: LineToken) {
-        if self.breakable_entry_stack.is_empty() {
-            self.target_stack.push_token(t);
-        } else {
-            self.breakable_entry_stack
-                .last_mut()
-                .expect("we checked it wasn't empty")
-                .push(t);
-        }
+        self.target_stack.push_token(t);
     }
 
     pub fn is_absorbing_indents(&self) -> bool {

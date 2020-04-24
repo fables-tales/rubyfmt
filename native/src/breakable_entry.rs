@@ -1,3 +1,4 @@
+use crate::comment_block::CommentBlock;
 use crate::delimiters::BreakableDelims;
 use crate::line_token_collection::LineTokenCollection;
 use crate::line_tokens::LineToken;
@@ -46,6 +47,14 @@ impl BreakableEntry {
             }
         }
         tokens
+    }
+
+    pub fn insert_extra_newline_at_last_newline(&mut self) {
+        self.tokens.insert_extra_newline_at_last_newline();
+    }
+
+    pub fn insert_comments_at_last_hard_newline(&mut self, comments: CommentBlock) {
+        self.tokens.insert_comments_at_last_hard_newline(comments);
     }
 
     pub fn single_line_string_length(&self) -> usize {
