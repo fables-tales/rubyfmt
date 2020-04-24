@@ -494,17 +494,14 @@ impl ParserState {
     {
         let mut be = BreakableEntry::new(self.current_spaces(), delims);
         be.push_line_number(self.current_orig_line_number);
+        self.target_stack.with_breakable(self, be, |ps| {
+            ps.emit_collapsing_newline();
+            ps.new_block(|ps| {
+                f(ps);
+            });
 
-        self.target_stack.push_breakable_entry(be);
-        self.emit_collapsing_newline();
-        self.new_block(|ps| {
-            f(ps);
+            ps.emit_soft_indent();
         });
-
-        self.emit_soft_indent();
-
-        let be = self.target_stack.pop_expecting_breakable_entry();
-        self.push_token(LineToken::BreakableEntry(be));
     }
 
     pub fn emit_open_square_bracket(&mut self) {

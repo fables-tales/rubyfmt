@@ -3,6 +3,7 @@ use crate::comment_block::CommentBlock;
 use crate::line_token_collection::LineTokenCollection;
 use crate::line_tokens::LineToken;
 use crate::types::LineNumber;
+use crate::parser_state::ParserState;
 
 #[derive(Debug)]
 pub enum RenderTarget {
@@ -73,6 +74,13 @@ impl RenderTargetStack {
         self.target_stack.push(RenderTarget::BreakableEntry(be));
     }
 
+    pub fn with_breakable<F>(&mut self, ps: &mut ParserState, be: BreakableEntry, f: F)
+    where F: FnOnce(&mut ParserState) {
+        self.push_breakable_entry(be);
+        f(ps);
+        let be = self.pop_expecting_breakable_entry();
+        self.push_token(LineToken::BreakableEntry(be));
+    }
     pub fn pop_expecting_breakable_entry(&mut self) -> BreakableEntry {
         if let RenderTarget::BreakableEntry(be) =
             self.target_stack.pop().expect("should be present")
