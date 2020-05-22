@@ -1,6 +1,6 @@
 # How do I pronounce `rubyfmt`
-en: Ruby format
-jp: ルビーフォーマット
+* en: Ruby format
+* jp: ルビーフォーマット
 
 ## Does it work right now?
 
