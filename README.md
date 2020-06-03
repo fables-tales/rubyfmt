@@ -52,3 +52,17 @@ e.g.:
 * `RUBYFMT_DISABLE_SZUSH=1`: disables the backend render queue writer,
   very useful for debugging, literally useless if you're not developing rubyfmt
   itself.
+
+## Editor Support
+
+### Visual Studio Code
+
+Rubyfmt is a supported formatter in the popular [vscode ruby extension](https://marketplace.visualstudio.com/items?itemName=rebornix.Ruby).  After installing the extension and following the instructions above to ensure `rubyfmt` is available in your shell's `PATH`, add the following to vscode's `settings.json` file:
+
+``` json
+  "ruby.useLanguageServer": true,
+  "ruby.format": "rubyfmt",
+  "[ruby]": {
+      "editor.formatOnSave": true
+  },
+```
