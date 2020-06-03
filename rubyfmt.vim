@@ -1,8 +1,10 @@
 let s:cpo_save = &cpo
 set cpo&vim
 
+let g:rubyfmt_path = '/Users/penelope/dev/rubyfmt/rubyfmt.rb'
+
 function! rubyfmt#format() abort
-  let l:bin_args = ['RUBYFMT_USE_RELEASE=1', 'ruby', '--disable=all', '/Users/penelope/dev/rubyfmt/rubyfmt.rb', '-i']
+  let l:bin_args = ['RUBYFMT_USE_RELEASE=1', 'ruby', '--disable=all', g:rubyfmt_path, '-i']
   let l:curw = winsaveview()
   let l:tmpname = "/tmp/bees.rb"
   call writefile(rubyfmt#get_lines(), l:tmpname)
