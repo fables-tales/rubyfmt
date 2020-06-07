@@ -7,6 +7,15 @@ use serde::*;
 
 use crate::types::LineNumber;
 
+fn ident_as_cc(i: String, lc: LineCol) -> CallChainElement {
+    CallChainElement::IdentOrOpOrKeywordOrConst(IdentOrOpOrKeywordOrConst::Ident(Ident::new(i, lc)))
+}
+
+
+fn args_as_cc(an: ArgNode) -> CallChainElement {
+    CallChainElement::ArgsAddStarOrExpressionList(normalize_args(an))
+}
+
 macro_rules! def_tag {
     ($tag_name:ident) => {
         def_tag!($tag_name, stringify!($tag_name));
@@ -192,9 +201,25 @@ def_tag!(zsuper_tag, "zsuper");
 #[derive(Deserialize, Debug, Clone)]
 pub struct ZSuper(zsuper_tag);
 
+impl ZSuper {
+    fn into_call_chain(self) -> Vec<CallChainElement> {
+        vec![
+            ident_as_cc("super".to_string(), LineCol::unknown()),
+        ]
+    }
+}
+
 def_tag!(yield0_tag, "yield0");
 #[derive(Deserialize, Debug, Clone)]
 pub struct Yield0(yield0_tag);
+
+impl Yield0 {
+    fn into_call_chain(self) -> Vec<CallChainElement> {
+        vec![
+            ident_as_cc("yield".to_string(), LineCol::unknown()),
+        ]
+    }
+}
 
 def_tag!(if_tag, "if");
 #[derive(Deserialize, Debug, Clone)]
@@ -308,31 +333,26 @@ pub struct Command(
     pub ArgsAddBlockOrExpressionList,
 );
 
+impl ToMethodCall for Command {
+    fn to_method_call(self) -> MethodCall {
+        MethodCall::new(
+            vec![],
+            (self.1).into_ident_or_op_or_keyword_or_const(),
+            false,
+            normalize_args_add_block_or_expression_list(self.2),
+        )
+    }
+}
+
+impl Command {
+}
+
 #[derive(RipperDeserialize, Debug, Clone)]
 pub enum ArgsAddBlockOrExpressionList {
     ArgsAddBlock(ArgsAddBlock),
     ExpressionList(Vec<Expression>),
 }
 
-impl Command {
-    pub fn to_method_call(self) -> MethodCall {
-        let arg_node = match self.2 {
-            ArgsAddBlockOrExpressionList::ArgsAddBlock(n) => ArgNode::ArgsAddBlock(n),
-            ArgsAddBlockOrExpressionList::ExpressionList(es) => ArgNode::Exprs(es),
-        };
-        let id = match self.1 {
-            IdentOrConst::Ident(i) => i,
-            IdentOrConst::Const(c) => Ident(ident_tag, c.1, c.2),
-        };
-
-        MethodCall::new(
-            vec![],
-            Box::new(Expression::Ident(id)),
-            false,
-            normalize_args(arg_node),
-        )
-    }
-}
 
 def_tag!(assign_tag, "assign");
 #[derive(Deserialize, Debug, Clone)]
@@ -545,6 +565,10 @@ impl ArgsAddStarOrExpressionList {
 
         false
     }
+
+    pub fn empty() -> Self {
+        ArgsAddStarOrExpressionList::ExpressionList(vec![])
+    }
 }
 
 def_tag!(args_add_star_tag, "args_add_star");
@@ -623,28 +647,6 @@ def_tag!(void_stmt_tag, "void_stmt");
 #[derive(Deserialize, Debug, Clone)]
 pub struct VoidStmt(void_stmt_tag);
 
-// isn't parsable, but we do create it in our "normalized tree"
-def_tag!(method_call_tag, "method_call");
-#[derive(Deserialize, Debug, Clone)]
-pub struct MethodCall(
-    pub method_call_tag,
-    pub Vec<CallChainElement>,
-    pub Box<Expression>,
-    pub bool,
-    pub ArgsAddStarOrExpressionList,
-);
-
-impl MethodCall {
-    pub fn new(
-        chain: Vec<CallChainElement>,
-        method: Box<Expression>,
-        use_parens: bool,
-        args: ArgsAddStarOrExpressionList,
-    ) -> Self {
-        MethodCall(method_call_tag, chain, method, use_parens, args)
-    }
-}
-
 def_tag!(def_tag, "def");
 #[derive(Deserialize, Debug, Clone)]
 pub struct Def(
@@ -671,6 +673,16 @@ impl IdentOrOpOrKeywordOrConst {
             Self::Const(Const(_, string, linecol)) => (string, linecol),
         }
     }
+
+    pub fn into_ident(self) -> Ident {
+        let (s, lc) = self.to_def_parts();
+        Ident::new(s, lc)
+    }
+
+    pub fn get_name(&self) -> String {
+        self.clone().to_def_parts().0
+    }
+
 }
 
 def_tag!(begin_tag, "begin");
@@ -720,38 +732,6 @@ pub struct RescueElse(pub rescue_else_tag, pub Option<Vec<Expression>>);
 def_tag!(ensure_tag, "ensure");
 #[derive(Deserialize, Debug, Clone)]
 pub struct Ensure(pub ensure_tag, pub Option<Vec<Expression>>);
-
-def_tag!(vcall);
-#[derive(Deserialize, Debug, Clone)]
-pub struct VCall(pub vcall, pub Box<Expression>);
-
-def_tag!(command_call_tag, "command_call");
-#[derive(Deserialize, Debug, Clone)]
-pub struct CommandCall(
-    command_call_tag,
-    pub Box<Expression>,
-    pub DotTypeOrOp,
-    pub IdentOrConst,
-    pub ArgNode,
-);
-
-impl CommandCall {
-    pub fn to_method_call(self) -> MethodCall {
-        let expr = match self.3 {
-            IdentOrConst::Ident(i) => Box::new(Expression::Ident(i)),
-            IdentOrConst::Const(c) => Box::new(Expression::Const(c)),
-        };
-        MethodCall::new(
-            vec![
-                CallChainElement::Expression(self.1),
-                CallChainElement::Dot(self.2),
-            ],
-            expr,
-            false,
-            normalize_args(self.4),
-        )
-    }
-}
 
 def_tag!(const_tag, "@const");
 #[derive(Deserialize, Debug, Clone)]
@@ -923,41 +903,9 @@ pub struct BlockArg(pub blockarg_tag, pub Ident);
 #[derive(Deserialize, Debug, Clone)]
 pub struct LineCol(pub LineNumber, pub u64);
 
-pub type DotCall = call_tag;
-
-#[derive(RipperDeserialize, Debug, Clone)]
-pub enum CallExpr {
-    FCall(FCall),
-    Call(Call),
-    Expression(Box<Expression>),
-}
-
-#[derive(RipperDeserialize, Debug, Clone)]
-pub enum CallChainElement {
-    Expression(Box<Expression>),
-    Dot(DotTypeOrOp),
-}
-
-def_tag!(method_add_arg_tag, "method_add_arg");
-#[derive(Deserialize, Debug, Clone)]
-pub struct MethodAddArg(pub method_add_arg_tag, pub CallExpr, pub ArgNode);
-
-pub fn normalize_inner_call(call_expr: CallExpr) -> (Vec<CallChainElement>, Box<Expression>) {
-    match call_expr {
-        CallExpr::FCall(FCall(_, i)) => {
-            let id = match i {
-                IdentOrConst::Ident(i) => i,
-                IdentOrConst::Const(c) => Ident(ident_tag, c.1, c.2),
-            };
-            (vec![], Box::new(Expression::Ident(id)))
-        }
-        CallExpr::Call(Call(_, left, dot, right)) => {
-            let (mut chain, method) = normalize_inner_call(CallExpr::Expression(left));
-            chain.push(CallChainElement::Expression(method));
-            chain.push(CallChainElement::Dot(dot));
-            (chain, right)
-        }
-        CallExpr::Expression(e) => (Vec::new(), e),
+impl LineCol {
+    fn unknown() -> Self {
+        LineCol(0, 0)
     }
 }
 
@@ -968,6 +916,12 @@ pub fn normalize_arg_paren(ap: ArgParen) -> ArgsAddStarOrExpressionList {
     }
 }
 
+pub fn normalize_args_add_block_or_expression_list(aab: ArgsAddBlockOrExpressionList) -> ArgsAddStarOrExpressionList {
+    match aab {
+        ArgsAddBlockOrExpressionList::ExpressionList(el) => ArgsAddStarOrExpressionList::ExpressionList(el),
+        ArgsAddBlockOrExpressionList::ArgsAddBlock(aab) => normalize_args_add_block(aab),
+    }
+}
 pub fn normalize_args_add_block(aab: ArgsAddBlock) -> ArgsAddStarOrExpressionList {
     // .1 is expression list
     // .2 is block
@@ -1007,18 +961,6 @@ pub fn normalize_args(arg_node: ArgNode) -> ArgsAddStarOrExpressionList {
         ArgNode::Null(_) => panic!("should never be called with null"),
     }
 }
-
-impl MethodAddArg {
-    pub fn to_method_call(self) -> MethodCall {
-        let (chain, name) = normalize_inner_call(self.1);
-        let args = normalize_args(self.2);
-        MethodCall::new(chain, name, true, args)
-    }
-}
-
-def_tag!(fcall_tag, "fcall");
-#[derive(Deserialize, Debug, Clone)]
-pub struct FCall(pub fcall_tag, pub IdentOrConst);
 
 #[derive(RipperDeserialize, Debug, Clone)]
 pub enum ArgNode {
@@ -1109,6 +1051,15 @@ pub enum IdentOrConst {
     Const(Const),
 }
 
+impl IdentOrConst {
+    pub fn into_ident_or_op_or_keyword_or_const(self) -> IdentOrOpOrKeywordOrConst {
+        match self {
+            IdentOrConst::Ident(i) => IdentOrOpOrKeywordOrConst::Ident(i),
+            IdentOrConst::Const(c) => IdentOrOpOrKeywordOrConst::Const(c),
+        }
+    }
+}
+
 #[derive(RipperDeserialize, Debug, Clone)]
 pub enum IdentOrConstOrKwOrOpOrIvar {
     Ident(Ident),
@@ -1122,23 +1073,186 @@ def_tag!(symbol_tag, "symbol");
 #[derive(Deserialize, Debug, Clone)]
 pub struct Symbol(pub symbol_tag, pub IdentOrConstOrKwOrOpOrIvar);
 
+#[derive(RipperDeserialize, Debug, Clone)]
+pub enum CallLeft {
+    Paren(ParenExpr),
+    Call(Call),
+    FCall(FCall),
+    VCall(VCall),
+    MethodAddArg(MethodAddArg),
+    MethodAddBlock(MethodAddBlock),
+    VarRef(VarRef),
+    Super(Super),
+    ZSuper(ZSuper),
+    Next(Next),
+    Yield(Yield),
+    Yield0(Yield0),
+}
+
+impl CallLeft {
+    pub fn into_call_chain(self) -> Vec<CallChainElement> {
+        match self {
+            CallLeft::Paren(p) => vec![CallChainElement::Paren(p)],
+            CallLeft::FCall(FCall(_, ic)) => {
+                vec![CallChainElement::IdentOrOpOrKeywordOrConst(ic.into_ident_or_op_or_keyword_or_const())]
+            },
+            CallLeft::VCall(VCall(_, ic)) => {
+                vec![CallChainElement::IdentOrOpOrKeywordOrConst(ic.into_ident_or_op_or_keyword_or_const())]
+            },
+            CallLeft::Call(Call(_, left, dot, name)) => {
+                let mut res = left.into_call_chain();
+                res.append(&mut vec![CallChainElement::DotTypeOrOp(dot), CallChainElement::IdentOrOpOrKeywordOrConst(name)]);
+                res
+            },
+            CallLeft::MethodAddArg(MethodAddArg(_, left, an)) => {
+                let mut res = left.into_call_chain();
+                res.push(args_as_cc(an));
+                res
+            },
+            CallLeft::MethodAddBlock(MethodAddBlock(_, left, block)) => {
+                let mut res = left.into_call_chain();
+                res.append(&mut vec![CallChainElement::Block(block)]);
+                res
+            },
+            CallLeft::VarRef(v) => vec![CallChainElement::VarRef(v)],
+            CallLeft::Super(s) => s.into_call_chain(),
+            CallLeft::ZSuper(zs) => zs.into_call_chain(),
+            CallLeft::Next(next) => next.into_call_chain(),
+            CallLeft::Yield(y) => y.into_call_chain(),
+            CallLeft::Yield0(y) => y.into_call_chain(),
+        }
+    }
+}
+
+#[derive(RipperDeserialize, Debug, Clone)]
+pub enum CallChainElement {
+    IdentOrOpOrKeywordOrConst(IdentOrOpOrKeywordOrConst),
+    Block(Block),
+    VarRef(VarRef),
+    ArgsAddStarOrExpressionList(ArgsAddStarOrExpressionList),
+    DotTypeOrOp(DotTypeOrOp),
+    Paren(ParenExpr),
+}
+
+pub type DotCall = call_tag;
+
+def_tag!(method_add_arg_tag, "method_add_arg");
+#[derive(Deserialize, Debug, Clone)]
+pub struct MethodAddArg(pub method_add_arg_tag, pub Box<CallLeft>, pub ArgNode);
+
+impl ToMethodCall for MethodAddArg {
+    fn to_method_call(self) -> MethodCall {
+        let mut orig_chain = (self.1).into_call_chain();
+        let last = orig_chain.pop().expect("cannot be empty with method add arg");
+        if let CallChainElement::IdentOrOpOrKeywordOrConst(n) = last {
+            return MethodCall::new(
+                orig_chain,
+                n,
+                true,
+                normalize_args(self.2),
+            )
+        }
+        panic!("chain did not end in a name");
+    }
+}
+
+def_tag!(method_add_block_tag, "method_add_block");
+#[derive(Deserialize, Debug, Clone)]
+pub struct MethodAddBlock(method_add_block_tag, pub Box<CallLeft>, pub Block);
+
+def_tag!(fcall_tag, "fcall");
+#[derive(Deserialize, Debug, Clone)]
+pub struct FCall(pub fcall_tag, pub IdentOrConst);
+
+def_tag!(vcall);
+#[derive(Deserialize, Debug, Clone)]
+pub struct VCall(pub vcall, pub IdentOrConst);
+
+pub trait ToMethodCall {
+    fn to_method_call(self) -> MethodCall;
+}
+
+
+impl ToMethodCall for VCall {
+    fn to_method_call(self) -> MethodCall {
+        MethodCall::new(
+            vec![],
+            (self.1).into_ident_or_op_or_keyword_or_const(),
+            false,
+            ArgsAddStarOrExpressionList::ExpressionList(vec![]),
+        )
+    }
+}
+
+// isn't parsable, but we do create it in our "normalized tree"
+def_tag!(method_call_tag, "method_call");
+#[derive(Deserialize, Debug, Clone)]
+pub struct MethodCall(
+    pub method_call_tag,
+    // call chain
+    pub Vec<CallChainElement>,
+    // method name
+    pub IdentOrOpOrKeywordOrConst,
+    // original used parens
+    pub bool,
+    // args
+    pub ArgsAddStarOrExpressionList,
+);
+
+impl MethodCall {
+    pub fn new(
+        chain: Vec<CallChainElement>,
+        name: IdentOrOpOrKeywordOrConst,
+        use_parens: bool,
+        args: ArgsAddStarOrExpressionList,
+    ) -> Self {
+        MethodCall(method_call_tag, chain, name, use_parens, args)
+    }
+}
+
+
 def_tag!(call_tag, "call");
 #[derive(Deserialize, Debug, Clone)]
 pub struct Call(
     pub call_tag,
-    pub Box<Expression>,
+    pub Box<CallLeft>,
     pub DotTypeOrOp,
-    pub Box<Expression>,
+    pub IdentOrOpOrKeywordOrConst,
 );
 
-impl Call {
-    pub fn to_method_call(self) -> MethodCall {
-        let (chain, method) = normalize_inner_call(CallExpr::Call(self));
+impl ToMethodCall for Call {
+    fn to_method_call(self) -> MethodCall {
+        let mut chain = (self.1).into_call_chain();
+        chain.push(CallChainElement::DotTypeOrOp(self.2));
         MethodCall::new(
             chain,
-            method,
+            self.3,
             false,
-            ArgsAddStarOrExpressionList::ExpressionList(Vec::new()),
+            ArgsAddStarOrExpressionList::empty(),
+        )
+    }
+}
+
+def_tag!(command_call_tag, "command_call");
+#[derive(Deserialize, Debug, Clone)]
+pub struct CommandCall(
+    command_call_tag,
+    pub Box<CallLeft>,
+    pub DotTypeOrOp,
+    pub IdentOrOpOrKeywordOrConst,
+    pub ArgNode,
+);
+
+impl ToMethodCall for CommandCall {
+    fn to_method_call(self) -> MethodCall {
+        let mut chain = (self.1).into_call_chain();
+        chain.push(CallChainElement::DotTypeOrOp(self.2));
+
+        MethodCall::new(
+            chain,
+            self.3,
+            false,
+            normalize_args(self.4),
         )
     }
 }
@@ -1203,6 +1317,15 @@ def_tag!(next_tag, "next");
 #[derive(Deserialize, Debug, Clone)]
 pub struct Next(pub next_tag, pub ArgsAddBlockOrExpressionList);
 
+impl Next {
+    pub fn into_call_chain(self) -> Vec<CallChainElement> {
+        vec![
+            ident_as_cc("next".to_string(), LineCol::unknown()),
+            CallChainElement::ArgsAddStarOrExpressionList(normalize_args_add_block_or_expression_list(self.1)),
+        ]
+    }
+}
+
 def_tag!(if_mod_tag, "if_mod");
 #[derive(Deserialize, Debug, Clone)]
 pub struct IfMod(pub if_mod_tag, pub Box<Expression>, pub Box<Expression>);
@@ -1246,11 +1369,20 @@ def_tag!(super_tag, "super");
 pub struct Super(pub super_tag, pub ArgNode, pub LineCol);
 
 impl Super {
-    pub fn to_method_call(self) -> MethodCall {
+    pub fn into_call_chain(self) -> Vec<CallChainElement> {
+        vec![
+            ident_as_cc("super".to_string(), self.2),
+            args_as_cc(self.1),
+        ]
+    }
+}
+
+impl ToMethodCall for Super {
+    fn to_method_call(self) -> MethodCall {
         MethodCall::new(
             vec![],
-            Box::new(Expression::Ident(Ident::new("super".to_string(), self.2))),
-            true,
+            IdentOrOpOrKeywordOrConst::Ident(Ident::new("super".to_string(), self.2)),
+            false,
             normalize_args(self.1),
         )
     }
@@ -1363,23 +1495,23 @@ def_tag!(yield_tag, "yield");
 pub struct Yield(yield_tag, pub ParenOrArgsAddBlock, pub LineCol);
 
 impl Yield {
-    pub fn to_method_call(self) -> MethodCall {
-        let (used_paren, args) = match self.1 {
-            ParenOrArgsAddBlock::YieldParen(yp) => (true, normalize_args(*yp.1)),
-            ParenOrArgsAddBlock::ArgsAddBlock(aab) => {
-                (false, normalize_args(ArgNode::ArgsAddBlock(aab)))
-            }
-            _ => (false, ArgsAddStarOrExpressionList::ExpressionList(vec![])),
-        };
+    fn into_call_chain(self) -> Vec<CallChainElement> {
+        let arg = (self.1).into_arg_node();
+        vec![
+            ident_as_cc("yield".to_string(), self.2),
+            args_as_cc(arg),
+        ]
+    }
+}
+
+impl ToMethodCall for Yield {
+    fn to_method_call(self) -> MethodCall {
+        let used_parens = (self.1).is_paren();
         MethodCall::new(
             vec![],
-            Box::new(Expression::Ident(Ident(
-                ident_tag,
-                "yield".to_string(),
-                self.2,
-            ))),
-            used_paren,
-            args,
+            IdentOrOpOrKeywordOrConst::Ident(Ident::new("yield".to_string(), self.2)),
+            used_parens,
+            normalize_args((self.1).into_arg_node()),
         )
     }
 }
@@ -1395,44 +1527,26 @@ pub enum ParenOrArgsAddBlock {
     Empty(Vec<()>),
 }
 
-def_tag!(yield_paren_tag, "paren");
-#[derive(Deserialize, Debug, Clone)]
-pub struct YieldParen(yield_paren_tag, pub Box<ArgNode>);
-
-def_tag!(method_add_block_tag, "method_add_block");
-#[derive(Deserialize, Debug, Clone)]
-pub struct MethodAddBlock(method_add_block_tag, pub CallType, pub Block);
-
-#[derive(RipperDeserialize, Debug, Clone)]
-pub enum CallType {
-    MethodAddArg(MethodAddArg),
-    Call(Call),
-    CommandCall(CommandCall),
-    Command(Command),
-    Super(Super),
-    ZSuper(ZSuper),
-}
-
-impl CallType {
-    pub fn to_method_call(self) -> MethodCall {
+impl ParenOrArgsAddBlock {
+    fn is_paren(&self) -> bool {
         match self {
-            Self::MethodAddArg(maa) => maa.to_method_call(),
-            Self::Call(call) => call.to_method_call(),
-            Self::CommandCall(cc) => cc.to_method_call(),
-            Self::Command(command) => command.to_method_call(),
-            Self::Super(s) => s.to_method_call(),
-            Self::ZSuper(_) => MethodCall::new(
-                vec![],
-                Box::new(Expression::Ident(Ident::new(
-                    "super".to_string(),
-                    LineCol(0, 0),
-                ))),
-                false,
-                ArgsAddStarOrExpressionList::ExpressionList(vec![]),
-            ),
+            ParenOrArgsAddBlock::YieldParen(_) => true,
+            _ => false,
+        }
+    }
+
+    fn into_arg_node(self) -> ArgNode {
+        match self {
+            ParenOrArgsAddBlock::YieldParen(yp) => *yp.1,
+            ParenOrArgsAddBlock::ArgsAddBlock(aab) => ArgNode::ArgsAddBlock(aab),
+            ParenOrArgsAddBlock::Empty(_) => ArgNode::Null(None),
         }
     }
 }
+
+def_tag!(yield_paren_tag, "paren");
+#[derive(Deserialize, Debug, Clone)]
+pub struct YieldParen(yield_paren_tag, pub Box<ArgNode>);
 
 #[derive(RipperDeserialize, Debug, Clone)]
 pub enum Block {
