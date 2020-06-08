@@ -11,7 +11,6 @@ fn ident_as_cc(i: String, lc: LineCol) -> CallChainElement {
     CallChainElement::IdentOrOpOrKeywordOrConst(IdentOrOpOrKeywordOrConst::Ident(Ident::new(i, lc)))
 }
 
-
 fn args_as_cc(an: ArgNode) -> CallChainElement {
     CallChainElement::ArgsAddStarOrExpressionList(normalize_args(an))
 }
@@ -202,9 +201,7 @@ pub struct ZSuper(zsuper_tag);
 
 impl ZSuper {
     fn into_call_chain(self) -> Vec<CallChainElement> {
-        vec![
-            ident_as_cc("super".to_string(), LineCol::unknown()),
-        ]
+        vec![ident_as_cc("super".to_string(), LineCol::unknown())]
     }
 }
 
@@ -214,9 +211,7 @@ pub struct Yield0(yield0_tag);
 
 impl Yield0 {
     fn into_call_chain(self) -> Vec<CallChainElement> {
-        vec![
-            ident_as_cc("yield".to_string(), LineCol::unknown()),
-        ]
+        vec![ident_as_cc("yield".to_string(), LineCol::unknown())]
     }
 }
 
@@ -338,7 +333,9 @@ impl Command {
         let (s, lc) = io.to_def_parts();
         vec![
             ident_as_cc(s, lc),
-            CallChainElement::ArgsAddStarOrExpressionList(normalize_args_add_block_or_expression_list(self.2)),
+            CallChainElement::ArgsAddStarOrExpressionList(
+                normalize_args_add_block_or_expression_list(self.2),
+            ),
         ]
     }
 }
@@ -359,7 +356,6 @@ pub enum ArgsAddBlockOrExpressionList {
     ArgsAddBlock(ArgsAddBlock),
     ExpressionList(Vec<Expression>),
 }
-
 
 def_tag!(assign_tag, "assign");
 #[derive(Deserialize, Debug, Clone)]
@@ -689,7 +685,6 @@ impl IdentOrOpOrKeywordOrConst {
     pub fn get_name(&self) -> String {
         self.clone().to_def_parts().0
     }
-
 }
 
 def_tag!(begin_tag, "begin");
@@ -923,9 +918,13 @@ pub fn normalize_arg_paren(ap: ArgParen) -> ArgsAddStarOrExpressionList {
     }
 }
 
-pub fn normalize_args_add_block_or_expression_list(aab: ArgsAddBlockOrExpressionList) -> ArgsAddStarOrExpressionList {
+pub fn normalize_args_add_block_or_expression_list(
+    aab: ArgsAddBlockOrExpressionList,
+) -> ArgsAddStarOrExpressionList {
     match aab {
-        ArgsAddBlockOrExpressionList::ExpressionList(el) => ArgsAddStarOrExpressionList::ExpressionList(el),
+        ArgsAddBlockOrExpressionList::ExpressionList(el) => {
+            ArgsAddStarOrExpressionList::ExpressionList(el)
+        }
         ArgsAddBlockOrExpressionList::ArgsAddBlock(aab) => normalize_args_add_block(aab),
     }
 }
@@ -1103,12 +1102,12 @@ impl CallLeft {
     pub fn into_call_chain(self) -> Vec<CallChainElement> {
         match self {
             CallLeft::Paren(p) => vec![CallChainElement::Paren(p)],
-            CallLeft::FCall(FCall(_, ic)) => {
-                vec![CallChainElement::IdentOrOpOrKeywordOrConst(ic.into_ident_or_op_or_keyword_or_const())]
-            },
-            CallLeft::VCall(VCall(_, ic)) => {
-                vec![CallChainElement::IdentOrOpOrKeywordOrConst(ic.into_ident_or_op_or_keyword_or_const())]
-            },
+            CallLeft::FCall(FCall(_, ic)) => vec![CallChainElement::IdentOrOpOrKeywordOrConst(
+                ic.into_ident_or_op_or_keyword_or_const(),
+            )],
+            CallLeft::VCall(VCall(_, ic)) => vec![CallChainElement::IdentOrOpOrKeywordOrConst(
+                ic.into_ident_or_op_or_keyword_or_const(),
+            )],
             CallLeft::Call(Call(_, left, dot, name)) => {
                 let mut res = left.into_call_chain();
                 res.push(CallChainElement::DotTypeOrOp(dot));
@@ -1117,17 +1116,17 @@ impl CallLeft {
                     res.push(CallChainElement::IdentOrOpOrKeywordOrConst(ic));
                 }
                 res
-            },
+            }
             CallLeft::MethodAddArg(MethodAddArg(_, left, an)) => {
                 let mut res = left.into_call_chain();
                 res.push(args_as_cc(an));
                 res
-            },
+            }
             CallLeft::MethodAddBlock(MethodAddBlock(_, left, block)) => {
                 let mut res = left.into_call_chain();
                 res.append(&mut vec![CallChainElement::Block(block)]);
                 res
-            },
+            }
             CallLeft::VarRef(v) => vec![CallChainElement::VarRef(v)],
             CallLeft::Super(s) => s.into_call_chain(),
             CallLeft::ZSuper(zs) => zs.into_call_chain(),
@@ -1161,14 +1160,11 @@ pub struct MethodAddArg(pub method_add_arg_tag, pub Box<CallLeft>, pub ArgNode);
 impl ToMethodCall for MethodAddArg {
     fn to_method_call(self) -> MethodCall {
         let mut orig_chain = (self.1).into_call_chain();
-        let last = orig_chain.pop().expect("cannot be empty with method add arg");
+        let last = orig_chain
+            .pop()
+            .expect("cannot be empty with method add arg");
         if let CallChainElement::IdentOrOpOrKeywordOrConst(n) = last {
-            MethodCall::new(
-                orig_chain,
-                n,
-                true,
-                normalize_args(self.2),
-            )
+            MethodCall::new(orig_chain, n, true, normalize_args(self.2))
         } else {
             MethodCall::new(
                 orig_chain,
@@ -1195,7 +1191,6 @@ pub struct VCall(pub vcall, pub IdentOrConst);
 pub trait ToMethodCall {
     fn to_method_call(self) -> MethodCall;
 }
-
 
 impl ToMethodCall for VCall {
     fn to_method_call(self) -> MethodCall {
@@ -1234,7 +1229,6 @@ impl MethodCall {
     }
 }
 
-
 #[derive(RipperDeserialize, Debug, Clone)]
 pub enum CallMethodName {
     IdentOrOpOrKeywordOrConst(IdentOrOpOrKeywordOrConst),
@@ -1255,7 +1249,9 @@ impl ToMethodCall for Call {
         let mut chain = (self.1).into_call_chain();
         let method_name = match self.3 {
             CallMethodName::IdentOrOpOrKeywordOrConst(i) => i,
-            CallMethodName::DotCall(_) => IdentOrOpOrKeywordOrConst::Ident(Ident::new("".to_string(), LineCol::unknown())),
+            CallMethodName::DotCall(_) => {
+                IdentOrOpOrKeywordOrConst::Ident(Ident::new("".to_string(), LineCol::unknown()))
+            }
         };
         chain.push(CallChainElement::DotTypeOrOp(self.2));
         MethodCall::new(
@@ -1292,12 +1288,7 @@ impl ToMethodCall for CommandCall {
         let mut chain = (self.1).into_call_chain();
         chain.push(CallChainElement::DotTypeOrOp(self.2));
 
-        MethodCall::new(
-            chain,
-            self.3,
-            false,
-            normalize_args(self.4),
-        )
+        MethodCall::new(chain, self.3, false, normalize_args(self.4))
     }
 }
 
@@ -1365,7 +1356,9 @@ impl Next {
     pub fn into_call_chain(self) -> Vec<CallChainElement> {
         vec![
             ident_as_cc("next".to_string(), LineCol::unknown()),
-            CallChainElement::ArgsAddStarOrExpressionList(normalize_args_add_block_or_expression_list(self.1)),
+            CallChainElement::ArgsAddStarOrExpressionList(
+                normalize_args_add_block_or_expression_list(self.1),
+            ),
         ]
     }
 }
@@ -1414,10 +1407,7 @@ pub struct Super(pub super_tag, pub ArgNode, pub LineCol);
 
 impl Super {
     pub fn into_call_chain(self) -> Vec<CallChainElement> {
-        vec![
-            ident_as_cc("super".to_string(), self.2),
-            args_as_cc(self.1),
-        ]
+        vec![ident_as_cc("super".to_string(), self.2), args_as_cc(self.1)]
     }
 }
 
@@ -1541,10 +1531,7 @@ pub struct Yield(yield_tag, pub ParenOrArgsAddBlock, pub LineCol);
 impl Yield {
     fn into_call_chain(self) -> Vec<CallChainElement> {
         let arg = (self.1).into_arg_node();
-        vec![
-            ident_as_cc("yield".to_string(), self.2),
-            args_as_cc(arg),
-        ]
+        vec![ident_as_cc("yield".to_string(), self.2), args_as_cc(arg)]
     }
 }
 
