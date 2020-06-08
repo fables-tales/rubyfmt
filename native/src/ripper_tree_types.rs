@@ -131,7 +131,7 @@ pub enum Expression {
     RegexpLiteral(RegexpLiteral),
     Backref(Backref),
     Yield(Yield),
-    MethodAddBlock(Box<MethodAddBlock>),
+    MethodAddBlock(MethodAddBlock),
     While(While),
     WhileMod(WhileMod),
     UntilMod(UntilMod),

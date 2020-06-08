@@ -1873,7 +1873,7 @@ pub fn format_block(ps: &mut ParserState, b: Block) {
     }
 }
 
-pub fn format_method_add_block(ps: &mut ParserState, mab: Box<MethodAddBlock>) {
+pub fn format_method_add_block(ps: &mut ParserState, mab: MethodAddBlock) {
     if ps.at_start_of_line() {
         ps.emit_indent();
     }

@@ -7,7 +7,6 @@ use crate::line_tokens::*;
 use crate::render_queue_writer::RenderQueueWriter;
 use crate::ripper_tree_types::StringContentPart;
 use crate::types::{ColNumber, LineNumber};
-use bytecount;
 use log::debug;
 use std::io::{self, Cursor, Write};
 use std::mem;
