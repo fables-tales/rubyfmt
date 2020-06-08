@@ -1861,6 +1861,7 @@ fn format_call_chain(ps: &mut ParserState, cc: Vec<CallChainElement>) {
                 }
             }
             CallChainElement::DotTypeOrOp(d) => format_dot(ps, d),
+            CallChainElement::Expression(e) => format_expression(ps, *e),
         }
     }
 }

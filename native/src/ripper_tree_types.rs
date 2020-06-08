@@ -91,7 +91,6 @@ pub enum Expression {
     Params(Box<Params>),
     MethodCall(MethodCall),
     Call(Call),
-    DotCall(DotCall),
     CommandCall(CommandCall),
     MethodAddArg(MethodAddArg),
     Int(Int),
@@ -333,6 +332,17 @@ pub struct Command(
     pub ArgsAddBlockOrExpressionList,
 );
 
+impl Command {
+    pub fn into_call_chain(self) -> Vec<CallChainElement> {
+        let io = (self.1).into_ident_or_op_or_keyword_or_const();
+        let (s, lc) = io.to_def_parts();
+        vec![
+            ident_as_cc(s, lc),
+            CallChainElement::ArgsAddStarOrExpressionList(normalize_args_add_block_or_expression_list(self.2)),
+        ]
+    }
+}
+
 impl ToMethodCall for Command {
     fn to_method_call(self) -> MethodCall {
         MethodCall::new(
@@ -342,9 +352,6 @@ impl ToMethodCall for Command {
             normalize_args_add_block_or_expression_list(self.2),
         )
     }
-}
-
-impl Command {
 }
 
 #[derive(RipperDeserialize, Debug, Clone)]
@@ -1087,6 +1094,9 @@ pub enum CallLeft {
     Next(Next),
     Yield(Yield),
     Yield0(Yield0),
+    Command(Command),
+    CommandCall(CommandCall),
+    Expression(Box<Expression>),
 }
 
 impl CallLeft {
@@ -1101,7 +1111,11 @@ impl CallLeft {
             },
             CallLeft::Call(Call(_, left, dot, name)) => {
                 let mut res = left.into_call_chain();
-                res.append(&mut vec![CallChainElement::DotTypeOrOp(dot), CallChainElement::IdentOrOpOrKeywordOrConst(name)]);
+                res.push(CallChainElement::DotTypeOrOp(dot));
+
+                if let CallMethodName::IdentOrOpOrKeywordOrConst(ic) = name {
+                    res.push(CallChainElement::IdentOrOpOrKeywordOrConst(ic));
+                }
                 res
             },
             CallLeft::MethodAddArg(MethodAddArg(_, left, an)) => {
@@ -1120,6 +1134,9 @@ impl CallLeft {
             CallLeft::Next(next) => next.into_call_chain(),
             CallLeft::Yield(y) => y.into_call_chain(),
             CallLeft::Yield0(y) => y.into_call_chain(),
+            CallLeft::Command(c) => c.into_call_chain(),
+            CallLeft::CommandCall(c) => c.into_call_chain(),
+            CallLeft::Expression(e) => vec![CallChainElement::Expression(e)],
         }
     }
 }
@@ -1132,6 +1149,7 @@ pub enum CallChainElement {
     ArgsAddStarOrExpressionList(ArgsAddStarOrExpressionList),
     DotTypeOrOp(DotTypeOrOp),
     Paren(ParenExpr),
+    Expression(Box<Expression>),
 }
 
 pub type DotCall = call_tag;
@@ -1145,14 +1163,20 @@ impl ToMethodCall for MethodAddArg {
         let mut orig_chain = (self.1).into_call_chain();
         let last = orig_chain.pop().expect("cannot be empty with method add arg");
         if let CallChainElement::IdentOrOpOrKeywordOrConst(n) = last {
-            return MethodCall::new(
+            MethodCall::new(
                 orig_chain,
                 n,
                 true,
                 normalize_args(self.2),
             )
+        } else {
+            MethodCall::new(
+                orig_chain,
+                IdentOrOpOrKeywordOrConst::Ident(Ident::new(".()".to_string(), LineCol::unknown())),
+                true,
+                normalize_args(self.2),
+            )
         }
-        panic!("chain did not end in a name");
     }
 }
 
@@ -1211,22 +1235,32 @@ impl MethodCall {
 }
 
 
+#[derive(RipperDeserialize, Debug, Clone)]
+pub enum CallMethodName {
+    IdentOrOpOrKeywordOrConst(IdentOrOpOrKeywordOrConst),
+    DotCall(DotCall),
+}
+
 def_tag!(call_tag, "call");
 #[derive(Deserialize, Debug, Clone)]
 pub struct Call(
     pub call_tag,
     pub Box<CallLeft>,
     pub DotTypeOrOp,
-    pub IdentOrOpOrKeywordOrConst,
+    pub CallMethodName,
 );
 
 impl ToMethodCall for Call {
     fn to_method_call(self) -> MethodCall {
         let mut chain = (self.1).into_call_chain();
+        let method_name = match self.3 {
+            CallMethodName::IdentOrOpOrKeywordOrConst(i) => i,
+            CallMethodName::DotCall(_) => IdentOrOpOrKeywordOrConst::Ident(Ident::new("".to_string(), LineCol::unknown())),
+        };
         chain.push(CallChainElement::DotTypeOrOp(self.2));
         MethodCall::new(
             chain,
-            self.3,
+            method_name,
             false,
             ArgsAddStarOrExpressionList::empty(),
         )
@@ -1242,6 +1276,16 @@ pub struct CommandCall(
     pub IdentOrOpOrKeywordOrConst,
     pub ArgNode,
 );
+
+impl CommandCall {
+    pub fn into_call_chain(self) -> Vec<CallChainElement> {
+        let mut recur = (self.1).into_call_chain();
+        recur.push(CallChainElement::DotTypeOrOp(self.2));
+        recur.push(CallChainElement::IdentOrOpOrKeywordOrConst(self.3));
+        recur.push(args_as_cc(self.4));
+        recur
+    }
+}
 
 impl ToMethodCall for CommandCall {
     fn to_method_call(self) -> MethodCall {
@@ -1382,7 +1426,7 @@ impl ToMethodCall for Super {
         MethodCall::new(
             vec![],
             IdentOrOpOrKeywordOrConst::Ident(Ident::new("super".to_string(), self.2)),
-            false,
+            true,
             normalize_args(self.1),
         )
     }
