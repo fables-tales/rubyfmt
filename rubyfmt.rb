@@ -237,4 +237,8 @@ elsif String === first
     Rubyfmt::format_to_stdout(file_data, parsed)
     STDOUT.close
   end
+elsif first.nil?
+  data = STDIN.read
+  parsed = Parser.new(data).parse
+  Rubyfmt::format_to_stdout(data, parsed)
 end
