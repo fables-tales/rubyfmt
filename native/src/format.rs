@@ -445,20 +445,12 @@ pub fn format_ensure(ps: &mut ParserState, ensure_part: Option<Ensure>) {
 
 pub fn use_parens_for_method_call(
     ps: &ParserState,
-    method: &Expression,
+    method: &IdentOrOpOrKeywordOrConst,
     args: &ArgsAddStarOrExpressionList,
     original_used_parens: bool,
     context: FormattingContext,
 ) -> bool {
-    let name = match method {
-        Expression::DotCall(_) => return true,
-        Expression::Ident(Ident(_, name, _)) => name,
-        Expression::Const(Const(_, name, _)) => name,
-        _ => panic!(
-            "method should always be ident or dotcall, got: {:?}",
-            method
-        ),
-    };
+    let name = method.get_name();
     debug!("name: {:?}", name);
     if name.starts_with("attr_") && context == FormattingContext::ClassOrModule {
         return false;
@@ -542,19 +534,8 @@ pub fn format_method_call(ps: &mut ParserState, method_call: MethodCall) {
     );
 
     ps.with_start_of_line(false, |ps| {
-        for expr in chain {
-            match expr {
-                CallChainElement::Expression(e) => format_expression(ps, *e),
-                CallChainElement::Dot(dot) => format_dot(ps, dot),
-            };
-        }
-
-        match *method {
-            Expression::Ident(i) => format_ident(ps, i),
-            Expression::Const(c) => format_const(ps, c),
-            Expression::DotCall(_) => {}
-            x => panic!("got unexpecxted struct {:?}", x),
-        };
+        format_call_chain(ps, chain);
+        format_ident(ps, method.into_ident());
 
         let delims = if use_parens {
             BreakableDelims::for_method_call()
@@ -783,21 +764,6 @@ pub fn format_begin(ps: &mut ParserState, begin: Begin) {
     });
     if ps.at_start_of_line() {
         ps.emit_newline();
-    }
-}
-
-trait ToMethodCall {
-    fn to_method_call(self) -> MethodCall;
-}
-
-impl ToMethodCall for VCall {
-    fn to_method_call(self) -> MethodCall {
-        MethodCall::new(
-            vec![],
-            self.1,
-            false,
-            ArgsAddStarOrExpressionList::ExpressionList(vec![]),
-        )
     }
 }
 
@@ -1877,15 +1843,45 @@ pub fn format_backref(ps: &mut ParserState, backref: Backref) {
     }
 }
 
-pub fn format_method_add_block(ps: &mut ParserState, mab: Box<MethodAddBlock>) {
+fn format_call_chain(ps: &mut ParserState, cc: Vec<CallChainElement>) {
+    for cc_elem in cc.into_iter() {
+        match cc_elem {
+            CallChainElement::Paren(p) => format_paren(ps, p),
+            CallChainElement::IdentOrOpOrKeywordOrConst(i) => format_ident(ps, i.into_ident()),
+            CallChainElement::Block(b) => {
+                ps.emit_space();
+                format_block(ps, b);
+            }
+            CallChainElement::VarRef(vr) => format_var_ref(ps, vr),
+            CallChainElement::ArgsAddStarOrExpressionList(aas) => {
+                if !aas.is_empty() {
+                    ps.breakable_of(BreakableDelims::for_method_call(), |ps| {
+                        format_list_like_thing(ps, aas, false);
+                    });
+                }
+            }
+            CallChainElement::DotTypeOrOp(d) => format_dot(ps, d),
+            CallChainElement::Expression(e) => format_expression(ps, *e),
+        }
+    }
+}
+
+pub fn format_block(ps: &mut ParserState, b: Block) {
+    match b {
+        Block::BraceBlock(bb) => format_brace_block(ps, bb),
+        Block::DoBlock(db) => format_do_block(ps, db),
+    }
+}
+
+pub fn format_method_add_block(ps: &mut ParserState, mab: MethodAddBlock) {
     if ps.at_start_of_line() {
         ps.emit_indent();
     }
 
-    let method_call = (mab.1).to_method_call();
+    let chain = (mab.1).into_call_chain();
 
     ps.with_start_of_line(false, |ps| {
-        format_method_call(ps, method_call);
+        format_call_chain(ps, chain);
     });
 
     // safe to unconditionally emit a space here, we don't have to worry
