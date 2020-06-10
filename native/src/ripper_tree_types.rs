@@ -1049,6 +1049,7 @@ pub enum SymbolOrBare {
     Op(Op),
     Kw(Kw),
     Symbol(Symbol),
+    GVar(GVar),
 }
 
 #[derive(RipperDeserialize, Debug, Clone)]
@@ -1067,17 +1068,18 @@ impl IdentOrConst {
 }
 
 #[derive(RipperDeserialize, Debug, Clone)]
-pub enum IdentOrConstOrKwOrOpOrIvar {
+pub enum IdentOrConstOrKwOrOpOrIvarOrGvar {
     Ident(Ident),
     Const(Const),
     Keyword(Kw),
     Op(Op),
     IVar(IVar),
+    GVar(GVar),
 }
 
 def_tag!(symbol_tag, "symbol");
 #[derive(Deserialize, Debug, Clone)]
-pub struct Symbol(pub symbol_tag, pub IdentOrConstOrKwOrOpOrIvar);
+pub struct Symbol(pub symbol_tag, pub IdentOrConstOrKwOrOpOrIvarOrGvar);
 
 #[derive(RipperDeserialize, Debug, Clone)]
 pub enum CallLeft {
