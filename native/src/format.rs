@@ -688,11 +688,16 @@ pub fn format_kw(ps: &mut ParserState, kw: Kw) {
 pub fn format_symbol(ps: &mut ParserState, symbol: Symbol) {
     ps.emit_ident(":".to_string());
     match symbol.1 {
-        IdentOrConstOrKwOrOpOrIvar::Ident(i) => format_ident(ps, i),
-        IdentOrConstOrKwOrOpOrIvar::Const(c) => format_const(ps, c),
-        IdentOrConstOrKwOrOpOrIvar::Keyword(kw) => format_kw(ps, kw),
-        IdentOrConstOrKwOrOpOrIvar::Op(op) => format_op(ps, op),
-        IdentOrConstOrKwOrOpOrIvar::IVar(ivar) => format_var_ref_type(ps, VarRefType::IVar(ivar)),
+        IdentOrConstOrKwOrOpOrIvarOrGvar::Ident(i) => format_ident(ps, i),
+        IdentOrConstOrKwOrOpOrIvarOrGvar::Const(c) => format_const(ps, c),
+        IdentOrConstOrKwOrOpOrIvarOrGvar::Keyword(kw) => format_kw(ps, kw),
+        IdentOrConstOrKwOrOpOrIvarOrGvar::Op(op) => format_op(ps, op),
+        IdentOrConstOrKwOrOpOrIvarOrGvar::IVar(ivar) => {
+            format_var_ref_type(ps, VarRefType::IVar(ivar))
+        }
+        IdentOrConstOrKwOrOpOrIvarOrGvar::GVar(gvar) => {
+            format_var_ref_type(ps, VarRefType::GVar(gvar))
+        }
     }
 }
 
@@ -706,6 +711,7 @@ pub fn format_symbol_literal(ps: &mut ParserState, symbol_literal: SymbolLiteral
         SymbolOrBare::Kw(kw) => format_kw(ps, kw),
         SymbolOrBare::Op(op) => format_op(ps, op),
         SymbolOrBare::Symbol(symbol) => format_symbol(ps, symbol),
+        SymbolOrBare::GVar(gvar) => format_var_ref_type(ps, VarRefType::GVar(gvar)),
     });
 
     if ps.at_start_of_line() {
