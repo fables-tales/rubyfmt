@@ -16,6 +16,18 @@ test_single_file_stdout() {
     )
 }
 
+test_stdin_stdout() {
+    (
+    cd "$(mktemp -d)"
+
+    echo "a(1, 2, 3)" > expected.rb
+
+    echo "a 1,2,3" | f_rubyfmt > out.rb
+
+    diff_files out.rb expected.rb
+    )
+}
+
 test_dir_no_i_flag() {
     (
     cd "$(mktemp -d)"
@@ -58,6 +70,24 @@ test_i_flag() {
     )
 }
 
+test_shim_script() {
+    (
+    cwd=$(pwd)
+    cd "$(mktemp -d)"
+
+    "$cwd"/script/install_shim.sh ./rubyfmt
+
+    echo "a 1,2,3" > a_ruby_file.rb
+    echo "a(1, 2, 3)" > expected.rb
+
+    ./rubyfmt a_ruby_file.rb > out.rb
+
+    diff_files out.rb expected.rb
+    )
+}
+
 test_single_file_stdout
+test_stdin_stdout
 test_dir_no_i_flag
 test_i_flag
+test_shim_script
