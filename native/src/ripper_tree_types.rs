@@ -1016,12 +1016,13 @@ impl ArgsAddBlockInner {
         match self {
             ArgsAddBlockInner::ArgsAddStarOrExpressionList(a) => a,
             ArgsAddBlockInner::Parens(ps) => {
-                let el = ps.into_iter().map(|aabp| {
-                    match aabp {
+                let el = ps
+                    .into_iter()
+                    .map(|aabp| match aabp {
                         AABParen::Paren(p) => *p.1,
                         AABParen::Expression(e) => e,
-                    }
-                }).collect();
+                    })
+                    .collect();
                 ArgsAddStarOrExpressionList::ExpressionList(el)
             }
         }
@@ -1046,7 +1047,7 @@ pub struct AssocListFromArgs(pub assoclist_from_args_tag, pub Vec<AssocNewOrAsso
 
 #[derive(RipperDeserialize, Debug, Clone)]
 pub enum AssocNewOrAssocSplat {
-    AssocNew(AssocNew),
+    AssocNew(Box<AssocNew>),
     AssocSplat(AssocSplat),
 }
 
@@ -1113,6 +1114,7 @@ pub struct Symbol(pub symbol_tag, pub IdentOrConstOrKwOrOpOrIvarOrGvar);
 #[derive(RipperDeserialize, Debug, Clone)]
 pub enum CallLeft {
     Paren(ParenExpr),
+    SingleParen(paren_tag, Box<Expression>),
     Call(Call),
     FCall(FCall),
     VCall(VCall),
@@ -1133,6 +1135,9 @@ impl CallLeft {
     pub fn into_call_chain(self) -> Vec<CallChainElement> {
         match self {
             CallLeft::Paren(p) => vec![CallChainElement::Paren(p)],
+            CallLeft::SingleParen(_, e) => {
+                vec![CallChainElement::Paren(ParenExpr(paren_expr_tag, vec![*e]))]
+            }
             CallLeft::FCall(FCall(_, ic)) => vec![CallChainElement::IdentOrOpOrKeywordOrConst(
                 ic.into_ident_or_op_or_keyword_or_const(),
             )],
