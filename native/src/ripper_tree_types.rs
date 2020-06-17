@@ -932,11 +932,11 @@ pub fn normalize_args_add_block(aab: ArgsAddBlock) -> ArgsAddStarOrExpressionLis
     // .1 is expression list
     // .2 is block
     match aab.2 {
-        ToProcExpr::NotPresent(_) => (aab.1).into_args_add_star_or_expression_list(),
+        ToProcExpr::NotPresent(_) => aab.1,
         ToProcExpr::Present(e) => {
             let trailing_expr_as_vec = vec![Expression::ToProc(ToProc(undeserializable, e))];
 
-            match (aab.1).into_args_add_star_or_expression_list() {
+            match aab.1 {
                 ArgsAddStarOrExpressionList::ExpressionList(items) => {
                     ArgsAddStarOrExpressionList::ExpressionList(
                         vec![items, trailing_expr_as_vec].concat(),
@@ -995,38 +995,9 @@ def_tag!(args_add_block_tag, "args_add_block");
 #[derive(Deserialize, Debug, Clone)]
 pub struct ArgsAddBlock(
     pub args_add_block_tag,
-    pub ArgsAddBlockInner,
+    pub ArgsAddStarOrExpressionList,
     pub ToProcExpr,
 );
-
-#[derive(RipperDeserialize, Debug, Clone)]
-pub enum AABParen {
-    Paren((paren_tag, Box<Expression>)),
-    Expression(Expression),
-}
-
-#[derive(RipperDeserialize, Debug, Clone)]
-pub enum ArgsAddBlockInner {
-    Parens(Vec<AABParen>),
-    ArgsAddStarOrExpressionList(ArgsAddStarOrExpressionList),
-}
-
-impl ArgsAddBlockInner {
-    pub fn into_args_add_star_or_expression_list(self) -> ArgsAddStarOrExpressionList {
-        match self {
-            ArgsAddBlockInner::ArgsAddStarOrExpressionList(a) => a,
-            ArgsAddBlockInner::Parens(ps) => {
-                let el = ps.into_iter().map(|aabp| {
-                    match aabp {
-                        AABParen::Paren(p) => *p.1,
-                        AABParen::Expression(e) => e,
-                    }
-                }).collect();
-                ArgsAddStarOrExpressionList::ExpressionList(el)
-            }
-        }
-    }
-}
 
 def_tag!(int_tag, "@int");
 #[derive(Deserialize, Debug, Clone)]
