@@ -1151,7 +1151,7 @@ pub fn format_aref_field(ps: &mut ParserState, af: ArefField) {
                 panic!("got a to_proc in an aref_field, should be impossible");
             }
             ToProcExpr::NotPresent(_) => {
-                format_list_like_thing(ps, aab.1, true);
+                format_list_like_thing(ps, (aab.1).into_args_add_star_or_expression_list(), true);
             }
         }
         ps.emit_close_square_bracket();
@@ -1411,7 +1411,7 @@ pub fn format_next(ps: &mut ParserState, next: Next) {
                 }
                 ToProcExpr::NotPresent(_) => {
                     ps.emit_space();
-                    format_list_like_thing(ps, aab.1, true);
+                    format_list_like_thing(ps, (aab.1).into_args_add_star_or_expression_list(), true);
                 }
             },
         }
@@ -2002,7 +2002,7 @@ pub fn format_kw_with_args(
             };
             ArgsAddBlock(
                 args_add_block_tag,
-                ArgsAddStarOrExpressionList::ExpressionList(vec![]),
+                ArgsAddBlockInner::ArgsAddStarOrExpressionList(ArgsAddStarOrExpressionList::ExpressionList(vec![])),
                 ToProcExpr::NotPresent(false),
             )
         }
@@ -2010,7 +2010,7 @@ pub fn format_kw_with_args(
     ps.on_line(linecol.0);
 
     ps.with_start_of_line(false, |ps| {
-        format_list_like_thing(ps, yield_args.1, true);
+        format_list_like_thing(ps, (yield_args.1).into_args_add_star_or_expression_list(), true);
     });
 
     if ps.at_start_of_line() {
