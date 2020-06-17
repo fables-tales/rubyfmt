@@ -932,11 +932,11 @@ pub fn normalize_args_add_block(aab: ArgsAddBlock) -> ArgsAddStarOrExpressionLis
     // .1 is expression list
     // .2 is block
     match aab.2 {
-        ToProcExpr::NotPresent(_) => aab.1,
+        ToProcExpr::NotPresent(_) => (aab.1).into_args_add_star_or_expression_list(),
         ToProcExpr::Present(e) => {
             let trailing_expr_as_vec = vec![Expression::ToProc(ToProc(undeserializable, e))];
 
-            match aab.1 {
+            match (aab.1).into_args_add_star_or_expression_list() {
                 ArgsAddStarOrExpressionList::ExpressionList(items) => {
                     ArgsAddStarOrExpressionList::ExpressionList(
                         vec![items, trailing_expr_as_vec].concat(),
@@ -995,9 +995,39 @@ def_tag!(args_add_block_tag, "args_add_block");
 #[derive(Deserialize, Debug, Clone)]
 pub struct ArgsAddBlock(
     pub args_add_block_tag,
-    pub ArgsAddStarOrExpressionList,
+    pub ArgsAddBlockInner,
     pub ToProcExpr,
 );
+
+#[derive(RipperDeserialize, Debug, Clone)]
+pub enum AABParen {
+    Paren((paren_tag, Box<Expression>)),
+    Expression(Expression),
+}
+
+#[derive(RipperDeserialize, Debug, Clone)]
+pub enum ArgsAddBlockInner {
+    Parens(Vec<AABParen>),
+    ArgsAddStarOrExpressionList(ArgsAddStarOrExpressionList),
+}
+
+impl ArgsAddBlockInner {
+    pub fn into_args_add_star_or_expression_list(self) -> ArgsAddStarOrExpressionList {
+        match self {
+            ArgsAddBlockInner::ArgsAddStarOrExpressionList(a) => a,
+            ArgsAddBlockInner::Parens(ps) => {
+                let el = ps
+                    .into_iter()
+                    .map(|aabp| match aabp {
+                        AABParen::Paren(p) => *p.1,
+                        AABParen::Expression(e) => e,
+                    })
+                    .collect();
+                ArgsAddStarOrExpressionList::ExpressionList(el)
+            }
+        }
+    }
+}
 
 def_tag!(int_tag, "@int");
 #[derive(Deserialize, Debug, Clone)]
@@ -1017,7 +1047,7 @@ pub struct AssocListFromArgs(pub assoclist_from_args_tag, pub Vec<AssocNewOrAsso
 
 #[derive(RipperDeserialize, Debug, Clone)]
 pub enum AssocNewOrAssocSplat {
-    AssocNew(AssocNew),
+    AssocNew(Box<AssocNew>),
     AssocSplat(AssocSplat),
 }
 
@@ -1084,6 +1114,7 @@ pub struct Symbol(pub symbol_tag, pub IdentOrConstOrKwOrOpOrIvarOrGvar);
 #[derive(RipperDeserialize, Debug, Clone)]
 pub enum CallLeft {
     Paren(ParenExpr),
+    SingleParen(paren_tag, Box<Expression>),
     Call(Call),
     FCall(FCall),
     VCall(VCall),
@@ -1104,6 +1135,9 @@ impl CallLeft {
     pub fn into_call_chain(self) -> Vec<CallChainElement> {
         match self {
             CallLeft::Paren(p) => vec![CallChainElement::Paren(p)],
+            CallLeft::SingleParen(_, e) => {
+                vec![CallChainElement::Paren(ParenExpr(paren_expr_tag, vec![*e]))]
+            }
             CallLeft::FCall(FCall(_, ic)) => vec![CallChainElement::IdentOrOpOrKeywordOrConst(
                 ic.into_ident_or_op_or_keyword_or_const(),
             )],
