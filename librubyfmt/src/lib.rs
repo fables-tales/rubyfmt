@@ -104,8 +104,9 @@ pub extern "C" fn rubyfmt_format_buffer(buf: FormatBuffer) -> FormatBuffer {
     let data = buf.into_buf();
     let res = toplevel_format_program(&mut output, data, tree);
     raise_if_error(res);
-    let output_data = output.into_inner();
+    let output_data = output.into_inner().into_boxed_slice();
     let fb = FormatBuffer { bytes: output_data.as_ptr() as *const libc::c_char, count: output_data.len() as i64 };
+    std::mem::forget(output_data);
     return fb;
 }
 

@@ -1,16 +1,54 @@
 extern crate rubyfmt;
+extern crate glob;
+
+use std::fs::{metadata, read_to_string, OpenOptions};
+use std::path::PathBuf;
 use std::io::{self, Read, Write};
 
+use glob::glob;
+
+fn rubyfmt_file(file_path: PathBuf) -> io::Result<()> {
+    let buffer = read_to_string(file_path.clone())?;
+    let res = rubyfmt::format_buffer(buffer);
+    let mut file = OpenOptions::new().write(true).open(file_path).expect("file");
+    write!(file, "{}", res)?;
+    Ok(())
+}
+
+fn rubyfmt_dir(path: &String) -> io::Result<()> {
+    for entry in glob(&format!("{}/**/*.rb", path)).expect("it exists") {
+        let p = entry.expect("should not be null");
+        rubyfmt_file(p)?;
+    }
+    Ok(())
+}
+
+fn format_parts(parts: &[String]) {
+    for part in parts {
+        if let Ok(md) = metadata(part) {
+            if md.is_dir() {
+                rubyfmt_dir(part).expect("failed to format dir");
+            } else if md.is_file() {
+                rubyfmt_file(part.into()).expect("failed to format file");
+            }
+        }
+    }
+}
 
 fn main() {
     rubyfmt::rubyfmt_init();
     let args: Vec<String> = std::env::args().collect();
-    println!("{:?}", args);
     if args.len() == 1 {
         let mut buffer = String::new();
         io::stdin().read_to_string(&mut buffer).expect("reading frmo stdin to not fail");
         let res = rubyfmt::format_buffer(buffer);
         write!(io::stdout(), "{}", res).expect("write works");
         io::stdout().flush().expect("flush works");
+    } else if args[1] == "-i" {
+        let parts = &args[2..args.len()];
+        format_parts(parts);
+    } else {
+        let parts = &args[1..args.len()];
+        format_parts(parts);
     }
 }
