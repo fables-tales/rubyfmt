@@ -11,7 +11,7 @@ f_md5() {
 }
 
 f_rubyfmt() {
-    ruby --disable=gems "${REPO_BASE}/rubyfmt.rb" "$@"
+    "${REPO_BASE}/target/release/rubyfmt-main" "$@"
 }
 
 

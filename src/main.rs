@@ -44,6 +44,11 @@ fn main() {
         let res = rubyfmt::format_buffer(buffer);
         write!(io::stdout(), "{}", res).expect("write works");
         io::stdout().flush().expect("flush works");
+    } else if args.len() == 2 {
+        let buffer = read_to_string(args[1].clone()).expect("file exists");
+        let res = rubyfmt::format_buffer(buffer);
+        write!(io::stdout(), "{}", res).expect("write works");
+        io::stdout().flush().expect("flush works");
     } else if args[1] == "-i" {
         let parts = &args[2..args.len()];
         format_parts(parts);

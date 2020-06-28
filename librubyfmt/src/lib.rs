@@ -56,7 +56,8 @@ impl FormatBuffer {
     pub fn into_string(self) -> String {
         unsafe {
             let vec = Vec::from_raw_parts(self.bytes as *mut u8, self.count as usize, self.count as usize);
-            return String::from_utf8_unchecked(vec);
+            let res = String::from_utf8_unchecked(vec);
+            return res
         }
     }
 }
@@ -105,7 +106,9 @@ pub extern "C" fn rubyfmt_format_buffer(buf: FormatBuffer) -> FormatBuffer {
     let res = toplevel_format_program(&mut output, data, tree);
     raise_if_error(res);
     let output_data = output.into_inner().into_boxed_slice();
-    let fb = FormatBuffer { bytes: output_data.as_ptr() as *const libc::c_char, count: output_data.len() as i64 };
+    let ptr = output_data.as_ptr();
+    let len = output_data.len();
+    let fb = FormatBuffer { bytes: ptr as *const libc::c_char, count: len as i64 };
     std::mem::forget(output_data);
     return fb;
 }
@@ -163,6 +166,7 @@ fn toplevel_format_program<W: Write>(writer: &mut W, buf: &[u8], tree: VALUE) ->
     format::format_program(&mut ps, v);
 
     ps.write(writer)?;
+    writer.flush().expect("it flushes");
     Ok(())
 }
 
@@ -186,7 +190,7 @@ fn intern(s: &str) -> ruby::ID {
 
 fn run_parser_on(buf: FormatBuffer) -> Result<VALUE, ()> {
     unsafe {
-        let buffer_string = ruby::rb_str_new(buf.bytes, buf.count);
+        let buffer_string = ruby::rb_utf8_str_new(buf.bytes, buf.count);
         let parser_class = eval_str("Parser")?;
         let parser_instance = ruby::rb_funcall(parser_class, intern("new"), 1, buffer_string);
         let tree = ruby::rb_funcall(parser_instance, intern("parse"), 0);

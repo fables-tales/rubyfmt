@@ -50,7 +50,7 @@ extern "C" {
     pub fn ruby_cleanup(_: libc::c_int);
     pub fn rb_eval_string_protect(_: *const libc::c_char, _: *mut libc::c_int) -> VALUE;
     pub fn rb_funcall(_: VALUE, _: ID, _: libc::c_int, ...) -> VALUE;
-    pub fn rb_str_new(_: *const libc::c_char, _: libc::c_long) -> VALUE;
+    pub fn rb_utf8_str_new(_: *const libc::c_char, _: libc::c_long) -> VALUE;
     pub fn rb_str_new_cstr(_: *const libc::c_char) -> VALUE;
     pub fn rb_intern(_: *const libc::c_char) -> ID;
     pub fn Init_ripper();
