@@ -56,8 +56,7 @@ impl FormatBuffer {
     pub fn into_string(self) -> String {
         unsafe {
             let vec = Vec::from_raw_parts(self.bytes as *mut u8, self.count as usize, self.count as usize);
-            let res = String::from_utf8_unchecked(vec);
-            return res
+            String::from_utf8_unchecked(vec)
         }
     }
 }
