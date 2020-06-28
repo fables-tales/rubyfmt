@@ -9,4 +9,7 @@ typedef struct _FormatBuffer {
 int rubyfmt_init();
 FormatBuffer rubyfmt_format_buffer(FormatBuffer buf);
 
+int RUBYFMT_INIT_STATUS_OK = 0;
+int RUBYFMT_INIT_STATUS_ERROR = 1;
+
 #endif
