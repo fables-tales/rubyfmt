@@ -4,8 +4,7 @@ use std::path::Path;
 
 fn main() {
     let path = std::env::current_dir().expect("is current");
-    let ruby_checkout_path = format!("{}/ruby_checkout/ruby-2.6.6", path.display());
-    if !Path::new(&format!("{}/libruby.2.6-static.a", ruby_checkout_path)).exists() {
+    if !path.join("ruby_checkout/ruby-2.6.6/libruby.2.6-static.a").exists() {
         let o = Command::new("bash")
             .arg("-c")
             .arg(format!("{}/configure && make -j", ruby_checkout_path))
@@ -17,7 +16,7 @@ fn main() {
             panic!("failed subcommand");
         }
     }
-    if !Path::new(&format!("{}/ruby_checkout/ruby-2.6.6/libripper.2.6-static.a", path.display())).exists() {
+    if !path.join("ruby_checkout/ruby-2.6.6/libripper.2.6-static.a").exists() {
         let o = Command::new("bash")
             .arg("-c")
             .arg("ar crus libripper.2.6-static.a ext/ripper/ripper.o")
