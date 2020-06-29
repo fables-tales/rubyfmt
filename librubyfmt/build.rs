@@ -1,13 +1,13 @@
 use std::process::Command;
 use std::io::{self, Write};
-use std::path::Path;
 
 fn main() {
     let path = std::env::current_dir().expect("is current");
-    if !path.join("ruby_checkout/ruby-2.6.6/libruby.2.6-static.a").exists() {
+    let ruby_checkout_path = path.join("ruby_checkout/ruby-2.6.6/");
+    if !ruby_checkout_path.join("libruby.2.6-static.a").exists() {
         let o = Command::new("bash")
             .arg("-c")
-            .arg(format!("{}/configure && make -j", ruby_checkout_path))
+            .arg(format!("autoconf && {}/configure && make -j", ruby_checkout_path.display()))
             .current_dir(&ruby_checkout_path)
             .output().expect("works1 ");
         if !o.status.success() {
@@ -28,8 +28,8 @@ fn main() {
     }
     cc::Build::new()
         .file("src/rubyfmt.c")
-        .include(format!("{}/include", ruby_checkout_path))
-        .include(format!("{}/.ext/include/x86_64-darwin19", ruby_checkout_path))
+        .include(format!("{}/include", ruby_checkout_path.display()))
+        .include(format!("{}/.ext/include/x86_64-darwin19", ruby_checkout_path.display()))
         .compile("librubyfmt_c");
 
     println!("cargo:rustc-link-search=native={}/ruby_checkout/ruby-2.6.6", path.display());
