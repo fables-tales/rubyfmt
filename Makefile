@@ -1,8 +1,12 @@
 .PHONY: clean clippy lint fmt all release debug
 
-all: release debug
+all: submodules release debug
 debug: target/debug/librubyfmt.a
 release: target/release/librubyfmt.a
+
+submodules:
+	git submodule init
+	git submodule update
 
 target/c_main_debug: main.c target/debug/librubyfmt.a
 	clang -O3 main.c target/debug/librubyfmt.a -framework Foundation -lgmp -o $@
