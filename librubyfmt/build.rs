@@ -30,6 +30,7 @@ fn main() {
         .file("src/rubyfmt.c")
         .include(format!("{}/include", ruby_checkout_path.display()))
         .include(format!("{}/.ext/include/x86_64-darwin19", ruby_checkout_path.display()))
+        .include(format!("{}/.ext/include/x86_64-darwin18", ruby_checkout_path.display()))
         .include(format!("{}/.ext/include/x86_64-linux", ruby_checkout_path.display()))
         .compile("librubyfmt_c");
 
