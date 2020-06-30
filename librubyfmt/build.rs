@@ -30,6 +30,7 @@ fn main() {
         .file("src/rubyfmt.c")
         .include(format!("{}/include", ruby_checkout_path.display()))
         .include(format!("{}/.ext/include/x86_64-darwin19", ruby_checkout_path.display()))
+        .include(format!("{}/.ext/include/x86_64-linux", ruby_checkout_path.display()))
         .compile("librubyfmt_c");
 
     println!("cargo:rustc-link-search=native={}/ruby_checkout/ruby-2.6.6", path.display());
