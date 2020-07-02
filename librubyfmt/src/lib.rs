@@ -5,6 +5,7 @@ extern crate lazy_static;
 
 use std::io::{BufReader, Cursor, Write};
 use std::slice;
+use std::str;
 
 #[global_allocator]
 static ALLOC: jemallocator::Jemalloc = jemallocator::Jemalloc;
@@ -41,34 +42,23 @@ extern "C" {
     pub fn Init_ripper();
 }
 
-#[repr(C)]
-#[derive(Debug, Copy, Clone)]
-pub struct FormatBuffer {
-    pub bytes: *const libc::c_char,
-    pub count: i64,
-}
-
-impl FormatBuffer {
-    pub fn into_buf(self) -> &'static [u8] {
-        unsafe { slice::from_raw_parts(self.bytes as *const u8, self.count as usize) }
-    }
-
-    pub fn into_string(self) -> String {
-        unsafe {
-            let vec = Vec::from_raw_parts(
-                self.bytes as *mut u8,
-                self.count as usize,
-                self.count as usize,
-            );
-            String::from_utf8_unchecked(vec)
-        }
-    }
-}
+pub struct RubyfmtString(Box<str>);
 
 #[derive(Debug, Copy, Clone)]
 pub enum InitStatus {
     OK = 0,
     ERROR = 1,
+}
+
+pub fn format_buffer(buf: &str) -> String {
+    let tree = run_parser_on(buf.to_owned()).expect("the parser works");
+    let out_data = vec!();
+    let mut output = Cursor::new(out_data);
+    let data = buf.as_bytes();
+    let res = toplevel_format_program(&mut output, data, tree);
+    raise_if_error(res);
+    output.flush().expect("flushing works");
+    unsafe { String::from_utf8_unchecked(output.into_inner()) }
 }
 
 #[no_mangle]
@@ -90,47 +80,26 @@ pub extern "C" fn rubyfmt_init() -> libc::c_int {
     InitStatus::OK as libc::c_int
 }
 
-pub fn format_buffer(buf: String) -> String {
-    eprintln!("format 1");
-    let bytes: Vec<libc::c_char> = buf
-        .into_bytes()
-        .into_iter()
-        .map(|v| v as libc::c_char)
-        .collect();
-    let len = bytes.len();
-    eprintln!("format 2");
-    let fb = rubyfmt_format_buffer(FormatBuffer {
-        bytes: bytes.as_ptr(),
-        count: len as i64,
-    });
-    eprintln!("format 3");
-    fb.into_string()
+#[no_mangle]
+pub extern "C" fn rubyfmt_format_buffer(ptr: *const u8, len: usize) -> *mut RubyfmtString {
+    let input = unsafe { str::from_utf8_unchecked(slice::from_raw_parts(ptr, len)) };
+    let output = format_buffer(input);
+    Box::into_raw(Box::new(RubyfmtString(output.into_boxed_str())))
 }
 
 #[no_mangle]
-pub extern "C" fn rubyfmt_format_buffer(buf: FormatBuffer) -> FormatBuffer {
-    let output_data = Vec::with_capacity(buf.count as usize);
-    let mut output = Cursor::new(output_data);
-    let tree = run_parser_on(buf);
-    if tree.is_err() {
-        unsafe {
-            let cstr = CString::new("oh no").expect("we just made it");
-            ruby::rb_raise(ruby::rb_eRuntimeError, cstr.as_ptr());
-        }
-    }
-    let tree = tree.expect("we raised");
-    let data = buf.into_buf();
-    let res = toplevel_format_program(&mut output, data, tree);
-    raise_if_error(res);
-    let output_data = output.into_inner().into_boxed_slice();
-    let ptr = output_data.as_ptr();
-    let len = output_data.len();
-    let fb = FormatBuffer {
-        bytes: ptr as *const libc::c_char,
-        count: len as i64,
-    };
-    std::mem::forget(output_data);
-    fb
+pub extern "C" fn rubyfmt_string_ptr(s: &RubyfmtString) -> *const u8 {
+    s.0.as_ptr()
+}
+
+#[no_mangle]
+pub extern "C" fn rubyfmt_string_len(s: &RubyfmtString) -> usize {
+    s.0.len()
+}
+
+#[no_mangle]
+extern "C" fn rubyfmt_string_free(rubyfmt_string: *mut RubyfmtString) {
+    unsafe { Box::from_raw(rubyfmt_string); }
 }
 
 fn load_rubyfmt() -> Result<VALUE, ()> {
@@ -222,9 +191,9 @@ fn intern(s: &str) -> ruby::ID {
     }
 }
 
-fn run_parser_on(buf: FormatBuffer) -> Result<VALUE, ()> {
+fn run_parser_on(buf: String) -> Result<VALUE, ()> {
     unsafe {
-        let buffer_string = ruby::rb_utf8_str_new(buf.bytes, buf.count);
+        let buffer_string = ruby::rb_utf8_str_new(buf.as_ptr() as _ , buf.len() as i64);
         let parser_class = eval_str("Parser")?;
         let parser_instance = ruby::rb_funcall(parser_class, intern("new"), 1, buffer_string);
         let tree = ruby::rb_funcall(parser_instance, intern("parse"), 0);

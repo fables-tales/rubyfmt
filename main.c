@@ -5,7 +5,7 @@
 int main() {
     int buf_size = 1024;
     int bytes_read = 0;
-    char* buf = malloc(sizeof(char)*buf_size);
+    unsigned char* buf = malloc(sizeof(char)*buf_size);
     int nread = fread(buf, sizeof(char), buf_size, stdin);
     while (nread == buf_size) {
         bytes_read += nread;
@@ -16,13 +16,14 @@ int main() {
     }
     bytes_read += nread;
 
-    FormatBuffer fb = { .bytes = buf, .count = bytes_read };
-
     int res = rubyfmt_init();
     if (res != RUBYFMT_INIT_STATUS_OK) {
         fprintf(stderr, "failed to init\n");
         exit(1);
     }
-    FormatBuffer out = rubyfmt_format_buffer(fb);
-    fwrite(out.bytes, sizeof(char), out.count, stdout);
+    RubyfmtString* out = rubyfmt_format_buffer(buf, bytes_read);
+    unsigned char* bytes = rubyfmt_string_ptr(out);
+    size_t len = rubyfmt_string_len(out);
+    fwrite(bytes, sizeof(char), len, stdout);
+    rubyfmt_string_free(out);
 }

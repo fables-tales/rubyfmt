@@ -10,7 +10,7 @@ use glob::glob;
 
 fn rubyfmt_file(file_path: PathBuf) -> io::Result<()> {
     let buffer = read_to_string(file_path.clone())?;
-    let res = rubyfmt::format_buffer(buffer);
+    let res = rubyfmt::format_buffer(&buffer);
     let mut file = OpenOptions::new()
         .write(true)
         .open(file_path)
@@ -50,14 +50,14 @@ fn main() {
         io::stdin()
             .read_to_string(&mut buffer)
             .expect("reading frmo stdin to not fail");
-        let res = rubyfmt::format_buffer(buffer);
+        let res = rubyfmt::format_buffer(&buffer);
         write!(io::stdout(), "{}", res).expect("write works");
         io::stdout().flush().expect("flush works");
     } else if args.len() == 2 {
         eprintln!("1");
         let buffer = read_to_string(args[1].clone()).expect("file exists");
         eprintln!("2");
-        let res = rubyfmt::format_buffer(buffer);
+        let res = rubyfmt::format_buffer(&buffer);
         eprintln!("3");
         write!(io::stdout(), "{}", res).expect("write works");
         eprintln!("4");
