@@ -51,7 +51,7 @@ pub enum InitStatus {
 }
 
 pub fn format_buffer(buf: &str) -> String {
-    let tree = run_parser_on(buf.to_owned()).expect("the parser works");
+    let tree = run_parser_on(buf).expect("the parser works");
     let out_data = vec![];
     let mut output = Cursor::new(out_data);
     let data = buf.as_bytes();
@@ -198,7 +198,7 @@ fn intern(s: &str) -> ruby::ID {
     }
 }
 
-fn run_parser_on(buf: String) -> Result<VALUE, ()> {
+fn run_parser_on(buf: &str) -> Result<VALUE, ()> {
     unsafe {
         let buffer_string = ruby::rb_utf8_str_new(buf.as_ptr() as _, buf.len() as i64);
         let parser_class = eval_str("Parser")?;
