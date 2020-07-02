@@ -63,6 +63,7 @@ fn main() {
     );
     println!("cargo:rustc-link-lib=static={}", libname);
     println!("cargo:rustc-link-lib=static=ripper.2.6-static");
+    println!("cargo:rustc-link-lib=dylib=z");
 
     #[cfg(target_os = "linux")]
     println!("cargo:rustc-link-lib=dylib=crypt");
