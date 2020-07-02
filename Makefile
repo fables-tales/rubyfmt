@@ -1,5 +1,14 @@
 .PHONY: clean clippy lint fmt all release debug
 
+UNAME_S := $(shell uname -s)
+ifeq ($(UNAME_S), Darwin)
+	LDFLAGS=-framework Foundation
+endif
+
+ifeq ($(UNAME_S), Linux)
+	LDFLAGS=-lcrypt
+endif
+
 all: submodules release debug
 debug: target/debug/librubyfmt.a
 release: target/release/librubyfmt.a
@@ -9,10 +18,10 @@ submodules:
 	git submodule update
 
 target/c_main_debug: main.c target/debug/librubyfmt.a
-	clang -O3 main.c target/debug/librubyfmt.a -framework Foundation -lgmp -o $@
+	clang -O3 main.c target/debug/librubyfmt.a $(LDFLAGS) -o $@
 
 target/c_main_release: main.c target/release/librubyfmt.a
-	clang -O3 main.c target/release/librubyfmt.a -framework Foundation -lgmp -o $@
+	clang -O3 main.c target/release/librubyfmt.a $(LDFLAGS) -o $@
 
 target/release/librubyfmt.a: librubyfmt/src/*.rs librubyfmt/Cargo.toml
 	mkdir -p target/release
