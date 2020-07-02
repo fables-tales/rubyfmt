@@ -2,12 +2,17 @@ use std::process::Command;
 use std::io::{self, Write};
 
 fn main() {
+    #[cfg(target_os = "linux")]
+    let libname = "ruby-static";
+    #[cfg(target_os = "macos")]
+    let libname = "ruby.2.6-static";
+
     let path = std::env::current_dir().expect("is current");
     let ruby_checkout_path = path.join("ruby_checkout/ruby-2.6.6/");
-    if !ruby_checkout_path.join("libruby.2.6-static.a").exists() {
+    if !ruby_checkout_path.join(format!("lib{}.a", libname)).exists() {
         let o = Command::new("bash")
             .arg("-c")
-            .arg(format!("autoconf && {}/configure && make -j", ruby_checkout_path.display()))
+            .arg(format!("autoconf && {}/configure --without-gmp && make -j", ruby_checkout_path.display()))
             .current_dir(&ruby_checkout_path)
             .output().expect("works1 ");
         if !o.status.success() {
@@ -16,7 +21,7 @@ fn main() {
             panic!("failed subcommand");
         }
     }
-    if !path.join("ruby_checkout/ruby-2.6.6/libripper.2.6-static.a").exists() {
+    if !ruby_checkout_path.join("libripper.2.6-static.a").exists() {
         let o = Command::new("bash")
             .arg("-c")
             .arg("ar crus libripper.2.6-static.a ext/ripper/ripper.o")
@@ -26,6 +31,7 @@ fn main() {
             panic!("failed subcommand");
         }
     }
+
     cc::Build::new()
         .file("src/rubyfmt.c")
         .include(format!("{}/include", ruby_checkout_path.display()))
@@ -35,6 +41,10 @@ fn main() {
         .compile("librubyfmt_c");
 
     println!("cargo:rustc-link-search=native={}/ruby_checkout/ruby-2.6.6", path.display());
-    println!("cargo:rustc-link-lib=static=ruby.2.6-static");
+    println!("cargo:rustc-link-lib=static={}", libname);
     println!("cargo:rustc-link-lib=static=ripper.2.6-static");
+
+    #[cfg(target_os="linux")]
+    println!("cargo:rustc-link-lib=dylib=crypt");
+
 }
