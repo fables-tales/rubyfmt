@@ -232,13 +232,11 @@ fn run_parser_on(buf: FormatBuffer) -> Result<VALUE, ()> {
 fn init_logger() {
     #[cfg(debug_assertions)]
     {
-        CombinedLogger::init(vec![TermLogger::new(
+        TermLogger::init(
             LevelFilter::Debug,
             Config::default(),
             TerminalMode::Stderr,
-        )
-        .unwrap()])
-        .unwrap();
+        ).expect("making a term logger");
         debug!("logger works");
     }
 }
