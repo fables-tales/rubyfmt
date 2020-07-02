@@ -9,13 +9,18 @@ use std::path::PathBuf;
 use glob::glob;
 
 fn rubyfmt_file(file_path: PathBuf) -> io::Result<()> {
+    eprintln!("a");
     let buffer = read_to_string(file_path.clone())?;
+    eprintln!("b");
     let res = rubyfmt::format_buffer(&buffer);
+    eprintln!("c");
     let mut file = OpenOptions::new()
         .write(true)
         .open(file_path)
         .expect("file");
+    eprintln!("d");
     write!(file, "{}", res)?;
+    eprintln!("e");
     Ok(())
 }
 
