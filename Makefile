@@ -9,6 +9,8 @@ ifeq ($(UNAME_S), Linux)
 	LDFLAGS=-lcrypt
 endif
 
+LDFLAGS +=  -lz
+
 all: submodules release debug
 debug: target/debug/librubyfmt.a target/debug/rubyfmt-main
 release: target/release/librubyfmt.a target/release/rubyfmt-main
