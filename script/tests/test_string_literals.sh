@@ -4,7 +4,7 @@ set -ex
 source ./script/functions.sh
 
 STRING_LITERALS_EXPECTED=$(ruby ci/string_literals_stress_test.rb | f_md5)
-f_rubyfmt ci/string_literals_stress_test.rb 
+f_rubyfmt ci/string_literals_stress_test.rb || echo 'command failed'
 find .
 exit 1
 STRING_LITERALS_ACTUAL=$(f_rubyfmt ci/string_literals_stress_test.rb | ruby | f_md5)
