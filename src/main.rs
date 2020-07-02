@@ -1,16 +1,19 @@
-extern crate rubyfmt;
 extern crate glob;
+extern crate rubyfmt;
 
 use std::fs::{metadata, read_to_string, OpenOptions};
-use std::path::PathBuf;
 use std::io::{self, Read, Write};
+use std::path::PathBuf;
 
 use glob::glob;
 
 fn rubyfmt_file(file_path: PathBuf) -> io::Result<()> {
     let buffer = read_to_string(file_path.clone())?;
     let res = rubyfmt::format_buffer(buffer);
-    let mut file = OpenOptions::new().write(true).open(file_path).expect("file");
+    let mut file = OpenOptions::new()
+        .write(true)
+        .open(file_path)
+        .expect("file");
     write!(file, "{}", res)?;
     Ok(())
 }
@@ -40,7 +43,9 @@ fn main() {
     let args: Vec<String> = std::env::args().collect();
     if args.len() == 1 {
         let mut buffer = String::new();
-        io::stdin().read_to_string(&mut buffer).expect("reading frmo stdin to not fail");
+        io::stdin()
+            .read_to_string(&mut buffer)
+            .expect("reading frmo stdin to not fail");
         let res = rubyfmt::format_buffer(buffer);
         write!(io::stdout(), "{}", res).expect("write works");
         io::stdout().flush().expect("flush works");

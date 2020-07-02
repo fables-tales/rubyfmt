@@ -3,7 +3,7 @@ use std::ffi::CString;
 #[macro_use]
 extern crate lazy_static;
 
-use std::io::{BufReader, Write, Cursor};
+use std::io::{BufReader, Cursor, Write};
 use std::slice;
 
 #[global_allocator]
@@ -55,7 +55,11 @@ impl FormatBuffer {
 
     pub fn into_string(self) -> String {
         unsafe {
-            let vec = Vec::from_raw_parts(self.bytes as *mut u8, self.count as usize, self.count as usize);
+            let vec = Vec::from_raw_parts(
+                self.bytes as *mut u8,
+                self.count as usize,
+                self.count as usize,
+            );
             String::from_utf8_unchecked(vec)
         }
     }
@@ -69,7 +73,9 @@ enum InitStatus {
 #[no_mangle]
 pub extern "C" fn rubyfmt_init() -> libc::c_int {
     init_logger();
-    unsafe { ruby::ruby_init(); }
+    unsafe {
+        ruby::ruby_init();
+    }
     let res = load_ripper();
     if res.is_err() {
         return InitStatus::ERROR as libc::c_int;
@@ -84,9 +90,16 @@ pub extern "C" fn rubyfmt_init() -> libc::c_int {
 }
 
 pub fn format_buffer(buf: String) -> String {
-    let bytes: Vec<libc::c_char> = buf.into_bytes().into_iter().map(|v| v as libc::c_char).collect();
+    let bytes: Vec<libc::c_char> = buf
+        .into_bytes()
+        .into_iter()
+        .map(|v| v as libc::c_char)
+        .collect();
     let len = bytes.len();
-    let fb = rubyfmt_format_buffer(FormatBuffer { bytes: bytes.as_ptr(), count: len as i64 });
+    let fb = rubyfmt_format_buffer(FormatBuffer {
+        bytes: bytes.as_ptr(),
+        count: len as i64,
+    });
     fb.into_string()
 }
 
@@ -97,7 +110,8 @@ pub extern "C" fn rubyfmt_format_buffer(buf: FormatBuffer) -> FormatBuffer {
     let tree = run_parser_on(buf);
     if tree.is_err() {
         unsafe {
-            ruby::rb_raise(ruby::rb_eRuntimeError, CString::new("oh no").expect("bees").as_ptr());
+            let cstr = CString::new("oh no").expect("we just made it");
+            ruby::rb_raise(ruby::rb_eRuntimeError, cstr.as_ptr());
         }
     }
     let tree = tree.expect("we raised");
@@ -107,11 +121,13 @@ pub extern "C" fn rubyfmt_format_buffer(buf: FormatBuffer) -> FormatBuffer {
     let output_data = output.into_inner().into_boxed_slice();
     let ptr = output_data.as_ptr();
     let len = output_data.len();
-    let fb = FormatBuffer { bytes: ptr as *const libc::c_char, count: len as i64 };
+    let fb = FormatBuffer {
+        bytes: ptr as *const libc::c_char,
+        count: len as i64,
+    };
     std::mem::forget(output_data);
     return fb;
 }
-
 
 fn load_rubyfmt() -> Result<VALUE, ()> {
     let rubyfmt_program = include_str!("../rubyfmt_lib.rb");
@@ -120,7 +136,8 @@ fn load_rubyfmt() -> Result<VALUE, ()> {
 
 fn load_ripper() -> Result<(), ()> {
     // trick ruby in to thinking ripper is already loaded
-    eval_str(r#"
+    eval_str(
+        r#"
     $LOADED_FEATURES << "ripper.bundle"
     $LOADED_FEATURES << "ripper.so"
     $LOADED_FEATURES << "ripper.rb"
@@ -128,17 +145,28 @@ fn load_ripper() -> Result<(), ()> {
     $LOADED_FEATURES << "ripper/sexp.rb"
     $LOADED_FEATURES << "ripper/filter.rb"
     $LOADED_FEATURES << "ripper/lexer.rb"
-    "#)?;
+    "#,
+    )?;
 
     // init the ripper C module
     unsafe { Init_ripper() };
 
     //load each ripper program
-    eval_str(include_str!("../ruby_checkout/ruby-2.6.6/ext/ripper/lib/ripper.rb"))?;
-    eval_str(include_str!("../ruby_checkout/ruby-2.6.6/ext/ripper/lib/ripper/core.rb"))?;
-    eval_str(include_str!("../ruby_checkout/ruby-2.6.6/ext/ripper/lib/ripper/lexer.rb"))?;
-    eval_str(include_str!("../ruby_checkout/ruby-2.6.6/ext/ripper/lib/ripper/filter.rb"))?;
-    eval_str(include_str!("../ruby_checkout/ruby-2.6.6/ext/ripper/lib/ripper/sexp.rb"))?;
+    eval_str(include_str!(
+        "../ruby_checkout/ruby-2.6.6/ext/ripper/lib/ripper.rb"
+    ))?;
+    eval_str(include_str!(
+        "../ruby_checkout/ruby-2.6.6/ext/ripper/lib/ripper/core.rb"
+    ))?;
+    eval_str(include_str!(
+        "../ruby_checkout/ruby-2.6.6/ext/ripper/lib/ripper/lexer.rb"
+    ))?;
+    eval_str(include_str!(
+        "../ruby_checkout/ruby-2.6.6/ext/ripper/lib/ripper/filter.rb"
+    ))?;
+    eval_str(include_str!(
+        "../ruby_checkout/ruby-2.6.6/ext/ripper/lib/ripper/sexp.rb"
+    ))?;
 
     Ok(())
 }
@@ -147,7 +175,10 @@ fn eval_str(s: &str) -> Result<VALUE, ()> {
     unsafe {
         let rubyfmt_program_as_c = CString::new(s).expect("it should become a c string");
         let mut state = 0;
-        let v = ruby::rb_eval_string_protect(rubyfmt_program_as_c.as_ptr(), &mut state as *mut libc::c_int);
+        let v = ruby::rb_eval_string_protect(
+            rubyfmt_program_as_c.as_ptr(),
+            &mut state as *mut libc::c_int,
+        );
         if state != 0 {
             Err(())
         } else {

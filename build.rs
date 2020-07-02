@@ -4,6 +4,6 @@ fn main() {
         println!("cargo:rustc-link-lib=framework=foundation");
     }
 
-    #[cfg(target_os="linux")]
+    #[cfg(target_os = "linux")]
     println!("cargo:rustc-link-lib=dylib=crypt");
 }
