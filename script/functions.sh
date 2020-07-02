@@ -11,7 +11,7 @@ f_md5() {
 }
 
 f_rubyfmt() {
-    "${REPO_BASE}/target/debug/rubyfmt-main" "$@"
+    "${REPO_BASE}/target/release/rubyfmt-main" "$@"
 }
 
 

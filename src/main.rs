@@ -54,13 +54,9 @@ fn main() {
         write!(io::stdout(), "{}", res).expect("write works");
         io::stdout().flush().expect("flush works");
     } else if args.len() == 2 {
-        eprintln!("1");
         let buffer = read_to_string(args[1].clone()).expect("file exists");
-        eprintln!("2");
         let res = rubyfmt::format_buffer(&buffer);
-        eprintln!("3");
         write!(io::stdout(), "{}", res).expect("write works");
-        eprintln!("4");
         io::stdout().flush().expect("flush works");
     } else if args[1] == "-i" {
         let parts = &args[2..args.len()];
