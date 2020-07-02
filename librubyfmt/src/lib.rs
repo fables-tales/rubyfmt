@@ -91,16 +91,19 @@ pub extern "C" fn rubyfmt_init() -> libc::c_int {
 }
 
 pub fn format_buffer(buf: String) -> String {
+    eprintln!("format 1");
     let bytes: Vec<libc::c_char> = buf
         .into_bytes()
         .into_iter()
         .map(|v| v as libc::c_char)
         .collect();
     let len = bytes.len();
+    eprintln!("format 2");
     let fb = rubyfmt_format_buffer(FormatBuffer {
         bytes: bytes.as_ptr(),
         count: len as i64,
     });
+    eprintln!("format 3");
     fb.into_string()
 }
 
