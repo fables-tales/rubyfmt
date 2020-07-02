@@ -33,7 +33,7 @@ use ruby::VALUE;
 #[cfg(debug_assertions)]
 use log::debug;
 #[cfg(debug_assertions)]
-use simplelog::{CombinedLogger, Config, LevelFilter, TermLogger, TerminalMode};
+use simplelog::{Config, LevelFilter, TermLogger, TerminalMode};
 
 type RubyfmtResult<T = ()> = std::result::Result<T, Box<dyn std::error::Error>>;
 

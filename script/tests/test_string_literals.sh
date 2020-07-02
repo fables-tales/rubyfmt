@@ -3,7 +3,6 @@ set -ex
 
 source ./script/functions.sh
 
-sysctl -w kernel.core_pattern="$(pwd)/core.%u.%e.%p"
 STRING_LITERALS_EXPECTED=$(ruby ci/string_literals_stress_test.rb | f_md5)
 echo 'a' | f_rubyfmt
 f_rubyfmt ci/string_literals_stress_test.rb || echo 'command failed'
