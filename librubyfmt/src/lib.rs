@@ -65,7 +65,8 @@ impl FormatBuffer {
     }
 }
 
-enum InitStatus {
+#[derive(Debug, Copy, Clone)]
+pub enum InitStatus {
     OK = 0,
     ERROR = 1,
 }

@@ -8,4 +8,5 @@ edition = "2018"
 
 [dependencies]
 rubyfmt = { path = "./librubyfmt" }
+libc = "0.2.71"
 glob = "0.3"

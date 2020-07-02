@@ -1,5 +1,6 @@
 extern crate glob;
 extern crate rubyfmt;
+extern crate libc;
 
 use std::fs::{metadata, read_to_string, OpenOptions};
 use std::io::{self, Read, Write};
@@ -39,7 +40,10 @@ fn format_parts(parts: &[String]) {
 }
 
 fn main() {
-    rubyfmt::rubyfmt_init();
+    let res = rubyfmt::rubyfmt_init();
+    if res != rubyfmt::InitStatus::OK as libc::c_int {
+        panic!("bad init status");
+    }
     let args: Vec<String> = std::env::args().collect();
     if args.len() == 1 {
         let mut buffer = String::new();
