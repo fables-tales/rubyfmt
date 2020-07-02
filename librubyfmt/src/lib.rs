@@ -192,10 +192,6 @@ fn raise_if_error(value: RubyfmtResult) {
     if let Err(e) = value {
         unsafe {
             panic!("got: {:?}", e);
-            // If the string contains nul, just display the error leading up to
-            // the nul bytes
-            let c_string = CString::from_vec_unchecked(e.to_string().into_bytes());
-            ruby::rb_raise(ruby::rb_eRuntimeError, c_string.as_ptr());
         }
     }
 }
