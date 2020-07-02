@@ -3,5 +3,5 @@ set -euxo pipefail
 rm -rf tmp/
 git submodule init
 git submodule update
-make lint
+#make lint
 ./script/test.sh
