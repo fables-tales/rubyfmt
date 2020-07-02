@@ -1,4 +1,4 @@
-//#![deny(warnings, missing_copy_implementations)]
+#![deny(warnings, missing_copy_implementations)]
 use std::ffi::CString;
 #[macro_use]
 extern crate lazy_static;
@@ -86,7 +86,7 @@ pub extern "C" fn rubyfmt_init() -> libc::c_int {
         return InitStatus::ERROR as libc::c_int;
     }
 
-    return InitStatus::OK as libc::c_int;
+    InitStatus::OK as libc::c_int
 }
 
 pub fn format_buffer(buf: String) -> String {
@@ -126,7 +126,7 @@ pub extern "C" fn rubyfmt_format_buffer(buf: FormatBuffer) -> FormatBuffer {
         count: len as i64,
     };
     std::mem::forget(output_data);
-    return fb;
+    fb
 }
 
 fn load_rubyfmt() -> Result<VALUE, ()> {
