@@ -51,13 +51,21 @@ pub enum InitStatus {
 }
 
 pub fn format_buffer(buf: &str) -> String {
+    eprintln!("format buffer 1");
     let tree = run_parser_on(buf).expect("the parser works");
+    eprintln!("format buffer 2");
     let out_data = vec![];
+    eprintln!("format buffer 3");
     let mut output = Cursor::new(out_data);
+    eprintln!("format buffer 4");
     let data = buf.as_bytes();
+    eprintln!("format buffer 5");
     let res = toplevel_format_program(&mut output, data, tree);
+    eprintln!("format buffer 6");
     raise_if_error(res);
+    eprintln!("format buffer 7");
     output.flush().expect("flushing works");
+    eprintln!("format buffer 8");
     unsafe { String::from_utf8_unchecked(output.into_inner()) }
 }
 
