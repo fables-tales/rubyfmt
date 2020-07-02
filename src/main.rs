@@ -1,6 +1,6 @@
 extern crate glob;
-extern crate rubyfmt;
 extern crate libc;
+extern crate rubyfmt;
 
 use std::fs::{metadata, read_to_string, OpenOptions};
 use std::io::{self, Read, Write};
