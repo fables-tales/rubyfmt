@@ -52,7 +52,7 @@ pub enum InitStatus {
 
 pub fn format_buffer(buf: &str) -> String {
     let tree = run_parser_on(buf.to_owned()).expect("the parser works");
-    let out_data = vec!();
+    let out_data = vec![];
     let mut output = Cursor::new(out_data);
     let data = buf.as_bytes();
     let res = toplevel_format_program(&mut output, data, tree);
@@ -80,9 +80,14 @@ pub extern "C" fn rubyfmt_init() -> libc::c_int {
     InitStatus::OK as libc::c_int
 }
 
+/// # Safety
+/// this function will fail, very badly, if len specifies more bytes than is
+/// available in the passed buffer pointer. It will also fail if the passed
+/// data isn't utf8.
+/// Please don't pass non-utf8 too small buffers.
 #[no_mangle]
-pub extern "C" fn rubyfmt_format_buffer(ptr: *const u8, len: usize) -> *mut RubyfmtString {
-    let input = unsafe { str::from_utf8_unchecked(slice::from_raw_parts(ptr, len)) };
+pub unsafe extern "C" fn rubyfmt_format_buffer(ptr: *const u8, len: usize) -> *mut RubyfmtString {
+    let input = str::from_utf8_unchecked(slice::from_raw_parts(ptr, len));
     let output = format_buffer(input);
     Box::into_raw(Box::new(RubyfmtString(output.into_boxed_str())))
 }
@@ -99,7 +104,9 @@ pub extern "C" fn rubyfmt_string_len(s: &RubyfmtString) -> usize {
 
 #[no_mangle]
 extern "C" fn rubyfmt_string_free(rubyfmt_string: *mut RubyfmtString) {
-    unsafe { Box::from_raw(rubyfmt_string); }
+    unsafe {
+        Box::from_raw(rubyfmt_string);
+    }
 }
 
 fn load_rubyfmt() -> Result<VALUE, ()> {
@@ -193,7 +200,7 @@ fn intern(s: &str) -> ruby::ID {
 
 fn run_parser_on(buf: String) -> Result<VALUE, ()> {
     unsafe {
-        let buffer_string = ruby::rb_utf8_str_new(buf.as_ptr() as _ , buf.len() as i64);
+        let buffer_string = ruby::rb_utf8_str_new(buf.as_ptr() as _, buf.len() as i64);
         let parser_class = eval_str("Parser")?;
         let parser_instance = ruby::rb_funcall(parser_class, intern("new"), 1, buffer_string);
         let tree = ruby::rb_funcall(parser_instance, intern("parse"), 0);
@@ -204,11 +211,8 @@ fn run_parser_on(buf: String) -> Result<VALUE, ()> {
 fn init_logger() {
     #[cfg(debug_assertions)]
     {
-        TermLogger::init(
-            LevelFilter::Debug,
-            Config::default(),
-            TerminalMode::Stderr,
-        ).expect("making a term logger");
+        TermLogger::init(LevelFilter::Debug, Config::default(), TerminalMode::Stderr)
+            .expect("making a term logger");
         debug!("logger works");
     }
 }
