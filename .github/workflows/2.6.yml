@@ -19,31 +19,6 @@ jobs:
     - uses: actions/setup-ruby@v1.0.0
       with:
         version: 2.6
+    - run: sudo apt-get install -y libxml2-utils
 
-    - name: Cache gems
-      uses: actions/cache@v1
-      with:
-        path: ~/gems-cache
-        key: ${{ runner.os }}-gems-26-blow-3-${{ hashFiles('./script/tests/test_thoughtbot_rails_apps.sh') }}
-
-    - name: Cache cargo registry
-      uses: actions/cache@v1
-      with:
-        path: ~/.cargo/registry
-        key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
-    - name: Cache cargo index
-      uses: actions/cache@v1
-      with:
-        path: ~/.cargo/git
-        key: ${{ runner.os }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}
-    - name: Cache cargo build
-      uses: actions/cache@v1
-      with:
-        path: ~/target
-        key: ${{ runner.os }}-cargo-build26-blow-3-target-${{ hashFiles('**/Cargo.lock') }}
-
-    - run: cp -r ~/target $GITHUB_WORKSPACE/native/target || echo 'missing cache'
-    - run: cp -r ~/gems-cache $BUNDLE_PATH || mkdir -p $BUNDLE_PATH
-    - run: cd $GITHUB_WORKSPACE && export PATH=$PATH:$GEM_PATH/bin && gem install bundler && ./script/ci
-    - run: cp -r $GITHUB_WORKSPACE/native/target ~/target
-    - run: cp -r $BUNDLE_PATH ~/gems-cache
+    - run: ./script/ci
