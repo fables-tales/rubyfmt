@@ -10,8 +10,14 @@ ifeq ($(UNAME_S), Linux)
 endif
 
 all: submodules release debug
-debug: target/debug/librubyfmt.a
-release: target/release/librubyfmt.a
+debug: target/debug/librubyfmt.a target/debug/rubyfmt-main
+release: target/release/librubyfmt.a target/release/rubyfmt-main
+
+target/debug/rubyfmt-main: librubyfmt/src/*.rs librubyfmt/Cargo.toml src/*.rs Cargo.toml
+	cargo build
+
+target/release/rubyfmt-main: librubyfmt/src/*.rs librubyfmt/Cargo.toml src/*.rs Cargo.toml
+	cargo build --release
 
 submodules:
 	git submodule init
