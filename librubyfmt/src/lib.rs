@@ -200,10 +200,15 @@ fn intern(s: &str) -> ruby::ID {
 
 fn run_parser_on(buf: &str) -> Result<VALUE, ()> {
     unsafe {
+        eprintln!("parser 1");
         let buffer_string = ruby::rb_utf8_str_new(buf.as_ptr() as _, buf.len() as i64);
+        eprintln!("parser 2");
         let parser_class = eval_str("Parser")?;
+        eprintln!("parser 3");
         let parser_instance = ruby::rb_funcall(parser_class, intern("new"), 1, buffer_string);
+        eprintln!("parser 4");
         let tree = ruby::rb_funcall(parser_instance, intern("parse"), 0);
+        eprintln!("parser 5");
         Ok(tree)
     }
 }
