@@ -147,21 +147,32 @@ class Parser < Ripper::SexpBuilderPP
       start_delim = @string_stack.pop
 
       if start_delim != "\""
-        reject_embexpr = start_delim == "'" || start_delim.start_with?("%q")
+        if start_delim == "'" || start_delim.start_with?("%q")
+          # re-evaluate the string with its own quotes to handle escaping.
+          if args[0][1]
+            args[0][1][1] = eval("#{start_delim}#{args[0][1][1]}#{end_delim}").inspect[1..-2]
+          end
+        else
+          # find delimiters after an odd number of backslashes, or quotes after even number.
+          pattern = /(?<!\\)(\\\\)*(\\#{Regexp.escape(start_delim[-1])}|\\#{Regexp.escape(end_delim)}|")/
 
-        (args[0][1..-1] || []).each do |part|
-          next if part.nil?
-          case part[0]
-          when :@tstring_content
-            part[1] = eval("#{start_delim}#{part[1]}#{end_delim}").inspect[1..-2]
-          when :string_embexpr, :string_dvar
-
-            if reject_embexpr
+          (args[0][1..-1] || []).each do |part|
+            next if part.nil?
+            case part[0]
+            when :@tstring_content
+              part[1] = part[1].gsub(pattern) do |str|
+                if str.end_with?('"')
+                  # insert needed escape
+                  "#{str[0..-2]}\\\""
+                else
+                  # drop unnecessary escape
+                  "#{str[0..-3]}#{str[-1]}"
+                end
+              end
+            when :string_embexpr, :string_dvar
+            else
               raise "got #{part[0]} in a #{start_delim}...#{end_delim} string"
             end
-
-          else
-            raise "got #{part[0]} in a #{start_delim}...#{end_delim} string"
           end
         end
       end
