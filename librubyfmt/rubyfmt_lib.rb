@@ -1,6 +1,14 @@
 class Parser < Ripper::SexpBuilderPP
   ARRAY_SYMBOLS = {qsymbols: "%i", qwords: "%w", symbols: "%I", words: "%W"}.freeze
 
+  def self.new(buf)
+    puts buf
+    puts buf.length
+    p buf.unpack("c*")
+    STDOUT.flush
+    super
+  end
+
   def self.is_percent_array?(rest)
     return false if rest.nil?
     return false if rest[0].nil?
