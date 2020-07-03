@@ -52,6 +52,7 @@ extern "C" {
     pub fn rb_funcall(_: VALUE, _: ID, _: libc::c_int, ...) -> VALUE;
     pub fn rb_utf8_str_new(_: *const libc::c_char, _: libc::c_long) -> VALUE;
     pub fn rb_str_new_cstr(_: *const libc::c_char) -> VALUE;
+    pub fn rb_string_value_cstr(_: VALUE) -> *const libc::c_char;
     pub fn rb_intern(_: *const libc::c_char) -> ID;
     pub fn Init_ripper();
     // Macros/inline functions wrapped as real functions
@@ -61,13 +62,8 @@ extern "C" {
     pub fn rubyfmt_rb_num2ll(v: VALUE) -> libc::c_longlong;
     pub fn rubyfmt_rb_ary_len(arr: VALUE) -> libc::c_long;
     pub fn rubyfmt_rb_nil_p(arr: VALUE) -> libc::c_int;
-    pub fn rb_rescue2(
-        _: *mut extern "C" fn() -> VALUE,
-        _: VALUE,
-        _: *mut extern "C" fn() -> VALUE,
-        _: VALUE,
-        _: ...
-    ) -> VALUE;
+
+    pub fn rb_protect(f: *const libc::c_void, arg: VALUE, state: *mut libc::c_int) -> VALUE;
 
     // C statics
     pub static rb_eRuntimeError: VALUE;

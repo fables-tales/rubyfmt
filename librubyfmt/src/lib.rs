@@ -205,19 +205,34 @@ fn intern(s: &str) -> ruby::ID {
 
 fn run_parser_on(buf: &str) -> Result<VALUE, ()> {
     unsafe {
-        let s = "hi";
+        let s = buf;
         eprintln!("parser 1");
         let buffer_string = ruby::rb_utf8_str_new(s.as_ptr() as _, s.len() as i64);
-        eprintln!("parser 2");
-        let parser_class = eval_str("Parser")?;
-        eprintln!("parser 3");
-        let parser_instance = ruby::rb_funcall(parser_class, intern("new"), 1, buffer_string);
-        eprintln!("parser 4");
-        let tree = ruby::rb_funcall(parser_instance, intern("parse"), 0);
-        eprintln!("parser 5");
-        Ok(tree)
+        let mut state = 0;
+        let maybe_tree = ruby::rb_protect(my_funcall as _, buffer_string as _, &mut state);
+        eprintln!("state: {}", state);
+        if state == 0 {
+            return Ok(maybe_tree)
+        } else {
+            let exception = eval_str("puts $!.inspect").expect("this can't fail");
+            panic!("failed");
+        }
     }
 }
+
+unsafe extern "C" fn my_funcall(buffer_string: VALUE) -> VALUE {
+    let puts = ruby::rb_funcall(ruby::rb_mKernel, intern("puts"), 1, buffer_string);
+    eval_str("STDOUT.flush").expect("flushing stdout works");
+    eprintln!("parser 2");
+    let parser_class = eval_str("Parser").expect("the parser constant exists");
+    eprintln!("parser 3");
+    let parser_instance = ruby::rb_funcall(parser_class, intern("new"), 1, buffer_string);
+    eprintln!("parser 4");
+    let tree = ruby::rb_funcall(parser_instance, intern("parse"), 0);
+    eprintln!("parser 5");
+    return tree
+}
+
 
 fn init_logger() {
     #[cfg(debug_assertions)]

@@ -1,8 +1,7 @@
 #!/bin/bash
 set -ex
 
-make
-make release
+cargo build --release
 
 export RUBYFMT_USE_RELEASE=1
 uname -a
