@@ -1,13 +1,8 @@
 #!/bin/bash
 set -euxo pipefail
 source ./script/functions.sh
-git rev-parse HEAD
-git status
-cat ci/string_literals_stress_test.rb | f_md5
-ruby -e 'p File.read("ci/string_literals_stress_test.rb").tap { |x| p x.encoding }.unpack("c*")'
-git log | head -n 300
-#rm -rf tmp/
-#git submodule init
-#git submodule update
-##make lint
-#./script/test.sh
+rm -rf tmp/
+git submodule init
+git submodule update
+#make lint
+./script/test.sh
