@@ -3,6 +3,8 @@ set -ex
 
 source ./script/functions.sh
 
+ruby -e 'p File.read("ci/string_literals_stress_test.rb").tap { |x| p x.encoding }.unpack("c*")'
+
 f_rubyfmt ci/string_literals_stress_test.rb
 exit 1
 
