@@ -214,7 +214,7 @@ fn run_parser_on(buf: &str) -> Result<VALUE, ()> {
         if state == 0 {
             return Ok(maybe_tree)
         } else {
-            let exception = eval_str("puts $!.inspect").expect("this can't fail");
+            let exception = eval_str("puts $!.inspect; STDOUT.flush").expect("this can't fail");
             panic!("failed");
         }
     }
