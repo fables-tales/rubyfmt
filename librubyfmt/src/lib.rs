@@ -1,4 +1,4 @@
-#![deny(warnings, missing_copy_implementations)]
+//#![deny(warnings, missing_copy_implementations)]
 use std::ffi::CString;
 #[macro_use]
 extern crate lazy_static;
