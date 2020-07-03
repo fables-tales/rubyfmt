@@ -2,9 +2,9 @@ class Parser < Ripper::SexpBuilderPP
   ARRAY_SYMBOLS = {qsymbols: "%i", qwords: "%w", symbols: "%I", words: "%W"}.freeze
 
   def self.new(buf)
-    puts buf
-    puts buf.length
+    p buf.encoding
     p buf.unpack("c*")
+    p buf.unpack("c*").length
     STDOUT.flush
     super
   end

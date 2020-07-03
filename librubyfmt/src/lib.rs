@@ -51,21 +51,13 @@ pub enum InitStatus {
 }
 
 pub fn format_buffer(buf: &str) -> String {
-    eprintln!("format buffer 1");
     let tree = run_parser_on(buf).expect("the parser works");
-    eprintln!("format buffer 2");
     let out_data = vec![];
-    eprintln!("format buffer 3");
     let mut output = Cursor::new(out_data);
-    eprintln!("format buffer 4");
     let data = buf.as_bytes();
-    eprintln!("format buffer 5");
     let res = toplevel_format_program(&mut output, data, tree);
-    eprintln!("format buffer 6");
     raise_if_error(res);
-    eprintln!("format buffer 7");
     output.flush().expect("flushing works");
-    eprintln!("format buffer 8");
     unsafe { String::from_utf8_unchecked(output.into_inner()) }
 }
 
@@ -206,30 +198,22 @@ fn intern(s: &str) -> ruby::ID {
 fn run_parser_on(buf: &str) -> Result<VALUE, ()> {
     unsafe {
         let s = buf;
-        eprintln!("parser 1");
         let buffer_string = ruby::rb_utf8_str_new(s.as_ptr() as _, s.len() as i64);
         let mut state = 0;
         let maybe_tree = ruby::rb_protect(my_funcall as _, buffer_string as _, &mut state);
-        eprintln!("state: {}", state);
         if state == 0 {
             return Ok(maybe_tree)
         } else {
-            let exception = eval_str("puts $!.inspect; STDOUT.flush").expect("this can't fail");
+            let exception = eval_str("STDERR.puts $!.inspect; STDERR.flush").expect("this can't fail");
             panic!("failed");
         }
     }
 }
 
 unsafe extern "C" fn my_funcall(buffer_string: VALUE) -> VALUE {
-    let puts = ruby::rb_funcall(ruby::rb_mKernel, intern("puts"), 1, buffer_string);
-    eval_str("STDOUT.flush").expect("flushing stdout works");
-    eprintln!("parser 2");
     let parser_class = eval_str("Parser").expect("the parser constant exists");
-    eprintln!("parser 3");
     let parser_instance = ruby::rb_funcall(parser_class, intern("new"), 1, buffer_string);
-    eprintln!("parser 4");
     let tree = ruby::rb_funcall(parser_instance, intern("parse"), 0);
-    eprintln!("parser 5");
     return tree
 }
 
