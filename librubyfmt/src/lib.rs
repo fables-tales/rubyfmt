@@ -209,8 +209,6 @@ fn run_parser_on(buf: &str) -> Result<VALUE, ()> {
         eprintln!("parser 1");
         let buffer_string = ruby::rb_utf8_str_new(s.as_ptr() as _, s.len() as i64);
         eprintln!("parser 2");
-        let result = ruby::rb_funcall(ruby::rb_mKernel, intern("puts"), 1, buffer_string);
-        panic!("here");
         let parser_class = eval_str("Parser")?;
         eprintln!("parser 3");
         let parser_instance = ruby::rb_funcall(parser_class, intern("new"), 1, buffer_string);

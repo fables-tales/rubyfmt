@@ -61,6 +61,13 @@ extern "C" {
     pub fn rubyfmt_rb_num2ll(v: VALUE) -> libc::c_longlong;
     pub fn rubyfmt_rb_ary_len(arr: VALUE) -> libc::c_long;
     pub fn rubyfmt_rb_nil_p(arr: VALUE) -> libc::c_int;
+    pub fn rb_rescue2(
+        _: *mut extern "C" fn() -> VALUE,
+        _: VALUE,
+        _: *mut extern "C" fn() -> VALUE,
+        _: VALUE,
+        _: ...
+    ) -> VALUE;
 
     // C statics
     pub static rb_eRuntimeError: VALUE;
