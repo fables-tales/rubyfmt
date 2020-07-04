@@ -21,7 +21,11 @@ int main() {
         fprintf(stderr, "failed to init\n");
         exit(1);
     }
-    RubyfmtString* out = rubyfmt_format_buffer(buf, bytes_read);
+    enum Rubyfmt_FormatError status = RUBYFMT_FORMAT_ERROR_OK;
+    RubyfmtString* out = rubyfmt_format_buffer(buf, bytes_read, &status);
+    if (status != 0) {
+        exit(status);
+    }
     unsigned char* bytes = rubyfmt_string_ptr(out);
     size_t len = rubyfmt_string_len(out);
     fwrite(bytes, sizeof(char), len, stdout);
