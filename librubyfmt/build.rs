@@ -16,7 +16,7 @@ fn main() {
         let o = Command::new("bash")
             .arg("-c")
             .arg(format!(
-                "autoconf && {}/configure --without-gmp && make -j",
+                "autoconf && {}/configure --without-gmp --disable-jit-support && make -j",
                 ruby_checkout_path.display()
             ))
             .current_dir(&ruby_checkout_path)
