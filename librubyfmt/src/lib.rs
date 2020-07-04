@@ -1,5 +1,4 @@
 #![deny(warnings, missing_copy_implementations)]
-use std::ffi::CString;
 #[macro_use]
 extern crate lazy_static;
 
@@ -208,13 +207,6 @@ pub fn toplevel_format_program<W: Write>(
     Ok(())
 }
 
-fn intern(s: &str) -> ruby::ID {
-    unsafe {
-        let ruby_string = CString::new(s).expect("it's a string");
-        ruby::rb_intern(ruby_string.as_ptr())
-    }
-}
-
 fn run_parser_on(buf: &str) -> Result<VALUE, RichFormatError> {
     unsafe {
         let s = buf;
@@ -234,10 +226,16 @@ fn run_parser_on(buf: &str) -> Result<VALUE, RichFormatError> {
     }
 }
 
+macro_rules! intern {
+    ($s:literal) => {
+        ruby::rb_intern(concat!($s, "\0").as_ptr() as _)
+    };
+}
+
 unsafe extern "C" fn real_run_parser(buffer_string: VALUE) -> VALUE {
-    let parser_class = ruby::eval_str("Parser").expect("the parser constant exists");
-    let parser_instance = ruby::rb_funcall(parser_class, intern("new"), 1, buffer_string);
-    ruby::rb_funcall(parser_instance, intern("parse"), 0)
+    let parser_class = ruby::rb_const_get_at(ruby::rb_cObject, intern!("Parser"));
+    let parser_instance = ruby::rb_funcall(parser_class, intern!("new"), 1, buffer_string);
+    ruby::rb_funcall(parser_instance, intern!("parse"), 0)
 }
 
 fn init_logger() {

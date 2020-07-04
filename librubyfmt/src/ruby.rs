@@ -58,6 +58,7 @@ extern "C" {
     pub fn rb_str_new_cstr(_: *const libc::c_char) -> VALUE;
     pub fn rb_string_value_cstr(_: VALUE) -> *const libc::c_char;
     pub fn rb_intern(_: *const libc::c_char) -> ID;
+    pub fn rb_const_get_at(_: VALUE, _: ID) -> VALUE;
     pub fn Init_ripper();
 
     // Macros/inline functions wrapped as real functions
@@ -73,6 +74,7 @@ extern "C" {
     // C statics
     pub static rb_eRuntimeError: VALUE;
     pub static rb_mKernel: VALUE;
+    pub static rb_cObject: VALUE;
 
     // C functions
     pub fn rb_sym2id(sym: VALUE) -> ID;
