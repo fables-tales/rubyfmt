@@ -202,9 +202,10 @@ fn run_parser_on(buf: &str) -> Result<VALUE, ()> {
         let mut state = 0;
         let maybe_tree = ruby::rb_protect(my_funcall as _, buffer_string as _, &mut state);
         if state == 0 {
-            return Ok(maybe_tree)
+            return Ok(maybe_tree);
         } else {
-            let exception = eval_str("STDERR.puts $!.inspect; STDERR.flush").expect("this can't fail");
+            let exception =
+                eval_str("STDERR.puts $!.inspect; STDERR.flush").expect("this can't fail");
             panic!("failed");
         }
     }
@@ -214,9 +215,8 @@ unsafe extern "C" fn my_funcall(buffer_string: VALUE) -> VALUE {
     let parser_class = eval_str("Parser").expect("the parser constant exists");
     let parser_instance = ruby::rb_funcall(parser_class, intern("new"), 1, buffer_string);
     let tree = ruby::rb_funcall(parser_instance, intern("parse"), 0);
-    return tree
+    return tree;
 }
-
 
 fn init_logger() {
     #[cfg(debug_assertions)]
