@@ -6,7 +6,7 @@ ifeq ($(UNAME_S), Darwin)
 endif
 
 ifeq ($(UNAME_S), Linux)
-	LDFLAGS=-lcrypt -lm -lpthread
+	LDFLAGS=-lcrypt -lm -lpthread -lrt -ldl
 endif
 
 LDFLAGS +=  -lz
