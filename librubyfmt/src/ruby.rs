@@ -86,8 +86,7 @@ pub fn current_exception_as_rust_string() -> String {
         let res = eval_str("$!.inspect").expect("this can't fail");
         let ptr = rubyfmt_rstring_ptr(res);
         let length = rubyfmt_rstring_len(res);
-        let s = String::from_raw_parts(ptr as _, length as _, length as _);
-        s
+        String::from_raw_parts(ptr as _, length as _, length as _)
     }
 }
 

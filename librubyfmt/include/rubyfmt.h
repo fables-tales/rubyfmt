@@ -19,6 +19,11 @@ enum Rubyfmt_FormatError {
     // and most likely indicates a programming error within rubyfmt, please
     // file a bug
     RUBYFMT_FORMAT_ERROR_IO_ERROR = 3,
+
+    // some unknown ruby error occured during execution fo Rubyfmt. This indicates
+    // a programming error. Please file a bug report and terminate the process
+    // and restart.
+    RUBYFMT_OTHER_RUBY_ERROR = 4,
 };
 
 typedef struct _RubyfmtString RubyfmtString;

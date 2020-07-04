@@ -17,7 +17,7 @@ enum FileError {
 }
 
 fn rubyfmt_file(file_path: PathBuf) -> Result<(), FileError> {
-    let buffer = read_to_string(file_path.clone()).map_err(|e| FileError::IO(e))?;
+    let buffer = read_to_string(file_path.clone()).map_err(FileError::IO)?;
     let res = rubyfmt::format_buffer(&buffer);
     match res {
         Ok(res) => {
@@ -25,22 +25,23 @@ fn rubyfmt_file(file_path: PathBuf) -> Result<(), FileError> {
                 .write(true)
                 .open(file_path)
                 .expect("file");
-            write!(file, "{}", res).map_err(|e| FileError::IO(e))?;
+            write!(file, "{}", res).map_err(FileError::IO)?;
             Ok(())
-        },
-        Err(rubyfmt::RichFormatError::SyntaxError) => {
-            Err(FileError::SyntaxError)
-        },
+        }
+        Err(rubyfmt::RichFormatError::SyntaxError) => Err(FileError::SyntaxError),
         Err(e) => handle_error_from(e, &format!("{}", file_path.display())),
     }
 }
 
-fn rubyfmt_dir(path: &String) -> io::Result<()> {
+fn rubyfmt_dir(path: &str) -> io::Result<()> {
     for entry in glob(&format!("{}/**/*.rb", path)).expect("it exists") {
         let p = entry.expect("should not be null");
         let res = rubyfmt_file(p.clone());
         if let Err(FileError::SyntaxError) = res {
-            eprintln!("warning: {} contains syntax errors, ignoring for now", p.display());
+            eprintln!(
+                "warning: {} contains syntax errors, ignoring for now",
+                p.display()
+            );
         }
     }
     Ok(())
@@ -58,14 +59,13 @@ fn format_parts(parts: &[String]) {
     }
 }
 
-
 fn handle_error_from(e: rubyfmt::RichFormatError, source: &str) -> ! {
     use rubyfmt::RichFormatError::*;
     match e {
         SyntaxError => {
             eprintln!("{} contained invalid ruby syntax", source);
             exit(1);
-        },
+        }
         rubyfmt::RichFormatError::RipperParseFailure(_) => {
             let bug_report = "
 🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛
@@ -81,9 +81,13 @@ fn handle_error_from(e: rubyfmt::RichFormatError, source: &str) -> ! {
             ";
             eprintln!("{}", bug_report);
             exit(1);
-        },
+        }
         IOError(e) => {
             eprintln!("IO error occured while running rubyfmt: {:?}, this may indicate a programming error, please file a bug report at https://github.com/penelopezone/rubyfmt/issues/new", e);
+            exit(1)
+        }
+        rubyfmt::RichFormatError::OtherRubyError(s) => {
+            eprintln!("A ruby error occured: {}, please file a bug report at https://github.com/penelopezone/rubyfmt/issues/new", s);
             exit(1)
         }
     }
@@ -106,7 +110,7 @@ fn main() {
             Ok(res) => {
                 write!(io::stdout(), "{}", res).expect("write works");
                 io::stdout().flush().expect("flush works");
-            },
+            }
             Err(e) => handle_error_from(e, "stdin"),
         }
     } else if args.len() == 2 {
@@ -117,7 +121,7 @@ fn main() {
             Ok(res) => {
                 write!(io::stdout(), "{}", res).expect("write works");
                 io::stdout().flush().expect("flush works");
-            },
+            }
             Err(e) => handle_error_from(e, &args[1]),
         }
     } else if args[1] == "-i" {
