@@ -190,7 +190,7 @@ fn load_ripper() -> Result<(), ()> {
     Ok(())
 }
 
-fn toplevel_format_program<W: Write>(
+pub fn toplevel_format_program<W: Write>(
     writer: &mut W,
     buf: &[u8],
     tree: VALUE,

@@ -133,5 +133,4 @@ fn main() {
         let parts = &args[1..args.len()];
         format_parts(parts);
     }
-    eprintln!("rubyfmt excited successfully");
 }
