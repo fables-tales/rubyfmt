@@ -2,7 +2,9 @@
 set -euxo pipefail
 
 (
-cd native
+cargo clippy
+cargo fmt -- --check
+cd librubyfmt
 cargo clippy
 cargo fmt -- --check
 )

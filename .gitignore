@@ -9,3 +9,8 @@ ext/Makefile
 .success
 .failure
 log
+
+
+#Added by cargo
+
+/target
