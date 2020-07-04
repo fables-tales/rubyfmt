@@ -1,6 +1,7 @@
 #![allow(non_camel_case_types, dead_code)]
+use std::ffi::CString;
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 #[repr(transparent)]
 pub struct VALUE(libc::uintptr_t);
 
@@ -44,6 +45,9 @@ pub enum ruby_value_type {
     RUBY_T_MASK = 0x1f,
 }
 
+#[allow(non_upper_case_globals)]
+pub const Qnil: VALUE = VALUE(8);
+
 extern "C" {
     // stuff that we need to compile out rubyfmt
     pub fn ruby_init();
@@ -55,6 +59,7 @@ extern "C" {
     pub fn rb_string_value_cstr(_: VALUE) -> *const libc::c_char;
     pub fn rb_intern(_: *const libc::c_char) -> ID;
     pub fn Init_ripper();
+
     // Macros/inline functions wrapped as real functions
     pub fn rubyfmt_rstring_ptr(v: VALUE) -> *const libc::c_char;
     pub fn rubyfmt_rstring_len(v: VALUE) -> libc::c_long;
@@ -74,4 +79,30 @@ extern "C" {
     pub fn rb_id2name(id: ID) -> *const libc::c_char;
     pub fn rb_ary_entry(arr: VALUE, idx: libc::c_long) -> VALUE;
     pub fn rb_raise(cls: VALUE, msg: *const libc::c_char);
+}
+
+pub fn current_exception_as_rust_string() -> String {
+    unsafe {
+        let res = eval_str("$!.inspect").expect("this can't fail");
+        let ptr = rubyfmt_rstring_ptr(res);
+        let length = rubyfmt_rstring_len(res);
+        let s = String::from_raw_parts(ptr as _, length as _, length as _);
+        s
+    }
+}
+
+pub fn eval_str(s: &str) -> Result<VALUE, ()> {
+    unsafe {
+        let rubyfmt_program_as_c = CString::new(s).expect("it should become a c string");
+        let mut state = 0;
+        let v = rb_eval_string_protect(
+            rubyfmt_program_as_c.as_ptr(),
+            &mut state as *mut libc::c_int,
+        );
+        if state != 0 {
+            Err(())
+        } else {
+            Ok(v)
+        }
+    }
 }

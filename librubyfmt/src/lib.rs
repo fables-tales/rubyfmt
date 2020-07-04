@@ -1,4 +1,4 @@
-//#![deny(warnings, missing_copy_implementations)]
+#![deny(warnings, missing_copy_implementations)]
 use std::ffi::CString;
 #[macro_use]
 extern crate lazy_static;
@@ -6,6 +6,8 @@ extern crate lazy_static;
 use std::io::{BufReader, Cursor, Write};
 use std::slice;
 use std::str;
+use std::panic;
+use serde::de::value;
 
 #[global_allocator]
 static ALLOC: jemallocator::Jemalloc = jemallocator::Jemalloc;
@@ -36,8 +38,6 @@ use log::debug;
 #[cfg(debug_assertions)]
 use simplelog::{Config, LevelFilter, TermLogger, TerminalMode};
 
-type RubyfmtResult<T = ()> = std::result::Result<T, Box<dyn std::error::Error>>;
-
 extern "C" {
     pub fn Init_ripper();
 }
@@ -50,19 +50,55 @@ pub enum InitStatus {
     ERROR = 1,
 }
 
-pub fn format_buffer(buf: &str) -> String {
-    let tree = run_parser_on(buf).expect("the parser works");
-    let out_data = vec![];
-    let mut output = Cursor::new(out_data);
-    let data = buf.as_bytes();
-    let res = toplevel_format_program(&mut output, data, tree);
-    raise_if_error(res);
-    output.flush().expect("flushing works");
-    unsafe { String::from_utf8_unchecked(output.into_inner()) }
+#[derive(Debug)]
+pub enum RichFormatError {
+    SyntaxError,
+    RipperParseFailure(value::Error),
+    IOError(std::io::Error),
+}
+
+impl RichFormatError {
+    fn as_format_error(self) -> FormatError {
+        match self {
+            RichFormatError::SyntaxError => FormatError::SyntaxError,
+            RichFormatError::RipperParseFailure(_) => FormatError::RipperParseFailure,
+            RichFormatError::IOError(_) => FormatError::IOError,
+        }
+    }
+}
+
+#[derive(Debug, Copy, Clone)]
+pub enum FormatError {
+    OK = 0,
+    SyntaxError = 1,
+    RipperParseFailure = 2,
+    IOError = 3,
+}
+
+pub fn format_buffer(buf: &str) -> Result<String, RichFormatError> {
+    let maybe_tree = run_parser_on(buf);
+    match maybe_tree {
+        Ok(tree) => {
+            let out_data = vec![];
+            let mut output = Cursor::new(out_data);
+            let data = buf.as_bytes();
+            toplevel_format_program(&mut output, data, tree)?;
+            output.flush().expect("flushing works");
+            Ok(unsafe { String::from_utf8_unchecked(output.into_inner()) })
+        },
+        Err(ParserError::SyntaxError) => Err(RichFormatError::SyntaxError),
+        Err(other) => {
+            panic!("{:?}", other);
+        }
+    }
+
 }
 
 #[no_mangle]
 pub extern "C" fn rubyfmt_init() -> libc::c_int {
+    panic::set_hook(Box::new(|pi| {
+        eprintln!("{}", pi);
+    }));
     init_logger();
     unsafe {
         ruby::ruby_init();
@@ -86,10 +122,19 @@ pub extern "C" fn rubyfmt_init() -> libc::c_int {
 /// data isn't utf8.
 /// Please don't pass non-utf8 too small buffers.
 #[no_mangle]
-pub unsafe extern "C" fn rubyfmt_format_buffer(ptr: *const u8, len: usize) -> *mut RubyfmtString {
+pub unsafe extern "C" fn rubyfmt_format_buffer(ptr: *const u8, len: usize, err: *mut i64) -> *mut RubyfmtString {
     let input = str::from_utf8_unchecked(slice::from_raw_parts(ptr, len));
     let output = format_buffer(input);
-    Box::into_raw(Box::new(RubyfmtString(output.into_boxed_str())))
+    match output {
+        Ok(o) => {
+            *err = FormatError::OK as i64;
+            Box::into_raw(Box::new(RubyfmtString(o.into_boxed_str())))
+        },
+        Err(e) => {
+            *err = e.as_format_error() as i64;
+            std::ptr::null::<RubyfmtString>() as _
+        }
+    }
 }
 
 #[no_mangle]
@@ -111,12 +156,12 @@ extern "C" fn rubyfmt_string_free(rubyfmt_string: *mut RubyfmtString) {
 
 fn load_rubyfmt() -> Result<VALUE, ()> {
     let rubyfmt_program = include_str!("../rubyfmt_lib.rb");
-    eval_str(rubyfmt_program)
+    ruby::eval_str(rubyfmt_program)
 }
 
 fn load_ripper() -> Result<(), ()> {
     // trick ruby in to thinking ripper is already loaded
-    eval_str(
+    ruby::eval_str(
         r#"
     $LOADED_FEATURES << "ripper.bundle"
     $LOADED_FEATURES << "ripper.so"
@@ -132,60 +177,36 @@ fn load_ripper() -> Result<(), ()> {
     unsafe { Init_ripper() };
 
     //load each ripper program
-    eval_str(include_str!(
+    ruby::eval_str(include_str!(
         "../ruby_checkout/ruby-2.6.6/ext/ripper/lib/ripper.rb"
     ))?;
-    eval_str(include_str!(
+    ruby::eval_str(include_str!(
         "../ruby_checkout/ruby-2.6.6/ext/ripper/lib/ripper/core.rb"
     ))?;
-    eval_str(include_str!(
+    ruby::eval_str(include_str!(
         "../ruby_checkout/ruby-2.6.6/ext/ripper/lib/ripper/lexer.rb"
     ))?;
-    eval_str(include_str!(
+    ruby::eval_str(include_str!(
         "../ruby_checkout/ruby-2.6.6/ext/ripper/lib/ripper/filter.rb"
     ))?;
-    eval_str(include_str!(
+    ruby::eval_str(include_str!(
         "../ruby_checkout/ruby-2.6.6/ext/ripper/lib/ripper/sexp.rb"
     ))?;
 
     Ok(())
 }
 
-fn eval_str(s: &str) -> Result<VALUE, ()> {
-    unsafe {
-        let rubyfmt_program_as_c = CString::new(s).expect("it should become a c string");
-        let mut state = 0;
-        let v = ruby::rb_eval_string_protect(
-            rubyfmt_program_as_c.as_ptr(),
-            &mut state as *mut libc::c_int,
-        );
-        if state != 0 {
-            Err(())
-        } else {
-            Ok(v)
-        }
-    }
-}
-
-fn toplevel_format_program<W: Write>(writer: &mut W, buf: &[u8], tree: VALUE) -> RubyfmtResult {
+fn toplevel_format_program<W: Write>(writer: &mut W, buf: &[u8], tree: VALUE) -> Result<(), RichFormatError> {
     let line_metadata = FileComments::from_buf(BufReader::new(buf))
         .expect("failed to load line metadata from memory");
     let mut ps = ParserState::new(line_metadata);
-    let v: ripper_tree_types::Program = de::from_value(tree)?;
+    let v: ripper_tree_types::Program = de::from_value(tree).map_err(|e| RichFormatError::RipperParseFailure(e))?;
 
     format::format_program(&mut ps, v);
 
-    ps.write(writer)?;
-    writer.flush().expect("it flushes");
+    ps.write(writer).map_err(|e| RichFormatError::IOError(e))?;
+    writer.flush().map_err(|e| RichFormatError::IOError(e))?;
     Ok(())
-}
-
-fn raise_if_error(value: RubyfmtResult) {
-    if let Err(e) = value {
-        unsafe {
-            panic!("got: {:?}", e);
-        }
-    }
 }
 
 fn intern(s: &str) -> ruby::ID {
@@ -195,24 +216,33 @@ fn intern(s: &str) -> ruby::ID {
     }
 }
 
-fn run_parser_on(buf: &str) -> Result<VALUE, ()> {
+#[derive(Debug, Clone)]
+enum ParserError {
+    SyntaxError,
+    OtherRubyError(String),
+}
+
+fn run_parser_on(buf: &str) -> Result<VALUE, ParserError> {
     unsafe {
         let s = buf;
         let buffer_string = ruby::rb_utf8_str_new(s.as_ptr() as _, s.len() as i64);
         let mut state = 0;
-        let maybe_tree = ruby::rb_protect(my_funcall as _, buffer_string as _, &mut state);
+        let maybe_tree = ruby::rb_protect(real_run_parser as _, buffer_string as _, &mut state);
         if state == 0 {
-            return Ok(maybe_tree);
+            if maybe_tree != ruby::Qnil {
+                return Ok(maybe_tree);
+            } else {
+                return Err(ParserError::SyntaxError);
+            }
         } else {
-            let exception =
-                eval_str("STDERR.puts $!.inspect; STDERR.flush").expect("this can't fail");
-            panic!("failed");
+            let s = ruby::current_exception_as_rust_string();
+            return Err(ParserError::OtherRubyError(s));
         }
     }
 }
 
-unsafe extern "C" fn my_funcall(buffer_string: VALUE) -> VALUE {
-    let parser_class = eval_str("Parser").expect("the parser constant exists");
+unsafe extern "C" fn real_run_parser(buffer_string: VALUE) -> VALUE {
+    let parser_class = ruby::eval_str("Parser").expect("the parser constant exists");
     let parser_instance = ruby::rb_funcall(parser_class, intern("new"), 1, buffer_string);
     let tree = ruby::rb_funcall(parser_instance, intern("parse"), 0);
     return tree;
