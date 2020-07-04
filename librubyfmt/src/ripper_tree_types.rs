@@ -1029,7 +1029,7 @@ impl ArgsAddBlockInner {
     }
 }
 
-def_tag!(int_tag, "@in");
+def_tag!(int_tag, "@int");
 #[derive(Deserialize, Debug, Clone)]
 pub struct Int(pub int_tag, pub String, pub LineCol);
 
