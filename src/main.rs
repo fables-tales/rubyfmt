@@ -115,14 +115,23 @@ fn main() {
         }
     } else if args.len() == 2 {
         // consume a filename
-        let buffer = read_to_string(args[1].clone()).expect("file exists");
-        let res = rubyfmt::format_buffer(&buffer);
-        match res {
-            Ok(res) => {
-                write!(io::stdout(), "{}", res).expect("write works");
-                io::stdout().flush().expect("flush works");
+        if let Ok(md) = metadata(args[1].clone()) {
+            if md.is_dir() {
+                format_parts(&[args[1].clone()])
+            } else {
+                let buffer = read_to_string(args[1].clone()).expect("file exists");
+                let res = rubyfmt::format_buffer(&buffer);
+                match res {
+                    Ok(res) => {
+                        write!(io::stdout(), "{}", res).expect("write works");
+                        io::stdout().flush().expect("flush works");
+                    }
+                    Err(e) => handle_error_from(e, &args[1]),
+                }
             }
-            Err(e) => handle_error_from(e, &args[1]),
+        } else {
+            eprintln!("{} does not exist", args[1]);
+            exit(1)
         }
     } else if args[1] == "-i" {
         // inline a file or directory
