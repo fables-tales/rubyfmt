@@ -14,3 +14,4 @@ log
 #Added by cargo
 
 /target
+rubyfmt-v*.tar.gz

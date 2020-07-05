@@ -1,0 +1,28 @@
+#!/bin/bash
+set -euxo pipefail
+
+TAG=$(git describe --exact-match HEAD)
+RELEASE_DIR="tmp/releases/${TAG}-$(uname -s)/"
+
+./script/ci
+rm -rf "${RELEASE_DIR}"
+
+mkdir -p "${RELEASE_DIR}"
+mkdir -p "${RELEASE_DIR}/lib/"
+mkdir -p "${RELEASE_DIR}/include/"
+
+cp target/release/rubyfmt-main "${RELEASE_DIR}/rubyfmt"
+cp target/debug/rubyfmt-main "${RELEASE_DIR}/rubyfmt-debug"
+cp librubyfmt/target/release/librubyfmt.a "${RELEASE_DIR}/lib/librubyfmt.a"
+cp librubyfmt/target/debug/librubyfmt.a "${RELEASE_DIR}/lib/librubyfmt-debug.a"
+cp librubyfmt/include/rubyfmt.h "${RELEASE_DIR}/include/rubyfmt.h"
+cp RELEASE_README.md "${RELEASE_DIR}/RELEASE_README"
+
+# check the binary
+RES=$(echo 'a(1)' | "${RELEASE_DIR}/rubyfmt")
+if [ "$RES" != "a(1)" ]; then
+    echo "formatting failed"
+    exit 1
+fi
+
+tar -cvz -f "rubyfmt-${TAG}-$(uname -s).tar.gz" "${RELEASE_DIR}"
