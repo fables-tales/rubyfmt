@@ -11,7 +11,7 @@ No, but it's getting really close
 Build it:
 1. Make sure you've got cargo installed
 2. Run `make all`
-3. Copy target/release/rubyfmt-main to somewhere on your path
+3. Copy target/release/rubyfmt-main to somewhere on your path as `rubyfmt`
 
 Rubyfmt supports the following CLI invocations:
 
