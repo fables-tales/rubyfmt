@@ -80,6 +80,7 @@ fn handle_error_from(e: rubyfmt::RichFormatError, source: &str) -> ! {
 🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛
             ";
             eprintln!("{}", bug_report);
+            eprintln!("file was: {}", source);
             exit(1);
         }
         IOError(e) => {
