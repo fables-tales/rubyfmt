@@ -1,4 +1,5 @@
 fn main() {
+    // this is wild
     #[cfg(target_os = "macos")]
     {
         println!("cargo:rustc-link-lib=framework=foundation");
