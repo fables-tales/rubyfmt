@@ -38,4 +38,5 @@ jobs:
       with:
         version: 2.6
     - run: if [ $(uname -s) == "Linux" ]; then sudo apt-get install -y shellcheck build-essential ruby-dev bison; fi
+    - run: if [ $(uname -s) == "Darwin" ]; then rustup component add clippy --toolchain stable-x86_64-apple-darwin; fi
     - run: ./script/ci
