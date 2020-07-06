@@ -116,6 +116,11 @@ fn main() {
         panic!("bad init status");
     }
     let args: Vec<String> = std::env::args().collect();
+    if args.len() >= 2 && (args[1] == "--help" || args[1] == "-h") {
+        eprintln!("{}", include_str!("../README.md"));
+        exit(1);
+    }
+
     if args.len() == 1 {
         // consume stdin
         let mut buffer = String::new();
