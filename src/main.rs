@@ -23,6 +23,7 @@ fn rubyfmt_file(file_path: PathBuf) -> Result<(), FileError> {
         Ok(res) => {
             let mut file = OpenOptions::new()
                 .write(true)
+                .truncate(true)
                 .open(file_path)
                 .expect("file");
             write!(file, "{}", res).map_err(FileError::IO)?;
