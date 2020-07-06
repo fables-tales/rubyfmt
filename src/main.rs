@@ -105,7 +105,7 @@ fn handle_error_from(err: rubyfmt::RichFormatError, source: &str, error_exit: Er
         }
         rubyfmt::RichFormatError::OtherRubyError(s) => {
             eprintln!("A ruby error occured: {}, please file a bug report at https://github.com/penelopezone/rubyfmt/issues/new", s);
-            e();
+            exit(1);
         }
     }
 }
