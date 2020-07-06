@@ -16,6 +16,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
+    - run: git submodule init && git submodule update
     - uses: actions-rs/cargo@v1
     - uses: actions/cache@v2
       with:
