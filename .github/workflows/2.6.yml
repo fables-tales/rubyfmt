@@ -14,9 +14,9 @@ env:
 jobs:
   CI_26:
     runs-on: ${{ matrix.os }}
-      strategy:
-        matrix:
-          os: [ubuntu-18.04, macos-latest]
+    strategy:
+      matrix:
+        os: [ubuntu-18.04, macos-latest]
     steps:
     - uses: actions/checkout@v2
     - run: git submodule init && git submodule update
