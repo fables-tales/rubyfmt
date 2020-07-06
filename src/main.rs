@@ -36,7 +36,11 @@ fn rubyfmt_file(file_path: PathBuf) -> Result<(), FileError> {
             Ok(())
         }
         Err(rubyfmt::RichFormatError::SyntaxError) => Err(FileError::SyntaxError),
-        Err(e) => handle_error_from(e, &format!("{}", file_path.display()), ErrorExit::NoExit),
+        Err(e) => {
+            // we're in a formatting loop, so print, and OK
+            handle_error_from(e, &format!("{}", file_path.display()), ErrorExit::NoExit);
+            Ok(())
+        }
     }
 }
 
@@ -95,8 +99,8 @@ fn handle_error_from(err: rubyfmt::RichFormatError, source: &str, error_exit: Er
             eprintln!("file was: {}", source);
             e();
         }
-        IOError(e) => {
-            eprintln!("IO error occured while running rubyfmt: {:?}, this may indicate a programming error, please file a bug report at https://github.com/penelopezone/rubyfmt/issues/new", e);
+        IOError(ioe) => {
+            eprintln!("IO error occured while running rubyfmt: {:?}, this may indicate a programming error, please file a bug report at https://github.com/penelopezone/rubyfmt/issues/new", ioe);
             e();
         }
         rubyfmt::RichFormatError::OtherRubyError(s) => {
