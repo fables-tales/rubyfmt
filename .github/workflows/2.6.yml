@@ -16,6 +16,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
+    - run: git submodule init && git submodule update
     - uses: actions-rs/cargo@v1
     - uses: actions/cache@v2
       with:
@@ -25,6 +26,11 @@ jobs:
           target
           librubyfmt/target
         key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+    - uses: actions/cache@v2
+      with:
+        path: |
+          librubyfmt/ruby_checkout/ruby-2.6.6
+        key: ${{ runner.os }}-ruby26-full
     - uses: actions/setup-ruby@v1.0.0
       with:
         version: 2.6
