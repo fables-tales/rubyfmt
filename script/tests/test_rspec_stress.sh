@@ -23,6 +23,10 @@ test_rspec_repo() {
     cd "tmp/$1"
     bundle exec rspec --exclude-pattern ./spec/integration/persistence_failures_spec.rb
     git reset --hard
+    f_rubyfmt -i "lib/"
+    git status
+    bundle exec rspec --exclude-pattern ./spec/integration/persistence_failures_spec.rb
+    git reset --hard
     cd ../../
     )
 }
