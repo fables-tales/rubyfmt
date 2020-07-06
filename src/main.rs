@@ -16,6 +16,12 @@ enum FileError {
     SyntaxError,
 }
 
+#[derive(Debug, PartialEq, Copy, Clone)]
+enum ErrorExit {
+    NoExit,
+    Exit,
+}
+
 fn rubyfmt_file(file_path: PathBuf) -> Result<(), FileError> {
     let buffer = read_to_string(file_path.clone()).map_err(FileError::IO)?;
     let res = rubyfmt::format_buffer(&buffer);
@@ -30,7 +36,7 @@ fn rubyfmt_file(file_path: PathBuf) -> Result<(), FileError> {
             Ok(())
         }
         Err(rubyfmt::RichFormatError::SyntaxError) => Err(FileError::SyntaxError),
-        Err(e) => handle_error_from(e, &format!("{}", file_path.display())),
+        Err(e) => handle_error_from(e, &format!("{}", file_path.display()), ErrorExit::NoExit),
     }
 }
 
@@ -60,12 +66,17 @@ fn format_parts(parts: &[String]) {
     }
 }
 
-fn handle_error_from(e: rubyfmt::RichFormatError, source: &str) -> ! {
+fn handle_error_from(err: rubyfmt::RichFormatError, source: &str, error_exit: ErrorExit) {
     use rubyfmt::RichFormatError::*;
-    match e {
+    let e = || {
+        if error_exit == ErrorExit::Exit {
+            exit(1);
+        }
+    };
+    match err {
         SyntaxError => {
             eprintln!("{} contained invalid ruby syntax", source);
-            exit(1);
+            e();
         }
         rubyfmt::RichFormatError::RipperParseFailure(_) => {
             let bug_report = "
@@ -82,15 +93,15 @@ fn handle_error_from(e: rubyfmt::RichFormatError, source: &str) -> ! {
             ";
             eprintln!("{}", bug_report);
             eprintln!("file was: {}", source);
-            exit(1);
+            e();
         }
         IOError(e) => {
             eprintln!("IO error occured while running rubyfmt: {:?}, this may indicate a programming error, please file a bug report at https://github.com/penelopezone/rubyfmt/issues/new", e);
-            exit(1)
+            e();
         }
         rubyfmt::RichFormatError::OtherRubyError(s) => {
             eprintln!("A ruby error occured: {}, please file a bug report at https://github.com/penelopezone/rubyfmt/issues/new", s);
-            exit(1)
+            e();
         }
     }
 }
@@ -113,7 +124,7 @@ fn main() {
                 write!(io::stdout(), "{}", res).expect("write works");
                 io::stdout().flush().expect("flush works");
             }
-            Err(e) => handle_error_from(e, "stdin"),
+            Err(e) => handle_error_from(e, "stdin", ErrorExit::Exit),
         }
     } else if args.len() == 2 {
         // consume a filename
@@ -128,7 +139,7 @@ fn main() {
                         write!(io::stdout(), "{}", res).expect("write works");
                         io::stdout().flush().expect("flush works");
                     }
-                    Err(e) => handle_error_from(e, &args[1]),
+                    Err(e) => handle_error_from(e, &args[1], ErrorExit::Exit),
                 }
             }
         } else {
