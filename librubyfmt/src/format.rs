@@ -1217,8 +1217,9 @@ pub fn format_assign(ps: &mut ParserState, assign: Assign) {
         ps.emit_op("=".to_string());
         ps.emit_space();
 
-        ps.with_formatting_context(FormattingContext::Assign, |ps| {
-            format_expression(ps, *right);
+        ps.with_formatting_context(FormattingContext::Assign, |ps| match right {
+            ExpressionOrMRHSNewFromArgs::Expression(e) => format_expression(ps, *e),
+            ExpressionOrMRHSNewFromArgs::MRHSNewFromArgs(m) => format_mrhs_new_from_args(ps, m),
         });
     });
 
