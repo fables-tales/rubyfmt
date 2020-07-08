@@ -359,7 +359,17 @@ pub enum ArgsAddBlockOrExpressionList {
 
 def_tag!(assign_tag, "assign");
 #[derive(Deserialize, Debug, Clone)]
-pub struct Assign(pub assign_tag, pub Assignable, pub Box<Expression>);
+pub struct Assign(
+    pub assign_tag,
+    pub Assignable,
+    pub ExpressionOrMRHSNewFromArgs,
+);
+
+#[derive(RipperDeserialize, Debug, Clone)]
+pub enum ExpressionOrMRHSNewFromArgs {
+    Expression(Box<Expression>),
+    MRHSNewFromArgs(MRHSNewFromArgs),
+}
 
 def_tag!(massign_tag, "massign");
 #[derive(Deserialize, Debug, Clone)]
