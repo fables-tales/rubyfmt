@@ -1403,7 +1403,8 @@ pub fn format_next(ps: &mut ParserState, next: Next) {
         match next.1 {
             ArgsAddBlockOrExpressionList::ExpressionList(e) => {
                 if !e.is_empty() {
-                    panic!("got non empty next expression list, should be impossible");
+                    ps.emit_space();
+                    format_list_like_thing_items(ps, e, true);
                 }
             }
             ArgsAddBlockOrExpressionList::ArgsAddBlock(aab) => match aab.2 {
