@@ -16,10 +16,12 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-18.04, macos-latest]
+        os: [ubuntu-latest, macos-latest]
     steps:
     - uses: actions/checkout@v2
-    - run: git submodule init && git submodule update
+    - run: |
+        git submodule init
+        git submodule update
     - uses: actions-rs/cargo@v1
     - uses: actions/cache@v2
       with:
@@ -37,6 +39,12 @@ jobs:
     - uses: actions/setup-ruby@v1.0.0
       with:
         version: 2.6
-    - run: if [ $(uname -s) == "Linux" ]; then sudo apt-get install -y shellcheck build-essential ruby-dev bison; fi
-    - run: if [ $(uname -s) == "Darwin" ]; then rustup component add clippy --toolchain stable-x86_64-apple-darwin && rustup component add rustfmt --toolchain stable-x86_64-apple-darwin && brew install shellcheck; fi
+    - if: runner.os == 'Linux'
+      run: |
+        sudo apt-get install -y shellcheck build-essential ruby-dev bison
+    - if: runner.os == 'macOS'
+      run: |
+        rustup component add clippy --toolchain stable-x86_64-apple-darwin
+        rustup component add rustfmt --toolchain stable-x86_64-apple-darwin
+        brew install shellcheck
     - run: ./script/ci
