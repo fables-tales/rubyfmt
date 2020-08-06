@@ -45,6 +45,7 @@ class Parser < Ripper::SexpBuilderPP
   private
 
 
+  UNESCAPED_SQUARE_BRACKET=/(?<!\\)((?:\\\\)*[\[\]])/.freeze # square bracket after even number of backslashes (including zero)
   ARRAY_SYMBOLS.each do |event, symbol|
     define_method(:"on_#{event}_new") do
       [event, [], [lineno, column]]
@@ -52,6 +53,13 @@ class Parser < Ripper::SexpBuilderPP
 
     define_method(:"on_#{event}_add") do |parts, part|
       parts.tap do |node|
+        if part[0].is_a?(Array)
+          part.each do |sub_part|
+            sub_part[1].gsub!(UNESCAPED_SQUARE_BRACKET, "\\\\\\1") if sub_part[0] == :@tstring_content
+          end
+        else
+          part[1].gsub!(UNESCAPED_SQUARE_BRACKET, "\\\\\\1") if part[0] == :@tstring_content
+        end
         node[1] << part
       end
     end
