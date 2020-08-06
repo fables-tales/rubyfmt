@@ -46,24 +46,56 @@ class Parser < Ripper::SexpBuilderPP
 
   private
 
+  DELIM_CLOSE_PAREN={ '{' => '}', '[' => ']', '(' => ')', '<' => '>' }
 
-  UNESCAPED_SQUARE_BRACKET=/(?<!\\)((?:\\\\)*[\[\]])/.freeze # square bracket after even number of backslashes (including zero)
+  def escape_percent_array_paren_content(part, pattern)
+    return unless part[0] == :@tstring_content
+    part[1].gsub!(pattern) do |str|
+      str_last = str[-1]
+      if str_last == ']' || str_last == '['
+        # insert needed escape
+        "#{str[0..-2]}\\#{str_last}"
+      else
+        # drop unnecessary escape
+        "#{str[0..-3]}#{str_last}"
+      end
+    end
+  end
+
   ARRAY_SYMBOLS.each do |event, symbol|
     define_method(:"on_#{event}_new") do
-      [event, [], [lineno, column]]
+      # there doesn't seem to be an _end so _rubyfmt_delim is a hacky way
+      # to get the value from _beg into parts for _add.
+      # it's removed again in on_array.
+      [event, [[:_rubyfmt_delim, @percent_array_stack]], [lineno, column]]
+    end
+
+    define_method(:"on_#{event}_beg") do |delim|
+      @percent_array_stack = delim
     end
 
     define_method(:"on_#{event}_add") do |parts, part|
+      delim = parts[1][0][1]
       parts.tap do |node|
-        if part[0].is_a?(Array)
-          part.each do |sub_part|
-            sub_part[1].gsub!(UNESCAPED_SQUARE_BRACKET, "\\\\\\1") if sub_part[0] == :@tstring_content
+        unless delim.end_with?('[')
+          delim_start = delim[-1]
+          delim_close = DELIM_CLOSE_PAREN[delim_start]
+          pattern = if delim_close
+            /(?<!\\)(?:\\\\)*(?:\\[#{Regexp.escape(delim_start)}#{Regexp.escape(delim_close)}]|[\[\]])/
+          else
+            /(?<!\\)(?:\\\\)*(?:\\#{Regexp.escape(delim_start)}|[\[\]])/
           end
-        else
-          part[1].gsub!(UNESCAPED_SQUARE_BRACKET, "\\\\\\1") if part[0] == :@tstring_content
+          if part[0].is_a?(Array)
+            part.each do |sub_part|
+              escape_percent_array_paren_content(sub_part, pattern)
+            end
+          else
+            escape_percent_array_paren_content(part, pattern)
+          end
         end
         node[1] << part
       end
+      super(parts, part)
     end
   end
 
@@ -86,6 +118,7 @@ class Parser < Ripper::SexpBuilderPP
 
   def on_array(*args)
     res = super
+    res[1][1].shift if (ary = res.dig(1, 1, 0)) && ary.is_a?(Array) && ary[0] == :_rubyfmt_delim # it's done its job
     res << @array_location_stacks.pop
     res
   end

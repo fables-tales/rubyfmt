@@ -29,5 +29,46 @@ puts %W^[#{1}]^.inspect
 puts %W^[]#{1}^.inspect
 puts %W^\[^.inspect
 puts %W^\^^.inspect
+puts %w^\^^.inspect
 puts %w[\]].inspect
+puts %w(()).inspect
+puts %w(\().inspect
+puts %w(\)).inspect
+puts %W(()).inspect
+puts %W(\().inspect
+puts %W(\)).inspect
+puts %W(#{}()).inspect
+puts %W(#{}\().inspect
+puts %W(#{}\)).inspect
+puts %W(()#{}).inspect
+puts %W(\(#{}).inspect
+puts %W(\)#{}).inspect
+puts %w<\<>.inspect
+puts %w<\>>.inspect
+puts %W<<>>.inspect
+puts %W<\<>.inspect
+puts %W<\>>.inspect
+puts %W<#{}<>>.inspect
+puts %W<#{}\<>.inspect
+puts %W<#{}\>>.inspect
+puts %W<<>#{}>.inspect
+puts %W<\<#{}>.inspect
+puts %W<\>#{}>.inspect
+puts %w{\{}.inspect
+puts %w{\}}.inspect
+puts %W{\}}.inspect
+puts %W{\{}.inspect
+puts %W{\}}.inspect
+puts %W{#{}{}}.inspect
+puts %W{#{}\{}.inspect
+puts %W{#{}\}}.inspect
+puts %W{{}#{}}.inspect
+puts %W{\{#{}}.inspect
+puts %W{\}#{}}.inspect
+puts %W{#{%w(this [that)} [other]}.inspect
+puts %W{#{%w[this \[that]} [other}.inspect
+puts %W[#{%w(this [that)} \[other].inspect
+puts %W{#{%w(this {that])} [other]}.inspect
+puts %W{#{%w[this \[that]} [other}.inspect
+puts %W[#{%w(this [that)} \[other].inspect
 puts %w[\[].inspect
