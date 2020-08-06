@@ -1,8 +1,11 @@
+$: << File.dirname(__FILE__)
+require "rubyfmt.so"
+require "ripper"
+require "json"
+
 class Parser < Ripper::SexpBuilderPP
   ARRAY_SYMBOLS = {qsymbols: "%i", qwords: "%w", symbols: "%I", words: "%W"}.freeze
 
-  def initialize(buf)
-  end
   def self.is_percent_array?(rest)
     return false if rest.nil?
     return false if rest[0].nil?
@@ -14,7 +17,6 @@ class Parser < Ripper::SexpBuilderPP
   end
 
   def initialize(file_data)
-    STDOUT.flush
     super(file_data)
     @file_lines = file_data.split("\n")
 
@@ -32,25 +34,10 @@ class Parser < Ripper::SexpBuilderPP
     @kw_stacks = {
       "return" => [],
       "when" => [],
-      "case" => [],
       "yield" => [],
       "break" => [],
-      "super" => [],
     }
-    @tlambda_stack = []
     @array_location_stacks = []
-    @lbrace_stack = []
-    @comments = {}
-  end
-
-  def parse
-    res = super
-
-    if res != nil
-      [res, @comments]
-    else
-      nil
-    end
   end
 
   attr_reader :comments_delete
@@ -110,19 +97,6 @@ class Parser < Ripper::SexpBuilderPP
     end
   end
 
-  def on_lbrace(*args)
-    @lbrace_stack << [lineno, column]
-  end
-
-  def on_brace_block(params, body)
-    @lbrace_stack.pop
-    super
-  end
-
-  def on_hash(assocs)
-    [:hash, assocs, @lbrace_stack.pop]
-  end
-
   def on_lbracket(*args)
     @array_location_stacks << [lineno, column]
   end
@@ -141,10 +115,6 @@ class Parser < Ripper::SexpBuilderPP
     super
   end
 
-  def on_super(args)
-    [:super, args, @kw_stacks["super"].pop]
-  end
-
   def on_return(args)
     [:return, args, @kw_stacks["return"].pop]
   end
@@ -153,21 +123,12 @@ class Parser < Ripper::SexpBuilderPP
     [:when, cond, body, tail, @kw_stacks["when"].pop]
   end
 
-  def on_case(cond, body)
-    [:case, cond, body, @kw_stacks["case"].pop]
-  end
-
   def on_yield(arg)
     [:yield, arg, @kw_stacks["yield"].pop]
   end
 
   def on_break(arg)
     [:break, arg, @kw_stacks["break"].pop]
-  end
-
-  def on_tlambda(*args)
-    @tlambda_stack << [lineno, column]
-    super
   end
 
   def on_heredoc_beg(*args, &blk)
@@ -195,32 +156,21 @@ class Parser < Ripper::SexpBuilderPP
       start_delim = @string_stack.pop
 
       if start_delim != "\""
-        if start_delim == "'" || start_delim.start_with?("%q")
-          # re-evaluate the string with its own quotes to handle escaping.
-          if args[0][1]
-            args[0][1][1] = eval("#{start_delim}#{args[0][1][1]}#{end_delim}").inspect[1..-2]
-          end
-        else
-          # find delimiters after an odd number of backslashes, or quotes after even number.
-          pattern = /(?<!\\)(\\\\)*(\\#{Regexp.escape(start_delim[-1])}|\\#{Regexp.escape(end_delim)}|")/
+        reject_embexpr = start_delim == "'" || start_delim.start_with?("%q")
 
-          (args[0][1..-1] || []).each do |part|
-            next if part.nil?
-            case part[0]
-            when :@tstring_content
-              part[1] = part[1].gsub(pattern) do |str|
-                if str.end_with?('"')
-                  # insert needed escape
-                  "#{str[0..-2]}\\\""
-                else
-                  # drop unnecessary escape
-                  "#{str[0..-3]}#{str[-1]}"
-                end
-              end
-            when :string_embexpr, :string_dvar
-            else
+        (args[0][1..-1] || []).each do |part|
+          next if part.nil?
+          case part[0]
+          when :@tstring_content
+            part[1] = eval("#{start_delim}#{part[1]}#{end_delim}").inspect[1..-2]
+          when :string_embexpr, :string_dvar
+
+            if reject_embexpr
               raise "got #{part[0]} in a #{start_delim}...#{end_delim} string"
             end
+
+          else
+            raise "got #{part[0]} in a #{start_delim}...#{end_delim} string"
           end
         end
       end
@@ -237,8 +187,8 @@ class Parser < Ripper::SexpBuilderPP
     else
       args.insert(1, :do)
     end
-    args.insert(args.length, @tlambda_stack.pop)
-    [:lambda, *args]
+
+    super
   end
 
   def on_tstring_beg(*args, &blk)
@@ -255,15 +205,14 @@ class Parser < Ripper::SexpBuilderPP
     @regexp_stack << re_part
   end
 
-
   def on_regexp_literal(*args)
     args[1] << @regexp_stack.pop
     super(*args)
   end
-
-  def on_comment(comment)
-    @comments[lineno] = comment
-  end
 end
 
-GC.disable
+file_data = File.read(ARGV[0])
+parsed = Parser.new(file_data).parse
+inspected_parsed = JSON.dump(parsed)
+Rubyfmt::format_to_stdout(file_data, inspected_parsed)
+STDOUT.close

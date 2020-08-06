@@ -1,8 +1,13 @@
+if ENV["RUBYFMT_USE_RELEASE"]
+  require_relative "target/rubyfmt_release.so"
+else
+  require_relative "target/rubyfmt_debug.so"
+end
+require "ripper"
+
 class Parser < Ripper::SexpBuilderPP
   ARRAY_SYMBOLS = {qsymbols: "%i", qwords: "%w", symbols: "%I", words: "%W"}.freeze
 
-  def initialize(buf)
-  end
   def self.is_percent_array?(rest)
     return false if rest.nil?
     return false if rest[0].nil?
@@ -14,7 +19,6 @@ class Parser < Ripper::SexpBuilderPP
   end
 
   def initialize(file_data)
-    STDOUT.flush
     super(file_data)
     @file_lines = file_data.split("\n")
 
@@ -29,6 +33,7 @@ class Parser < Ripper::SexpBuilderPP
     @comments_delete = []
     @regexp_stack = []
     @string_stack = []
+    @percent_array_stack = []
     @kw_stacks = {
       "return" => [],
       "when" => [],
@@ -40,17 +45,6 @@ class Parser < Ripper::SexpBuilderPP
     @tlambda_stack = []
     @array_location_stacks = []
     @lbrace_stack = []
-    @comments = {}
-  end
-
-  def parse
-    res = super
-
-    if res != nil
-      [res, @comments]
-    else
-      nil
-    end
   end
 
   attr_reader :comments_delete
@@ -260,10 +254,44 @@ class Parser < Ripper::SexpBuilderPP
     args[1] << @regexp_stack.pop
     super(*args)
   end
-
-  def on_comment(comment)
-    @comments[lineno] = comment
-  end
 end
 
 GC.disable
+
+def parse_file(fn)
+  file_data = File.read(fn)
+  [file_data, Parser.new(file_data).parse]
+end
+
+def rubyfmt_dir(dn)
+  files = Dir[File.join(dn, "**/*.rb")]
+  files.each do |glob_fn|
+    file_data, parsed = parse_file(glob_fn)
+    Rubyfmt::format_to_file(glob_fn, file_data, parsed)
+  end
+end
+
+first = ARGV.shift
+if first == "-i"
+  ARGV.each do |fn|
+    if File.directory?(fn)
+      rubyfmt_dir(fn)
+    else
+      file_data, parsed = parse_file(fn)
+      Rubyfmt::format_to_file(fn, file_data, parsed)
+    end
+  end
+elsif String === first
+  if File.directory?(first)
+    rubyfmt_dir(first)
+  else
+    file_data, parsed = parse_file(first)
+    STDERR.puts(parsed.inspect) unless ENV["RUBYFMT_USE_RELEASE"]
+    Rubyfmt::format_to_stdout(file_data, parsed)
+    STDOUT.close
+  end
+elsif first.nil?
+  data = STDIN.read
+  parsed = Parser.new(data).parse
+  Rubyfmt::format_to_stdout(data, parsed)
+end
