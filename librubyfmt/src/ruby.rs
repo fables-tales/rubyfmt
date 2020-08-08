@@ -92,6 +92,19 @@ pub fn current_exception_as_rust_string() -> String {
     }
 }
 
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct RipperTree(VALUE);
+
+impl RipperTree {
+    pub fn new(v: VALUE) -> Self {
+        RipperTree(v)
+    }
+
+    pub fn into_value(self) -> VALUE {
+        self.0
+    }
+}
+
 pub fn eval_str(s: &str) -> Result<VALUE, ()> {
     unsafe {
         let rubyfmt_program_as_c = CString::new(s).expect("it should become a c string");

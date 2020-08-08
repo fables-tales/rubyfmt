@@ -29,7 +29,7 @@ mod types;
 
 use file_comments::FileComments;
 use parser_state::ParserState;
-use ruby::VALUE;
+use ruby::{RipperTree, VALUE};
 
 #[cfg(debug_assertions)]
 use log::debug;
@@ -192,7 +192,7 @@ fn load_ripper() -> Result<(), ()> {
 pub fn toplevel_format_program<W: Write>(
     writer: &mut W,
     buf: &[u8],
-    tree: VALUE,
+    tree: RipperTree,
 ) -> Result<(), RichFormatError> {
     let line_metadata = FileComments::from_buf(BufReader::new(buf))
         .expect("failed to load line metadata from memory");
@@ -207,7 +207,7 @@ pub fn toplevel_format_program<W: Write>(
     Ok(())
 }
 
-fn run_parser_on(buf: &str) -> Result<VALUE, RichFormatError> {
+fn run_parser_on(buf: &str) -> Result<RipperTree, RichFormatError> {
     unsafe {
         let s = buf;
         let buffer_string = ruby::rb_utf8_str_new(s.as_ptr() as _, s.len() as i64);
@@ -215,7 +215,7 @@ fn run_parser_on(buf: &str) -> Result<VALUE, RichFormatError> {
         let maybe_tree = ruby::rb_protect(real_run_parser as _, buffer_string as _, &mut state);
         if state == 0 {
             if maybe_tree != ruby::Qnil {
-                Ok(maybe_tree)
+                Ok(RipperTree::new(maybe_tree))
             } else {
                 Err(RichFormatError::SyntaxError)
             }
