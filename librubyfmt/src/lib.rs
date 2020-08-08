@@ -31,8 +31,7 @@ mod types;
 
 use file_comments::FileComments;
 use parser_state::ParserState;
-use ruby::VALUE;
-use ruby_ops::{ParseError, Parser, RipperTree};
+use ruby_ops::{load_rubyfmt, ParseError, Parser, RipperTree};
 
 #[cfg(debug_assertions)]
 use log::debug;
@@ -92,9 +91,11 @@ pub fn format_buffer(buf: &str) -> Result<String, RichFormatError> {
 #[no_mangle]
 pub extern "C" fn rubyfmt_init() -> libc::c_int {
     init_logger();
-    unsafe {
-        ruby::ruby_init();
+    let res = ruby_ops::setup_ruby();
+    if res.is_err() {
+        return InitStatus::ERROR as libc::c_int;
     }
+
     let res = load_ripper();
     if res.is_err() {
         return InitStatus::ERROR as libc::c_int;
@@ -148,11 +149,6 @@ extern "C" fn rubyfmt_string_free(rubyfmt_string: *mut RubyfmtString) {
     unsafe {
         Box::from_raw(rubyfmt_string);
     }
-}
-
-fn load_rubyfmt() -> Result<VALUE, ()> {
-    let rubyfmt_program = include_str!("../rubyfmt_lib.rb");
-    ruby::eval_str(rubyfmt_program)
 }
 
 fn load_ripper() -> Result<(), ()> {

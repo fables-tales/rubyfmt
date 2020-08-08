@@ -50,7 +50,7 @@ pub const Qnil: VALUE = VALUE(8);
 
 extern "C" {
     // stuff that we need to compile out rubyfmt
-    pub fn ruby_init();
+    pub fn ruby_setup() -> libc::c_int;
     pub fn ruby_cleanup(_: libc::c_int);
     pub fn rb_eval_string_protect(_: *const libc::c_char, _: *mut libc::c_int) -> VALUE;
     pub fn rb_funcall(_: VALUE, _: ID, _: libc::c_int, ...) -> VALUE;
