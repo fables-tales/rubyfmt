@@ -24,12 +24,15 @@ mod line_tokens;
 mod parser_state;
 mod render_queue_writer;
 mod ripper_tree_types;
+#[macro_use]
 mod ruby;
+mod ruby_ops;
 mod types;
 
 use file_comments::FileComments;
 use parser_state::ParserState;
-use ruby::{RipperTree, VALUE};
+use ruby::VALUE;
+use ruby_ops::{ParseError, Parser, RipperTree};
 
 #[cfg(debug_assertions)]
 use log::debug;
@@ -208,34 +211,10 @@ pub fn toplevel_format_program<W: Write>(
 }
 
 fn run_parser_on(buf: &str) -> Result<RipperTree, RichFormatError> {
-    unsafe {
-        let s = buf;
-        let buffer_string = ruby::rb_utf8_str_new(s.as_ptr() as _, s.len() as i64);
-        let mut state = 0;
-        let maybe_tree = ruby::rb_protect(real_run_parser as _, buffer_string as _, &mut state);
-        if state == 0 {
-            if maybe_tree != ruby::Qnil {
-                Ok(RipperTree::new(maybe_tree))
-            } else {
-                Err(RichFormatError::SyntaxError)
-            }
-        } else {
-            let s = ruby::current_exception_as_rust_string();
-            Err(RichFormatError::OtherRubyError(s))
-        }
-    }
-}
-
-macro_rules! intern {
-    ($s:literal) => {
-        ruby::rb_intern(concat!($s, "\0").as_ptr() as _)
-    };
-}
-
-unsafe extern "C" fn real_run_parser(buffer_string: VALUE) -> VALUE {
-    let parser_class = ruby::rb_const_get_at(ruby::rb_cObject, intern!("Parser"));
-    let parser_instance = ruby::rb_funcall(parser_class, intern!("new"), 1, buffer_string);
-    ruby::rb_funcall(parser_instance, intern!("parse"), 0)
+    Parser::new(buf).parse().map_err(|e| match e {
+        ParseError::SyntaxError => RichFormatError::SyntaxError,
+        ParseError::OtherRubyError(s) => RichFormatError::OtherRubyError(s),
+    })
 }
 
 fn init_logger() {

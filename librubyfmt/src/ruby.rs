@@ -92,17 +92,10 @@ pub fn current_exception_as_rust_string() -> String {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub struct RipperTree(VALUE);
-
-impl RipperTree {
-    pub fn new(v: VALUE) -> Self {
-        RipperTree(v)
-    }
-
-    pub fn into_value(self) -> VALUE {
-        self.0
-    }
+macro_rules! intern {
+    ($s:literal) => {
+        rb_intern(concat!($s, "\0").as_ptr() as _)
+    };
 }
 
 pub fn eval_str(s: &str) -> Result<VALUE, ()> {

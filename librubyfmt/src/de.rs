@@ -1,4 +1,5 @@
-use crate::ruby::{self, RipperTree, VALUE};
+use crate::ruby::{self, VALUE};
+use crate::ruby_ops::RipperTree;
 use serde::de::{self, Error as _};
 use std::mem::size_of;
 
