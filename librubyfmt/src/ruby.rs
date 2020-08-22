@@ -5,6 +5,16 @@ use std::ffi::CString;
 #[repr(transparent)]
 pub struct VALUE(libc::uintptr_t);
 
+impl VALUE {
+    pub fn from_void_ptr(v: *mut libc::c_void) -> VALUE {
+        VALUE(v as _)
+    }
+
+    pub fn as_void_ptr(&self) -> *mut libc::c_void {
+        self.0 as _
+    }
+}
+
 #[derive(Clone, Copy)]
 #[repr(transparent)]
 pub struct ID(libc::uintptr_t);
@@ -56,7 +66,7 @@ extern "C" {
     pub fn rb_funcall(_: VALUE, _: ID, _: libc::c_int, ...) -> VALUE;
     pub fn rb_utf8_str_new(_: *const libc::c_char, _: libc::c_long) -> VALUE;
     pub fn rb_str_new_cstr(_: *const libc::c_char) -> VALUE;
-    pub fn rb_string_value_cstr(_: VALUE) -> *const libc::c_char;
+    pub fn rb_string_value_cstr(_: *const VALUE) -> *const libc::c_char;
     pub fn rb_intern(_: *const libc::c_char) -> ID;
     pub fn rb_const_get_at(_: VALUE, _: ID) -> VALUE;
     pub fn Init_ripper();
@@ -81,6 +91,14 @@ extern "C" {
     pub fn rb_id2name(id: ID) -> *const libc::c_char;
     pub fn rb_ary_entry(arr: VALUE, idx: libc::c_long) -> VALUE;
     pub fn rb_raise(cls: VALUE, msg: *const libc::c_char);
+    pub fn rb_block_call(
+        obj: VALUE,
+        method_id: ID,
+        argc: libc::c_int,
+        argv: *const VALUE,
+        block: extern "C" fn(_: VALUE, _: VALUE, _: libc::c_int, _: *const VALUE) -> VALUE,
+        outer_scope: VALUE
+    ) -> VALUE;
 }
 
 pub fn current_exception_as_rust_string() -> String {
@@ -111,5 +129,35 @@ pub fn eval_str(s: &str) -> Result<VALUE, ()> {
         } else {
             Ok(v)
         }
+    }
+}
+
+extern "C" fn real_debug_inspect(v: VALUE) -> VALUE {
+    unsafe {
+        let inspect = rb_funcall(v, intern!("inspect"), 0, std::ptr::null() as *const VALUE);
+        let char_pointer = rb_string_value_cstr(&inspect) as *mut i8;
+        let cstr = CString::from_raw(char_pointer);
+        let s = cstr.to_str().expect("it's utf8");
+        eprintln!("{}", s);
+        Qnil
+    }
+}
+
+pub fn debug_inspect(v: VALUE) {
+    unsafe {
+        let mut state = 0;
+        rb_protect(real_debug_inspect as _, v, &mut state);
+        eprintln!("here staE: {}", state);
+        if state != 0 {
+            let s = current_exception_as_rust_string();
+            panic!("blew us: {}", s);
+        }
+    }
+}
+
+pub fn raise(s: &str) {
+    let cstr = CString::new(s).expect("it's not null");
+    unsafe {
+        rb_raise(rb_eRuntimeError, cstr.as_ptr());
     }
 }

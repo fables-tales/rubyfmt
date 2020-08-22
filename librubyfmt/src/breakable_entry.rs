@@ -3,6 +3,7 @@ use crate::line_tokens::LineToken;
 use crate::types::{ColNumber, LineNumber};
 use std::collections::HashSet;
 
+#[derive(Copy, Clone, Debug)]
 pub enum ConvertType {
     MultiLine,
     SingleLine,

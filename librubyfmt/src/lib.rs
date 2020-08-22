@@ -1,9 +1,7 @@
-#![deny(warnings, missing_copy_implementations)]
-#[macro_use]
-extern crate lazy_static;
+//#![deny(warnings, missing_copy_implementations)]
 
 use serde::de::value;
-use std::io::{BufReader, Cursor, Write};
+use std::io::{Cursor, Write};
 use std::slice;
 use std::str;
 
@@ -12,6 +10,8 @@ static ALLOC: jemallocator::Jemalloc = jemallocator::Jemalloc;
 
 pub type RawStatus = i64;
 
+#[macro_use]
+mod ruby;
 mod breakable_entry;
 mod comment_block;
 mod de;
@@ -24,8 +24,6 @@ mod line_tokens;
 mod parser_state;
 mod render_queue_writer;
 mod ripper_tree_types;
-#[macro_use]
-mod ruby;
 mod ruby_ops;
 mod types;
 
@@ -79,11 +77,13 @@ pub enum FormatError {
 }
 
 pub fn format_buffer(buf: &str) -> Result<String, RichFormatError> {
-    let tree = run_parser_on(buf)?;
+    let (tree, file_comments) = run_parser_on(buf)?;
+    eprintln!("here1");
     let out_data = vec![];
     let mut output = Cursor::new(out_data);
-    let data = buf.as_bytes();
-    toplevel_format_program(&mut output, data, tree)?;
+    eprintln!("here2");
+    toplevel_format_program(&mut output, tree, file_comments)?;
+    eprintln!("here3");
     output.flush().expect("flushing works");
     Ok(unsafe { String::from_utf8_unchecked(output.into_inner()) })
 }
@@ -190,23 +190,25 @@ fn load_ripper() -> Result<(), ()> {
 
 pub fn toplevel_format_program<W: Write>(
     writer: &mut W,
-    buf: &[u8],
     tree: RipperTree,
+    file_comments: FileComments,
 ) -> Result<(), RichFormatError> {
-    let line_metadata = FileComments::from_buf(BufReader::new(buf))
-        .expect("failed to load line metadata from memory");
-    let mut ps = ParserState::new(line_metadata);
+    eprintln!("here a");
+    let mut ps = ParserState::new(file_comments);
+    eprintln!("here b");
     let v: ripper_tree_types::Program =
         de::from_value(tree).map_err(RichFormatError::RipperParseFailure)?;
+    eprintln!("here c");
 
     format::format_program(&mut ps, v);
+    eprintln!("here d");
 
     ps.write(writer).map_err(RichFormatError::IOError)?;
     writer.flush().map_err(RichFormatError::IOError)?;
     Ok(())
 }
 
-fn run_parser_on(buf: &str) -> Result<RipperTree, RichFormatError> {
+fn run_parser_on(buf: &str) -> Result<(RipperTree, FileComments), RichFormatError> {
     Parser::new(buf).parse().map_err(|e| match e {
         ParseError::SyntaxError => RichFormatError::SyntaxError,
         ParseError::OtherRubyError(s) => RichFormatError::OtherRubyError(s),
