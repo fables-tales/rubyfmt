@@ -84,6 +84,7 @@ pub struct ParserState {
     formatting_context: Vec<FormattingContext>,
     absorbing_indents: i32,
     insert_user_newlines: bool,
+    spaces_after_last_newline: ColNumber,
 }
 
 impl ParserState {
@@ -101,6 +102,7 @@ impl ParserState {
             formatting_context: vec![FormattingContext::Main],
             absorbing_indents: 0,
             insert_user_newlines: true,
+            spaces_after_last_newline: 0,
         }
     }
 
@@ -119,6 +121,7 @@ impl ParserState {
         if line_number < self.current_orig_line_number {
             return;
         }
+        debug!("on_line called: {}", line_number);
 
         for be in self.breakable_entry_stack.iter_mut().rev() {
             be.push_line_number(line_number);
@@ -166,7 +169,7 @@ impl ParserState {
     }
 
     pub fn insert_comment_collection(&mut self, comments: CommentBlock) {
-        self.comments_to_insert.merge(comments);
+        self.comments_to_insert.merge(comments.apply_spaces(self.spaces_after_last_newline));
     }
 
     pub fn emit_indent(&mut self) {
@@ -288,6 +291,7 @@ impl ParserState {
         self.shift_comments();
         self.push_token(LineToken::HardNewLine);
         self.render_heredocs(false);
+        self.spaces_after_last_newline = self.current_spaces();
     }
 
     pub fn emit_end(&mut self) {
@@ -312,6 +316,8 @@ impl ParserState {
     }
 
     pub fn shift_comments(&mut self) {
+        eprintln!("shifting, current spaces: {}", self.current_spaces());
+        eprintln!("shifting, current comments: {:?}", self.comments_to_insert);
         let idx_of_prev_hard_newline = self.index_of_prev_hard_newline();
 
         if self.comments_to_insert.has_comments() {
@@ -323,6 +329,8 @@ impl ParserState {
             let mut new_comments = CommentBlock::new(vec![]);
             mem::swap(&mut new_comments, &mut self.comments_to_insert);
 
+            let spaces = self.spaces_after_last_newline;
+            debug!("spaces: {}", spaces);
             insert_at(
                 insert_index,
                 &mut self.render_queue,
@@ -438,7 +446,7 @@ impl ParserState {
     }
 
     pub fn new_with_depth_stack_from(ps: &ParserState) -> Self {
-        let mut next_ps = ParserState::new(FileComments::new());
+        let mut next_ps = ParserState::new(FileComments::default());
         next_ps.depth_stack = ps.depth_stack.clone();
         next_ps.current_orig_line_number = ps.current_orig_line_number;
         next_ps

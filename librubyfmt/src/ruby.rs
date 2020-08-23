@@ -6,16 +6,6 @@ use std::ffi::CString;
 #[repr(transparent)]
 pub struct VALUE(libc::uintptr_t);
 
-impl VALUE {
-    pub fn from_void_ptr(v: *mut libc::c_void) -> VALUE {
-        VALUE(v as _)
-    }
-
-    pub fn as_void_ptr(&self) -> *mut libc::c_void {
-        self.0 as _
-    }
-}
-
 #[derive(Clone, Copy)]
 #[repr(transparent)]
 pub struct ID(libc::uintptr_t);

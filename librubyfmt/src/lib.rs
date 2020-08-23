@@ -1,4 +1,4 @@
-//#![deny(warnings, missing_copy_implementations)]
+#![deny(warnings, missing_copy_implementations)]
 
 use serde::de::value;
 use std::io::{Cursor, Write};

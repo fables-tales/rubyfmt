@@ -4,7 +4,7 @@ use crate::comment_block::CommentBlock;
 use crate::ruby::*;
 use crate::types::LineNumber;
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct FileComments {
     comment_blocks: BTreeMap<LineNumber, String>,
     contiguous_starting_indices: Vec<LineNumber>,
@@ -12,16 +12,8 @@ pub struct FileComments {
 }
 
 impl FileComments {
-    pub fn new() -> Self {
-        FileComments {
-            comment_blocks: BTreeMap::new(),
-            contiguous_starting_indices: vec![],
-            lowest_key: 0,
-        }
-    }
-
     pub fn from_ruby_hash(h: VALUE) -> Self {
-        let mut fc = FileComments::new();
+        let mut fc = FileComments::default();
         unsafe {
             let keys = rb_funcall(h, intern!("keys"), 0);
             let values = rb_funcall(h, intern!("values"), 0);
@@ -80,7 +72,7 @@ impl FileComments {
             sled.push(
                 self.comment_blocks
                     .remove(key)
-                    .expect(&format!("we tracked it: {} {:?}", key, self.comment_blocks)),
+                    .unwrap_or_else(|| panic!("we tracked it: {} {:?}", key, self.comment_blocks)),
             );
         }
 
