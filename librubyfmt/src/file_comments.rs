@@ -1,8 +1,8 @@
 use std::collections::BTreeMap;
 
 use crate::comment_block::CommentBlock;
-use crate::types::LineNumber;
 use crate::ruby::*;
+use crate::types::LineNumber;
 
 #[derive(Debug)]
 pub struct FileComments {
@@ -39,10 +39,12 @@ impl FileComments {
 
                 let comment_slice = std::slice::from_raw_parts(
                     rubyfmt_rstring_ptr(ruby_comment) as *const u8,
-                    rubyfmt_rstring_len(ruby_comment) as usize
+                    rubyfmt_rstring_len(ruby_comment) as usize,
                 );
 
-                let comment = std::str::from_utf8_unchecked(comment_slice).trim().to_string();
+                let comment = std::str::from_utf8_unchecked(comment_slice)
+                    .trim()
+                    .to_string();
                 fc.push_comment(lineno, comment);
             }
         };
@@ -56,8 +58,8 @@ impl FileComments {
 
         let last_line = self.contiguous_starting_indices.last();
 
-        let should_push = line_number == 1
-            || (last_line.is_some() && last_line.unwrap() == &(line_number - 1));
+        let should_push =
+            line_number == 1 || (last_line.is_some() && last_line.unwrap() == &(line_number - 1));
         if should_push {
             self.contiguous_starting_indices.push(line_number);
         }
@@ -75,7 +77,11 @@ impl FileComments {
 
         let mut sled = Vec::with_capacity(self.contiguous_starting_indices.len());
         for key in self.contiguous_starting_indices.iter() {
-            sled.push(self.comment_blocks.remove(key).expect(&format!("we tracked it: {} {:?}", key, self.comment_blocks)));
+            sled.push(
+                self.comment_blocks
+                    .remove(key)
+                    .expect(&format!("we tracked it: {} {:?}", key, self.comment_blocks)),
+            );
         }
 
         Some(CommentBlock::new(sled))

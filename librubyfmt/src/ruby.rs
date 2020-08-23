@@ -1,6 +1,6 @@
 #![allow(non_camel_case_types, dead_code)]
-use std::ffi::CString;
 use log::debug;
+use std::ffi::CString;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 #[repr(transparent)]
@@ -98,7 +98,7 @@ extern "C" {
         argc: libc::c_int,
         argv: *const VALUE,
         block: extern "C" fn(_: VALUE, _: VALUE, _: libc::c_int, _: *const VALUE) -> VALUE,
-        outer_scope: VALUE
+        outer_scope: VALUE,
     ) -> VALUE;
 }
 

@@ -1,5 +1,5 @@
-use crate::ruby::*;
 use crate::file_comments::FileComments;
+use crate::ruby::*;
 
 pub fn setup_ruby() -> Result<(), ()> {
     unsafe {
@@ -49,11 +49,14 @@ impl Parser {
             if maybe_tree_and_comments != Qnil {
                 let actual_len = unsafe { rubyfmt_rb_ary_len(maybe_tree_and_comments) };
                 if actual_len != 2 {
-                    panic!("expected tree to contain two elements, actually got: {}", actual_len)
+                    panic!(
+                        "expected tree to contain two elements, actually got: {}",
+                        actual_len
+                    )
                 }
                 let tree = unsafe { rb_ary_entry(maybe_tree_and_comments, 0) };
                 // comments is a hash with integer line keys and string valued comments
-                let comments = unsafe { rb_ary_entry(maybe_tree_and_comments, 1)};
+                let comments = unsafe { rb_ary_entry(maybe_tree_and_comments, 1) };
                 let fc = FileComments::from_ruby_hash(comments);
                 Ok((RipperTree::new(tree), fc))
             } else {
