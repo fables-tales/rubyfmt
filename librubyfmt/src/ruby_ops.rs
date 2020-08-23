@@ -55,7 +55,6 @@ impl Parser {
                 // comments is a hash with integer line keys and string valued comments
                 let comments = unsafe { rb_ary_entry(maybe_tree_and_comments, 1)};
                 let fc = FileComments::from_ruby_hash(comments);
-                eprintln!("fc: {:?}", fc);
                 Ok((RipperTree::new(tree), fc))
             } else {
                 Err(ParseError::SyntaxError)

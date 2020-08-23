@@ -78,12 +78,9 @@ pub enum FormatError {
 
 pub fn format_buffer(buf: &str) -> Result<String, RichFormatError> {
     let (tree, file_comments) = run_parser_on(buf)?;
-    eprintln!("here1");
     let out_data = vec![];
     let mut output = Cursor::new(out_data);
-    eprintln!("here2");
     toplevel_format_program(&mut output, tree, file_comments)?;
-    eprintln!("here3");
     output.flush().expect("flushing works");
     Ok(unsafe { String::from_utf8_unchecked(output.into_inner()) })
 }
@@ -193,15 +190,11 @@ pub fn toplevel_format_program<W: Write>(
     tree: RipperTree,
     file_comments: FileComments,
 ) -> Result<(), RichFormatError> {
-    eprintln!("here a");
     let mut ps = ParserState::new(file_comments);
-    eprintln!("here b");
     let v: ripper_tree_types::Program =
         de::from_value(tree).map_err(RichFormatError::RipperParseFailure)?;
-    eprintln!("here c");
 
     format::format_program(&mut ps, v);
-    eprintln!("here d");
 
     ps.write(writer).map_err(RichFormatError::IOError)?;
     writer.flush().map_err(RichFormatError::IOError)?;

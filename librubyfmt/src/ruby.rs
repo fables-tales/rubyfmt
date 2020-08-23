@@ -1,5 +1,6 @@
 #![allow(non_camel_case_types, dead_code)]
 use std::ffi::CString;
+use log::debug;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 #[repr(transparent)]
@@ -138,7 +139,7 @@ extern "C" fn real_debug_inspect(v: VALUE) -> VALUE {
         let char_pointer = rb_string_value_cstr(&inspect) as *mut i8;
         let cstr = CString::from_raw(char_pointer);
         let s = cstr.to_str().expect("it's utf8");
-        eprintln!("{}", s);
+        debug!("{}", s);
         Qnil
     }
 }
