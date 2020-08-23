@@ -317,8 +317,6 @@ impl ParserState {
     }
 
     pub fn shift_comments(&mut self) {
-        eprintln!("shifting, current spaces: {}", self.current_spaces());
-        eprintln!("shifting, current comments: {:?}", self.comments_to_insert);
         let idx_of_prev_hard_newline = self.index_of_prev_hard_newline();
 
         if self.comments_to_insert.has_comments() {

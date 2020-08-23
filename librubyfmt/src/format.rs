@@ -1602,7 +1602,6 @@ pub fn format_class(ps: &mut ParserState, class: Class) {
         ps.with_start_of_line(true, |ps| {
             ps.with_formatting_context(FormattingContext::ClassOrModule, |ps| {
                 ps.emit_newline();
-                eprintln!("calling newline");
                 format_bodystmt(ps, bodystmt);
             });
         });

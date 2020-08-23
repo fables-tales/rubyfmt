@@ -138,7 +138,6 @@ pub fn debug_inspect(v: VALUE) {
     unsafe {
         let mut state = 0;
         rb_protect(real_debug_inspect as _, v, &mut state);
-        eprintln!("here staE: {}", state);
         if state != 0 {
             let s = current_exception_as_rust_string();
             panic!("blew us: {}", s);
