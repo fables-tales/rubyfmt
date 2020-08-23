@@ -1936,7 +1936,6 @@ pub fn format_brace_block(ps: &mut ParserState, brace_block: BraceBlock) {
         format_blockvar(ps, bv);
     }
 
-
     ps.new_block(|ps| {
         ps.with_start_of_line(is_multiline, |ps| {
             if is_multiline {

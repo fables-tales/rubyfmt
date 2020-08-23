@@ -169,7 +169,8 @@ impl ParserState {
     }
 
     pub fn insert_comment_collection(&mut self, comments: CommentBlock) {
-        self.comments_to_insert.merge(comments.apply_spaces(self.spaces_after_last_newline));
+        self.comments_to_insert
+            .merge(comments.apply_spaces(self.spaces_after_last_newline));
     }
 
     pub fn emit_indent(&mut self) {

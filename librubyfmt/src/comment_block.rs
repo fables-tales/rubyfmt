@@ -19,13 +19,17 @@ impl CommentBlock {
     }
 
     pub fn apply_spaces(self, indent_depth: ColNumber) -> Self {
-        let new_strings = self.comments
+        let new_strings = self
+            .comments
             .into_iter()
             .map(|c| {
-                let spaces = (0..indent_depth).map(|_| " ".to_string()).collect::<Vec<String>>().join("");
+                let spaces = (0..indent_depth)
+                    .map(|_| " ".to_string())
+                    .collect::<Vec<String>>()
+                    .join("");
                 format!("{}{}", spaces, c)
             })
-        .collect();
+            .collect();
         Self::new(new_strings)
     }
 
