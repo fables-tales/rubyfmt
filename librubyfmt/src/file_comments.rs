@@ -32,7 +32,7 @@ impl FileComments {
                 .trim()
                 .to_owned();
             fc.push_comment(lineno as _, comment);
-        };
+        }
         fc
     }
 

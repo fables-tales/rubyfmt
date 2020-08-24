@@ -1,6 +1,6 @@
 #![allow(non_camel_case_types, dead_code)]
 use log::debug;
-use std::ffi::{CString, CStr};
+use std::ffi::{CStr, CString};
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 #[repr(transparent)]
@@ -94,10 +94,8 @@ extern "C" {
 }
 
 pub fn current_exception_as_rust_string() -> String {
-    let ruby_string = unsafe { eval_str("$!.inspect") }
-        .expect("Error evaluating `$!.inspect`");
-    unsafe { ruby_string_to_str(ruby_string) }
-        .to_owned()
+    let ruby_string = unsafe { eval_str("$!.inspect") }.expect("Error evaluating `$!.inspect`");
+    unsafe { ruby_string_to_str(ruby_string) }.to_owned()
 }
 
 macro_rules! intern {
@@ -108,13 +106,9 @@ macro_rules! intern {
 
 // Safety: This function expects an initialized Ruby VM capable of evaling code
 pub unsafe fn eval_str(s: &str) -> Result<VALUE, ()> {
-    let rubyfmt_program_as_c = CString::new(s)
-        .expect("unexpected nul byte in Ruby code");
+    let rubyfmt_program_as_c = CString::new(s).expect("unexpected nul byte in Ruby code");
     let mut state = 0;
-    let v = rb_eval_string_protect(
-        rubyfmt_program_as_c.as_ptr(),
-        &mut state,
-    );
+    let v = rb_eval_string_protect(rubyfmt_program_as_c.as_ptr(), &mut state);
     if state != 0 {
         Err(())
     } else {
@@ -156,10 +150,7 @@ pub fn raise(s: &str) {
 // Ruby array. The Ruby array must not be modified while the returned slice
 // is live.
 pub unsafe fn ruby_array_to_slice<'a>(ary: VALUE) -> &'a [VALUE] {
-    std::slice::from_raw_parts(
-        rubyfmt_rb_ary_ptr(ary),
-        rubyfmt_rb_ary_len(ary) as _,
-    )
+    std::slice::from_raw_parts(rubyfmt_rb_ary_ptr(ary), rubyfmt_rb_ary_len(ary) as _)
 }
 
 // Safety: The given VALUE must be a valid Ruby string. The lifetime is not
@@ -167,10 +158,7 @@ pub unsafe fn ruby_array_to_slice<'a>(ary: VALUE) -> &'a [VALUE] {
 // Ruby string. The Ruby string must not be modified while the returned str
 // is live.
 pub unsafe fn ruby_string_to_str<'a>(s: VALUE) -> &'a str {
-    let bytes = std::slice::from_raw_parts(
-        rubyfmt_rstring_ptr(s) as _,
-        rubyfmt_rstring_len(s) as _,
-    );
-    std::str::from_utf8(bytes)
-        .expect("invalid UTF-8")
+    let bytes =
+        std::slice::from_raw_parts(rubyfmt_rstring_ptr(s) as _, rubyfmt_rstring_len(s) as _);
+    std::str::from_utf8(bytes).expect("invalid UTF-8")
 }
