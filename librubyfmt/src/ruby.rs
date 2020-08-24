@@ -68,6 +68,7 @@ extern "C" {
     pub fn rubyfmt_rb_type(v: VALUE) -> ruby_value_type;
     pub fn rubyfmt_rb_num2ll(v: VALUE) -> libc::c_longlong;
     pub fn rubyfmt_rb_ary_len(arr: VALUE) -> libc::c_long;
+    pub fn rubyfmt_rb_ary_ptr(arr: VALUE) -> *mut VALUE;
     pub fn rubyfmt_rb_nil_p(arr: VALUE) -> libc::c_int;
 
     pub fn rb_protect(f: *const libc::c_void, arg: VALUE, state: *mut libc::c_int) -> VALUE;
@@ -93,12 +94,10 @@ extern "C" {
 }
 
 pub fn current_exception_as_rust_string() -> String {
-    unsafe {
-        let res = eval_str("$!.inspect").expect("this can't fail");
-        let ptr = rubyfmt_rstring_ptr(res);
-        let length = rubyfmt_rstring_len(res);
-        String::from_raw_parts(ptr as _, length as _, length as _)
-    }
+    let ruby_string = unsafe { eval_str("$!.inspect") }
+        .expect("Error evaluating `$!.inspect`");
+    unsafe { ruby_string_to_str(ruby_string) }
+        .to_owned()
 }
 
 macro_rules! intern {
@@ -107,19 +106,19 @@ macro_rules! intern {
     };
 }
 
-pub fn eval_str(s: &str) -> Result<VALUE, ()> {
-    unsafe {
-        let rubyfmt_program_as_c = CString::new(s).expect("it should become a c string");
-        let mut state = 0;
-        let v = rb_eval_string_protect(
-            rubyfmt_program_as_c.as_ptr(),
-            &mut state as *mut libc::c_int,
-        );
-        if state != 0 {
-            Err(())
-        } else {
-            Ok(v)
-        }
+// Safety: This function expects an initialized Ruby VM capable of evaling code
+pub unsafe fn eval_str(s: &str) -> Result<VALUE, ()> {
+    let rubyfmt_program_as_c = CString::new(s)
+        .expect("unexpected nul byte in Ruby code");
+    let mut state = 0;
+    let v = rb_eval_string_protect(
+        rubyfmt_program_as_c.as_ptr(),
+        &mut state,
+    );
+    if state != 0 {
+        Err(())
+    } else {
+        Ok(v)
     }
 }
 
@@ -150,4 +149,28 @@ pub fn raise(s: &str) {
     unsafe {
         rb_raise(rb_eRuntimeError, cstr.as_ptr());
     }
+}
+
+// Safety: The given VALUE must be a valid Ruby array. The lifetime is not
+// checked by the compiler. The returned slice must not outlive the given
+// Ruby array. The Ruby array must not be modified while the returned slice
+// is live.
+pub unsafe fn ruby_array_to_slice<'a>(ary: VALUE) -> &'a [VALUE] {
+    std::slice::from_raw_parts(
+        rubyfmt_rb_ary_ptr(ary),
+        rubyfmt_rb_ary_len(ary) as _,
+    )
+}
+
+// Safety: The given VALUE must be a valid Ruby string. The lifetime is not
+// checked by the compiler. The returned str must not outlive the given
+// Ruby string. The Ruby string must not be modified while the returned str
+// is live.
+pub unsafe fn ruby_string_to_str<'a>(s: VALUE) -> &'a str {
+    let bytes = std::slice::from_raw_parts(
+        rubyfmt_rstring_ptr(s) as _,
+        rubyfmt_rstring_len(s) as _,
+    );
+    std::str::from_utf8(bytes)
+        .expect("invalid UTF-8")
 }

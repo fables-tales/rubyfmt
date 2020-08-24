@@ -76,13 +76,14 @@ pub enum FormatError {
     OtherRubyError = 4,
 }
 
+// FIXME: Why does this need to be a string? We're just printing it to stdout
 pub fn format_buffer(buf: &str) -> Result<String, RichFormatError> {
     let (tree, file_comments) = run_parser_on(buf)?;
     let out_data = vec![];
     let mut output = Cursor::new(out_data);
     toplevel_format_program(&mut output, tree, file_comments)?;
-    output.flush().expect("flushing works");
-    Ok(unsafe { String::from_utf8_unchecked(output.into_inner()) })
+    output.flush().expect("flushing to a vec should never fail");
+    Ok(String::from_utf8(output.into_inner()).expect("we never write invalid UTF-8"))
 }
 
 #[no_mangle]
@@ -93,12 +94,12 @@ pub extern "C" fn rubyfmt_init() -> libc::c_int {
         return InitStatus::ERROR as libc::c_int;
     }
 
-    let res = load_ripper();
+    let res = unsafe { load_ripper() };
     if res.is_err() {
         return InitStatus::ERROR as libc::c_int;
     }
 
-    let res = load_rubyfmt();
+    let res = unsafe { load_rubyfmt() };
     if res.is_err() {
         return InitStatus::ERROR as libc::c_int;
     }
@@ -148,7 +149,8 @@ extern "C" fn rubyfmt_string_free(rubyfmt_string: *mut RubyfmtString) {
     }
 }
 
-fn load_ripper() -> Result<(), ()> {
+// Safety: This function expects a functioning Ruby VM
+unsafe fn load_ripper() -> Result<(), ()> {
     // trick ruby in to thinking ripper is already loaded
     ruby::eval_str(
         r#"
@@ -163,7 +165,7 @@ fn load_ripper() -> Result<(), ()> {
     )?;
 
     // init the ripper C module
-    unsafe { Init_ripper() };
+    Init_ripper();
 
     //load each ripper program
     ruby::eval_str(include_str!(
