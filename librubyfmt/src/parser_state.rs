@@ -1,4 +1,4 @@
-use crate::render_targets::BreakableEntry;
+use crate::render_targets::{BreakableEntry, BaseQueue, LineTokenTarget, ConvertType};
 use crate::comment_block::CommentBlock;
 use crate::delimiters::BreakableDelims;
 use crate::file_comments::FileComments;
@@ -11,15 +11,6 @@ use log::debug;
 use std::io::{self, Cursor, Write};
 use std::mem;
 use std::str;
-
-fn insert_at<T>(idx: usize, target: &mut Vec<T>, input: &mut Vec<T>) {
-    let drain = input.drain(..);
-    let mut idx = idx;
-    for item in drain {
-        target.insert(idx, item);
-        idx += 1;
-    }
-}
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum FormattingContext {
@@ -70,48 +61,6 @@ impl HeredocString {
         }
     }
 }
-
-trait LineTokenTarget {
-    fn push(&mut self, lt: LineToken);
-    fn insert_at(&mut self, idx: usize, tokens: &mut Vec<LineToken>);
-    fn into_tokens(self) -> Vec<LineToken>;
-    fn last_token_is_a_newline(&self) -> bool;
-    fn index_of_prev_hard_newline(&self) -> Option<usize>;
-}
-
-#[derive(Debug, Clone)]
-struct BaseQueue {
-    tokens: Vec<LineToken>
-}
-
-impl LineTokenTarget for BaseQueue {
-    fn push(&mut self, lt: LineToken) {
-        self.tokens.push(lt)
-    }
-
-    fn insert_at(&mut self, idx: usize, tokens: &mut Vec<LineToken>) {
-        insert_at(idx, &mut self.tokens, tokens)
-    }
-
-    fn into_tokens(self) -> Vec<LineToken> {
-        self.tokens
-    }
-
-    fn last_token_is_a_newline(&self) -> bool {
-        self.tokens
-            .last()
-            .map(|x| x.is_newline())
-            .unwrap_or(false)
-    }
-
-    fn index_of_prev_hard_newline(&self) -> Option<usize> {
-        self.tokens
-            .iter()
-            .rposition(|v| v.is_newline() || v.is_comment())
-    }
-}
-
-
 pub struct ParserState {
     depth_stack: Vec<IndentDepth>,
     start_of_line: Vec<bool>,
@@ -134,7 +83,7 @@ impl ParserState {
             depth_stack: vec![IndentDepth::new()],
             start_of_line: vec![true],
             surpress_comments_stack: vec![false],
-            render_queue: BaseQueue { tokens: vec![] },
+            render_queue: BaseQueue::default(),
             current_orig_line_number: 0,
             comments_hash: fc,
             heredoc_strings: vec![],
@@ -148,7 +97,8 @@ impl ParserState {
     }
 
     fn consume_to_render_queue(self) -> Vec<LineToken> {
-        self.render_queue.into_tokens()
+        // ct is arbitrary here
+        self.render_queue.into_tokens(ConvertType::SingleLine)
     }
 
     pub fn last_breakable_is_multiline(&self) -> bool {

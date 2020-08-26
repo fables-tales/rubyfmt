@@ -1,4 +1,4 @@
-use crate::render_targets::{BreakableEntry, ConvertType};
+use crate::render_targets::{BreakableEntry, ConvertType, LineTokenTarget};
 use crate::intermediary::{BlanklineReason, Intermediary};
 use crate::line_tokens::*;
 #[cfg(debug_assertions)]

@@ -1,4 +1,4 @@
-use crate::render_targets::{BreakableEntry, ConvertType};
+use crate::render_targets::{BreakableEntry, ConvertType, LineTokenTarget};
 
 #[derive(Debug, Clone)]
 pub enum LineToken {
