@@ -611,11 +611,10 @@ impl ParserState {
     }
 
     pub fn current_target(&self) -> &dyn LineTokenTarget {
-        let res = if self.breakable_entry_stack.is_empty() {
+        if self.breakable_entry_stack.is_empty() {
             &self.render_queue
         } else {
-            self.breakable_entry_stack.last().map(|x| &*x).expect("we checked it's not empty")
-        };
-        res
+            self.breakable_entry_stack.last().expect("we checked it's not empty")
+        }
     }
 }
