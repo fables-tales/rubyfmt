@@ -152,7 +152,7 @@ impl ParserState {
             None => 0,
         };
 
-        self.render_queue.insert_at(insert_idx, &mut vec![LineToken::HardNewLine])
+        self.current_target_mut().insert_at(insert_idx, &mut vec![LineToken::HardNewLine])
     }
 
     pub fn insert_comment_collection(&mut self, comments: CommentBlock) {
@@ -293,11 +293,7 @@ impl ParserState {
     }
 
     fn last_token_is_a_newline(&self) -> bool {
-        if let Some(be) = self.breakable_entry_stack.last() {
-            be.last_token_is_a_newline()
-        } else {
-            self.render_queue.last_token_is_a_newline()
-        }
+        self.current_target().last_token_is_a_newline()
     }
 
     pub fn shift_comments(&mut self) {
@@ -314,13 +310,13 @@ impl ParserState {
 
             let spaces = self.spaces_after_last_newline;
             debug!("spaces: {}", spaces);
-            self.render_queue.insert_at(insert_index, &mut new_comments.into_line_tokens());
+            self.current_target_mut().insert_at(insert_index, &mut new_comments.into_line_tokens());
             self.comments_to_insert = CommentBlock::new(vec![]);
         }
     }
 
     pub fn index_of_prev_hard_newline(&self) -> Option<usize> {
-        self.render_queue.index_of_prev_hard_newline()
+        self.current_target().index_of_prev_hard_newline()
     }
 
     pub fn emit_else(&mut self) {
@@ -491,7 +487,7 @@ impl ParserState {
     pub fn render_heredocs(&mut self, skip: bool) {
         while !self.heredoc_strings.is_empty() {
             let mut next_heredoc = self.heredoc_strings.pop().expect("we checked it's there");
-            let want_newline = !self.render_queue.last_token_is_a_newline();
+            let want_newline = !self.current_target_mut().last_token_is_a_newline();
             if want_newline {
                 self.push_token(LineToken::HardNewLine);
             }
@@ -575,14 +571,7 @@ impl ParserState {
     }
 
     pub fn push_token(&mut self, t: LineToken) {
-        if self.breakable_entry_stack.is_empty() {
-            self.render_queue.push(t);
-        } else {
-            self.breakable_entry_stack
-                .last_mut()
-                .expect("we checked it wasn't empty")
-                .push(t);
-        }
+        self.current_target_mut().push(t);
     }
 
     pub fn is_absorbing_indents(&self) -> bool {
@@ -615,6 +604,14 @@ impl ParserState {
             &self.render_queue
         } else {
             self.breakable_entry_stack.last().expect("we checked it's not empty")
+        }
+    }
+
+    pub fn current_target_mut(&mut self) -> &mut dyn LineTokenTarget {
+        if self.breakable_entry_stack.is_empty() {
+            &mut self.render_queue
+        } else {
+            self.breakable_entry_stack.last_mut().expect("we checked it's not empty")
         }
     }
 }
