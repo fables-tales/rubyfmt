@@ -1,4 +1,4 @@
-use crate::breakable_entry::BreakableEntry;
+use crate::render_targets::BreakableEntry;
 use crate::comment_block::CommentBlock;
 use crate::delimiters::BreakableDelims;
 use crate::file_comments::FileComments;
