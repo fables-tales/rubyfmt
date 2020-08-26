@@ -12,7 +12,8 @@ pub fn setup_ruby() -> Result<(), ()> {
     }
 }
 
-pub fn load_rubyfmt() -> Result<(), ()> {
+// Safety: This function expects an initialized Ruby VM
+pub unsafe fn load_rubyfmt() -> Result<(), ()> {
     let rubyfmt_program = include_str!("../rubyfmt_lib.rb");
     eval_str(rubyfmt_program)?;
     Ok(())
@@ -47,18 +48,16 @@ impl Parser {
             unsafe { rb_protect(Parser::real_run_parser as _, self.0 as _, &mut state) };
         if state == 0 {
             if maybe_tree_and_comments != Qnil {
-                let actual_len = unsafe { rubyfmt_rb_ary_len(maybe_tree_and_comments) };
-                if actual_len != 2 {
+                let tree_and_comments = unsafe { ruby_array_to_slice(maybe_tree_and_comments) };
+                if let [tree, comments] = tree_and_comments {
+                    let fc = FileComments::from_ruby_hash(*comments);
+                    Ok((RipperTree::new(*tree), fc))
+                } else {
                     panic!(
                         "expected tree to contain two elements, actually got: {}",
-                        actual_len
+                        tree_and_comments.len(),
                     )
                 }
-                let tree = unsafe { rb_ary_entry(maybe_tree_and_comments, 0) };
-                // comments is a hash with integer line keys and string valued comments
-                let comments = unsafe { rb_ary_entry(maybe_tree_and_comments, 1) };
-                let fc = FileComments::from_ruby_hash(comments);
-                Ok((RipperTree::new(tree), fc))
             } else {
                 Err(ParseError::SyntaxError)
             }

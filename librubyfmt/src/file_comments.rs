@@ -14,32 +14,25 @@ pub struct FileComments {
 impl FileComments {
     pub fn from_ruby_hash(h: VALUE) -> Self {
         let mut fc = FileComments::default();
+        let keys;
+        let values;
         unsafe {
-            let keys = rb_funcall(h, intern!("keys"), 0);
-            let values = rb_funcall(h, intern!("values"), 0);
-            if rubyfmt_rb_ary_len(keys) != rubyfmt_rb_ary_len(values) {
-                raise("expected keys and values to have same length, indicates error");
+            keys = ruby_array_to_slice(rb_funcall(h, intern!("keys"), 0));
+            values = ruby_array_to_slice(rb_funcall(h, intern!("values"), 0));
+        }
+        if keys.len() != values.len() {
+            raise("expected keys and values to have same length, indicates error");
+        }
+        for (ruby_lineno, ruby_comment) in keys.iter().zip(values) {
+            let lineno = unsafe { rubyfmt_rb_num2ll(*ruby_lineno) };
+            if lineno < 0 {
+                raise("line number negative");
             }
-            for i in 0..rubyfmt_rb_ary_len(keys) {
-                let ruby_lineno = rb_ary_entry(keys, i);
-                let ruby_comment = rb_ary_entry(values, i);
-                let lineno = rubyfmt_rb_num2ll(ruby_lineno);
-                if lineno < 0 {
-                    raise("line number negative");
-                }
-                let lineno = lineno as u64;
-
-                let comment_slice = std::slice::from_raw_parts(
-                    rubyfmt_rstring_ptr(ruby_comment) as *const u8,
-                    rubyfmt_rstring_len(ruby_comment) as usize,
-                );
-
-                let comment = std::str::from_utf8_unchecked(comment_slice)
-                    .trim()
-                    .to_string();
-                fc.push_comment(lineno, comment);
-            }
-        };
+            let comment = unsafe { ruby_string_to_str(*ruby_comment) }
+                .trim()
+                .to_owned();
+            fc.push_comment(lineno as _, comment);
+        }
         fc
     }
 

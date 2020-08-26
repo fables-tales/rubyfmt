@@ -20,6 +20,10 @@ long rubyfmt_rb_ary_len(VALUE v) {
   return rb_array_len(v);
 }
 
+VALUE *rubyfmt_rb_ary_ptr(VALUE v) {
+  return RARRAY_PTR(v);
+}
+
 int rubyfmt_rb_nil_p(VALUE v) {
   return RB_NIL_P(v);
 }

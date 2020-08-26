@@ -494,6 +494,9 @@ impl ParserState {
         // valid utf8 and also we're only using this to newline match
         // which should be very hard to break. The unsafe conversion
         // here skips a utf8 check which is faster.
+        // FIXME: Is the overhead of utf8 checking actually a bottleneck here?
+        // The comment above even admits there are circumstances where it will
+        // not be UTF-8
         unsafe {
             let s = str::from_utf8_unchecked(&data).to_string();
             s.trim().chars().any(|v| v == '\n')
