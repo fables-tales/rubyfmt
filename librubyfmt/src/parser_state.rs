@@ -71,11 +71,52 @@ impl HeredocString {
     }
 }
 
+trait LineTokenTarget {
+    fn push(&mut self, lt: LineToken);
+    fn insert_at(&mut self, idx: usize, tokens: &mut Vec<LineToken>);
+    fn into_tokens(self) -> Vec<LineToken>;
+    fn last_token_is_a_newline(&self) -> bool;
+    fn index_of_prev_hard_newline(&self) -> Option<usize>;
+}
+
+#[derive(Debug, Clone)]
+struct BaseQueue {
+    tokens: Vec<LineToken>
+}
+
+impl LineTokenTarget for BaseQueue {
+    fn push(&mut self, lt: LineToken) {
+        self.tokens.push(lt)
+    }
+
+    fn insert_at(&mut self, idx: usize, tokens: &mut Vec<LineToken>) {
+        insert_at(idx, &mut self.tokens, tokens)
+    }
+
+    fn into_tokens(self) -> Vec<LineToken> {
+        self.tokens
+    }
+
+    fn last_token_is_a_newline(&self) -> bool {
+        self.tokens
+            .last()
+            .map(|x| x.is_newline())
+            .unwrap_or(false)
+    }
+
+    fn index_of_prev_hard_newline(&self) -> Option<usize> {
+        self.tokens
+            .iter()
+            .rposition(|v| v.is_newline() || v.is_comment())
+    }
+}
+
+
 pub struct ParserState {
     depth_stack: Vec<IndentDepth>,
     start_of_line: Vec<bool>,
     surpress_comments_stack: Vec<bool>,
-    render_queue: Vec<LineToken>,
+    render_queue: BaseQueue,
     current_orig_line_number: LineNumber,
     comments_hash: FileComments,
     heredoc_strings: Vec<HeredocString>,
@@ -93,7 +134,7 @@ impl ParserState {
             depth_stack: vec![IndentDepth::new()],
             start_of_line: vec![true],
             surpress_comments_stack: vec![false],
-            render_queue: vec![],
+            render_queue: BaseQueue { tokens: vec![] },
             current_orig_line_number: 0,
             comments_hash: fc,
             heredoc_strings: vec![],
@@ -107,7 +148,7 @@ impl ParserState {
     }
 
     fn consume_to_render_queue(self) -> Vec<LineToken> {
-        self.render_queue
+        self.render_queue.into_tokens()
     }
 
     pub fn last_breakable_is_multiline(&self) -> bool {
@@ -161,11 +202,7 @@ impl ParserState {
             None => 0,
         };
 
-        insert_at(
-            insert_idx,
-            &mut self.render_queue,
-            &mut vec![LineToken::HardNewLine],
-        );
+        self.render_queue.insert_at(insert_idx, &mut vec![LineToken::HardNewLine])
     }
 
     pub fn insert_comment_collection(&mut self, comments: CommentBlock) {
@@ -309,10 +346,7 @@ impl ParserState {
         if let Some(be) = self.breakable_entry_stack.last() {
             be.last_token_is_a_newline()
         } else {
-            self.render_queue
-                .last()
-                .map(|x| x.is_newline())
-                .unwrap_or(false)
+            self.render_queue.last_token_is_a_newline()
         }
     }
 
@@ -330,19 +364,13 @@ impl ParserState {
 
             let spaces = self.spaces_after_last_newline;
             debug!("spaces: {}", spaces);
-            insert_at(
-                insert_index,
-                &mut self.render_queue,
-                &mut new_comments.into_line_tokens(),
-            );
+            self.render_queue.insert_at(insert_index, &mut new_comments.into_line_tokens());
             self.comments_to_insert = CommentBlock::new(vec![]);
         }
     }
 
     pub fn index_of_prev_hard_newline(&self) -> Option<usize> {
-        self.render_queue
-            .iter()
-            .rposition(|v| v.is_newline() || v.is_comment())
+        self.render_queue.index_of_prev_hard_newline()
     }
 
     pub fn emit_else(&mut self) {
@@ -513,10 +541,7 @@ impl ParserState {
     pub fn render_heredocs(&mut self, skip: bool) {
         while !self.heredoc_strings.is_empty() {
             let mut next_heredoc = self.heredoc_strings.pop().expect("we checked it's there");
-            let want_newline = match self.render_queue.last() {
-                Some(x) => !x.is_newline(),
-                None => true,
-            };
+            let want_newline = !self.render_queue.last_token_is_a_newline();
             if want_newline {
                 self.push_token(LineToken::HardNewLine);
             }
