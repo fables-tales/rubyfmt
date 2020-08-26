@@ -259,6 +259,9 @@ impl ParserState {
     }
 
     pub fn emit_soft_newline(&mut self) {
+        self.new_block(|ps| {
+            ps.shift_comments();
+        });
         self.push_token(LineToken::SoftNewline);
     }
 
@@ -343,6 +346,18 @@ impl ParserState {
         self.push_token(LineToken::LonelyOperator);
     }
 
+    pub fn on_line_one_extra_if_is_multi_line<F>(&mut self, f: F)
+    where
+        F: FnOnce(&mut ParserState),
+    {
+        let current_line_number = self.current_orig_line_number;
+        f(self);
+        let new_line_number = self.current_orig_line_number;
+        if new_line_number > current_line_number {
+            self.wind_line_forward();
+            self.shift_comments();
+        }
+    }
     pub fn with_surpress_comments<F>(&mut self, surpress: bool, f: F)
     where
         F: FnOnce(&mut ParserState),
@@ -599,7 +614,8 @@ impl ParserState {
         }
     }
 
-    pub fn current_target(&self) -> &dyn LineTokenTarget {
+
+    fn current_target(&self) -> &dyn LineTokenTarget {
         if self.breakable_entry_stack.is_empty() {
             &self.render_queue
         } else {
@@ -607,7 +623,7 @@ impl ParserState {
         }
     }
 
-    pub fn current_target_mut(&mut self) -> &mut dyn LineTokenTarget {
+    fn current_target_mut(&mut self) -> &mut dyn LineTokenTarget {
         if self.breakable_entry_stack.is_empty() {
             &mut self.render_queue
         } else {

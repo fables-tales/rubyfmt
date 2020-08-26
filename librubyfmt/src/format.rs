@@ -575,34 +575,36 @@ pub fn format_list_like_thing_items(
     let mut emitted_args = false;
     let args_count = args.len();
 
-    for (idx, expr) in args.into_iter().enumerate() {
-        // this raise was present in the ruby source code of rubyfmt
-        // but I'm pretty sure it's categorically impossible now. Thanks
-        // type system
-        //raise "this is bad" if expr[0] == :tstring_content
+    ps.on_line_one_extra_if_is_multi_line(|ps| {
+        for (idx, expr) in args.into_iter().enumerate() {
+            // this raise was present in the ruby source code of rubyfmt
+            // but I'm pretty sure it's categorically impossible now. Thanks
+            // type system
+            //raise "this is bad" if expr[0] == :tstring_content
 
-        if single_line {
-            format_expression(ps, expr);
-            if idx != args_count - 1 {
-                ps.emit_comma_space();
-            }
-        } else {
-            ps.emit_soft_indent();
-            ps.with_start_of_line(false, |ps| {
-                match expr {
-                    Expression::BareAssocHash(bah) => {
-                        format_assocs(ps, bah.1, SpecialCase::NoLeadingTrailingCollectionMarkers)
-                    }
-                    expr => format_expression(ps, expr),
-                }
+            if single_line {
+                format_expression(ps, expr);
                 if idx != args_count - 1 {
-                    ps.emit_comma();
-                    ps.emit_soft_newline();
+                    ps.emit_comma_space();
                 }
-            });
-        };
-        emitted_args = true;
-    }
+            } else {
+                ps.emit_soft_indent();
+                ps.with_start_of_line(false, |ps| {
+                    match expr {
+                        Expression::BareAssocHash(bah) => {
+                            format_assocs(ps, bah.1, SpecialCase::NoLeadingTrailingCollectionMarkers)
+                        }
+                        expr => format_expression(ps, expr),
+                    }
+                    if idx != args_count - 1 {
+                        ps.emit_comma();
+                        ps.emit_soft_newline();
+                    }
+                });
+            };
+            emitted_args = true;
+        }
+    });
     emitted_args
 }
 
