@@ -1,13 +1,13 @@
-use backtrace::Backtrace;
-use crate::render_targets::{BreakableEntry, BaseQueue, LineTokenTarget, ConvertType};
 use crate::comment_block::CommentBlock;
 use crate::delimiters::BreakableDelims;
 use crate::file_comments::FileComments;
 use crate::format::{format_inner_string, StringType};
 use crate::line_tokens::*;
 use crate::render_queue_writer::RenderQueueWriter;
+use crate::render_targets::{BaseQueue, BreakableEntry, ConvertType, LineTokenTarget};
 use crate::ripper_tree_types::StringContentPart;
 use crate::types::{ColNumber, LineNumber};
+use backtrace::Backtrace;
 use log::debug;
 use std::io::{self, Cursor, Write};
 use std::mem;
@@ -153,7 +153,8 @@ impl ParserState {
             None => 0,
         };
 
-        self.current_target_mut().insert_at(insert_idx, &mut vec![LineToken::HardNewLine])
+        self.current_target_mut()
+            .insert_at(insert_idx, &mut vec![LineToken::HardNewLine])
     }
 
     pub fn insert_comment_collection(&mut self, comments: CommentBlock) {
@@ -318,7 +319,8 @@ impl ParserState {
             let mut new_comments = CommentBlock::new(vec![]);
             mem::swap(&mut new_comments, &mut self.comments_to_insert);
 
-            self.current_target_mut().insert_at(insert_index, &mut new_comments.into_line_tokens());
+            self.current_target_mut()
+                .insert_at(insert_index, &mut new_comments.into_line_tokens());
             self.comments_to_insert = CommentBlock::new(vec![]);
         }
     }
@@ -623,12 +625,13 @@ impl ParserState {
         }
     }
 
-
     fn current_target(&self) -> &dyn LineTokenTarget {
         if self.breakable_entry_stack.is_empty() {
             &self.render_queue
         } else {
-            self.breakable_entry_stack.last().expect("we checked it's not empty")
+            self.breakable_entry_stack
+                .last()
+                .expect("we checked it's not empty")
         }
     }
 
@@ -636,7 +639,9 @@ impl ParserState {
         if self.breakable_entry_stack.is_empty() {
             &mut self.render_queue
         } else {
-            self.breakable_entry_stack.last_mut().expect("we checked it's not empty")
+            self.breakable_entry_stack
+                .last_mut()
+                .expect("we checked it's not empty")
         }
     }
 }

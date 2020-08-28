@@ -591,9 +591,11 @@ pub fn format_list_like_thing_items(
                 ps.emit_soft_indent();
                 ps.with_start_of_line(false, |ps| {
                     match expr {
-                        Expression::BareAssocHash(bah) => {
-                            format_assocs(ps, bah.1, SpecialCase::NoLeadingTrailingCollectionMarkers)
-                        }
+                        Expression::BareAssocHash(bah) => format_assocs(
+                            ps,
+                            bah.1,
+                            SpecialCase::NoLeadingTrailingCollectionMarkers,
+                        ),
                         expr => format_expression(ps, expr),
                     }
                     if idx != args_count - 1 {

@@ -12,7 +12,6 @@ fn insert_at<T>(idx: usize, target: &mut Vec<T>, input: &mut Vec<T>) {
     }
 }
 
-
 #[derive(Copy, Clone, Debug)]
 pub enum ConvertType {
     MultiLine,
@@ -29,7 +28,7 @@ pub trait LineTokenTarget {
 
 #[derive(Debug, Default, Clone)]
 pub struct BaseQueue {
-    tokens: Vec<LineToken>
+    tokens: Vec<LineToken>,
 }
 
 impl LineTokenTarget for BaseQueue {
@@ -46,10 +45,7 @@ impl LineTokenTarget for BaseQueue {
     }
 
     fn last_token_is_a_newline(&self) -> bool {
-        self.tokens
-            .last()
-            .map(|x| x.is_newline())
-            .unwrap_or(false)
+        self.tokens.last().map(|x| x.is_newline()).unwrap_or(false)
     }
 
     fn index_of_prev_hard_newline(&self) -> Option<usize> {
@@ -58,8 +54,6 @@ impl LineTokenTarget for BaseQueue {
             .rposition(|v| v.is_newline() || v.is_comment())
     }
 }
-
-
 
 #[derive(Debug, Clone)]
 pub struct BreakableEntry {

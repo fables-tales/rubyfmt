@@ -12,7 +12,6 @@ pub type RawStatus = i64;
 
 #[macro_use]
 mod ruby;
-mod render_targets;
 mod comment_block;
 mod de;
 mod delimiters;
@@ -23,6 +22,7 @@ mod line_metadata;
 mod line_tokens;
 mod parser_state;
 mod render_queue_writer;
+mod render_targets;
 mod ripper_tree_types;
 mod ruby_ops;
 mod types;
