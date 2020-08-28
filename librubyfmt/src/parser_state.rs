@@ -365,6 +365,7 @@ impl ParserState {
             self.wind_line_forward();
             self.shift_comments();
         }
+        self.current_orig_line_number = new_line_number;
     }
     pub fn with_surpress_comments<F>(&mut self, surpress: bool, f: F)
     where
