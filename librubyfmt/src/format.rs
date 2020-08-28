@@ -575,7 +575,7 @@ pub fn format_list_like_thing_items(
     let mut emitted_args = false;
     let args_count = args.len();
 
-    ps.on_line_one_extra_if_is_multi_line(|ps| {
+    ps.magic_handle_comments_for_mulitiline_arrays(|ps| {
         for (idx, expr) in args.into_iter().enumerate() {
             // this raise was present in the ruby source code of rubyfmt
             // but I'm pretty sure it's categorically impossible now. Thanks

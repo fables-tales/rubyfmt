@@ -1,3 +1,4 @@
+use backtrace::Backtrace;
 use crate::render_targets::{BreakableEntry, BaseQueue, LineTokenTarget, ConvertType};
 use crate::comment_block::CommentBlock;
 use crate::delimiters::BreakableDelims;
@@ -263,12 +264,14 @@ impl ParserState {
             ps.shift_comments();
         });
         self.push_token(LineToken::SoftNewline);
+        self.spaces_after_last_newline = self.current_spaces();
     }
 
     pub fn emit_collapsing_newline(&mut self) {
         if !self.last_token_is_a_newline() {
             self.push_token(LineToken::CollapsingNewLine);
         }
+        self.spaces_after_last_newline = self.current_spaces();
     }
 
     pub fn emit_def(&mut self, def_name: String) {
@@ -308,11 +311,13 @@ impl ParserState {
                 None => 0,
             };
 
+            let spaces = self.spaces_after_last_newline;
+            debug!("spaces: {} comments: {:?}", spaces, self.comments_to_insert);
+            let bt = Backtrace::new();
+            debug!("{:?}", bt);
             let mut new_comments = CommentBlock::new(vec![]);
             mem::swap(&mut new_comments, &mut self.comments_to_insert);
 
-            let spaces = self.spaces_after_last_newline;
-            debug!("spaces: {}", spaces);
             self.current_target_mut().insert_at(insert_index, &mut new_comments.into_line_tokens());
             self.comments_to_insert = CommentBlock::new(vec![]);
         }
@@ -346,11 +351,14 @@ impl ParserState {
         self.push_token(LineToken::LonelyOperator);
     }
 
-    pub fn on_line_one_extra_if_is_multi_line<F>(&mut self, f: F)
+    pub fn magic_handle_comments_for_mulitiline_arrays<F>(&mut self, f: F)
     where
         F: FnOnce(&mut ParserState),
     {
         let current_line_number = self.current_orig_line_number;
+        self.new_block(|ps| {
+            ps.shift_comments();
+        });
         f(self);
         let new_line_number = self.current_orig_line_number;
         if new_line_number > current_line_number {
@@ -541,13 +549,13 @@ impl ParserState {
     where
         F: FnOnce(&mut ParserState),
     {
+        self.shift_comments();
         let mut be = BreakableEntry::new(self.current_spaces(), delims);
         be.push_line_number(self.current_orig_line_number);
-
         self.breakable_entry_stack.push(be);
 
-        self.emit_collapsing_newline();
         self.new_block(|ps| {
+            ps.emit_collapsing_newline();
             f(ps);
         });
 
