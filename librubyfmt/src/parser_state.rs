@@ -10,7 +10,6 @@ use crate::types::{ColNumber, LineNumber};
 use backtrace::Backtrace;
 use log::debug;
 use std::io::{self, Cursor, Write};
-use std::mem;
 use std::str;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -70,7 +69,7 @@ pub struct ParserState {
     current_orig_line_number: LineNumber,
     comments_hash: FileComments,
     heredoc_strings: Vec<HeredocString>,
-    comments_to_insert: CommentBlock,
+    comments_to_insert: Option<CommentBlock>,
     breakable_entry_stack: Vec<BreakableEntry>,
     formatting_context: Vec<FormattingContext>,
     absorbing_indents: i32,
@@ -88,7 +87,7 @@ impl ParserState {
             current_orig_line_number: 0,
             comments_hash: fc,
             heredoc_strings: vec![],
-            comments_to_insert: CommentBlock::new(vec![]),
+            comments_to_insert: None,
             breakable_entry_stack: vec![],
             formatting_context: vec![FormattingContext::Main],
             absorbing_indents: 0,
@@ -158,8 +157,7 @@ impl ParserState {
     }
 
     pub fn insert_comment_collection(&mut self, comments: CommentBlock) {
-        self.comments_to_insert
-            .merge(comments.apply_spaces(self.spaces_after_last_newline));
+        self.comments_to_insert += comments.apply_spaces(self.spaces_after_last_newline);
     }
 
     pub fn emit_indent(&mut self) {
@@ -306,7 +304,7 @@ impl ParserState {
     pub fn shift_comments(&mut self) {
         let idx_of_prev_hard_newline = self.index_of_prev_hard_newline();
 
-        if self.comments_to_insert.has_comments() {
+        if let Some(new_comments) = self.comments_to_insert.take() {
             let insert_index = match idx_of_prev_hard_newline {
                 Some(idx) => idx + 1,
                 None => 0,
@@ -316,12 +314,9 @@ impl ParserState {
             debug!("spaces: {} comments: {:?}", spaces, self.comments_to_insert);
             let bt = Backtrace::new();
             debug!("{:?}", bt);
-            let mut new_comments = CommentBlock::new(vec![]);
-            mem::swap(&mut new_comments, &mut self.comments_to_insert);
 
             self.current_target_mut()
                 .insert_at(insert_index, &mut new_comments.into_line_tokens());
-            self.comments_to_insert = CommentBlock::new(vec![]);
         }
     }
 

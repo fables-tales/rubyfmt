@@ -1,4 +1,5 @@
 use std::collections::BTreeMap;
+use std::mem;
 
 use crate::comment_block::CommentBlock;
 use crate::ruby::*;
@@ -6,9 +7,8 @@ use crate::types::LineNumber;
 
 #[derive(Debug, Default)]
 pub struct FileComments {
-    comment_blocks: BTreeMap<LineNumber, String>,
-    contiguous_starting_indices: Vec<LineNumber>,
-    lowest_key: LineNumber,
+    start_of_file_sled: Option<CommentBlock>,
+    other_comments: BTreeMap<LineNumber, String>,
 }
 
 impl FileComments {
@@ -36,58 +36,48 @@ impl FileComments {
         fc
     }
 
+    /// Add a new comment. If the beginning of this file is a comment block,
+    /// each of those comment lines must be pushed before any other line, or
+    /// the end of the "start of file sled" will be incorrectly calculated.
     fn push_comment(&mut self, line_number: u64, l: String) {
-        if self.lowest_key == 0 {
-            self.lowest_key = line_number;
+        match (&mut self.start_of_file_sled, line_number) {
+            (None, 1) => {
+                debug_assert!(
+                    self.other_comments.is_empty(),
+                    "If we have a start of file sled, it needs to come first,
+                     otherwise we won't know where the last line is",
+                );
+                self.start_of_file_sled = Some(CommentBlock::new(1..2, vec![l]));
+            }
+            (Some(sled), _) if sled.following_line_number() == line_number => {
+                sled.add_line(l);
+            }
+            _ => {
+                self.other_comments.insert(line_number, l);
+            }
         }
-
-        let last_line = self.contiguous_starting_indices.last();
-
-        let should_push =
-            line_number == 1 || (last_line.is_some() && last_line.unwrap() == &(line_number - 1));
-        if should_push {
-            self.contiguous_starting_indices.push(line_number);
-        }
-        self.comment_blocks.insert(line_number, l);
     }
 
-    pub fn has_start_of_file_sled(&self) -> bool {
-        self.lowest_key == 1
-    }
-
+    // FIXME: Does this really need to mutate? Why is returning a reference
+    // insufficient?
     pub fn take_start_of_file_sled(&mut self) -> Option<CommentBlock> {
-        if !self.has_start_of_file_sled() {
-            return None;
-        }
-
-        let mut sled = Vec::with_capacity(self.contiguous_starting_indices.len());
-        for key in self.contiguous_starting_indices.iter() {
-            sled.push(
-                self.comment_blocks
-                    .remove(key)
-                    .unwrap_or_else(|| panic!("we tracked it: {} {:?}", key, self.comment_blocks)),
-            );
-        }
-
-        Some(CommentBlock::new(sled))
+        self.start_of_file_sled.take()
     }
 
+    // FIXME: Do we really need to remove these? Is returning &CommentBlock
+    // and/or providing an iterator sufficient?
     pub fn extract_comments_to_line(&mut self, line_number: LineNumber) -> Option<CommentBlock> {
-        if line_number < self.lowest_key {
-            return None;
-        }
-
-        let mut values = Vec::new();
-        let keys: Vec<_> = self
-            .comment_blocks
-            .range(self.lowest_key..=line_number)
-            .map(|(&k, &_)| k)
-            .collect();
-        for key in keys {
-            let v = self.comment_blocks.remove(&key).expect("came from key");
-            values.push(v);
-        }
-
-        Some(CommentBlock::new(values))
+        self.other_comments
+            .keys()
+            .nth(0)
+            .copied()
+            .map(|lowest_line| {
+                let remaining_comments = self.other_comments.split_off(&(line_number + 1));
+                let comments = mem::replace(&mut self.other_comments, remaining_comments)
+                    .into_iter()
+                    .map(|(_, v)| v)
+                    .collect();
+                CommentBlock::new(lowest_line..line_number + 1, comments)
+            })
     }
 }
