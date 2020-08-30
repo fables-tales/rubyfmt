@@ -43,8 +43,7 @@ impl FileComments {
 
         let last_line = self.contiguous_starting_indices.last();
 
-        let should_push =
-            line_number == 1 || (last_line.is_some() && last_line.unwrap() == &(line_number - 1));
+        let should_push = last_line.copied().unwrap_or(0) == line_number - 1
         if should_push {
             self.contiguous_starting_indices.push(line_number);
         }
