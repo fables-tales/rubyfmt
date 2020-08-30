@@ -610,13 +610,9 @@ impl ParserState {
     }
 
     fn current_target(&self) -> &dyn LineTokenTarget {
-        if self.breakable_entry_stack.is_empty() {
-            &self.render_queue
-        } else {
-            self.breakable_entry_stack
-                .last()
-                .expect("we checked it's not empty")
-        }
+        self.breakable_entry_stack
+            .last()
+            .unwrap_or(&self.render_queue)
     }
 
     fn current_target_mut(&mut self) -> &mut dyn LineTokenTarget {
