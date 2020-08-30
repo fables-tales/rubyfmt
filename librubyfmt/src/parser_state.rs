@@ -513,7 +513,7 @@ impl ParserState {
     pub fn render_heredocs(&mut self, skip: bool) {
         while !self.heredoc_strings.is_empty() {
             let mut next_heredoc = self.heredoc_strings.pop().expect("we checked it's there");
-            let want_newline = !self.current_target_mut().last_token_is_a_newline();
+            let want_newline = !self.current_target().last_token_is_a_newline();
             if want_newline {
                 self.push_token(LineToken::HardNewLine);
             }
