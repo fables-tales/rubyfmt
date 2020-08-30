@@ -24,8 +24,8 @@ pub fn format_def(ps: &mut ParserState, def: Def) {
     });
 
     ps.with_start_of_line(true, |ps| {
-        ps.emit_end();
         ps.wind_line_forward();
+        ps.emit_end();
     });
     ps.emit_newline();
 }
