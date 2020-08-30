@@ -107,7 +107,7 @@ impl BreakableEntry {
     pub fn new(spaces: ColNumber, delims: BreakableDelims) -> Self {
         BreakableEntry {
             spaces,
-            tokens: vec![],
+            tokens: Vec::new(),
             line_numbers: HashSet::new(),
             delims,
         }

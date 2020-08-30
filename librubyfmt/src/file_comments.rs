@@ -69,7 +69,7 @@ impl FileComments {
     pub fn extract_comments_to_line(&mut self, line_number: LineNumber) -> Option<CommentBlock> {
         self.other_comments
             .keys()
-            .nth(0)
+            .next()
             .copied()
             .map(|lowest_line| {
                 let remaining_comments = self.other_comments.split_off(&(line_number + 1));
