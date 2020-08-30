@@ -486,7 +486,7 @@ impl ParserState {
         let data = next_ps.render_to_buffer();
 
         let s = str::from_utf8(&data).expect("string is utf8").to_string();
-        s.trim().chars().any(|v| v == '\n')
+        s.trim().contains('\n')
     }
 
     fn render_to_buffer(self) -> Vec<u8> {
