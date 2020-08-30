@@ -7,7 +7,7 @@ use crate::types::LineNumber;
 
 #[derive(Debug, Default)]
 pub struct FileComments {
-    start_of_file_sled: Option<CommentBlock>,
+    start_of_file_contiguous_comment_lines: Option<CommentBlock>,
     other_comments: BTreeMap<LineNumber, String>,
 }
 
@@ -38,16 +38,20 @@ impl FileComments {
 
     /// Add a new comment. If the beginning of this file is a comment block,
     /// each of those comment lines must be pushed before any other line, or
-    /// the end of the "start of file sled" will be incorrectly calculated.
+    /// the end of the block from the start of the file will be incorrectly calculated.
     fn push_comment(&mut self, line_number: u64, l: String) {
-        match (&mut self.start_of_file_sled, line_number) {
+        match (
+            &mut self.start_of_file_contiguous_comment_lines,
+            line_number,
+        ) {
             (None, 1) => {
                 debug_assert!(
                     self.other_comments.is_empty(),
                     "If we have a start of file sled, it needs to come first,
                      otherwise we won't know where the last line is",
                 );
-                self.start_of_file_sled = Some(CommentBlock::new(1..2, vec![l]));
+                self.start_of_file_contiguous_comment_lines =
+                    Some(CommentBlock::new(1..2, vec![l]));
             }
             (Some(sled), _) if sled.following_line_number() == line_number => {
                 sled.add_line(l);
@@ -58,14 +62,10 @@ impl FileComments {
         }
     }
 
-    // FIXME: Does this really need to mutate? Why is returning a reference
-    // insufficient?
-    pub fn take_start_of_file_sled(&mut self) -> Option<CommentBlock> {
-        self.start_of_file_sled.take()
+    pub fn take_start_of_file_contiguous_comment_lines(&mut self) -> Option<CommentBlock> {
+        self.start_of_file_contiguous_comment_lines.take()
     }
 
-    // FIXME: Do we really need to remove these? Is returning &CommentBlock
-    // and/or providing an iterator sufficient?
     pub fn extract_comments_to_line(&mut self, line_number: LineNumber) -> Option<CommentBlock> {
         self.other_comments
             .keys()

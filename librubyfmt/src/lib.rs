@@ -76,7 +76,6 @@ pub enum FormatError {
     OtherRubyError = 4,
 }
 
-// FIXME: Why does this need to be a string? We're just printing it to stdout
 pub fn format_buffer(buf: &str) -> Result<String, RichFormatError> {
     let (tree, file_comments) = run_parser_on(buf)?;
     let out_data = vec![];

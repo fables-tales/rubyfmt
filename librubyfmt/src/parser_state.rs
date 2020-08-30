@@ -1,4 +1,4 @@
-use crate::comment_block::CommentBlock;
+use crate::comment_block::{CommentBlock, Merge};
 use crate::delimiters::BreakableDelims;
 use crate::file_comments::FileComments;
 use crate::format::{format_inner_string, StringType};
@@ -157,7 +157,8 @@ impl ParserState {
     }
 
     pub fn insert_comment_collection(&mut self, comments: CommentBlock) {
-        self.comments_to_insert += comments.apply_spaces(self.spaces_after_last_newline);
+        self.comments_to_insert
+            .merge(comments.apply_spaces(self.spaces_after_last_newline));
     }
 
     pub fn emit_indent(&mut self) {
@@ -484,18 +485,8 @@ impl ParserState {
         f(&mut next_ps);
         let data = next_ps.render_to_buffer();
 
-        // unsafe because we got the source code from the ruby parser
-        // and only in wildly exceptional circumstances will it not be
-        // valid utf8 and also we're only using this to newline match
-        // which should be very hard to break. The unsafe conversion
-        // here skips a utf8 check which is faster.
-        // FIXME: Is the overhead of utf8 checking actually a bottleneck here?
-        // The comment above even admits there are circumstances where it will
-        // not be UTF-8
-        unsafe {
-            let s = str::from_utf8_unchecked(&data).to_string();
-            s.trim().chars().any(|v| v == '\n')
-        }
+        let s = str::from_utf8(&data).expect("string is utf8").to_string();
+        s.trim().chars().any(|v| v == '\n')
     }
 
     fn render_to_buffer(self) -> Vec<u8> {
@@ -608,7 +599,10 @@ impl ParserState {
     }
 
     pub fn flush_start_of_file_comments(&mut self) {
-        match self.comments_hash.take_start_of_file_sled() {
+        match self
+            .comments_hash
+            .take_start_of_file_contiguous_comment_lines()
+        {
             None => {
                 self.on_line(1);
             }

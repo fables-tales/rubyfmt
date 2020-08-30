@@ -1,4 +1,4 @@
-use std::ops::{AddAssign, Range};
+use std::ops::Range;
 
 use crate::line_tokens::LineToken;
 use crate::types::{ColNumber, LineNumber};
@@ -30,7 +30,6 @@ impl CommentBlock {
             .collect()
     }
 
-    // FIXME: This should be the responsibility of the formatter
     pub fn apply_spaces(mut self, indent_depth: ColNumber) -> Self {
         for comment in &mut self.comments {
             *comment = str::repeat(" ", indent_depth as _) + comment;
@@ -47,18 +46,22 @@ impl CommentBlock {
     }
 }
 
-impl AddAssign for CommentBlock {
-    fn add_assign(&mut self, mut rhs: CommentBlock) {
-        self.comments.append(&mut rhs.comments);
+pub trait Merge<Other = Self> {
+    fn merge(&mut self, other: Other);
+}
+
+impl Merge for CommentBlock {
+    fn merge(&mut self, mut other: CommentBlock) {
+        self.comments.append(&mut other.comments);
     }
 }
 
-impl AddAssign<CommentBlock> for Option<CommentBlock> {
-    fn add_assign(&mut self, rhs: CommentBlock) {
+impl Merge<CommentBlock> for Option<CommentBlock> {
+    fn merge(&mut self, other: CommentBlock) {
         if let Some(this) = self {
-            *this += rhs
+            this.merge(other)
         } else {
-            *self = Some(rhs)
+            *self = Some(other)
         }
     }
 }
