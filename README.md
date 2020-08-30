@@ -21,6 +21,10 @@ Rubyfmt supports the following CLI invocations:
 * `rubyfmt -i files or directories` format files and directories in place
 * `rubyfmt directory` to format all ruby files in that directory in place
 
+## I want to help!
+
+Check out our [contributing guide](./CONTRIBUTING.md)
+
 ## Useful environment variables:
 
 * `RUBYFMT_DISABLE_SZUSH=1`: disables the backend render queue writer,
