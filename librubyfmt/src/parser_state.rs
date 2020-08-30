@@ -1,25 +1,15 @@
-use crate::breakable_entry::BreakableEntry;
-use crate::comment_block::CommentBlock;
+use crate::comment_block::{CommentBlock, Merge};
 use crate::delimiters::BreakableDelims;
 use crate::file_comments::FileComments;
 use crate::format::{format_inner_string, StringType};
 use crate::line_tokens::*;
 use crate::render_queue_writer::RenderQueueWriter;
+use crate::render_targets::{BaseQueue, BreakableEntry, ConvertType, LineTokenTarget};
 use crate::ripper_tree_types::StringContentPart;
 use crate::types::{ColNumber, LineNumber};
 use log::debug;
 use std::io::{self, Cursor, Write};
-use std::mem;
 use std::str;
-
-fn insert_at<T>(idx: usize, target: &mut Vec<T>, input: &mut Vec<T>) {
-    let drain = input.drain(..);
-    let mut idx = idx;
-    for item in drain {
-        target.insert(idx, item);
-        idx += 1;
-    }
-}
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum FormattingContext {
@@ -70,20 +60,20 @@ impl HeredocString {
         }
     }
 }
-
 pub struct ParserState {
     depth_stack: Vec<IndentDepth>,
     start_of_line: Vec<bool>,
     surpress_comments_stack: Vec<bool>,
-    render_queue: Vec<LineToken>,
+    render_queue: BaseQueue,
     current_orig_line_number: LineNumber,
     comments_hash: FileComments,
     heredoc_strings: Vec<HeredocString>,
-    comments_to_insert: CommentBlock,
+    comments_to_insert: Option<CommentBlock>,
     breakable_entry_stack: Vec<BreakableEntry>,
     formatting_context: Vec<FormattingContext>,
     absorbing_indents: i32,
     insert_user_newlines: bool,
+    spaces_after_last_newline: ColNumber,
 }
 
 impl ParserState {
@@ -92,20 +82,22 @@ impl ParserState {
             depth_stack: vec![IndentDepth::new()],
             start_of_line: vec![true],
             surpress_comments_stack: vec![false],
-            render_queue: vec![],
+            render_queue: BaseQueue::default(),
             current_orig_line_number: 0,
             comments_hash: fc,
             heredoc_strings: vec![],
-            comments_to_insert: CommentBlock::new(vec![]),
+            comments_to_insert: None,
             breakable_entry_stack: vec![],
             formatting_context: vec![FormattingContext::Main],
             absorbing_indents: 0,
             insert_user_newlines: true,
+            spaces_after_last_newline: 0,
         }
     }
 
     fn consume_to_render_queue(self) -> Vec<LineToken> {
-        self.render_queue
+        // ct is arbitrary here
+        self.render_queue.into_tokens(ConvertType::SingleLine)
     }
 
     pub fn last_breakable_is_multiline(&self) -> bool {
@@ -119,6 +111,7 @@ impl ParserState {
         if line_number < self.current_orig_line_number {
             return;
         }
+        debug!("on_line called: {}", line_number);
 
         for be in self.breakable_entry_stack.iter_mut().rev() {
             be.push_line_number(line_number);
@@ -158,15 +151,13 @@ impl ParserState {
             None => 0,
         };
 
-        insert_at(
-            insert_idx,
-            &mut self.render_queue,
-            &mut vec![LineToken::HardNewLine],
-        );
+        self.current_target_mut()
+            .insert_at(insert_idx, &mut vec![LineToken::HardNewLine])
     }
 
     pub fn insert_comment_collection(&mut self, comments: CommentBlock) {
-        self.comments_to_insert.merge(comments);
+        self.comments_to_insert
+            .merge(comments.apply_spaces(self.spaces_after_last_newline));
     }
 
     pub fn emit_indent(&mut self) {
@@ -268,13 +259,18 @@ impl ParserState {
     }
 
     pub fn emit_soft_newline(&mut self) {
+        self.new_block(|ps| {
+            ps.shift_comments();
+        });
         self.push_token(LineToken::SoftNewline);
+        self.spaces_after_last_newline = self.current_spaces();
     }
 
     pub fn emit_collapsing_newline(&mut self) {
         if !self.last_token_is_a_newline() {
             self.push_token(LineToken::CollapsingNewLine);
         }
+        self.spaces_after_last_newline = self.current_spaces();
     }
 
     pub fn emit_def(&mut self, def_name: String) {
@@ -288,6 +284,7 @@ impl ParserState {
         self.shift_comments();
         self.push_token(LineToken::HardNewLine);
         self.render_heredocs(false);
+        self.spaces_after_last_newline = self.current_spaces();
     }
 
     pub fn emit_end(&mut self) {
@@ -301,41 +298,25 @@ impl ParserState {
     }
 
     fn last_token_is_a_newline(&self) -> bool {
-        if let Some(be) = self.breakable_entry_stack.last() {
-            be.last_token_is_a_newline()
-        } else {
-            self.render_queue
-                .last()
-                .map(|x| x.is_newline())
-                .unwrap_or(false)
-        }
+        self.current_target().last_token_is_a_newline()
     }
 
     pub fn shift_comments(&mut self) {
         let idx_of_prev_hard_newline = self.index_of_prev_hard_newline();
 
-        if self.comments_to_insert.has_comments() {
+        if let Some(new_comments) = self.comments_to_insert.take() {
             let insert_index = match idx_of_prev_hard_newline {
                 Some(idx) => idx + 1,
                 None => 0,
             };
 
-            let mut new_comments = CommentBlock::new(vec![]);
-            mem::swap(&mut new_comments, &mut self.comments_to_insert);
-
-            insert_at(
-                insert_index,
-                &mut self.render_queue,
-                &mut new_comments.into_line_tokens(),
-            );
-            self.comments_to_insert = CommentBlock::new(vec![]);
+            self.current_target_mut()
+                .insert_at(insert_index, &mut new_comments.into_line_tokens());
         }
     }
 
     pub fn index_of_prev_hard_newline(&self) -> Option<usize> {
-        self.render_queue
-            .iter()
-            .rposition(|v| v.is_newline() || v.is_comment())
+        self.current_target().index_of_prev_hard_newline()
     }
 
     pub fn emit_else(&mut self) {
@@ -362,6 +343,22 @@ impl ParserState {
         self.push_token(LineToken::LonelyOperator);
     }
 
+    pub fn magic_handle_comments_for_mulitiline_arrays<F>(&mut self, f: F)
+    where
+        F: FnOnce(&mut ParserState),
+    {
+        let current_line_number = self.current_orig_line_number;
+        self.new_block(|ps| {
+            ps.shift_comments();
+        });
+        f(self);
+        let new_line_number = self.current_orig_line_number;
+        if new_line_number > current_line_number {
+            self.wind_line_forward();
+            self.shift_comments();
+        }
+        self.current_orig_line_number = new_line_number;
+    }
     pub fn with_surpress_comments<F>(&mut self, surpress: bool, f: F)
     where
         F: FnOnce(&mut ParserState),
@@ -438,7 +435,7 @@ impl ParserState {
     }
 
     pub fn new_with_depth_stack_from(ps: &ParserState) -> Self {
-        let mut next_ps = ParserState::new(FileComments::new());
+        let mut next_ps = ParserState::new(FileComments::default());
         next_ps.depth_stack = ps.depth_stack.clone();
         next_ps.current_orig_line_number = ps.current_orig_line_number;
         next_ps
@@ -482,15 +479,8 @@ impl ParserState {
         f(&mut next_ps);
         let data = next_ps.render_to_buffer();
 
-        // unsafe because we got the source code from the ruby parser
-        // and only in wildly exceptional circumstances will it not be
-        // valid utf8 and also we're only using this to newline match
-        // which should be very hard to break. The unsafe conversion
-        // here skips a utf8 check which is faster.
-        unsafe {
-            let s = str::from_utf8_unchecked(&data).to_string();
-            s.trim().chars().any(|v| v == '\n')
-        }
+        let s = str::from_utf8(&data).expect("string is utf8").to_string();
+        s.trim().contains('\n')
     }
 
     fn render_to_buffer(self) -> Vec<u8> {
@@ -503,10 +493,7 @@ impl ParserState {
     pub fn render_heredocs(&mut self, skip: bool) {
         while !self.heredoc_strings.is_empty() {
             let mut next_heredoc = self.heredoc_strings.pop().expect("we checked it's there");
-            let want_newline = match self.render_queue.last() {
-                Some(x) => !x.is_newline(),
-                None => true,
-            };
+            let want_newline = !self.current_target().last_token_is_a_newline();
             if want_newline {
                 self.push_token(LineToken::HardNewLine);
             }
@@ -545,13 +532,13 @@ impl ParserState {
     where
         F: FnOnce(&mut ParserState),
     {
+        self.shift_comments();
         let mut be = BreakableEntry::new(self.current_spaces(), delims);
         be.push_line_number(self.current_orig_line_number);
-
         self.breakable_entry_stack.push(be);
 
-        self.emit_collapsing_newline();
         self.new_block(|ps| {
+            ps.emit_collapsing_newline();
             f(ps);
         });
 
@@ -590,14 +577,7 @@ impl ParserState {
     }
 
     pub fn push_token(&mut self, t: LineToken) {
-        if self.breakable_entry_stack.is_empty() {
-            self.render_queue.push(t);
-        } else {
-            self.breakable_entry_stack
-                .last_mut()
-                .expect("we checked it wasn't empty")
-                .push(t);
-        }
+        self.current_target_mut().push(t);
     }
 
     pub fn is_absorbing_indents(&self) -> bool {
@@ -613,7 +593,10 @@ impl ParserState {
     }
 
     pub fn flush_start_of_file_comments(&mut self) {
-        match self.comments_hash.take_start_of_file_sled() {
+        match self
+            .comments_hash
+            .take_start_of_file_contiguous_comment_lines()
+        {
             None => {
                 self.on_line(1);
             }
@@ -622,6 +605,23 @@ impl ParserState {
                 self.shift_comments();
                 debug!("rq: {:?}", self.render_queue);
             }
+        }
+    }
+
+    fn current_target(&self) -> &dyn LineTokenTarget {
+        if self.breakable_entry_stack.is_empty() {
+            &self.render_queue
+        } else {
+            self.breakable_entry_stack
+                .last()
+                .expect("we checked it's not empty")
+        }
+    }
+
+    fn current_target_mut(&mut self) -> &mut dyn LineTokenTarget {
+        match self.breakable_entry_stack.last_mut() {
+            Some(be) => be,
+            None => &mut self.render_queue,
         }
     }
 }

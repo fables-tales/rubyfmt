@@ -13,10 +13,10 @@ pub fn format_def(ps: &mut ParserState, def: Def) {
     }
     ps.emit_def(def_expression.0);
     format_paren_or_params(ps, def.2);
-    ps.emit_newline();
 
     ps.with_formatting_context(FormattingContext::Def, |ps| {
         ps.new_block(|ps| {
+            ps.emit_newline();
             ps.with_start_of_line(true, |ps| {
                 format_bodystmt(ps, body);
             });
@@ -575,34 +575,38 @@ pub fn format_list_like_thing_items(
     let mut emitted_args = false;
     let args_count = args.len();
 
-    for (idx, expr) in args.into_iter().enumerate() {
-        // this raise was present in the ruby source code of rubyfmt
-        // but I'm pretty sure it's categorically impossible now. Thanks
-        // type system
-        //raise "this is bad" if expr[0] == :tstring_content
+    ps.magic_handle_comments_for_mulitiline_arrays(|ps| {
+        for (idx, expr) in args.into_iter().enumerate() {
+            // this raise was present in the ruby source code of rubyfmt
+            // but I'm pretty sure it's categorically impossible now. Thanks
+            // type system
+            //raise "this is bad" if expr[0] == :tstring_content
 
-        if single_line {
-            format_expression(ps, expr);
-            if idx != args_count - 1 {
-                ps.emit_comma_space();
-            }
-        } else {
-            ps.emit_soft_indent();
-            ps.with_start_of_line(false, |ps| {
-                match expr {
-                    Expression::BareAssocHash(bah) => {
-                        format_assocs(ps, bah.1, SpecialCase::NoLeadingTrailingCollectionMarkers)
-                    }
-                    expr => format_expression(ps, expr),
-                }
+            if single_line {
+                format_expression(ps, expr);
                 if idx != args_count - 1 {
-                    ps.emit_comma();
-                    ps.emit_soft_newline();
+                    ps.emit_comma_space();
                 }
-            });
-        };
-        emitted_args = true;
-    }
+            } else {
+                ps.emit_soft_indent();
+                ps.with_start_of_line(false, |ps| {
+                    match expr {
+                        Expression::BareAssocHash(bah) => format_assocs(
+                            ps,
+                            bah.1,
+                            SpecialCase::NoLeadingTrailingCollectionMarkers,
+                        ),
+                        expr => format_expression(ps, expr),
+                    }
+                    if idx != args_count - 1 {
+                        ps.emit_comma();
+                        ps.emit_soft_newline();
+                    }
+                });
+            };
+            emitted_args = true;
+        }
+    });
     emitted_args
 }
 
@@ -1598,10 +1602,10 @@ pub fn format_class(ps: &mut ParserState, class: Class) {
         }
     });
 
-    ps.emit_newline();
     ps.new_block(|ps| {
         ps.with_start_of_line(true, |ps| {
             ps.with_formatting_context(FormattingContext::ClassOrModule, |ps| {
+                ps.emit_newline();
                 format_bodystmt(ps, bodystmt);
             });
         });
@@ -1636,10 +1640,10 @@ pub fn format_module(ps: &mut ParserState, module: Module) {
         }
     });
 
-    ps.emit_newline();
     ps.new_block(|ps| {
         ps.with_start_of_line(true, |ps| {
             ps.with_formatting_context(FormattingContext::ClassOrModule, |ps| {
+                ps.emit_newline();
                 format_bodystmt(ps, bodystmt);
             });
         });
@@ -1668,10 +1672,10 @@ pub fn format_conditional(
     ps.with_start_of_line(false, |ps| {
         format_expression(ps, cond_expr);
     });
-    ps.emit_newline();
 
     ps.with_start_of_line(true, |ps| {
         ps.new_block(|ps| {
+            ps.emit_newline();
             for expr in body.into_iter() {
                 format_expression(ps, expr);
             }
@@ -1935,14 +1939,13 @@ pub fn format_brace_block(ps: &mut ParserState, brace_block: BraceBlock) {
         format_blockvar(ps, bv);
     }
 
-    if is_multiline {
-        ps.emit_newline();
-    } else {
-        ps.emit_space();
-    }
-
     ps.new_block(|ps| {
         ps.with_start_of_line(is_multiline, |ps| {
+            if is_multiline {
+                ps.emit_newline();
+            } else {
+                ps.emit_space();
+            }
             for expr in body.into_iter() {
                 format_expression(ps, expr);
             }
@@ -1968,9 +1971,9 @@ pub fn format_do_block(ps: &mut ParserState, do_block: DoBlock) {
         format_blockvar(ps, bv)
     }
 
-    ps.emit_newline();
     ps.new_block(|ps| {
         ps.with_start_of_line(true, |ps| {
+            ps.emit_newline();
             format_bodystmt(ps, body);
         });
     });

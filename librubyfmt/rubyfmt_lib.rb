@@ -40,6 +40,17 @@ class Parser < Ripper::SexpBuilderPP
     @tlambda_stack = []
     @array_location_stacks = []
     @lbrace_stack = []
+    @comments = {}
+  end
+
+  def parse
+    res = super
+
+    if res != nil
+      [res, @comments]
+    else
+      nil
+    end
   end
 
   attr_reader :comments_delete
@@ -207,6 +218,10 @@ class Parser < Ripper::SexpBuilderPP
   def on_regexp_literal(*args)
     args[1] << @regexp_stack.pop
     super(*args)
+  end
+
+  def on_comment(comment)
+    @comments[lineno] = comment
   end
 end
 

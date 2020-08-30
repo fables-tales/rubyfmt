@@ -1,86 +1,83 @@
 use std::collections::BTreeMap;
-use std::io::{self, BufRead, Read};
+use std::mem;
 
 use crate::comment_block::CommentBlock;
+use crate::ruby::*;
 use crate::types::LineNumber;
 
-use regex::Regex;
-
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct FileComments {
-    comment_blocks: BTreeMap<LineNumber, String>,
-    contiguous_starting_indices: Vec<LineNumber>,
-    lowest_key: LineNumber,
+    start_of_file_contiguous_comment_lines: Option<CommentBlock>,
+    other_comments: BTreeMap<LineNumber, String>,
 }
 
 impl FileComments {
-    pub fn new() -> Self {
-        FileComments {
-            comment_blocks: BTreeMap::new(),
-            contiguous_starting_indices: vec![],
-            lowest_key: 0,
+    pub fn from_ruby_hash(h: VALUE) -> Self {
+        let mut fc = FileComments::default();
+        let keys;
+        let values;
+        unsafe {
+            keys = ruby_array_to_slice(rb_funcall(h, intern!("keys"), 0));
+            values = ruby_array_to_slice(rb_funcall(h, intern!("values"), 0));
         }
+        if keys.len() != values.len() {
+            raise("expected keys and values to have same length, indicates error");
+        }
+        for (ruby_lineno, ruby_comment) in keys.iter().zip(values) {
+            let lineno = unsafe { rubyfmt_rb_num2ll(*ruby_lineno) };
+            if lineno < 0 {
+                raise("line number negative");
+            }
+            let comment = unsafe { ruby_string_to_str(*ruby_comment) }
+                .trim()
+                .to_owned();
+            fc.push_comment(lineno as _, comment);
+        }
+        fc
     }
 
-    pub fn from_buf<R: Read>(r: io::BufReader<R>) -> io::Result<Self> {
-        lazy_static! {
-            static ref RE: Regex = Regex::new("^ *#").unwrap();
-        }
-        let mut res = Self::new();
-        for (idx, line) in r.lines().enumerate() {
-            let l = line?;
-            if RE.is_match(&l) {
-                let line_number = (idx + 1) as LineNumber;
-                if res.lowest_key == 0 {
-                    res.lowest_key = line_number;
-                }
-
-                let last_line = res.contiguous_starting_indices.last();
-
-                let should_push = line_number == 1
-                    || (last_line.is_some() && last_line.unwrap() == &(line_number - 1));
-                if should_push {
-                    res.contiguous_starting_indices.push(line_number);
-                }
-                res.comment_blocks.insert(line_number, l);
+    /// Add a new comment. If the beginning of this file is a comment block,
+    /// each of those comment lines must be pushed before any other line, or
+    /// the end of the block from the start of the file will be incorrectly calculated.
+    fn push_comment(&mut self, line_number: u64, l: String) {
+        match (
+            &mut self.start_of_file_contiguous_comment_lines,
+            line_number,
+        ) {
+            (None, 1) => {
+                debug_assert!(
+                    self.other_comments.is_empty(),
+                    "If we have a start of file sled, it needs to come first,
+                     otherwise we won't know where the last line is",
+                );
+                self.start_of_file_contiguous_comment_lines =
+                    Some(CommentBlock::new(1..2, vec![l]));
+            }
+            (Some(sled), _) if sled.following_line_number() == line_number => {
+                sled.add_line(l);
+            }
+            _ => {
+                self.other_comments.insert(line_number, l);
             }
         }
-        Ok(res)
     }
 
-    pub fn has_start_of_file_sled(&self) -> bool {
-        self.lowest_key == 1
-    }
-
-    pub fn take_start_of_file_sled(&mut self) -> Option<CommentBlock> {
-        if !self.has_start_of_file_sled() {
-            return None;
-        }
-
-        let mut sled = Vec::with_capacity(self.contiguous_starting_indices.len());
-        for key in self.contiguous_starting_indices.iter() {
-            sled.push(self.comment_blocks.remove(key).expect("we tracked it"));
-        }
-
-        Some(CommentBlock::new(sled))
+    pub fn take_start_of_file_contiguous_comment_lines(&mut self) -> Option<CommentBlock> {
+        self.start_of_file_contiguous_comment_lines.take()
     }
 
     pub fn extract_comments_to_line(&mut self, line_number: LineNumber) -> Option<CommentBlock> {
-        if line_number < self.lowest_key {
-            return None;
-        }
-
-        let mut values = Vec::new();
-        let keys: Vec<_> = self
-            .comment_blocks
-            .range(self.lowest_key..=line_number)
-            .map(|(&k, &_)| k)
-            .collect();
-        for key in keys {
-            let v = self.comment_blocks.remove(&key).expect("came from key");
-            values.push(v);
-        }
-
-        Some(CommentBlock::new(values))
+        self.other_comments
+            .keys()
+            .next()
+            .copied()
+            .map(|lowest_line| {
+                let remaining_comments = self.other_comments.split_off(&(line_number + 1));
+                let comments = mem::replace(&mut self.other_comments, remaining_comments)
+                    .into_iter()
+                    .map(|(_, v)| v)
+                    .collect();
+                CommentBlock::new(lowest_line..line_number + 1, comments)
+            })
     }
 }

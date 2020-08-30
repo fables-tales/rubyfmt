@@ -1,9 +1,10 @@
 use crate::ruby::{self, VALUE};
+use crate::ruby_ops::RipperTree;
 use serde::de::{self, Error as _};
 use std::mem::size_of;
 
-pub fn from_value<T: de::DeserializeOwned>(v: VALUE) -> Result<T> {
-    T::deserialize(Deserializer(v))
+pub fn from_value<T: de::DeserializeOwned>(v: RipperTree) -> Result<T> {
+    T::deserialize(Deserializer(v.into_value()))
 }
 
 #[derive(Clone, Copy)]

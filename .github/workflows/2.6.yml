@@ -28,9 +28,7 @@ jobs:
         path: |
           ~/.cargo/registry
           ~/.cargo/git
-          target
-          librubyfmt/target
-        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+        key: ${{ runner.os }}-cargo-2-${{ hashFiles('**/Cargo.lock') }}
     - uses: actions/cache@v2
       with:
         path: |

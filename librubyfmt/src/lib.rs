@@ -1,9 +1,7 @@
 #![deny(warnings, missing_copy_implementations)]
-#[macro_use]
-extern crate lazy_static;
 
 use serde::de::value;
-use std::io::{BufReader, Cursor, Write};
+use std::io::{Cursor, Write};
 use std::slice;
 use std::str;
 
@@ -12,7 +10,8 @@ static ALLOC: jemallocator::Jemalloc = jemallocator::Jemalloc;
 
 pub type RawStatus = i64;
 
-mod breakable_entry;
+#[macro_use]
+mod ruby;
 mod comment_block;
 mod de;
 mod delimiters;
@@ -23,13 +22,14 @@ mod line_metadata;
 mod line_tokens;
 mod parser_state;
 mod render_queue_writer;
+mod render_targets;
 mod ripper_tree_types;
-mod ruby;
+mod ruby_ops;
 mod types;
 
 use file_comments::FileComments;
 use parser_state::ParserState;
-use ruby::VALUE;
+use ruby_ops::{load_rubyfmt, ParseError, Parser, RipperTree};
 
 #[cfg(debug_assertions)]
 use log::debug;
@@ -77,27 +77,28 @@ pub enum FormatError {
 }
 
 pub fn format_buffer(buf: &str) -> Result<String, RichFormatError> {
-    let tree = run_parser_on(buf)?;
+    let (tree, file_comments) = run_parser_on(buf)?;
     let out_data = vec![];
     let mut output = Cursor::new(out_data);
-    let data = buf.as_bytes();
-    toplevel_format_program(&mut output, data, tree)?;
-    output.flush().expect("flushing works");
-    Ok(unsafe { String::from_utf8_unchecked(output.into_inner()) })
+    toplevel_format_program(&mut output, tree, file_comments)?;
+    output.flush().expect("flushing to a vec should never fail");
+    Ok(String::from_utf8(output.into_inner()).expect("we never write invalid UTF-8"))
 }
 
 #[no_mangle]
 pub extern "C" fn rubyfmt_init() -> libc::c_int {
     init_logger();
-    unsafe {
-        ruby::ruby_init();
-    }
-    let res = load_ripper();
+    let res = ruby_ops::setup_ruby();
     if res.is_err() {
         return InitStatus::ERROR as libc::c_int;
     }
 
-    let res = load_rubyfmt();
+    let res = unsafe { load_ripper() };
+    if res.is_err() {
+        return InitStatus::ERROR as libc::c_int;
+    }
+
+    let res = unsafe { load_rubyfmt() };
     if res.is_err() {
         return InitStatus::ERROR as libc::c_int;
     }
@@ -147,12 +148,8 @@ extern "C" fn rubyfmt_string_free(rubyfmt_string: *mut RubyfmtString) {
     }
 }
 
-fn load_rubyfmt() -> Result<VALUE, ()> {
-    let rubyfmt_program = include_str!("../rubyfmt_lib.rb");
-    ruby::eval_str(rubyfmt_program)
-}
-
-fn load_ripper() -> Result<(), ()> {
+// Safety: This function expects a functioning Ruby VM
+unsafe fn load_ripper() -> Result<(), ()> {
     // trick ruby in to thinking ripper is already loaded
     ruby::eval_str(
         r#"
@@ -167,7 +164,7 @@ fn load_ripper() -> Result<(), ()> {
     )?;
 
     // init the ripper C module
-    unsafe { Init_ripper() };
+    Init_ripper();
 
     //load each ripper program
     ruby::eval_str(include_str!(
@@ -191,12 +188,10 @@ fn load_ripper() -> Result<(), ()> {
 
 pub fn toplevel_format_program<W: Write>(
     writer: &mut W,
-    buf: &[u8],
-    tree: VALUE,
+    tree: RipperTree,
+    file_comments: FileComments,
 ) -> Result<(), RichFormatError> {
-    let line_metadata = FileComments::from_buf(BufReader::new(buf))
-        .expect("failed to load line metadata from memory");
-    let mut ps = ParserState::new(line_metadata);
+    let mut ps = ParserState::new(file_comments);
     let v: ripper_tree_types::Program =
         de::from_value(tree).map_err(RichFormatError::RipperParseFailure)?;
 
@@ -207,35 +202,11 @@ pub fn toplevel_format_program<W: Write>(
     Ok(())
 }
 
-fn run_parser_on(buf: &str) -> Result<VALUE, RichFormatError> {
-    unsafe {
-        let s = buf;
-        let buffer_string = ruby::rb_utf8_str_new(s.as_ptr() as _, s.len() as i64);
-        let mut state = 0;
-        let maybe_tree = ruby::rb_protect(real_run_parser as _, buffer_string as _, &mut state);
-        if state == 0 {
-            if maybe_tree != ruby::Qnil {
-                Ok(maybe_tree)
-            } else {
-                Err(RichFormatError::SyntaxError)
-            }
-        } else {
-            let s = ruby::current_exception_as_rust_string();
-            Err(RichFormatError::OtherRubyError(s))
-        }
-    }
-}
-
-macro_rules! intern {
-    ($s:literal) => {
-        ruby::rb_intern(concat!($s, "\0").as_ptr() as _)
-    };
-}
-
-unsafe extern "C" fn real_run_parser(buffer_string: VALUE) -> VALUE {
-    let parser_class = ruby::rb_const_get_at(ruby::rb_cObject, intern!("Parser"));
-    let parser_instance = ruby::rb_funcall(parser_class, intern!("new"), 1, buffer_string);
-    ruby::rb_funcall(parser_instance, intern!("parse"), 0)
+fn run_parser_on(buf: &str) -> Result<(RipperTree, FileComments), RichFormatError> {
+    Parser::new(buf).parse().map_err(|e| match e {
+        ParseError::SyntaxError => RichFormatError::SyntaxError,
+        ParseError::OtherRubyError(s) => RichFormatError::OtherRubyError(s),
+    })
 }
 
 fn init_logger() {
