@@ -119,10 +119,7 @@ pub unsafe fn eval_str(s: &str) -> Result<VALUE, ()> {
 extern "C" fn real_debug_inspect(v: VALUE) -> VALUE {
     unsafe {
         let inspect = rb_funcall(v, intern!("inspect"), 0, std::ptr::null() as *const VALUE);
-        let char_pointer = rb_string_value_cstr(&inspect) as *mut i8;
-        let cstr = CStr::from_ptr(char_pointer);
-        let s = cstr.to_str().expect("it's utf8");
-        debug!("{}", s);
+        debug!("{}", unsafe { ruby_string_to_str(inspect) });
         Qnil
     }
 }
