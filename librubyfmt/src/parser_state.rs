@@ -518,12 +518,6 @@ impl ParserState {
                 next_heredoc.buf.pop();
             };
 
-            self.with_surpress_comments(true, |ps| {
-                ps.insert_user_newlines = false;
-                ps.wind_n_lines(bytecount::count(&next_heredoc.buf, b'\n') + 1);
-                ps.insert_user_newlines = true;
-            });
-
             self.push_token(LineToken::DirectPart {
                 part: String::from_utf8(next_heredoc.buf).expect("hereoc is utf8"),
             });
@@ -606,10 +600,6 @@ impl ParserState {
 
     pub fn wind_line_forward(&mut self) {
         self.on_line(self.current_orig_line_number + 1);
-    }
-
-    pub fn wind_n_lines(&mut self, n: usize) {
-        self.on_line(self.current_orig_line_number + (n as u64));
     }
 
     pub fn flush_start_of_file_comments(&mut self) {
