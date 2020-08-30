@@ -4,12 +4,9 @@ use crate::types::{ColNumber, LineNumber};
 use std::collections::HashSet;
 
 fn insert_at<T>(idx: usize, target: &mut Vec<T>, input: &mut Vec<T>) {
-    let drain = input.drain(..);
-    let mut idx = idx;
-    for item in drain {
-        target.insert(idx, item);
-        idx += 1;
-    }
+    let mut tail = target.split_off(idx);
+    input.append(input);
+    input.append(&mut tail);
 }
 
 #[derive(Copy, Clone, Debug)]
