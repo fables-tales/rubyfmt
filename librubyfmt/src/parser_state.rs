@@ -310,7 +310,6 @@ impl ParserState {
                 None => 0,
             };
 
-            let spaces = self.spaces_after_last_newline;
             self.current_target_mut()
                 .insert_at(insert_index, &mut new_comments.into_line_tokens());
         }
