@@ -24,6 +24,8 @@ pub enum LineToken {
     LonelyOperator,
     OpenSquareBracket,
     CloseSquareBracket,
+    OpenCurlyBracket,
+    CloseCurlyBracket,
     OpenParen,
     CloseParen,
     BreakableEntry(BreakableEntry),
@@ -107,6 +109,8 @@ impl LineToken {
             Self::LonelyOperator => "&.".to_string(),
             Self::OpenSquareBracket => "[".to_string(),
             Self::CloseSquareBracket => "]".to_string(),
+            Self::OpenCurlyBracket => "{".to_string(),
+            Self::CloseCurlyBracket => "}".to_string(),
             Self::OpenParen => "(".to_string(),
             Self::CloseParen => ")".to_string(),
             Self::BreakableEntry(be) => be

@@ -98,6 +98,8 @@ pub enum Expression {
     SymbolLiteral(SymbolLiteral),
     DynaSymbol(DynaSymbol),
     Begin(Begin),
+    BeginBlock(BeginBlock),
+    EndBlock(EndBlock),
     Paren(ParenExpr),
     Dot2(Dot2),
     Dot3(Dot3),
@@ -404,6 +406,14 @@ pub enum Assignable {
     // 2.6+
     Ident(Ident),
 }
+
+def_tag!(begin_block, "BEGIN");
+#[derive(Deserialize, Debug, Clone)]
+pub struct BeginBlock(pub begin_block, pub Vec<Expression>);
+
+def_tag!(end_block, "END");
+#[derive(Deserialize, Debug, Clone)]
+pub struct EndBlock(pub end_block, pub Vec<Expression>);
 
 def_tag!(aref_field_tag, "aref_field");
 #[derive(Deserialize, Debug, Clone)]
