@@ -136,7 +136,7 @@ pub fn debug_inspect(v: VALUE) {
 }
 
 pub fn raise(s: &str) {
-    let cstr = CString::new(s).expect("it's not null");
+    let cstr = CString::new(s).expect("input string has a null byte");
     unsafe {
         rb_raise(rb_eRuntimeError, cstr.as_ptr());
     }
