@@ -7,7 +7,6 @@ use crate::render_queue_writer::RenderQueueWriter;
 use crate::render_targets::{BaseQueue, BreakableEntry, ConvertType, LineTokenTarget};
 use crate::ripper_tree_types::StringContentPart;
 use crate::types::{ColNumber, LineNumber};
-use backtrace::Backtrace;
 use log::debug;
 use std::io::{self, Cursor, Write};
 use std::str;
@@ -312,10 +311,6 @@ impl ParserState {
             };
 
             let spaces = self.spaces_after_last_newline;
-            debug!("spaces: {} comments: {:?}", spaces, self.comments_to_insert);
-            let bt = Backtrace::new();
-            debug!("{:?}", bt);
-
             self.current_target_mut()
                 .insert_at(insert_index, &mut new_comments.into_line_tokens());
         }
