@@ -118,7 +118,7 @@ pub unsafe fn eval_str(s: &str) -> Result<VALUE, ()> {
 
 extern "C" fn real_debug_inspect(v: VALUE) -> VALUE {
     unsafe {
-        let inspect = rb_funcall(v, intern!("inspect"), 0, std::ptr::null() as *const VALUE);
+        let inspect = rb_funcall(v, intern!("inspect"), 0, std::ptr::null());
         debug!("{}", unsafe { ruby_string_to_str(inspect) });
         Qnil
     }
