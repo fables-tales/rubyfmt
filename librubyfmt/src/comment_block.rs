@@ -23,10 +23,7 @@ impl CommentBlock {
             .comments
             .into_iter()
             .map(|c| {
-                let spaces = (0..indent_depth)
-                    .map(|_| " ".to_string())
-                    .collect::<Vec<String>>()
-                    .join("");
+                let spaces = str::repeat(" ", indent_depth)
                 format!("{}{}", spaces, c)
             })
             .collect();
