@@ -257,6 +257,18 @@ impl ParserState {
         });
     }
 
+    pub fn emit_begin_block(&mut self) {
+        self.push_token(LineToken::Keyword {
+            keyword: "BEGIN".to_string(),
+        });
+    }
+
+    pub fn emit_end_block(&mut self) {
+        self.push_token(LineToken::Keyword {
+            keyword: "END".to_string(),
+        });
+    }
+
     pub fn emit_soft_indent(&mut self) {
         self.push_token(LineToken::SoftIndent {
             depth: self.current_spaces(),
@@ -570,6 +582,14 @@ impl ParserState {
 
     pub fn emit_close_square_bracket(&mut self) {
         self.push_token(LineToken::CloseSquareBracket);
+    }
+
+    pub fn emit_open_curly_bracket(&mut self) {
+        self.push_token(LineToken::OpenCurlyBracket);
+    }
+
+    pub fn emit_close_curly_bracket(&mut self) {
+        self.push_token(LineToken::CloseCurlyBracket);
     }
 
     pub fn emit_slash(&mut self) {

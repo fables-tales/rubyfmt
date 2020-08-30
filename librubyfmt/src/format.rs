@@ -773,6 +773,59 @@ pub fn format_begin(ps: &mut ParserState, begin: Begin) {
     }
 }
 
+pub fn format_begin_block(ps: &mut ParserState, begin: BeginBlock) {
+    if ps.at_start_of_line() {
+        ps.emit_indent()
+    }
+
+    ps.wind_line_forward();
+    ps.emit_begin_block();
+    ps.emit_space();
+    ps.emit_open_curly_bracket();
+    ps.emit_newline();
+    ps.new_block(|ps| {
+        ps.with_start_of_line(true, |ps| {
+            for expr in begin.1 {
+                format_expression(ps, expr);
+            }
+        });
+    });
+
+    ps.with_start_of_line(true, |ps| {
+        ps.emit_close_curly_bracket();
+    });
+    if ps.at_start_of_line() {
+        ps.emit_newline();
+    }
+}
+
+pub fn format_end_block(ps: &mut ParserState, end: EndBlock) {
+    if ps.at_start_of_line() {
+        ps.emit_indent()
+    }
+
+    ps.wind_line_forward();
+    ps.emit_end_block();
+    ps.emit_space();
+    ps.emit_open_curly_bracket();
+    ps.emit_newline();
+
+    ps.new_block(|ps| {
+        ps.with_start_of_line(true, |ps| {
+            for expr in end.1 {
+                format_expression(ps, expr);
+            }
+        });
+    });
+
+    ps.with_start_of_line(true, |ps| {
+        ps.emit_close_curly_bracket();
+    });
+    if ps.at_start_of_line() {
+        ps.emit_newline();
+    }
+}
+
 pub fn normalize(e: Expression) -> Expression {
     match e {
         Expression::VCall(v) => Expression::MethodCall(v.to_method_call()),
@@ -2577,6 +2630,8 @@ pub fn format_expression(ps: &mut ParserState, expression: Expression) {
         Expression::ZSuper(..) => format_zsuper(ps),
         Expression::Yield0(..) => format_yield0(ps),
         Expression::Return(ret) => format_return(ps, ret),
+        Expression::BeginBlock(begin) => format_begin_block(ps, begin),
+        Expression::EndBlock(end) => format_end_block(ps, end),
         e => {
             panic!("got unknown token: {:?}", e);
         }
