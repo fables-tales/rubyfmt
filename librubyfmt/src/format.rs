@@ -1746,10 +1746,12 @@ pub fn format_conditional(
             );
         }
         Some(ElsifOrElse::Else(els)) => {
-            ps.wind_line_forward();
             ps.emit_indent();
             ps.emit_else();
-            ps.emit_newline();
+            ps.new_block(|ps| {
+                ps.wind_dumping_comments();
+                ps.emit_newline();
+            });
             ps.with_start_of_line(true, |ps| {
                 ps.new_block(|ps| {
                     for expr in els.1 {
