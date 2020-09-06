@@ -619,9 +619,12 @@ impl ParserState {
     }
 
     pub fn wind_dumping_comments(&mut self) {
-        self.on_line(self.current_orig_line_number + 1 );
-        while self.comments_hash.has_line(self.current_orig_line_number + 1) {
-            self.on_line(self.current_orig_line_number + 1 );
+        self.on_line(self.current_orig_line_number + 1);
+        while self
+            .comments_hash
+            .has_line(self.current_orig_line_number + 1)
+        {
+            self.on_line(self.current_orig_line_number + 1);
         }
     }
 
