@@ -24,7 +24,7 @@ pub fn format_def(ps: &mut ParserState, def: Def) {
     });
 
     ps.with_start_of_line(true, |ps| {
-        ps.wind_line_forward();
+        ps.wind_dumping_comments();
         ps.emit_end();
     });
     ps.emit_newline();
@@ -386,7 +386,7 @@ pub fn format_else(ps: &mut ParserState, else_part: Option<RescueElseOrExpressio
             ps.dedent(|ps| {
                 ps.emit_indent();
                 ps.emit_else();
-                ps.wind_line_forward();
+                ps.wind_dumping_comments();
             });
             ps.emit_newline();
             ps.with_start_of_line(true, |ps| {
@@ -1634,6 +1634,7 @@ pub fn format_class(ps: &mut ParserState, class: Class) {
     let class_name = class.1;
     let inherit = class.2;
     let bodystmt = class.3;
+    let empty = bodystmt.is_empty();
 
     ps.emit_class_keyword();
     ps.with_start_of_line(false, |ps| {
@@ -1664,8 +1665,13 @@ pub fn format_class(ps: &mut ParserState, class: Class) {
         });
     });
 
+    debug!("emptuy? {}", empty);
+    if !empty {
+        ps.wind_dumping_comments();
+    } else {
+        ps.wind_line_forward();
+    }
     ps.emit_end();
-    ps.wind_line_forward();
     if ps.at_start_of_line() {
         ps.emit_newline();
     }
@@ -1746,10 +1752,12 @@ pub fn format_conditional(
             );
         }
         Some(ElsifOrElse::Else(els)) => {
-            ps.wind_line_forward();
             ps.emit_indent();
             ps.emit_else();
-            ps.emit_newline();
+            ps.new_block(|ps| {
+                ps.wind_dumping_comments();
+                ps.emit_newline();
+            });
             ps.with_start_of_line(true, |ps| {
                 ps.new_block(|ps| {
                     for expr in els.1 {
@@ -1764,7 +1772,7 @@ pub fn format_conditional(
 pub fn format_if(ps: &mut ParserState, ifs: If) {
     format_conditional(ps, *ifs.1, ifs.2, "if".to_string(), ifs.3);
     ps.with_start_of_line(true, |ps| {
-        ps.wind_line_forward();
+        ps.wind_dumping_comments();
         ps.emit_end();
     });
 

@@ -36,6 +36,10 @@ impl FileComments {
         fc
     }
 
+    pub fn has_line(&self, line_number: u64) -> bool {
+        self.other_comments.contains_key(&line_number)
+    }
+
     /// Add a new comment. If the beginning of this file is a comment block,
     /// each of those comment lines must be pushed before any other line, or
     /// the end of the block from the start of the file will be incorrectly calculated.
