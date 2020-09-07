@@ -11,8 +11,8 @@ class Bees
   # this one gets a proceeding newline because it's prefixed by a statement
   class Bar
   end
-  # this one gets a proceeding newline because it's prefixed by a statement
 
+  # this one gets a proceeding newline because it's prefixed by a statement
   def bees
     # no proceeding newline here
     a
@@ -24,8 +24,8 @@ class Bees
     # third line of comment
     # fourth line of comment
   end
-  # comment after empty method
 
+  # comment after empty method
   def empty_method_end_of_file
     # comment inside empty method
     # second line of comment

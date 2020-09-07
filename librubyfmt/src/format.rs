@@ -1634,6 +1634,7 @@ pub fn format_class(ps: &mut ParserState, class: Class) {
     let class_name = class.1;
     let inherit = class.2;
     let bodystmt = class.3;
+    let empty = bodystmt.is_empty();
 
     ps.emit_class_keyword();
     ps.with_start_of_line(false, |ps| {
@@ -1664,8 +1665,13 @@ pub fn format_class(ps: &mut ParserState, class: Class) {
         });
     });
 
+    debug!("emptuy? {}", empty);
+    if !empty {
+        ps.wind_dumping_comments();
+    } else {
+        ps.wind_line_forward();
+    }
     ps.emit_end();
-    ps.wind_line_forward();
     if ps.at_start_of_line() {
         ps.emit_newline();
     }
