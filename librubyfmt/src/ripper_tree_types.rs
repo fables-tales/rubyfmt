@@ -727,7 +727,7 @@ impl BodyStmt {
         let expressions_empty = match (self.1).get(0) {
             Some(Expression::VoidStmt(VoidStmt(_))) => length == 1,
             None => true,
-            _ => false
+            _ => false,
         };
         expressions_empty && (self.2).is_none() && (self.3).is_none() && (self.4).is_none()
     }
