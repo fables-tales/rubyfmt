@@ -43,3 +43,7 @@ Once installed, add the following to vscode's `settings.json` file:
       "editor.formatOnSave": true
   },
 ```
+
+## Contributing
+
+Please checkout [our contributing guide](./CONTRIBUTING.md)
