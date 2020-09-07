@@ -76,10 +76,19 @@ impl RenderQueueWriter {
         }
     }
 
-    fn write_final_tokens<W: Write>(writer: &mut W, tokens: Vec<LineToken>) -> io::Result<()> {
+    fn write_final_tokens<W: Write>(writer: &mut W, mut tokens: Vec<LineToken>) -> io::Result<()> {
         #[cfg(debug_assertions)]
         {
             debug!("final tokens: {:?}", tokens);
+        }
+
+        let len = tokens.len();
+        let delete = match (tokens.get(len - 2), tokens.get(len - 1)) {
+            (Some(LineToken::HardNewLine), Some(LineToken::HardNewLine)) => true,
+            _ => false,
+        };
+        if delete {
+            tokens.pop();
         }
 
         for line_token in tokens.into_iter() {
