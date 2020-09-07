@@ -2655,4 +2655,6 @@ pub fn format_program(ps: &mut ParserState, program: Program) {
     for expression in program.1 {
         format_expression(ps, expression);
     }
+    ps.on_line(10_000_000_000_000_000_000);
+    ps.shift_comments();
 }
