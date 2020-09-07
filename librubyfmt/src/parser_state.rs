@@ -20,6 +20,7 @@ pub enum FormattingContext {
     Def,
     CurlyBlock,
     ArgsList,
+    IfOp,
 }
 
 #[derive(Clone, Copy)]

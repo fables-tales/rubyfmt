@@ -460,6 +460,9 @@ pub fn use_parens_for_method_call(
         if ps.current_formatting_context() == FormattingContext::Binary {
             return true;
         }
+        if ps.current_formatting_context() == FormattingContext::IfOp {
+            return true;
+        }
         match args {
             ArgsAddStarOrExpressionList::ArgsAddStar(_) => return true,
             _ => return false,
@@ -2440,15 +2443,17 @@ pub fn format_ifop(ps: &mut ParserState, ifop: IfOp) {
     }
 
     ps.with_start_of_line(false, |ps| {
-        format_expression(ps, *ifop.1);
-        ps.emit_space();
-        ps.emit_keyword("?".to_string());
-        ps.emit_space();
-        format_expression(ps, *ifop.2);
-        ps.emit_space();
-        ps.emit_keyword(":".to_string());
-        ps.emit_space();
-        format_expression(ps, *ifop.3);
+        ps.with_formatting_context(FormattingContext::IfOp, |ps| {
+            format_expression(ps, *ifop.1);
+            ps.emit_space();
+            ps.emit_keyword("?".to_string());
+            ps.emit_space();
+            format_expression(ps, *ifop.2);
+            ps.emit_space();
+            ps.emit_keyword(":".to_string());
+            ps.emit_space();
+            format_expression(ps, *ifop.3);
+        });
     });
 
     if ps.at_start_of_line() {
