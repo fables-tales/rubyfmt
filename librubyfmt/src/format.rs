@@ -457,10 +457,7 @@ pub fn use_parens_for_method_call(
     }
 
     if name == "return" || name == "raise" || name == "yield" || name == "break" {
-        if ps.current_formatting_context() == FormattingContext::Binary {
-            return true;
-        }
-        if ps.current_formatting_context() == FormattingContext::IfOp {
+        if ps.current_formatting_context_requires_parens() {
             return true;
         }
         match args {

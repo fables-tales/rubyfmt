@@ -447,6 +447,11 @@ impl ParserState {
             .expect("formatting context is never empty")
     }
 
+    pub fn current_formatting_context_requires_parens(&self) -> bool {
+        self.current_formatting_context() == FormattingContext::Binary
+            || self.current_formatting_context() == FormattingContext::IfOp
+    }
+
     pub fn new_with_depth_stack_from(ps: &ParserState) -> Self {
         let mut next_ps = ParserState::new(FileComments::default());
         next_ps.depth_stack = ps.depth_stack.clone();
