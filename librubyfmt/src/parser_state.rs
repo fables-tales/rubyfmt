@@ -20,6 +20,7 @@ pub enum FormattingContext {
     Def,
     CurlyBlock,
     ArgsList,
+    IfOp,
 }
 
 #[derive(Clone, Copy)]
@@ -444,6 +445,11 @@ impl ParserState {
             .formatting_context
             .last()
             .expect("formatting context is never empty")
+    }
+
+    pub fn current_formatting_context_requires_parens(&self) -> bool {
+        self.current_formatting_context() == FormattingContext::Binary
+            || self.current_formatting_context() == FormattingContext::IfOp
     }
 
     pub fn new_with_depth_stack_from(ps: &ParserState) -> Self {
