@@ -29,6 +29,15 @@ Rubyfmt supports the following CLI invocations:
 
 ## Editor Support
 
+### Vim
+
+We aren't currently tested with any vim plugin managers, however, adding the
+plugin from a git clone is fairly easy:
+
+* Run `cargo build --release`
+* Add `source /path/to/rubyfmt.vim` to your `~/.vimrc` (e.g. [my dotfiles](https://github.com/penelopezone/dotfiles/commit/2c0e9c1215de368e64e063021e9523aa349c5454#diff-2152fa38b4d8bb10c75d6339a959650dR253) please note, this line is commented)
+* Add `let g:rubyfmt_path = /path/to/target/release/rubyfmt-main` beneath the source line
+
 ### Visual Studio Code
 
 Rubyfmt is a supported formatter in the popular
