@@ -5,6 +5,7 @@ use std::io::{Cursor, Write};
 use std::slice;
 use std::str;
 
+#[cfg(feature="use_jemalloc")]
 #[global_allocator]
 static ALLOC: jemallocator::Jemalloc = jemallocator::Jemalloc;
 
