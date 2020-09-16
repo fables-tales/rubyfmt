@@ -44,6 +44,10 @@ fn main() {
         .file("src/rubyfmt.c")
         .include(format!("{}/include", ruby_checkout_path.display()))
         .include(format!(
+            "{}/.ext/include/x86_64-darwin20",
+            ruby_checkout_path.display()
+        ))
+        .include(format!(
             "{}/.ext/include/x86_64-darwin19",
             ruby_checkout_path.display()
         ))
