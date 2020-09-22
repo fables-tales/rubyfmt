@@ -1,0 +1,12 @@
+#!/bin/bash
+COMMANDS = <<EOD
+cd ~
+git clone rubyfmt.git/ ./rubyfmt
+cd rubyfmt
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+./script/make_release
+cp tmp/release/* ~/out
+EOD
+set -euxo pipefail
+docker build -t "rubyfmt-release-linux:$(git rev-parse HEAD)" -f ./dockerfiles/build.Dockerfile ./.git
+docker run -it -v "$(pwd)/out:/root/out" "rubyfmt-release-linux:$(git rev-parse HEAD)" bash -c "$COMMANDS"
