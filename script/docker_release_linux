@@ -1,12 +1,22 @@
 #!/bin/bash
-COMMANDS = <<EOD
-cd ~
-git clone rubyfmt.git/ ./rubyfmt
-cd rubyfmt
-curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
-./script/make_release
-cp tmp/release/* ~/out
-EOD
 set -euxo pipefail
+TAG=$1
+mkdir -p out
 docker build -t "rubyfmt-release-linux:$(git rev-parse HEAD)" -f ./dockerfiles/build.Dockerfile ./.git
-docker run -it -v "$(pwd)/out:/root/out" "rubyfmt-release-linux:$(git rev-parse HEAD)" bash -c "$COMMANDS"
+(
+cat <<EOF
+set -euxo pipefail
+cd ~ &&
+git clone rubyfmt.git/ ./rubyfmt &&
+cd rubyfmt &&
+git checkout $TAG &&
+source /root/.cargo/env &&
+find . | grep -i '\.rs$' | xargs -n 10 touch &&
+./script/make_release &&
+cp -r *.tar.gz /root/out &&
+chmod 666 /root/out/*
+EOF
+) > file
+docker run --cpus=4 -it -v "$(pwd)/out:/root/out" "rubyfmt-release-linux:$(git rev-parse HEAD)" bash -c "$(cat file)"
+mkdir -p "releases/$TAG"
+cp out/*.tar.gz "releases/$TAG/"

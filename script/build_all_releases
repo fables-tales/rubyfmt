@@ -1,0 +1,21 @@
+#!/bin/bash
+set -euxo pipefail
+TAG=$1
+WORKDIR=$(pwd)
+
+rm -rf /tmp/rubyfmt_clone
+git clone ./.git /tmp/rubyfmt_clone
+
+(
+cd /tmp/rubyfmt_clone
+git checkout "$TAG"
+git submodule init
+git submodule update
+
+./script/make_release
+cp ./*.tar.gz "$WORKDIR"
+)
+mkdir -p releases/"$TAG"
+cp ./*.tar.gz releases/"$TAG"
+./script/docker_release_linux "$TAG"
+./script/make_source_release "$TAG"
