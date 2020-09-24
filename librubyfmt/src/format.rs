@@ -195,7 +195,6 @@ pub fn format_rest_param(
         Some(RestParamOr0OrExcessedComma::ExcessedComma(_)) => false,
         Some(RestParamOr0OrExcessedComma::Zero(_)) => false,
         Some(RestParamOr0OrExcessedComma::RestParam(rp)) => {
-            ps.emit_soft_indent();
             ps.emit_ident("*".to_string());
             ps.with_start_of_line(false, |ps| {
                 match rp.1 {

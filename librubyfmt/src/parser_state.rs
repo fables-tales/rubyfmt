@@ -597,6 +597,14 @@ impl ParserState {
     }
 
     pub fn push_token(&mut self, t: LineToken) {
+        match t {
+            LineToken::SoftIndent { .. } => {
+                if self.breakable_entry_stack.is_empty() {
+                    panic!("should be impossible")
+                }
+            }
+            _ => {}
+        }
         self.current_target_mut().push(t);
     }
 
