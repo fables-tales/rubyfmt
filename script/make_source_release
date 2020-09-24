@@ -17,6 +17,6 @@ mkdir /tmp/rubyfmt_source
 unzip archive.zip -d /tmp/rubyfmt_source
 cp -r librubyfmt/ruby_checkout/ruby-2.6.6/ /tmp/rubyfmt_source/librubyfmt/ruby_checkout/ruby-2.6.6/
 )
-tar -cvz -f "rubyfmt-$1-sources.tar.gz" "/tmp/rubyfmt_source"
+tar -cvz -f "rubyfmt-$1-sources.tar.gz" -C "/tmp/rubyfmt_source" .
 mkdir -p "releases/$1/"
 mv "rubyfmt-$1-sources.tar.gz" "releases/$1/"

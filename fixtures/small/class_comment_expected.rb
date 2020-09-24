@@ -32,5 +32,6 @@ class Bees
     # third line of comment
     # fourth line of comment
   end
+
   # comment after empty method
 end

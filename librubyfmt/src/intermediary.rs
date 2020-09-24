@@ -11,10 +11,11 @@ pub enum BlanklineReason {
     ClassOrModule,
     DoKeyword,
     EndOfRequireBlock,
+    CommentAfterEnd,
 }
 
 pub struct Intermediary {
-    tokens: Vec<LineToken>,
+    tokens: Vec<ConcreteLineToken>,
     index_of_last_hard_newline: usize,
     current_line_metadata: LineMetadata,
     previous_line_metadata: Option<LineMetadata>,
@@ -34,7 +35,14 @@ impl Intermediary {
         self.tokens.len()
     }
 
-    pub fn last_4(&self) -> Option<(&LineToken, &LineToken, &LineToken, &LineToken)> {
+    pub fn last_4(
+        &self,
+    ) -> Option<(
+        &ConcreteLineToken,
+        &ConcreteLineToken,
+        &ConcreteLineToken,
+        &ConcreteLineToken,
+    )> {
         if self.len() < 4 {
             return None;
         }
@@ -47,16 +55,16 @@ impl Intermediary {
         ))
     }
 
-    pub fn into_tokens(self) -> Vec<LineToken> {
+    pub fn into_tokens(self) -> Vec<ConcreteLineToken> {
         self.tokens
     }
 
-    pub fn push(&mut self, lt: LineToken) {
+    pub fn push(&mut self, lt: ConcreteLineToken) {
         self.debug_assert_newlines();
         let mut do_push = true;
 
         match &lt {
-            LineToken::HardNewLine => {
+            ConcreteLineToken::HardNewLine => {
                 if let Some(prev) = &self.previous_line_metadata {
                     if !self.current_line_metadata.has_require() && prev.has_require() {
                         self.insert_trailing_blankline(BlanklineReason::EndOfRequireBlock);
@@ -69,7 +77,10 @@ impl Intermediary {
                 self.index_of_last_hard_newline = self.tokens.len();
 
                 if self.tokens.len() >= 2 {
-                    if let (Some(&LineToken::HardNewLine), Some(&LineToken::HardNewLine)) = (
+                    if let (
+                        Some(&ConcreteLineToken::HardNewLine),
+                        Some(&ConcreteLineToken::HardNewLine),
+                    ) = (
                         self.tokens.get(self.index_of_last_hard_newline - 2),
                         self.tokens.get(self.index_of_last_hard_newline - 1),
                     ) {
@@ -78,16 +89,16 @@ impl Intermediary {
                     }
                 }
             }
-            LineToken::ModuleKeyword | LineToken::ClassKeyword => {
+            ConcreteLineToken::ModuleKeyword | ConcreteLineToken::ClassKeyword => {
                 self.handle_class_or_module();
             }
-            LineToken::DoKeyword => {
+            ConcreteLineToken::DoKeyword => {
                 self.handle_do_keyword();
             }
-            LineToken::ConditionalKeyword { contents } => self.handle_conditional(contents),
-            LineToken::End => self.handle_end(),
-            LineToken::DefKeyword => self.handle_def(),
-            LineToken::Indent { depth } => {
+            ConcreteLineToken::ConditionalKeyword { contents } => self.handle_conditional(contents),
+            ConcreteLineToken::End => self.handle_end(),
+            ConcreteLineToken::DefKeyword => self.handle_def(),
+            ConcreteLineToken::Indent { depth } => {
                 self.current_line_metadata.observe_indent_level(*depth);
 
                 if let Some(prev) = &mut self.previous_line_metadata {
@@ -99,9 +110,17 @@ impl Intermediary {
                     }
                 }
             }
-            LineToken::DirectPart { part } => {
+            ConcreteLineToken::DirectPart { part } => {
                 if part == "require" && self.tokens.last().map(|t| t.is_indent()).unwrap_or(false) {
                     self.current_line_metadata.set_has_require();
+                }
+            }
+            ConcreteLineToken::Comment { .. } => {
+                if matches!(
+                    self.last_4(),
+                    Some((_, _, ConcreteLineToken::End, ConcreteLineToken::HardNewLine))
+                ) {
+                    self.insert_trailing_blankline(BlanklineReason::CommentAfterEnd);
                 }
             }
             _ => {}
@@ -159,17 +178,25 @@ impl Intermediary {
 
     pub fn insert_trailing_blankline(&mut self, _bl: BlanklineReason) {
         match (
+            self.tokens.get(self.index_of_last_hard_newline - 2),
             self.tokens.get(self.index_of_last_hard_newline - 1),
             self.tokens.get(self.index_of_last_hard_newline),
         ) {
-            (Some(&LineToken::HardNewLine), Some(&LineToken::HardNewLine)) => {}
-            (_, _) => {
+            (
+                Some(&ConcreteLineToken::HardNewLine),
+                Some(&ConcreteLineToken::Indent { .. }),
+                Some(&ConcreteLineToken::HardNewLine),
+            ) => {}
+            (_, Some(&ConcreteLineToken::HardNewLine), Some(&ConcreteLineToken::HardNewLine)) => {}
+            (_, _, _) => {
                 #[cfg(debug_assertions)]
                 {
                     debug!("{:?}", _bl);
                 }
-                self.tokens
-                    .insert(self.index_of_last_hard_newline, LineToken::HardNewLine);
+                self.tokens.insert(
+                    self.index_of_last_hard_newline,
+                    ConcreteLineToken::HardNewLine,
+                );
                 self.index_of_last_hard_newline += 1;
                 self.debug_assert_newlines();
             }
@@ -182,7 +209,7 @@ impl Intermediary {
             return;
         }
         match self.tokens.get(self.index_of_last_hard_newline) {
-            Some(&LineToken::HardNewLine) => {}
+            Some(&ConcreteLineToken::HardNewLine) => {}
             _ => panic!("newlines are fucked"),
         }
     }

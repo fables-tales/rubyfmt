@@ -35,10 +35,6 @@ impl LineMetadata {
     }
 
     pub fn observe_indent_level(&mut self, level: u32) {
-        if self.indent_level.is_some() {
-            panic!("indent_level should be impossible");
-        }
-
         self.indent_level = Some(level);
     }
 

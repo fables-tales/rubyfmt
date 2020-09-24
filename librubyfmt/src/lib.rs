@@ -29,7 +29,7 @@ mod ruby_ops;
 mod types;
 
 use file_comments::FileComments;
-use parser_state::ParserState;
+use parser_state::BaseParserState;
 use ruby_ops::{load_rubyfmt, ParseError, Parser, RipperTree};
 
 #[cfg(debug_assertions)]
@@ -192,7 +192,7 @@ pub fn toplevel_format_program<W: Write>(
     tree: RipperTree,
     file_comments: FileComments,
 ) -> Result<(), RichFormatError> {
-    let mut ps = ParserState::new(file_comments);
+    let mut ps = BaseParserState::new(file_comments);
     let v: ripper_tree_types::Program =
         de::from_value(tree).map_err(RichFormatError::RipperParseFailure)?;
 
