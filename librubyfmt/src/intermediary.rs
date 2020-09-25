@@ -56,7 +56,7 @@ impl Intermediary {
         let mut do_push = true;
 
         match &lt {
-            LineToken::HardNewLine => {
+            LineToken::ConcreteLineToken(ConcreteLineToken::HardNewLine) => {
                 if let Some(prev) = &self.previous_line_metadata {
                     if !self.current_line_metadata.has_require() && prev.has_require() {
                         self.insert_trailing_blankline(BlanklineReason::EndOfRequireBlock);
@@ -69,7 +69,10 @@ impl Intermediary {
                 self.index_of_last_hard_newline = self.tokens.len();
 
                 if self.tokens.len() >= 2 {
-                    if let (Some(&LineToken::HardNewLine), Some(&LineToken::HardNewLine)) = (
+                    if let (
+                        Some(&LineToken::ConcreteLineToken(ConcreteLineToken::HardNewLine)),
+                        Some(&LineToken::ConcreteLineToken(ConcreteLineToken::HardNewLine)),
+                    ) = (
                         self.tokens.get(self.index_of_last_hard_newline - 2),
                         self.tokens.get(self.index_of_last_hard_newline - 1),
                     ) {
@@ -78,16 +81,19 @@ impl Intermediary {
                     }
                 }
             }
-            LineToken::ModuleKeyword | LineToken::ClassKeyword => {
+            LineToken::ConcreteLineToken(ConcreteLineToken::ModuleKeyword)
+            | LineToken::ConcreteLineToken(ConcreteLineToken::ClassKeyword) => {
                 self.handle_class_or_module();
             }
-            LineToken::DoKeyword => {
+            LineToken::ConcreteLineToken(ConcreteLineToken::DoKeyword) => {
                 self.handle_do_keyword();
             }
-            LineToken::ConditionalKeyword { contents } => self.handle_conditional(contents),
-            LineToken::End => self.handle_end(),
-            LineToken::DefKeyword => self.handle_def(),
-            LineToken::Indent { depth } => {
+            LineToken::ConcreteLineToken(ConcreteLineToken::ConditionalKeyword { contents }) => {
+                self.handle_conditional(contents)
+            }
+            LineToken::ConcreteLineToken(ConcreteLineToken::End) => self.handle_end(),
+            LineToken::ConcreteLineToken(ConcreteLineToken::DefKeyword) => self.handle_def(),
+            LineToken::ConcreteLineToken(ConcreteLineToken::Indent { depth }) => {
                 self.current_line_metadata.observe_indent_level(*depth);
 
                 if let Some(prev) = &mut self.previous_line_metadata {
@@ -99,7 +105,7 @@ impl Intermediary {
                     }
                 }
             }
-            LineToken::DirectPart { part } => {
+            LineToken::ConcreteLineToken(ConcreteLineToken::DirectPart { part }) => {
                 if part == "require" && self.tokens.last().map(|t| t.is_indent()).unwrap_or(false) {
                     self.current_line_metadata.set_has_require();
                 }
@@ -162,14 +168,19 @@ impl Intermediary {
             self.tokens.get(self.index_of_last_hard_newline - 1),
             self.tokens.get(self.index_of_last_hard_newline),
         ) {
-            (Some(&LineToken::HardNewLine), Some(&LineToken::HardNewLine)) => {}
+            (
+                Some(&LineToken::ConcreteLineToken(ConcreteLineToken::HardNewLine)),
+                Some(&LineToken::ConcreteLineToken(ConcreteLineToken::HardNewLine)),
+            ) => {}
             (_, _) => {
                 #[cfg(debug_assertions)]
                 {
                     debug!("{:?}", _bl);
                 }
-                self.tokens
-                    .insert(self.index_of_last_hard_newline, LineToken::HardNewLine);
+                self.tokens.insert(
+                    self.index_of_last_hard_newline,
+                    LineToken::ConcreteLineToken(ConcreteLineToken::HardNewLine),
+                );
                 self.index_of_last_hard_newline += 1;
                 self.debug_assert_newlines();
             }
@@ -182,7 +193,7 @@ impl Intermediary {
             return;
         }
         match self.tokens.get(self.index_of_last_hard_newline) {
-            Some(&LineToken::HardNewLine) => {}
+            Some(&LineToken::ConcreteLineToken(ConcreteLineToken::HardNewLine)) => {}
             _ => panic!("newlines are fucked"),
         }
     }

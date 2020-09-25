@@ -1,6 +1,6 @@
 use std::ops::Range;
 
-use crate::line_tokens::LineToken;
+use crate::line_tokens::ConcreteLineToken;
 use crate::types::{ColNumber, LineNumber};
 
 #[derive(Debug)]
@@ -23,10 +23,10 @@ impl CommentBlock {
         self.comments.push(line);
     }
 
-    pub fn into_line_tokens(self) -> Vec<LineToken> {
+    pub fn into_line_tokens(self) -> Vec<ConcreteLineToken> {
         self.comments
             .into_iter()
-            .map(|c| LineToken::Comment { contents: c })
+            .map(|c| ConcreteLineToken::Comment { contents: c })
             .collect()
     }
 
