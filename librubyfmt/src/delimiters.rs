@@ -1,4 +1,4 @@
-use crate::line_tokens::{ConcreteLineToken, LineToken};
+use crate::line_tokens::ConcreteLineToken;
 
 #[derive(Debug, Clone)]
 struct DelimiterPair {
@@ -68,27 +68,27 @@ impl BreakableDelims {
         }
     }
 
-    pub fn single_line_open(&self) -> LineToken {
-        LineToken::ConcreteLineToken(ConcreteLineToken::Delim {
+    pub fn single_line_open(&self) -> ConcreteLineToken {
+        ConcreteLineToken::Delim {
             contents: self.single_line.open.clone(),
-        })
+        }
     }
 
-    pub fn single_line_close(&self) -> LineToken {
-        LineToken::ConcreteLineToken(ConcreteLineToken::Delim {
+    pub fn single_line_close(&self) -> ConcreteLineToken {
+        ConcreteLineToken::Delim {
             contents: self.single_line.close.clone(),
-        })
+        }
     }
 
-    pub fn multi_line_open(&self) -> LineToken {
-        LineToken::ConcreteLineToken(ConcreteLineToken::Delim {
+    pub fn multi_line_open(&self) -> ConcreteLineToken {
+        ConcreteLineToken::Delim {
             contents: self.multi_line.open.clone(),
-        })
+        }
     }
 
-    pub fn multi_line_close(&self) -> LineToken {
-        LineToken::ConcreteLineToken(ConcreteLineToken::Delim {
+    pub fn multi_line_close(&self) -> ConcreteLineToken {
+        ConcreteLineToken::Delim {
             contents: self.multi_line.close.clone(),
-        })
+        }
     }
 }

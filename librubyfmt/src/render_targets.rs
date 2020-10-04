@@ -1,5 +1,5 @@
 use crate::delimiters::BreakableDelims;
-use crate::line_tokens::LineToken;
+use crate::line_tokens::{AbstractLineToken, ConcreteLineTokenAndTargets};
 use crate::types::{ColNumber, LineNumber};
 use std::collections::HashSet;
 
@@ -17,19 +17,19 @@ pub enum ConvertType {
 
 #[derive(Debug, Default, Clone)]
 pub struct BaseQueue {
-    tokens: Vec<LineToken>,
+    tokens: Vec<ConcreteLineTokenAndTargets>,
 }
 
 impl BaseQueue {
-    pub fn push(&mut self, lt: LineToken) {
+    pub fn push(&mut self, lt: ConcreteLineTokenAndTargets) {
         self.tokens.push(lt)
     }
 
-    pub fn insert_at(&mut self, idx: usize, tokens: &mut Vec<LineToken>) {
+    pub fn insert_at(&mut self, idx: usize, tokens: &mut Vec<ConcreteLineTokenAndTargets>) {
         insert_at(idx, &mut self.tokens, tokens)
     }
 
-    pub fn into_tokens(self) -> Vec<LineToken> {
+    pub fn into_tokens(self) -> Vec<ConcreteLineTokenAndTargets> {
         self.tokens
     }
 
@@ -47,7 +47,7 @@ impl BaseQueue {
 #[derive(Debug, Clone)]
 pub struct BreakableEntry {
     spaces: ColNumber,
-    tokens: Vec<LineToken>,
+    tokens: Vec<AbstractLineToken>,
     line_numbers: HashSet<LineNumber>,
     delims: BreakableDelims,
 }
@@ -62,29 +62,37 @@ impl BreakableEntry {
         }
     }
 
-    pub fn push(&mut self, lt: LineToken) {
+    pub fn push(&mut self, lt: AbstractLineToken) {
         self.tokens.push(lt);
     }
 
-    pub fn insert_at(&mut self, idx: usize, tokens: &mut Vec<LineToken>) {
+    pub fn insert_at(&mut self, idx: usize, tokens: &mut Vec<AbstractLineToken>) {
         insert_at(idx, &mut self.tokens, tokens)
     }
 
-    pub fn into_tokens(self, ct: ConvertType) -> Vec<LineToken> {
-        let mut tokens = self.tokens;
+    pub fn into_tokens(self, ct: ConvertType) -> Vec<ConcreteLineTokenAndTargets> {
         match ct {
             ConvertType::MultiLine => {
-                tokens = tokens.into_iter().map(|t| t.into_multi_line()).collect();
-                tokens.insert(0, self.delims.multi_line_open());
-                tokens.push(self.delims.multi_line_close());
+                let mut new_tokens: Vec<_> = self
+                    .tokens
+                    .into_iter()
+                    .map(|t| t.into_multi_line())
+                    .collect();
+                new_tokens.insert(0, self.delims.multi_line_open().into());
+                new_tokens.push(self.delims.multi_line_close().into());
+                new_tokens
             }
             ConvertType::SingleLine => {
-                tokens = tokens.into_iter().map(|t| t.into_single_line()).collect();
-                tokens.insert(0, self.delims.single_line_open());
-                tokens.push(self.delims.single_line_close());
+                let mut new_tokens: Vec<_> = self
+                    .tokens
+                    .into_iter()
+                    .map(|t| t.into_single_line())
+                    .collect();
+                new_tokens.insert(0, self.delims.single_line_open().into());
+                new_tokens.push(self.delims.single_line_close().into());
+                new_tokens
             }
         }
-        tokens
     }
 
     pub fn last_token_is_a_newline(&self) -> bool {

@@ -88,7 +88,7 @@ impl ConcreteLineToken {
         }
     }
 
-    fn is_single_line_breakable_garbage(&self) -> bool {
+    pub fn is_single_line_breakable_garbage(&self) -> bool {
         match self {
             Self::DirectPart { part } => (part == &"".to_string()),
             Self::Comma => true,
@@ -97,68 +97,10 @@ impl ConcreteLineToken {
         }
     }
 
-    fn into_line_token(self) -> LineToken {
-        LineToken::ConcreteLineToken(self)
-    }
-}
-
-#[derive(Debug, Clone)]
-pub enum LineToken {
-    // this is all bodil's fault
-    ConcreteLineToken(ConcreteLineToken),
-    CollapsingNewLine,
-    SoftNewline,
-    SoftIndent { depth: u32 },
-    BreakableEntry(BreakableEntry),
-}
-
-impl LineToken {
-    pub fn into_single_line(self) -> LineToken {
-        match self {
-            Self::CollapsingNewLine => ConcreteLineToken::DirectPart {
-                part: "".to_string(),
-            }
-            .into_line_token(),
-            Self::SoftNewline => ConcreteLineToken::Space.into_line_token(),
-            Self::SoftIndent { .. } => ConcreteLineToken::DirectPart {
-                part: "".to_string(),
-            }
-            .into_line_token(),
-            Self::ConcreteLineToken(clt) => Self::ConcreteLineToken(clt),
-            Self::BreakableEntry(be) => Self::BreakableEntry(be),
-        }
-    }
-
-    pub fn into_multi_line(self) -> LineToken {
-        match self {
-            Self::CollapsingNewLine => ConcreteLineToken::HardNewLine.into_line_token(),
-            Self::SoftNewline => ConcreteLineToken::HardNewLine.into_line_token(),
-            Self::SoftIndent { depth } => ConcreteLineToken::Indent { depth }.into_line_token(),
-            Self::ConcreteLineToken(clt) => Self::ConcreteLineToken(clt),
-            Self::BreakableEntry(be) => Self::BreakableEntry(be),
-        }
-    }
-
-    pub fn is_indent(&self) -> bool {
-        matches!(
-            self,
-            Self::ConcreteLineToken(ConcreteLineToken::Indent { .. })
-        )
-    }
-
-    pub fn is_comment(&self) -> bool {
-        matches!(
-            self,
-            Self::ConcreteLineToken(ConcreteLineToken::Comment { .. })
-        )
-    }
-
     pub fn is_newline(&self) -> bool {
         match self {
-            Self::ConcreteLineToken(ConcreteLineToken::HardNewLine) => true,
-            Self::SoftNewline => true,
-            Self::CollapsingNewLine => true,
-            Self::ConcreteLineToken(ConcreteLineToken::DirectPart { part }) => {
+            Self::HardNewLine => true,
+            Self::DirectPart { part } => {
                 if part == "\n" {
                     panic!("shouldn't ever have a single newline direct part");
                 } else {
@@ -169,11 +111,48 @@ impl LineToken {
         }
     }
 
+    pub fn is_indent(&self) -> bool {
+        matches!(self, ConcreteLineToken::Indent { .. })
+    }
+
+    pub fn is_comment(&self) -> bool {
+        matches!(self, Self::Indent { .. })
+    }
+
+    pub fn is_in_need_of_a_trailing_blankline(&self) -> bool {
+        self.is_conditional_spaced_token() && !self.is_block_closing_token()
+    }
+}
+
+impl From<ConcreteLineToken> for ConcreteLineTokenAndTargets {
+    fn from(clt: ConcreteLineToken) -> ConcreteLineTokenAndTargets {
+        ConcreteLineTokenAndTargets::ConcreteLineToken(clt)
+    }
+}
+
+#[derive(Debug, Clone)]
+pub enum ConcreteLineTokenAndTargets {
+    ConcreteLineToken(ConcreteLineToken),
+    BreakableEntry(BreakableEntry),
+}
+
+impl ConcreteLineTokenAndTargets {
+    pub fn is_newline(&self) -> bool {
+        match self {
+            Self::ConcreteLineToken(clt) => clt.is_newline(),
+            _ => false,
+        }
+    }
+
+    pub fn is_comment(&self) -> bool {
+        match self {
+            Self::ConcreteLineToken(clt) => clt.is_comment(),
+            _ => false,
+        }
+    }
+
     pub fn into_ruby(self) -> String {
         match self {
-            Self::CollapsingNewLine => "\n".to_string(),
-            Self::SoftNewline => "\n".to_string(),
-            Self::SoftIndent { depth } => (0..depth).map(|_| ' ').collect(),
             Self::BreakableEntry(be) => be
                 .into_tokens(ConvertType::SingleLine)
                 .into_iter()
@@ -183,29 +162,67 @@ impl LineToken {
             Self::ConcreteLineToken(clt) => clt.into_ruby(),
         }
     }
+}
 
-    pub fn is_in_need_of_a_trailing_blankline(&self) -> bool {
-        self.is_conditional_spaced_token() && !self.is_block_closing_token()
+#[derive(Debug, Clone)]
+pub enum AbstractLineToken {
+    // this is all bodil's fault
+    ConcreteLineToken(ConcreteLineToken),
+    CollapsingNewLine,
+    SoftNewline,
+    SoftIndent { depth: u32 },
+    BreakableEntry(BreakableEntry),
+}
+
+impl AbstractLineToken {
+    pub fn into_single_line(self) -> ConcreteLineTokenAndTargets {
+        match self {
+            Self::CollapsingNewLine => {
+                ConcreteLineTokenAndTargets::ConcreteLineToken(ConcreteLineToken::DirectPart {
+                    part: "".to_string(),
+                })
+            }
+            Self::SoftNewline => {
+                ConcreteLineTokenAndTargets::ConcreteLineToken(ConcreteLineToken::Space)
+            }
+            Self::SoftIndent { .. } => {
+                ConcreteLineTokenAndTargets::ConcreteLineToken(ConcreteLineToken::DirectPart {
+                    part: "".to_string(),
+                })
+            }
+            Self::ConcreteLineToken(clt) => ConcreteLineTokenAndTargets::ConcreteLineToken(clt),
+            Self::BreakableEntry(be) => ConcreteLineTokenAndTargets::BreakableEntry(be),
+        }
     }
 
-    pub fn is_block_closing_token(&self) -> bool {
+    pub fn into_multi_line(self) -> ConcreteLineTokenAndTargets {
         match self {
-            Self::ConcreteLineToken(clt) => clt.is_block_closing_token(),
+            Self::CollapsingNewLine => {
+                ConcreteLineTokenAndTargets::ConcreteLineToken(ConcreteLineToken::HardNewLine)
+            }
+            Self::SoftNewline => {
+                ConcreteLineTokenAndTargets::ConcreteLineToken(ConcreteLineToken::HardNewLine)
+            }
+            Self::SoftIndent { depth } => {
+                ConcreteLineTokenAndTargets::ConcreteLineToken(ConcreteLineToken::Indent { depth })
+            }
+            Self::ConcreteLineToken(clt) => ConcreteLineTokenAndTargets::ConcreteLineToken(clt),
+            Self::BreakableEntry(be) => ConcreteLineTokenAndTargets::BreakableEntry(be),
+        }
+    }
+
+    pub fn is_comment(&self) -> bool {
+        match self {
+            Self::ConcreteLineToken(clt) => clt.is_comment(),
             _ => false,
         }
     }
 
-    pub fn is_conditional_spaced_token(&self) -> bool {
+    pub fn is_newline(&self) -> bool {
         match self {
-            Self::ConcreteLineToken(clt) => clt.is_conditional_spaced_token(),
-            _ => true,
-        }
-    }
-
-    pub fn is_single_line_breakable_garbage(&self) -> bool {
-        match self {
+            Self::ConcreteLineToken(clt) => clt.is_newline(),
             Self::SoftNewline => true,
-            Self::ConcreteLineToken(clt) => clt.is_single_line_breakable_garbage(),
+            Self::CollapsingNewLine => true,
             _ => false,
         }
     }
