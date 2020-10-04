@@ -15,37 +15,29 @@ pub enum ConvertType {
     SingleLine,
 }
 
-pub trait LineTokenTarget {
-    fn push(&mut self, lt: LineToken);
-    fn insert_at(&mut self, idx: usize, tokens: &mut Vec<LineToken>);
-    fn into_tokens(self, ct: ConvertType) -> Vec<LineToken>;
-    fn last_token_is_a_newline(&self) -> bool;
-    fn index_of_prev_hard_newline(&self) -> Option<usize>;
-}
-
 #[derive(Debug, Default, Clone)]
 pub struct BaseQueue {
     tokens: Vec<LineToken>,
 }
 
-impl LineTokenTarget for BaseQueue {
-    fn push(&mut self, lt: LineToken) {
+impl BaseQueue {
+    pub fn push(&mut self, lt: LineToken) {
         self.tokens.push(lt)
     }
 
-    fn insert_at(&mut self, idx: usize, tokens: &mut Vec<LineToken>) {
+    pub fn insert_at(&mut self, idx: usize, tokens: &mut Vec<LineToken>) {
         insert_at(idx, &mut self.tokens, tokens)
     }
 
-    fn into_tokens(self, _ct: ConvertType) -> Vec<LineToken> {
+    pub fn into_tokens(self) -> Vec<LineToken> {
         self.tokens
     }
 
-    fn last_token_is_a_newline(&self) -> bool {
+    pub fn last_token_is_a_newline(&self) -> bool {
         self.tokens.last().map(|x| x.is_newline()).unwrap_or(false)
     }
 
-    fn index_of_prev_hard_newline(&self) -> Option<usize> {
+    pub fn index_of_prev_hard_newline(&self) -> Option<usize> {
         self.tokens
             .iter()
             .rposition(|v| v.is_newline() || v.is_comment())
@@ -60,16 +52,25 @@ pub struct BreakableEntry {
     delims: BreakableDelims,
 }
 
-impl LineTokenTarget for BreakableEntry {
-    fn push(&mut self, lt: LineToken) {
+impl BreakableEntry {
+    pub fn new(spaces: ColNumber, delims: BreakableDelims) -> Self {
+        BreakableEntry {
+            spaces,
+            tokens: Vec::new(),
+            line_numbers: HashSet::new(),
+            delims,
+        }
+    }
+
+    pub fn push(&mut self, lt: LineToken) {
         self.tokens.push(lt);
     }
 
-    fn insert_at(&mut self, idx: usize, tokens: &mut Vec<LineToken>) {
+    pub fn insert_at(&mut self, idx: usize, tokens: &mut Vec<LineToken>) {
         insert_at(idx, &mut self.tokens, tokens)
     }
 
-    fn into_tokens(self, ct: ConvertType) -> Vec<LineToken> {
+    pub fn into_tokens(self, ct: ConvertType) -> Vec<LineToken> {
         let mut tokens = self.tokens;
         match ct {
             ConvertType::MultiLine => {
@@ -86,28 +87,17 @@ impl LineTokenTarget for BreakableEntry {
         tokens
     }
 
-    fn last_token_is_a_newline(&self) -> bool {
+    pub fn last_token_is_a_newline(&self) -> bool {
         match self.tokens.last() {
             Some(x) => x.is_newline(),
             _ => false,
         }
     }
 
-    fn index_of_prev_hard_newline(&self) -> Option<usize> {
+    pub fn index_of_prev_hard_newline(&self) -> Option<usize> {
         self.tokens
             .iter()
             .rposition(|v| v.is_newline() || v.is_comment())
-    }
-}
-
-impl BreakableEntry {
-    pub fn new(spaces: ColNumber, delims: BreakableDelims) -> Self {
-        BreakableEntry {
-            spaces,
-            tokens: Vec::new(),
-            line_numbers: HashSet::new(),
-            delims,
-        }
     }
 
     pub fn single_line_string_length(&self) -> usize {

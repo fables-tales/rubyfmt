@@ -1,4 +1,4 @@
-use crate::render_targets::{BreakableEntry, ConvertType, LineTokenTarget};
+use crate::render_targets::{BreakableEntry, ConvertType};
 
 // represents something that will actually end up as a ruby token, as opposed to
 // something that has to be transformd to become a ruby token

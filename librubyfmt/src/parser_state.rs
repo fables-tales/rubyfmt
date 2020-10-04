@@ -4,7 +4,7 @@ use crate::file_comments::FileComments;
 use crate::format::{format_inner_string, StringType};
 use crate::line_tokens::*;
 use crate::render_queue_writer::RenderQueueWriter;
-use crate::render_targets::{BaseQueue, BreakableEntry, ConvertType, LineTokenTarget};
+use crate::render_targets::{BaseQueue, BreakableEntry};
 use crate::ripper_tree_types::StringContentPart;
 use crate::types::{ColNumber, LineNumber};
 use log::debug;
@@ -97,8 +97,7 @@ impl ParserState {
     }
 
     fn consume_to_render_queue(self) -> Vec<LineToken> {
-        // ct is arbitrary here
-        self.render_queue.into_tokens(ConvertType::SingleLine)
+        self.render_queue.into_tokens()
     }
 
     pub fn last_breakable_is_multiline(&self) -> bool {
@@ -152,10 +151,16 @@ impl ParserState {
             None => 0,
         };
 
-        self.current_target_mut().insert_at(
-            insert_idx,
-            &mut vec![LineToken::ConcreteLineToken(ConcreteLineToken::HardNewLine)],
-        )
+        match self.breakable_entry_stack.last_mut() {
+            Some(be) => be.insert_at(
+                insert_idx,
+                &mut vec![LineToken::ConcreteLineToken(ConcreteLineToken::HardNewLine)],
+            ),
+            None => self.render_queue.insert_at(
+                insert_idx,
+                &mut vec![LineToken::ConcreteLineToken(ConcreteLineToken::HardNewLine)],
+            ),
+        }
     }
 
     pub fn insert_comment_collection(&mut self, comments: CommentBlock) {
@@ -329,7 +334,10 @@ impl ParserState {
     }
 
     fn last_token_is_a_newline(&self) -> bool {
-        self.current_target().last_token_is_a_newline()
+        match self.breakable_entry_stack.last() {
+            Some(be) => be.last_token_is_a_newline(),
+            None => self.render_queue.last_token_is_a_newline(),
+        }
     }
 
     pub fn shift_comments(&mut self) {
@@ -341,19 +349,18 @@ impl ParserState {
                 None => 0,
             };
 
-            self.current_target_mut().insert_at(
+            self.insert_concrete_tokens(
                 insert_index,
-                &mut new_comments
-                    .into_line_tokens()
-                    .into_iter()
-                    .map(LineToken::ConcreteLineToken)
-                    .collect(),
+                new_comments.into_line_tokens().into_iter().collect(),
             );
         }
     }
 
     pub fn index_of_prev_hard_newline(&self) -> Option<usize> {
-        self.current_target().index_of_prev_hard_newline()
+        match self.breakable_entry_stack.last() {
+            Some(be) => be.index_of_prev_hard_newline(),
+            None => self.render_queue.index_of_prev_hard_newline(),
+        }
     }
 
     pub fn emit_else(&mut self) {
@@ -537,7 +544,7 @@ impl ParserState {
     pub fn render_heredocs(&mut self, skip: bool) {
         while !self.heredoc_strings.is_empty() {
             let mut next_heredoc = self.heredoc_strings.pop().expect("we checked it's there");
-            let want_newline = !self.current_target().last_token_is_a_newline();
+            let want_newline = !self.last_token_is_a_newline();
             if want_newline {
                 self.push_token(LineToken::ConcreteLineToken(ConcreteLineToken::HardNewLine));
             }
@@ -640,7 +647,11 @@ impl ParserState {
                 panic!("should be impossible")
             }
         }
-        self.current_target_mut().push(t);
+
+        match self.breakable_entry_stack.last_mut() {
+            Some(be) => be.push(t),
+            None => self.render_queue.push(t),
+        }
     }
 
     pub fn is_absorbing_indents(&self) -> bool {
@@ -677,20 +688,16 @@ impl ParserState {
         }
     }
 
-    fn current_target(&self) -> &dyn LineTokenTarget {
-        if self.breakable_entry_stack.is_empty() {
-            &self.render_queue
-        } else {
-            self.breakable_entry_stack
-                .last()
-                .expect("we checked it's not empty")
-        }
-    }
-
-    fn current_target_mut(&mut self) -> &mut dyn LineTokenTarget {
+    fn insert_concrete_tokens(&mut self, insert_idx: usize, clts: Vec<ConcreteLineToken>) {
         match self.breakable_entry_stack.last_mut() {
-            Some(be) => be,
-            None => &mut self.render_queue,
+            Some(be) => be.insert_at(
+                insert_idx,
+                &mut clts.into_iter().map(LineToken::ConcreteLineToken).collect(),
+            ),
+            None => self.render_queue.insert_at(
+                insert_idx,
+                &mut clts.into_iter().map(LineToken::ConcreteLineToken).collect(),
+            ),
         }
     }
 }
