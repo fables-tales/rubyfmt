@@ -151,20 +151,7 @@ impl ParserState {
             None => 0,
         };
 
-        match self.breakable_entry_stack.last_mut() {
-            Some(be) => be.insert_at(
-                insert_idx,
-                &mut vec![AbstractLineToken::ConcreteLineToken(
-                    ConcreteLineToken::HardNewLine,
-                )],
-            ),
-            None => self.render_queue.insert_at(
-                insert_idx,
-                &mut vec![ConcreteLineTokenAndTargets::ConcreteLineToken(
-                    ConcreteLineToken::HardNewLine,
-                )],
-            ),
-        }
+        self.insert_concrete_tokens(insert_idx, vec![ConcreteLineToken::HardNewLine]);
     }
 
     pub fn insert_comment_collection(&mut self, comments: CommentBlock) {
@@ -687,19 +674,6 @@ impl ParserState {
         rqw.write(writer)
     }
 
-    pub fn push_token(&mut self, t: AbstractLineToken) {
-        if let AbstractLineToken::SoftIndent { .. } = t {
-            if self.breakable_entry_stack.is_empty() {
-                panic!("should be impossible")
-            }
-        }
-
-        match self.breakable_entry_stack.last_mut() {
-            Some(be) => be.push(t),
-            None => self.render_queue.push(Self::dangerously_convert(t)),
-        }
-    }
-
     fn dangerously_convert(t: AbstractLineToken) -> ConcreteLineTokenAndTargets {
         match t {
             AbstractLineToken::ConcreteLineToken(clt) => {
@@ -762,6 +736,19 @@ impl ParserState {
                     .map(ConcreteLineTokenAndTargets::ConcreteLineToken)
                     .collect(),
             ),
+        }
+    }
+
+    pub fn push_token(&mut self, t: AbstractLineToken) {
+        if let AbstractLineToken::SoftIndent { .. } = t {
+            if self.breakable_entry_stack.is_empty() {
+                panic!("should be impossible")
+            }
+        }
+
+        match self.breakable_entry_stack.last_mut() {
+            Some(be) => be.push(t),
+            None => self.render_queue.push(Self::dangerously_convert(t)),
         }
     }
 }
