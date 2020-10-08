@@ -53,13 +53,28 @@ Once installed, add the following to vscode's `settings.json` file:
   },
 ```
 
-## RubyMine (and similar Jetbrains family IDE)
+### RubyMine (and similar Jetbrains family IDE)
 
 [Install](https://www.jetbrains.com/help/ruby/settings-tools-file-watchers.html) the File Watchers plugin and configue it like shown below.
 
 <img src="https://user-images.githubusercontent.com/8165/90933920-3b32eb80-e3b5-11ea-9a38-120249d022a3.png" height="300" />
 
 See [this reference](https://www.jetbrains.com/help/ruby/using-file-watchers.html#ws_filewatcher_type_and_location_of_input_files) on using file watchers to learn more.
+
+### Sublime Text
+
+Install the [rubyfmt plugin](https://github.com/toreriklinnerud/sublime-rubyfmt/) from [Package Control](https://packagecontrol.io): Install Package -> rubyfmt.
+
+Ruby files are formatted on save or by pressing `Alt + ;` or on macOS: `Cmd + ;` `ruby` and `rubyfmt` are assumed to be on path.
+
+Overridable default settings:
+ ``` json
+ {
+   "ruby_executable": "ruby",
+   "rubyfmt_executable": "rubyfmt",
+   "format_on_save": true,
+ }
+ ```
 
 ## Contributing
 
