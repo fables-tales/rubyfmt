@@ -166,15 +166,11 @@ impl ParserState {
     }
 
     pub fn emit_op(&mut self, op: String) {
-        self.push_token(AbstractLineToken::ConcreteLineToken(
-            ConcreteLineToken::Op { op },
-        ));
+        self.push_concrete_token(ConcreteLineToken::Op { op });
     }
 
     pub fn emit_double_quote(&mut self) {
-        self.push_token(AbstractLineToken::ConcreteLineToken(
-            ConcreteLineToken::DoubleQuote,
-        ));
+        self.push_concrete_token(ConcreteLineToken::DoubleQuote);
     }
 
     pub fn emit_string_content(&mut self, s: String) {
@@ -192,9 +188,7 @@ impl ParserState {
     }
 
     pub fn emit_ident(&mut self, ident: String) {
-        self.push_token(AbstractLineToken::ConcreteLineToken(
-            ConcreteLineToken::DirectPart { part: ident },
-        ));
+        self.push_concrete_token(ConcreteLineToken::DirectPart { part: ident });
     }
 
     pub fn emit_keyword(&mut self, kw: String) {
