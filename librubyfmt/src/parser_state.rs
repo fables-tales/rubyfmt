@@ -160,11 +160,9 @@ impl ParserState {
     }
 
     pub fn emit_indent(&mut self) {
-        self.push_token(AbstractLineToken::ConcreteLineToken(
-            ConcreteLineToken::Indent {
-                depth: self.current_spaces(),
-            },
-        ));
+        self.push_concrete_token(ConcreteLineToken::Indent {
+            depth: self.current_spaces(),
+        });
     }
 
     pub fn emit_op(&mut self, op: String) {
@@ -739,13 +737,16 @@ impl ParserState {
         }
     }
 
-    pub fn push_token(&mut self, t: AbstractLineToken) {
-        if let AbstractLineToken::SoftIndent { .. } = t {
-            if self.breakable_entry_stack.is_empty() {
-                panic!("should be impossible")
-            }
+    fn push_concrete_token(&mut self, t: ConcreteLineToken) {
+        match self.breakable_entry_stack.last_mut() {
+            Some(be) => be.push(AbstractLineToken::ConcreteLineToken(t)),
+            None => self
+                .render_queue
+                .push(ConcreteLineTokenAndTargets::ConcreteLineToken(t)),
         }
+    }
 
+    pub fn push_token(&mut self, t: AbstractLineToken) {
         match self.breakable_entry_stack.last_mut() {
             Some(be) => be.push(t),
             None => self.render_queue.push(Self::dangerously_convert(t)),
