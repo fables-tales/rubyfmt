@@ -174,9 +174,7 @@ impl ParserState {
     }
 
     pub fn emit_string_content(&mut self, s: String) {
-        self.push_token(AbstractLineToken::ConcreteLineToken(
-            ConcreteLineToken::LTStringContent { content: s },
-        ));
+        self.push_concrete_token(ConcreteLineToken::LTStringContent { content: s });
     }
 
     fn current_spaces(&self) -> ColNumber {
@@ -192,43 +190,31 @@ impl ParserState {
     }
 
     pub fn emit_keyword(&mut self, kw: String) {
-        self.push_token(AbstractLineToken::ConcreteLineToken(
-            ConcreteLineToken::Keyword { keyword: kw },
-        ));
+        self.push_concrete_token(ConcreteLineToken::Keyword { keyword: kw });
     }
 
     pub fn emit_mod_keyword(&mut self, contents: String) {
-        self.push_token(AbstractLineToken::ConcreteLineToken(
-            ConcreteLineToken::ModKeyword { contents },
-        ));
+        self.push_concrete_token(ConcreteLineToken::ModKeyword { contents });
     }
 
     pub fn emit_conditional_keyword(&mut self, contents: String) {
-        self.push_token(AbstractLineToken::ConcreteLineToken(
-            ConcreteLineToken::ConditionalKeyword { contents },
-        ));
+        self.push_concrete_token(ConcreteLineToken::ConditionalKeyword { contents });
     }
 
     pub fn emit_def_keyword(&mut self) {
-        self.push_token(AbstractLineToken::ConcreteLineToken(
-            ConcreteLineToken::DefKeyword,
-        ));
+        self.push_concrete_token(ConcreteLineToken::DefKeyword);
     }
 
     pub fn emit_case_keyword(&mut self) {
-        self.push_token(AbstractLineToken::ConcreteLineToken(
-            ConcreteLineToken::Keyword {
-                keyword: "case".to_string(),
-            },
-        ));
+        self.push_concrete_token(ConcreteLineToken::Keyword {
+            keyword: "case".to_string(),
+        });
     }
 
     pub fn emit_when_keyword(&mut self) {
-        self.push_token(AbstractLineToken::ConcreteLineToken(
-            ConcreteLineToken::Keyword {
-                keyword: "when".to_string(),
-            },
-        ));
+        self.push_concrete_token(ConcreteLineToken::Keyword {
+            keyword: "when".to_string(),
+        });
     }
 
     pub fn emit_do_keyword(&mut self) {
