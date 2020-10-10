@@ -130,6 +130,19 @@ impl From<ConcreteLineToken> for ConcreteLineTokenAndTargets {
     }
 }
 
+impl Into<AbstractLineToken> for ConcreteLineTokenAndTargets {
+    fn into(self) -> AbstractLineToken {
+        match self {
+            ConcreteLineTokenAndTargets::BreakableEntry(be) => {
+                AbstractLineToken::BreakableEntry(be)
+            }
+            ConcreteLineTokenAndTargets::ConcreteLineToken(clt) => {
+                AbstractLineToken::ConcreteLineToken(clt)
+            }
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub enum ConcreteLineTokenAndTargets {
     ConcreteLineToken(ConcreteLineToken),

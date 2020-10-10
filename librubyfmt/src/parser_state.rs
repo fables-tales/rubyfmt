@@ -259,29 +259,8 @@ impl ParserState {
         });
     }
 
-    pub fn emit_soft_indent(&mut self) {
-        self.push_token(AbstractLineToken::SoftIndent {
-            depth: self.current_spaces(),
-        });
-    }
-
     pub fn emit_comma(&mut self) {
         self.push_concrete_token(ConcreteLineToken::Comma);
-    }
-
-    pub fn emit_soft_newline(&mut self) {
-        self.new_block(|ps| {
-            ps.shift_comments();
-        });
-        self.push_token(AbstractLineToken::SoftNewline);
-        self.spaces_after_last_newline = self.current_spaces();
-    }
-
-    pub fn emit_collapsing_newline(&mut self) {
-        if !self.last_token_is_a_newline() {
-            self.push_token(AbstractLineToken::CollapsingNewLine);
-        }
-        self.spaces_after_last_newline = self.current_spaces();
     }
 
     pub fn emit_def(&mut self, def_name: String) {
@@ -351,19 +330,15 @@ impl ParserState {
     }
 
     pub fn emit_dot(&mut self) {
-        self.push_token(AbstractLineToken::ConcreteLineToken(ConcreteLineToken::Dot));
+        self.push_concrete_token(ConcreteLineToken::Dot);
     }
 
     pub fn emit_colon_colon(&mut self) {
-        self.push_token(AbstractLineToken::ConcreteLineToken(
-            ConcreteLineToken::ColonColon,
-        ));
+        self.push_concrete_token(ConcreteLineToken::ColonColon);
     }
 
     pub fn emit_lonely_operator(&mut self) {
-        self.push_token(AbstractLineToken::ConcreteLineToken(
-            ConcreteLineToken::LonelyOperator,
-        ));
+        self.push_concrete_token(ConcreteLineToken::LonelyOperator);
     }
 
     pub fn magic_handle_comments_for_mulitiline_arrays<F>(&mut self, f: F)
@@ -523,9 +498,7 @@ impl ParserState {
             let mut next_heredoc = self.heredoc_strings.pop().expect("we checked it's there");
             let want_newline = !self.last_token_is_a_newline();
             if want_newline {
-                self.push_token(AbstractLineToken::ConcreteLineToken(
-                    ConcreteLineToken::HardNewLine,
-                ));
+                self.push_concrete_token(ConcreteLineToken::HardNewLine);
             }
 
             if let Some(b'\n') = next_heredoc.buf.last() {
@@ -536,18 +509,14 @@ impl ParserState {
                 next_heredoc.buf.pop();
             };
 
-            self.push_token(AbstractLineToken::ConcreteLineToken(
-                ConcreteLineToken::DirectPart {
-                    part: String::from_utf8(next_heredoc.buf).expect("hereoc is utf8"),
-                },
-            ));
+            self.push_concrete_token(ConcreteLineToken::DirectPart {
+                part: String::from_utf8(next_heredoc.buf).expect("hereoc is utf8"),
+            });
             self.emit_newline();
             if next_heredoc.squiggly {
                 self.emit_indent();
             } else {
-                self.push_token(AbstractLineToken::ConcreteLineToken(
-                    ConcreteLineToken::Indent { depth: 0 },
-                ));
+                self.push_concrete_token(ConcreteLineToken::Indent { depth: 0 });
             }
             self.emit_ident(next_heredoc.symbol.replace("'", ""));
             if !skip {
@@ -576,49 +545,35 @@ impl ParserState {
             .breakable_entry_stack
             .pop()
             .expect("cannot have empty here because we just pushed");
-        self.push_token(AbstractLineToken::BreakableEntry(insert_be));
+        self.push_target(ConcreteLineTokenAndTargets::BreakableEntry(insert_be));
     }
 
     pub fn emit_open_square_bracket(&mut self) {
-        self.push_token(AbstractLineToken::ConcreteLineToken(
-            ConcreteLineToken::OpenSquareBracket,
-        ));
+        self.push_concrete_token(ConcreteLineToken::OpenSquareBracket);
     }
 
     pub fn emit_close_square_bracket(&mut self) {
-        self.push_token(AbstractLineToken::ConcreteLineToken(
-            ConcreteLineToken::CloseSquareBracket,
-        ));
+        self.push_concrete_token(ConcreteLineToken::CloseSquareBracket);
     }
 
     pub fn emit_open_curly_bracket(&mut self) {
-        self.push_token(AbstractLineToken::ConcreteLineToken(
-            ConcreteLineToken::OpenCurlyBracket,
-        ));
+        self.push_concrete_token(ConcreteLineToken::OpenCurlyBracket);
     }
 
     pub fn emit_close_curly_bracket(&mut self) {
-        self.push_token(AbstractLineToken::ConcreteLineToken(
-            ConcreteLineToken::CloseCurlyBracket,
-        ));
+        self.push_concrete_token(ConcreteLineToken::CloseCurlyBracket);
     }
 
     pub fn emit_slash(&mut self) {
-        self.push_token(AbstractLineToken::ConcreteLineToken(
-            ConcreteLineToken::SingleSlash,
-        ));
+        self.push_concrete_token(ConcreteLineToken::SingleSlash);
     }
 
     pub fn emit_open_paren(&mut self) {
-        self.push_token(AbstractLineToken::ConcreteLineToken(
-            ConcreteLineToken::OpenParen,
-        ));
+        self.push_concrete_token(ConcreteLineToken::OpenParen);
     }
 
     pub fn emit_close_paren(&mut self) {
-        self.push_token(AbstractLineToken::ConcreteLineToken(
-            ConcreteLineToken::CloseParen,
-        ));
+        self.push_concrete_token(ConcreteLineToken::CloseParen);
     }
 
     pub fn write<W: Write>(self, writer: &mut W) -> io::Result<()> {
@@ -700,10 +655,38 @@ impl ParserState {
         }
     }
 
+    fn push_target(&mut self, t: ConcreteLineTokenAndTargets) {
+        match self.breakable_entry_stack.last_mut() {
+            Some(be) => be.push(t.into()),
+            None => self.render_queue.push(t),
+        }
+    }
+
     pub fn push_token(&mut self, t: AbstractLineToken) {
         match self.breakable_entry_stack.last_mut() {
             Some(be) => be.push(t),
             None => self.render_queue.push(Self::dangerously_convert(t)),
         }
+    }
+
+    pub fn emit_soft_indent(&mut self) {
+        self.push_token(AbstractLineToken::SoftIndent {
+            depth: self.current_spaces(),
+        });
+    }
+
+    pub fn emit_soft_newline(&mut self) {
+        self.new_block(|ps| {
+            ps.shift_comments();
+        });
+        self.push_token(AbstractLineToken::SoftNewline);
+        self.spaces_after_last_newline = self.current_spaces();
+    }
+
+    pub fn emit_collapsing_newline(&mut self) {
+        if !self.last_token_is_a_newline() {
+            self.push_token(AbstractLineToken::CollapsingNewLine);
+        }
+        self.spaces_after_last_newline = self.current_spaces();
     }
 }
