@@ -614,36 +614,6 @@ impl ConcreteParserState for ParserState {
     }
 }
 
-pub trait AbstractParserState {
-    fn emit_soft_indent(&mut self);
-    fn emit_soft_newline(&mut self);
-    fn emit_collapsing_newline(&mut self);
-}
-
-// this will eventually go away and be replaced with a new type
-impl AbstractParserState for ParserState {
-    fn emit_soft_indent(&mut self) {
-        self.push_token(AbstractLineToken::SoftIndent {
-            depth: self.current_spaces(),
-        });
-    }
-
-    fn emit_soft_newline(&mut self) {
-        self.new_block(|ps| {
-            ps.shift_comments();
-        });
-        self.push_token(AbstractLineToken::SoftNewline);
-        self.spaces_after_last_newline = self.current_spaces();
-    }
-
-    fn emit_collapsing_newline(&mut self) {
-        if !self.last_token_is_a_newline() {
-            self.push_token(AbstractLineToken::CollapsingNewLine);
-        }
-        self.spaces_after_last_newline = self.current_spaces();
-    }
-}
-
 impl ParserState {
     pub fn new(fc: FileComments) -> Self {
         ParserState {
@@ -797,5 +767,26 @@ impl ParserState {
             Some(be) => be.push(t),
             None => self.render_queue.push(Self::dangerously_convert(t)),
         }
+    }
+
+    pub fn emit_soft_indent(&mut self) {
+        self.push_token(AbstractLineToken::SoftIndent {
+            depth: self.current_spaces(),
+        });
+    }
+
+    pub fn emit_soft_newline(&mut self) {
+        self.new_block(|ps| {
+            ps.shift_comments();
+        });
+        self.push_token(AbstractLineToken::SoftNewline);
+        self.spaces_after_last_newline = self.current_spaces();
+    }
+
+    pub fn emit_collapsing_newline(&mut self) {
+        if !self.last_token_is_a_newline() {
+            self.push_token(AbstractLineToken::CollapsingNewLine);
+        }
+        self.spaces_after_last_newline = self.current_spaces();
     }
 }
