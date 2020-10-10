@@ -65,7 +65,7 @@ See [this reference](https://www.jetbrains.com/help/ruby/using-file-watchers.htm
 
 Install the [rubyfmt plugin](https://github.com/toreriklinnerud/sublime-rubyfmt/) from [Package Control](https://packagecontrol.io): Install Package -> rubyfmt.
 
-Ruby files are formatted on save or by pressing `Alt + ;` or on macOS: `Cmd + ;` `ruby` and `rubyfmt` are assumed to be on path.
+Ruby files are formatted on save or by pressing `Alt + ;` or on macOS: `Cmd + ;`. `rubyfmt` is assumed to be on path.
 
 Overridable default settings:
  ``` json
@@ -75,6 +75,12 @@ Overridable default settings:
    "format_on_save": true,
  }
  ```
+
+ ### Atom
+
+Install the [rubyfmt package](https://github.com/toreriklinnerud/atom-rubyfmt/) from Settings > Packages.
+
+Ruby files are formatted on save or by pressing `Alt + ;` or on macOS: `Cmd + ;` `rubyfmt` is assumed to be on path. See the package settings for more options.
 
 ## Contributing
 
