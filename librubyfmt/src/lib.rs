@@ -29,7 +29,7 @@ mod ruby_ops;
 mod types;
 
 use file_comments::FileComments;
-use parser_state::ParserState;
+use parser_state::{ConcreteParserState, ParserState};
 use ruby_ops::{load_rubyfmt, ParseError, Parser, RipperTree};
 
 #[cfg(debug_assertions)]

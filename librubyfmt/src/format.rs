@@ -1,5 +1,5 @@
 use crate::delimiters::BreakableDelims;
-use crate::parser_state::{FormattingContext, ParserState};
+use crate::parser_state::{ConcreteParserState, FormattingContext, ParserState};
 use crate::ripper_tree_types::*;
 use log::debug;
 
