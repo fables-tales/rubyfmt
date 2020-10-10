@@ -1360,7 +1360,7 @@ pub fn format_var_ref_type(ps: &mut ParserState, vr: VarRefType) {
     }
 }
 
-pub fn handle_string_and_linecol(ps: &mut ParserState, ident: String, lc: LineCol) {
+pub fn handle_string_and_linecol<T: ConcreteParserState>(ps: &mut T, ident: String, lc: LineCol) {
     ps.on_line(lc.0);
     ps.emit_ident(ident);
 }
