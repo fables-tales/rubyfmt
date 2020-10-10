@@ -1,5 +1,7 @@
 use crate::delimiters::BreakableDelims;
-use crate::parser_state::{ConcreteParserState, FormattingContext, ParserState};
+use crate::parser_state::{
+    AbstractParserState, ConcreteParserState, FormattingContext, ParserState,
+};
 use crate::ripper_tree_types::*;
 use log::debug;
 
@@ -645,7 +647,7 @@ pub fn format_const(ps: &mut ParserState, c: Const) {
     }
 }
 
-pub fn format_int(ps: &mut ParserState, int: Int) {
+pub fn format_int<T: ConcreteParserState>(ps: &mut T, int: Int) {
     if ps.at_start_of_line() {
         ps.emit_indent();
     }
@@ -661,7 +663,7 @@ pub fn format_bare_assoc_hash(ps: &mut ParserState, bah: BareAssocHash) {
     format_assocs(ps, bah.1, SpecialCase::NoSpecialCase)
 }
 
-pub fn format_alias(ps: &mut ParserState, alias: Alias) {
+pub fn format_alias<T: ConcreteParserState>(ps: &mut T, alias: Alias) {
     if ps.at_start_of_line() {
         ps.emit_indent();
     }
