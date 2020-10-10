@@ -218,61 +218,45 @@ impl ParserState {
     }
 
     pub fn emit_do_keyword(&mut self) {
-        self.push_token(AbstractLineToken::ConcreteLineToken(
-            ConcreteLineToken::DoKeyword,
-        ));
+        self.push_concrete_token(ConcreteLineToken::DoKeyword);
     }
 
     pub fn emit_class_keyword(&mut self) {
-        self.push_token(AbstractLineToken::ConcreteLineToken(
-            ConcreteLineToken::ClassKeyword,
-        ));
+        self.push_concrete_token(ConcreteLineToken::ClassKeyword);
     }
 
     pub fn emit_module_keyword(&mut self) {
-        self.push_token(AbstractLineToken::ConcreteLineToken(
-            ConcreteLineToken::ModuleKeyword,
-        ));
+        self.push_concrete_token(ConcreteLineToken::ModuleKeyword);
     }
 
     pub fn emit_rescue(&mut self) {
-        self.push_token(AbstractLineToken::ConcreteLineToken(
-            ConcreteLineToken::Keyword {
-                keyword: "rescue".to_string(),
-            },
-        ));
+        self.push_concrete_token(ConcreteLineToken::Keyword {
+            keyword: "rescue".to_string(),
+        });
     }
 
     pub fn emit_ensure(&mut self) {
-        self.push_token(AbstractLineToken::ConcreteLineToken(
-            ConcreteLineToken::Keyword {
-                keyword: "ensure".to_string(),
-            },
-        ));
+        self.push_concrete_token(ConcreteLineToken::Keyword {
+            keyword: "ensure".to_string(),
+        });
     }
 
     pub fn emit_begin(&mut self) {
-        self.push_token(AbstractLineToken::ConcreteLineToken(
-            ConcreteLineToken::Keyword {
-                keyword: "begin".to_string(),
-            },
-        ));
+        self.push_concrete_token(ConcreteLineToken::Keyword {
+            keyword: "begin".to_string(),
+        });
     }
 
     pub fn emit_begin_block(&mut self) {
-        self.push_token(AbstractLineToken::ConcreteLineToken(
-            ConcreteLineToken::Keyword {
-                keyword: "BEGIN".to_string(),
-            },
-        ));
+        self.push_concrete_token(ConcreteLineToken::Keyword {
+            keyword: "BEGIN".to_string(),
+        });
     }
 
     pub fn emit_end_block(&mut self) {
-        self.push_token(AbstractLineToken::ConcreteLineToken(
-            ConcreteLineToken::Keyword {
-                keyword: "END".to_string(),
-            },
-        ));
+        self.push_concrete_token(ConcreteLineToken::Keyword {
+            keyword: "END".to_string(),
+        });
     }
 
     pub fn emit_soft_indent(&mut self) {
@@ -282,9 +266,7 @@ impl ParserState {
     }
 
     pub fn emit_comma(&mut self) {
-        self.push_token(AbstractLineToken::ConcreteLineToken(
-            ConcreteLineToken::Comma,
-        ));
+        self.push_concrete_token(ConcreteLineToken::Comma);
     }
 
     pub fn emit_soft_newline(&mut self) {
@@ -304,18 +286,14 @@ impl ParserState {
 
     pub fn emit_def(&mut self, def_name: String) {
         self.emit_def_keyword();
-        self.push_token(AbstractLineToken::ConcreteLineToken(
-            ConcreteLineToken::DirectPart {
-                part: format!(" {}", def_name),
-            },
-        ));
+        self.push_concrete_token(ConcreteLineToken::DirectPart {
+            part: format!(" {}", def_name),
+        });
     }
 
     pub fn emit_newline(&mut self) {
         self.shift_comments();
-        self.push_token(AbstractLineToken::ConcreteLineToken(
-            ConcreteLineToken::HardNewLine,
-        ));
+        self.push_concrete_token(ConcreteLineToken::HardNewLine);
         self.render_heredocs(false);
         self.spaces_after_last_newline = self.current_spaces();
     }
@@ -327,7 +305,7 @@ impl ParserState {
         if self.at_start_of_line() {
             self.emit_indent();
         }
-        self.push_token(AbstractLineToken::ConcreteLineToken(ConcreteLineToken::End));
+        self.push_concrete_token(ConcreteLineToken::End);
     }
 
     fn last_token_is_a_newline(&self) -> bool {
@@ -365,15 +343,11 @@ impl ParserState {
     }
 
     pub fn emit_comma_space(&mut self) {
-        self.push_token(AbstractLineToken::ConcreteLineToken(
-            ConcreteLineToken::CommaSpace,
-        ))
+        self.push_concrete_token(ConcreteLineToken::CommaSpace)
     }
 
     pub fn emit_space(&mut self) {
-        self.push_token(AbstractLineToken::ConcreteLineToken(
-            ConcreteLineToken::Space,
-        ));
+        self.push_concrete_token(ConcreteLineToken::Space);
     }
 
     pub fn emit_dot(&mut self) {
