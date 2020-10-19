@@ -10,6 +10,8 @@ env:
     GEM_HOME: /tmp/.bundle
     GEM_PATH: /tmp/.bundle
     TERM: xterm256
+    RUSTC_WRAPPER: sccache
+    SCCACHE_DIR: /tmp/sccache
 
 jobs:
   CI_26:
@@ -40,9 +42,11 @@ jobs:
     - if: runner.os == 'Linux'
       run: |
         sudo apt-get install -y shellcheck build-essential ruby-dev bison
+        cargo install sccache
+
     - if: runner.os == 'macOS'
       run: |
         rustup component add clippy --toolchain stable-x86_64-apple-darwin
         rustup component add rustfmt --toolchain stable-x86_64-apple-darwin
-        brew install shellcheck
+        brew install shellcheck sccache
     - run: ./script/ci
