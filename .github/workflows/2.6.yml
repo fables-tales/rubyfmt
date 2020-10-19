@@ -46,7 +46,4 @@ jobs:
         rustup component add clippy --toolchain stable-x86_64-apple-darwin
         rustup component add rustfmt --toolchain stable-x86_64-apple-darwin
         brew install shellcheck sccache
-    - env:
-      SCCACHE_DIR: /tmp/sccache
-      RUSTC_WRAPPER: sccache
-    - run: ./script/ci
+    - run: bash -c "RUSTC_WRAPPER=sccache SCCACHE_DIR=/tmp/sccace ./script/ci"
