@@ -43,7 +43,7 @@ jobs:
       run: |
         sudo apt-get install -y shellcheck build-essential ruby-dev bison
         curl -L https://github.com/mozilla/sccache/releases/download/0.2.13/sccache-0.2.13-x86_64-unknown-linux-musl.tar.gz | tar xz
-        echo "::add-path::$PWD/sccache-0.2.13-x86_64-unknown-linux-musl/"
+        cp $PWD/sccache-0.2.13-x86_64-unknown-linux-musl/sccache /usr/bin
     - if: runner.os == 'macOS'
       run: |
         rustup component add clippy --toolchain stable-x86_64-apple-darwin
