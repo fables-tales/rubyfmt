@@ -1,3 +1,4 @@
+testing the cache
 # How do I pronounce `rubyfmt`
 * en: Ruby format
 * jp: ルビーフォーマット
