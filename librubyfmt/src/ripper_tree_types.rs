@@ -1110,6 +1110,7 @@ pub enum SymbolOrBare {
     Ident(Ident),
     Op(Op),
     Kw(Kw),
+    DynaSymbol(DynaSymbol),
     Symbol(Symbol),
     GVar(GVar),
 }

@@ -714,6 +714,7 @@ pub fn format_symbol_literal(ps: &mut ParserState, symbol_literal: SymbolLiteral
         SymbolOrBare::Ident(ident) => format_ident(ps, ident),
         SymbolOrBare::Kw(kw) => format_kw(ps, kw),
         SymbolOrBare::Op(op) => format_op(ps, op),
+        SymbolOrBare::DynaSymbol(dyna_symbol) => format_dyna_symbol(ps, dyna_symbol),
         SymbolOrBare::Symbol(symbol) => format_symbol(ps, symbol),
         SymbolOrBare::GVar(gvar) => format_var_ref_type(ps, VarRefType::GVar(gvar)),
     });
