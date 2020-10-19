@@ -1628,10 +1628,7 @@ pub enum ParenOrArgsAddBlock {
 
 impl ParenOrArgsAddBlock {
     fn is_paren(&self) -> bool {
-        match self {
-            ParenOrArgsAddBlock::YieldParen(_) => true,
-            _ => false,
-        }
+        matches!(self, ParenOrArgsAddBlock::YieldParen(_))
     }
 
     fn into_arg_node(self) -> ArgNode {
