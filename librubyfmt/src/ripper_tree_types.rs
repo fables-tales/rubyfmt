@@ -1445,6 +1445,7 @@ pub enum UnaryType {
     Negative,
     Positive,
     BooleanNot,
+    BitwiseNot,
 }
 
 impl<'de> Deserialize<'de> for UnaryType {
@@ -1457,6 +1458,7 @@ impl<'de> Deserialize<'de> for UnaryType {
             "-@" => Ok(Self::Negative),
             "+@" => Ok(Self::Positive),
             "!" => Ok(Self::BooleanNot),
+            "~" => Ok(Self::BitwiseNot),
             s => Err(de::Error::invalid_value(
                 de::Unexpected::Str(s),
                 &"not, -@, +@, or !",

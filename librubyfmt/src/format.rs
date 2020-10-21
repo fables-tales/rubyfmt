@@ -1505,6 +1505,9 @@ pub fn format_unary(ps: &mut ParserState, unary: Unary) {
             UnaryType::BooleanNot => {
                 ps.emit_ident("!".to_string());
             }
+            UnaryType::BitwiseNot => {
+                ps.emit_ident("~".to_string());
+            }
         }
 
         format_expression(ps, *unary.2);
