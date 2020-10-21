@@ -57,17 +57,11 @@ impl LineToken {
     }
 
     pub fn is_indent(&self) -> bool {
-        match self {
-            Self::Indent { .. } => true,
-            _ => false,
-        }
+        matches!(self, Self::Indent { .. })
     }
 
     pub fn is_comment(&self) -> bool {
-        match self {
-            Self::Comment { .. } => true,
-            _ => false,
-        }
+        matches!(self, Self::Comment { .. })
     }
 
     pub fn is_newline(&self) -> bool {

@@ -10,6 +10,8 @@ env:
     GEM_HOME: /tmp/.bundle
     GEM_PATH: /tmp/.bundle
     TERM: xterm256
+    SCCACHE_DIR: /tmp/sccache
+    RUSTC_WRAPPER: sccache
 
 jobs:
   CI_26:
@@ -32,6 +34,11 @@ jobs:
     - uses: actions/cache@v2
       with:
         path: |
+          /tmp/sccache
+        key: ${{ runner.os }}-sccache-${{ hashFiles('**/Cargo.lock') }}
+    - uses: actions/cache@v2
+      with:
+        path: |
           librubyfmt/ruby_checkout/ruby-2.6.6
         key: ${{ runner.os }}-ruby26-full
     - uses: actions/setup-ruby@v1.0.0
@@ -40,9 +47,11 @@ jobs:
     - if: runner.os == 'Linux'
       run: |
         sudo apt-get install -y shellcheck build-essential ruby-dev bison
+        curl -L https://github.com/mozilla/sccache/releases/download/0.2.13/sccache-0.2.13-x86_64-unknown-linux-musl.tar.gz | tar xz
+        sudo cp $PWD/sccache-0.2.13-x86_64-unknown-linux-musl/sccache /usr/bin
     - if: runner.os == 'macOS'
       run: |
         rustup component add clippy --toolchain stable-x86_64-apple-darwin
         rustup component add rustfmt --toolchain stable-x86_64-apple-darwin
-        brew install shellcheck
+        brew install shellcheck sccache
     - run: ./script/ci
