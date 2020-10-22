@@ -650,7 +650,6 @@ impl ParserState {
         if did_wind {
             self.on_line(self.current_orig_line_number + 1);
         }
-
     }
 
     fn insert_concrete_tokens(&mut self, insert_idx: usize, clts: Vec<ConcreteLineToken>) {
