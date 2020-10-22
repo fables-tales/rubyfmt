@@ -335,11 +335,17 @@ pub fn format_mrhs(ps: &mut ParserState, mrhs: Option<MRHS>) {
     }
 }
 
-pub fn format_rescue_capture(ps: &mut ParserState, rescue_capture: Option<Assignable>) {
+pub fn format_rescue_capture(
+    ps: &mut ParserState,
+    rescue_capture: Option<Assignable>,
+    class_present: bool,
+) {
     match rescue_capture {
         None => {}
         Some(expr) => {
-            ps.emit_space();
+            if class_present {
+                ps.emit_space();
+            }
             ps.emit_ident("=>".to_string());
             ps.emit_space();
             format_assignable(ps, expr);
@@ -355,12 +361,13 @@ pub fn format_rescue(ps: &mut ParserState, rescue_part: Option<Rescue>) {
                 ps.emit_indent();
                 ps.emit_rescue();
                 ps.with_start_of_line(false, |ps| {
-                    if class.is_some() || capture.is_some() {
+                    let cs = class.is_some();
+                    if cs || capture.is_some() {
                         ps.emit_space();
                     }
 
                     format_mrhs(ps, class);
-                    format_rescue_capture(ps, capture);
+                    format_rescue_capture(ps, capture, cs);
                 });
             });
 
