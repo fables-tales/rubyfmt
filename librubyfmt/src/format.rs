@@ -760,7 +760,9 @@ pub fn format_assocs(ps: &mut ParserState, assocs: Vec<AssocNewOrAssocSplat>, sc
         if idx != len - 1 {
             ps.emit_comma();
         }
-        ps.emit_soft_newline();
+        if idx != len - 1 || sc != SpecialCase::NoLeadingTrailingCollectionMarkers {
+            ps.emit_soft_newline();
+        }
     }
 }
 
