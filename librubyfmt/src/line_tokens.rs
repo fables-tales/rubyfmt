@@ -64,7 +64,7 @@ impl ConcreteLineToken {
             Self::DoubleQuote => "\"".to_string(),
             Self::LTStringContent { content } => content,
             Self::SingleSlash => "\\".to_string(),
-            Self::Comment { contents } => format!("{}\n", contents),
+            Self::Comment { contents } => contents,
             Self::Delim { contents } => contents,
             Self::End => "end".to_string(),
         }

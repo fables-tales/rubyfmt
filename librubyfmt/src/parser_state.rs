@@ -23,7 +23,7 @@ pub enum FormattingContext {
     IfOp,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Debug, Clone, Copy)]
 struct IndentDepth {
     depth: ColNumber,
 }
@@ -46,6 +46,7 @@ impl IndentDepth {
     }
 }
 
+#[derive(Debug)]
 pub struct HeredocString {
     symbol: String,
     squiggly: bool,
@@ -61,6 +62,8 @@ impl HeredocString {
         }
     }
 }
+
+#[derive(Debug)]
 pub struct ParserState {
     depth_stack: Vec<IndentDepth>,
     start_of_line: Vec<bool>,
@@ -118,10 +121,20 @@ impl ParserState {
         }
 
         let comments = self.comments_hash.extract_comments_to_line(line_number);
-        self.push_comments(line_number, comments);
+        self.push_comments(comments);
+
+        eprintln!(
+            "ln, oln {:?} {:?}",
+            line_number, self.current_orig_line_number
+        );
+        if line_number - self.current_orig_line_number >= 2 && self.insert_user_newlines {
+            self.insert_extra_newline_at_last_newline();
+        }
+
+        self.current_orig_line_number = line_number;
     }
 
-    fn push_comments(&mut self, line_number: LineNumber, comments: Option<CommentBlock>) {
+    fn push_comments(&mut self, comments: Option<CommentBlock>) {
         match comments {
             None => {}
             Some(comments) => {
@@ -136,21 +149,16 @@ impl ParserState {
                 }
             }
         }
-
-        if line_number - self.current_orig_line_number >= 2 && self.insert_user_newlines {
-            self.insert_extra_newline_at_last_newline();
-        }
-
-        self.current_orig_line_number = line_number;
     }
 
     fn insert_extra_newline_at_last_newline(&mut self) {
         let idx = self.index_of_prev_hard_newline();
         let insert_idx = match idx {
-            Some(idx) => idx + 1,
+            Some(idx) => idx,
             None => 0,
         };
 
+        eprintln!("insert extra was called");
         self.insert_concrete_tokens(insert_idx, vec![ConcreteLineToken::HardNewLine]);
     }
 
@@ -186,6 +194,11 @@ impl ParserState {
     }
 
     pub fn emit_ident(&mut self, ident: String) {
+        if ident == "example" {
+            debug!("--------- boogaloo ------------");
+            debug!("ps: {:?}", self);
+            debug!("---------------------");
+        }
         self.push_concrete_token(ConcreteLineToken::DirectPart { part: ident });
     }
 
@@ -271,6 +284,10 @@ impl ParserState {
     }
 
     pub fn emit_newline(&mut self) {
+        debug!("---------------------");
+        debug!("ps: {:?}", self);
+        debug!("---------------------");
+
         self.shift_comments();
         self.push_concrete_token(ConcreteLineToken::HardNewLine);
         self.render_heredocs(false);
@@ -296,10 +313,9 @@ impl ParserState {
 
     pub fn shift_comments(&mut self) {
         let idx_of_prev_hard_newline = self.index_of_prev_hard_newline();
-
         if let Some(new_comments) = self.comments_to_insert.take() {
             let insert_index = match idx_of_prev_hard_newline {
-                Some(idx) => idx + 1,
+                Some(idx) => idx,
                 None => 0,
             };
 
@@ -312,8 +328,8 @@ impl ParserState {
 
     pub fn index_of_prev_hard_newline(&self) -> Option<usize> {
         match self.breakable_entry_stack.last() {
-            Some(be) => be.index_of_prev_hard_newline(),
-            None => self.render_queue.index_of_prev_hard_newline(),
+            Some(be) => be.index_of_prev_newline(),
+            None => self.render_queue.index_of_prev_newline(),
         }
     }
 
@@ -610,8 +626,12 @@ impl ParserState {
                 self.on_line(1);
             }
             Some(comments) => {
-                self.push_comments(comments.len() as LineNumber, Some(comments));
-                self.shift_comments();
+                let len = comments.len();
+                let lts = comments.into_line_tokens();
+                for comment in lts.into_iter() {
+                    self.push_concrete_token(comment);
+                }
+                self.current_orig_line_number = len as LineNumber;
                 debug!("rq: {:?}", self.render_queue);
             }
         }
@@ -619,12 +639,18 @@ impl ParserState {
 
     pub fn wind_dumping_comments(&mut self) {
         self.on_line(self.current_orig_line_number + 1);
+        let mut did_wind = false;
         while self
             .comments_hash
             .has_line(self.current_orig_line_number + 1)
         {
             self.on_line(self.current_orig_line_number + 1);
+            did_wind = true;
         }
+        if did_wind {
+            self.on_line(self.current_orig_line_number + 1);
+        }
+
     }
 
     fn insert_concrete_tokens(&mut self, insert_idx: usize, clts: Vec<ConcreteLineToken>) {

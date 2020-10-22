@@ -11,6 +11,7 @@ pub enum BlanklineReason {
     ClassOrModule,
     DoKeyword,
     EndOfRequireBlock,
+    CommentAfterEnd,
 }
 
 pub struct Intermediary {
@@ -113,6 +114,11 @@ impl Intermediary {
                 if part == "require" && self.tokens.last().map(|t| t.is_indent()).unwrap_or(false) {
                     self.current_line_metadata.set_has_require();
                 }
+            },
+            ConcreteLineToken::Comment { .. } => {
+                if matches!(self.last_4(), Some((_, _, ConcreteLineToken::End, ConcreteLineToken::HardNewLine))) {
+                    self.insert_trailing_blankline(BlanklineReason::CommentAfterEnd);
+                }
             }
             _ => {}
         }
@@ -169,11 +175,17 @@ impl Intermediary {
 
     pub fn insert_trailing_blankline(&mut self, _bl: BlanklineReason) {
         match (
+            self.tokens.get(self.index_of_last_hard_newline - 2),
             self.tokens.get(self.index_of_last_hard_newline - 1),
             self.tokens.get(self.index_of_last_hard_newline),
         ) {
-            (Some(&ConcreteLineToken::HardNewLine), Some(&ConcreteLineToken::HardNewLine)) => {}
-            (_, _) => {
+            (
+                Some(&ConcreteLineToken::HardNewLine),
+                Some(&ConcreteLineToken::Indent { .. }),
+                Some(&ConcreteLineToken::HardNewLine),
+            ) => {}
+            (_, Some(&ConcreteLineToken::HardNewLine), Some(&ConcreteLineToken::HardNewLine)) => {}
+            (_, _, _) => {
                 #[cfg(debug_assertions)]
                 {
                     debug!("{:?}", _bl);

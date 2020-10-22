@@ -26,7 +26,12 @@ impl CommentBlock {
     pub fn into_line_tokens(self) -> Vec<ConcreteLineToken> {
         self.comments
             .into_iter()
-            .map(|c| ConcreteLineToken::Comment { contents: c })
+            .flat_map(|c| {
+                vec![
+                    ConcreteLineToken::Comment { contents: c },
+                    ConcreteLineToken::HardNewLine,
+                ]
+            })
             .collect()
     }
 

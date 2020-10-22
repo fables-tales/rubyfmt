@@ -37,7 +37,7 @@ impl BaseQueue {
         self.tokens.last().map(|x| x.is_newline()).unwrap_or(false)
     }
 
-    pub fn index_of_prev_hard_newline(&self) -> Option<usize> {
+    pub fn index_of_prev_newline(&self) -> Option<usize> {
         self.tokens
             .iter()
             .rposition(|v| v.is_newline() || v.is_comment())
@@ -102,10 +102,23 @@ impl BreakableEntry {
         }
     }
 
-    pub fn index_of_prev_hard_newline(&self) -> Option<usize> {
-        self.tokens
+    pub fn index_of_prev_newline(&self) -> Option<usize> {
+        let first_idx = self
+            .tokens
             .iter()
-            .rposition(|v| v.is_newline() || v.is_comment())
+            .rposition(|v| v.is_newline() || v.is_comment());
+        match first_idx {
+            Some(x) => {
+                if matches!(self.tokens[x], AbstractLineToken::CollapsingNewLine)
+                    || matches!(self.tokens[x], AbstractLineToken::SoftNewline)
+                {
+                    Some(x + 1)
+                } else {
+                    Some(x)
+                }
+            }
+            None => None,
+        }
     }
 
     pub fn single_line_string_length(&self) -> usize {
