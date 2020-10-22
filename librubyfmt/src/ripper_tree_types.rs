@@ -646,9 +646,15 @@ def_tag!(alias_tag, "alias");
 #[derive(Deserialize, Debug, Clone)]
 pub struct Alias(pub alias_tag, pub SymbolLiteral, pub SymbolLiteral);
 
+#[derive(RipperDeserialize, Debug, Clone)]
+pub enum ParenExpressionOrExpressions {
+    Expressions(Vec<Expression>),
+    Expression(Box<Expression>),
+}
+
 def_tag!(paren_expr_tag, "paren");
 #[derive(Deserialize, Debug, Clone)]
-pub struct ParenExpr(pub paren_expr_tag, pub Vec<Expression>);
+pub struct ParenExpr(pub paren_expr_tag, pub ParenExpressionOrExpressions);
 
 def_tag!(dot2_tag, "dot2");
 #[derive(Deserialize, Debug, Clone)]
@@ -1167,9 +1173,10 @@ impl CallLeft {
     pub fn into_call_chain(self) -> Vec<CallChainElement> {
         match self {
             CallLeft::Paren(p) => vec![CallChainElement::Paren(p)],
-            CallLeft::SingleParen(_, e) => {
-                vec![CallChainElement::Paren(ParenExpr(paren_expr_tag, vec![*e]))]
-            }
+            CallLeft::SingleParen(_, e) => vec![CallChainElement::Paren(ParenExpr(
+                paren_expr_tag,
+                ParenExpressionOrExpressions::Expressions(vec![*e]),
+            ))],
             CallLeft::FCall(FCall(_, ic)) => vec![CallChainElement::IdentOrOpOrKeywordOrConst(
                 ic.into_ident_or_op_or_keyword_or_const(),
             )],

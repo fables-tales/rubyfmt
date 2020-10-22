@@ -852,23 +852,26 @@ pub fn format_paren(ps: &mut ParserState, paren: ParenExpr) {
     }
     ps.emit_open_paren();
 
-    if paren.1.len() == 1 {
-        let p = (paren.1)
-            .into_iter()
-            .next()
-            .expect("we know this isn't empty");
-        ps.with_start_of_line(false, |ps| format_expression(ps, p));
-    } else {
-        ps.emit_newline();
-        ps.new_block(|ps| {
-            ps.with_start_of_line(true, |ps| {
-                for expr in (paren.1).into_iter() {
-                    format_expression(ps, expr);
-                }
-            });
-        });
+    match paren.1 {
+        ParenExpressionOrExpressions::Expressions(exps) => {
+            if exps.len() == 1 {
+                let p = exps.into_iter().next().expect("we know this isn't empty");
+                ps.with_start_of_line(false, |ps| format_expression(ps, p));
+            } else {
+                ps.emit_newline();
+                ps.new_block(|ps| {
+                    ps.with_start_of_line(true, |ps| {
+                        for expr in exps.into_iter() {
+                            format_expression(ps, expr);
+                        }
+                    });
+                });
+            }
+        }
+        ParenExpressionOrExpressions::Expression(expr) => {
+            format_expression(ps, *expr);
+        }
     }
-
     ps.emit_close_paren();
     if ps.at_start_of_line() {
         ps.emit_newline();
@@ -2135,7 +2138,10 @@ pub fn format_mod_statement(
 
     let is_multiline = ps.will_render_as_multiline(|next_ps| {
         let exprs = match *new_body {
-            Expression::Paren(p) => p.1,
+            Expression::Paren(p) => match p.1 {
+                ParenExpressionOrExpressions::Expressions(exprs) => exprs,
+                ParenExpressionOrExpressions::Expression(e) => vec![*e],
+            },
             e => vec![e],
         };
 
@@ -2146,7 +2152,10 @@ pub fn format_mod_statement(
 
     if is_multiline {
         let exps = match *body {
-            Expression::Paren(ParenExpr(_, exps)) => exps,
+            Expression::Paren(ParenExpr(_, exps)) => match exps {
+                ParenExpressionOrExpressions::Expressions(exprs) => exprs,
+                ParenExpressionOrExpressions::Expression(e) => vec![*e],
+            },
             x => vec![x],
         };
         format_conditional(ps, *conditional, exps, name, None);
