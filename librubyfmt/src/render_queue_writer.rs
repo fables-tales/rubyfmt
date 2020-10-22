@@ -83,12 +83,14 @@ impl RenderQueueWriter {
         }
 
         let len = tokens.len();
-        let delete = matches!(
-            (tokens.get(len - 2), tokens.get(len - 1)),
-            (Some(LineToken::HardNewLine), Some(LineToken::HardNewLine))
-        );
-        if delete {
-            tokens.pop();
+        if len > 2 {
+            let delete = matches!(
+                (tokens.get(len - 2), tokens.get(len - 1)),
+                (Some(LineToken::HardNewLine), Some(LineToken::HardNewLine))
+            );
+            if delete {
+                tokens.pop();
+            }
         }
 
         for line_token in tokens.into_iter() {
