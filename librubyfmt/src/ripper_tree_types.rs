@@ -1507,6 +1507,7 @@ pub struct Kw(pub kw_tag, pub String, pub LineCol);
 pub enum ConstPathRefOrConstRef {
     ConstPathRef(ConstPathRef),
     ConstRef(ConstRef),
+    TopConstRef(TopConstRef),
 }
 
 def_tag!(class_tag, "class");

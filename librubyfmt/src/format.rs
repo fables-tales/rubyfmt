@@ -1662,6 +1662,7 @@ pub fn format_class(ps: &mut ParserState, class: Class) {
             ConstPathRefOrConstRef::ConstRef(cr) => {
                 handle_string_and_linecol(ps, (cr.1).1, (cr.1).2);
             }
+            ConstPathRefOrConstRef::TopConstRef(tcr) => format_top_const_ref(ps, tcr),
         }
 
         if inherit.is_some() {
@@ -1711,6 +1712,7 @@ pub fn format_module(ps: &mut ParserState, module: Module) {
             ConstPathRefOrConstRef::ConstRef(cr) => {
                 handle_string_and_linecol(ps, (cr.1).1, (cr.1).2);
             }
+            ConstPathRefOrConstRef::TopConstRef(tcr) => format_top_const_ref(ps, tcr),
         }
     });
 
