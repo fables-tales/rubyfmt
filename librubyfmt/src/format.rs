@@ -1656,13 +1656,13 @@ pub fn format_class(ps: &mut ParserState, class: Class) {
         ps.emit_space();
 
         match class_name {
-            ConstPathRefOrConstRef::ConstPathRef(cpr) => {
+            ConstPathRefOrConstRefOrTopConstRef::ConstPathRef(cpr) => {
                 format_const_path_ref(ps, cpr);
             }
-            ConstPathRefOrConstRef::ConstRef(cr) => {
+            ConstPathRefOrConstRefOrTopConstRef::ConstRef(cr) => {
                 handle_string_and_linecol(ps, (cr.1).1, (cr.1).2);
             }
-            ConstPathRefOrConstRef::TopConstRef(tcr) => format_top_const_ref(ps, tcr),
+            ConstPathRefOrConstRefOrTopConstRef::TopConstRef(tcr) => format_top_const_ref(ps, tcr),
         }
 
         if inherit.is_some() {
@@ -1706,13 +1706,13 @@ pub fn format_module(ps: &mut ParserState, module: Module) {
         ps.emit_space();
 
         match module_name {
-            ConstPathRefOrConstRef::ConstPathRef(cpr) => {
+            ConstPathRefOrConstRefOrTopConstRef::ConstPathRef(cpr) => {
                 format_const_path_ref(ps, cpr);
             }
-            ConstPathRefOrConstRef::ConstRef(cr) => {
+            ConstPathRefOrConstRefOrTopConstRef::ConstRef(cr) => {
                 handle_string_and_linecol(ps, (cr.1).1, (cr.1).2);
             }
-            ConstPathRefOrConstRef::TopConstRef(tcr) => format_top_const_ref(ps, tcr),
+            ConstPathRefOrConstRefOrTopConstRef::TopConstRef(tcr) => format_top_const_ref(ps, tcr),
         }
     });
 
