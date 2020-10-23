@@ -463,7 +463,12 @@ pub fn use_parens_for_method_call(
         return false;
     }
 
-    if name == "return" || name == "raise" || name == "yield" || name == "break" {
+    if name == "yield" {
+        debug!("yield paren: {:?}", original_used_parens);
+        return ps.current_formatting_context_requires_parens() || original_used_parens;
+    }
+
+    if name == "return" || name == "raise" || name == "break" {
         if ps.current_formatting_context_requires_parens() {
             return true;
         }

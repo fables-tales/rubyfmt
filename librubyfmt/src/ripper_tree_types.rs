@@ -1614,11 +1614,25 @@ impl Yield {
 
 impl ToMethodCall for Yield {
     fn to_method_call(self) -> MethodCall {
-        let used_parens = (self.1).is_paren();
+        eprintln!("{:?}", self.1);
+        let use_parens = match &self.1 {
+            ParenOrArgsAddBlock::ArgsAddBlock(ArgsAddBlock(
+                _,
+                ArgsAddBlockInner::Parens(aabparen),
+                _,
+            )) => {
+                aabparen.len() == 1
+                    && matches!(
+                        aabparen[0],
+                        AABParen::Expression(Expression::BareAssocHash(_))
+                    )
+            }
+            x => x.is_paren(),
+        };
         MethodCall::new(
             vec![],
             IdentOrOpOrKeywordOrConst::Ident(Ident::new("yield".to_string(), self.2)),
-            used_parens,
+            use_parens,
             normalize_args((self.1).into_arg_node()),
         )
     }
