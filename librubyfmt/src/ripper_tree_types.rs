@@ -1504,16 +1504,17 @@ def_tag!(kw_tag, "@kw");
 pub struct Kw(pub kw_tag, pub String, pub LineCol);
 
 #[derive(RipperDeserialize, Debug, Clone)]
-pub enum ConstPathRefOrConstRef {
+pub enum ConstPathRefOrConstRefOrTopConstRef {
     ConstPathRef(ConstPathRef),
     ConstRef(ConstRef),
+    TopConstRef(TopConstRef),
 }
 
 def_tag!(class_tag, "class");
 #[derive(Deserialize, Debug, Clone)]
 pub struct Class(
     pub class_tag,
-    pub ConstPathRefOrConstRef,
+    pub ConstPathRefOrConstRefOrTopConstRef,
     pub Option<Box<Expression>>,
     pub Box<BodyStmt>,
 );
@@ -1522,7 +1523,7 @@ def_tag!(module_tag, "module");
 #[derive(Deserialize, Debug, Clone)]
 pub struct Module(
     pub module_tag,
-    pub ConstPathRefOrConstRef,
+    pub ConstPathRefOrConstRefOrTopConstRef,
     pub Box<BodyStmt>,
 );
 
