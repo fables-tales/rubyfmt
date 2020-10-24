@@ -6,11 +6,11 @@ on:
     branches: [ trunk ]
 
 env:
-    BUNDLE_PATH: /tmp/.bundle
-    GEM_HOME: /tmp/.bundle
-    GEM_PATH: /tmp/.bundle
+    BUNDLE_PATH: /root/.p_bundle
+    GEM_HOME: /root/.p_bundle
+    GEM_PATH: /root/.p_bundle
     TERM: xterm256
-    SCCACHE_DIR: /tmp/sccache
+    SCCACHE_DIR: /root/sccache
     RUSTC_WRAPPER: sccache
 
 jobs:
@@ -34,8 +34,13 @@ jobs:
     - uses: actions/cache@v2
       with:
         path: |
-          /tmp/sccache
+          /root/sccache
         key: ${{ runner.os }}-sccache-${{ hashFiles('**/Cargo.lock') }}
+    - uses: actions/cache@v2
+      with:
+        path: |
+          /root/.p_bundle
+        key: ${{ runner.os }}-ruby26-bundle
     - uses: actions/cache@v2
       with:
         path: |

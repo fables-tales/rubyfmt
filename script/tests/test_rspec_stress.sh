@@ -2,9 +2,6 @@
 set -ex
 source "./script/functions.sh"
 
-
-make
-
 test_rspec_repo() {
     (
     ls "tmp/$1/lib" || git clone --depth=1 "https://github.com/rspec/$1" "tmp/$1"
