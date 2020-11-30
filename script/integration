@@ -1,4 +1,5 @@
 #!/bin/bash
+set -euxo pipefail
 rm -rf tmp/
 export RUBYFMT_USE_RELEASE=1
 ./script/ci

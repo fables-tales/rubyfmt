@@ -1,5 +1,5 @@
 use crate::delimiters::BreakableDelims;
-use crate::line_tokens::LineToken;
+use crate::line_tokens::{AbstractLineToken, ConcreteLineTokenAndTargets};
 use crate::types::{ColNumber, LineNumber};
 use std::collections::HashSet;
 
@@ -15,37 +15,29 @@ pub enum ConvertType {
     SingleLine,
 }
 
-pub trait LineTokenTarget {
-    fn push(&mut self, lt: LineToken);
-    fn insert_at(&mut self, idx: usize, tokens: &mut Vec<LineToken>);
-    fn into_tokens(self, ct: ConvertType) -> Vec<LineToken>;
-    fn last_token_is_a_newline(&self) -> bool;
-    fn index_of_prev_hard_newline(&self) -> Option<usize>;
-}
-
 #[derive(Debug, Default, Clone)]
 pub struct BaseQueue {
-    tokens: Vec<LineToken>,
+    tokens: Vec<ConcreteLineTokenAndTargets>,
 }
 
-impl LineTokenTarget for BaseQueue {
-    fn push(&mut self, lt: LineToken) {
+impl BaseQueue {
+    pub fn push(&mut self, lt: ConcreteLineTokenAndTargets) {
         self.tokens.push(lt)
     }
 
-    fn insert_at(&mut self, idx: usize, tokens: &mut Vec<LineToken>) {
+    pub fn insert_at(&mut self, idx: usize, tokens: &mut Vec<ConcreteLineTokenAndTargets>) {
         insert_at(idx, &mut self.tokens, tokens)
     }
 
-    fn into_tokens(self, _ct: ConvertType) -> Vec<LineToken> {
+    pub fn into_tokens(self) -> Vec<ConcreteLineTokenAndTargets> {
         self.tokens
     }
 
-    fn last_token_is_a_newline(&self) -> bool {
+    pub fn last_token_is_a_newline(&self) -> bool {
         self.tokens.last().map(|x| x.is_newline()).unwrap_or(false)
     }
 
-    fn index_of_prev_hard_newline(&self) -> Option<usize> {
+    pub fn index_of_prev_newline(&self) -> Option<usize> {
         self.tokens
             .iter()
             .rposition(|v| v.is_newline() || v.is_comment())
@@ -55,49 +47,9 @@ impl LineTokenTarget for BaseQueue {
 #[derive(Debug, Clone)]
 pub struct BreakableEntry {
     spaces: ColNumber,
-    tokens: Vec<LineToken>,
+    tokens: Vec<AbstractLineToken>,
     line_numbers: HashSet<LineNumber>,
     delims: BreakableDelims,
-}
-
-impl LineTokenTarget for BreakableEntry {
-    fn push(&mut self, lt: LineToken) {
-        self.tokens.push(lt);
-    }
-
-    fn insert_at(&mut self, idx: usize, tokens: &mut Vec<LineToken>) {
-        insert_at(idx, &mut self.tokens, tokens)
-    }
-
-    fn into_tokens(self, ct: ConvertType) -> Vec<LineToken> {
-        let mut tokens = self.tokens;
-        match ct {
-            ConvertType::MultiLine => {
-                tokens = tokens.into_iter().map(|t| t.into_multi_line()).collect();
-                tokens.insert(0, self.delims.multi_line_open());
-                tokens.push(self.delims.multi_line_close());
-            }
-            ConvertType::SingleLine => {
-                tokens = tokens.into_iter().map(|t| t.into_single_line()).collect();
-                tokens.insert(0, self.delims.single_line_open());
-                tokens.push(self.delims.single_line_close());
-            }
-        }
-        tokens
-    }
-
-    fn last_token_is_a_newline(&self) -> bool {
-        match self.tokens.last() {
-            Some(x) => x.is_newline(),
-            _ => false,
-        }
-    }
-
-    fn index_of_prev_hard_newline(&self) -> Option<usize> {
-        self.tokens
-            .iter()
-            .rposition(|v| v.is_newline() || v.is_comment())
-    }
 }
 
 impl BreakableEntry {
@@ -107,6 +59,65 @@ impl BreakableEntry {
             tokens: Vec::new(),
             line_numbers: HashSet::new(),
             delims,
+        }
+    }
+
+    pub fn push(&mut self, lt: AbstractLineToken) {
+        self.tokens.push(lt);
+    }
+
+    pub fn insert_at(&mut self, idx: usize, tokens: &mut Vec<AbstractLineToken>) {
+        insert_at(idx, &mut self.tokens, tokens)
+    }
+
+    pub fn into_tokens(self, ct: ConvertType) -> Vec<ConcreteLineTokenAndTargets> {
+        match ct {
+            ConvertType::MultiLine => {
+                let mut new_tokens: Vec<_> = self
+                    .tokens
+                    .into_iter()
+                    .map(|t| t.into_multi_line())
+                    .collect();
+                new_tokens.insert(0, self.delims.multi_line_open().into());
+                new_tokens.push(self.delims.multi_line_close().into());
+                new_tokens
+            }
+            ConvertType::SingleLine => {
+                let mut new_tokens: Vec<_> = self
+                    .tokens
+                    .into_iter()
+                    .map(|t| t.into_single_line())
+                    .collect();
+                new_tokens.insert(0, self.delims.single_line_open().into());
+                new_tokens.push(self.delims.single_line_close().into());
+                new_tokens
+            }
+        }
+    }
+
+    pub fn last_token_is_a_newline(&self) -> bool {
+        match self.tokens.last() {
+            Some(x) => x.is_newline(),
+            _ => false,
+        }
+    }
+
+    pub fn index_of_prev_newline(&self) -> Option<usize> {
+        let first_idx = self
+            .tokens
+            .iter()
+            .rposition(|v| v.is_newline() || v.is_comment());
+        match first_idx {
+            Some(x) => {
+                if matches!(self.tokens[x], AbstractLineToken::CollapsingNewLine)
+                    || matches!(self.tokens[x], AbstractLineToken::SoftNewline)
+                {
+                    Some(x + 1)
+                } else {
+                    Some(x)
+                }
+            }
+            None => None,
         }
     }
 

@@ -17,8 +17,9 @@ test_rspec_repo() {
     for FN in $FILES
     do
         echo "running rubyfmt on $FN"
-        f_rubyfmt "$FN" > /tmp/this_one.rb
-        f_rubyfmt /tmp/this_one.rb > "$FN"
+        TMPFILE=$(mktemp) || exit 1
+        f_rubyfmt "$FN" > "$TMPFILE"
+        f_rubyfmt "$TMPFILE" > "$FN"
     done
     cd "tmp/$1"
     bundle exec rspec --exclude-pattern ./spec/integration/persistence_failures_spec.rb
@@ -53,6 +54,7 @@ test_rspec_repo_incrementally() {
     )
 }
 
-test_rspec_repo rspec-core
-test_rspec_repo rspec-mocks
-test_rspec_repo rspec-expectations
+test_rspec_repo rspec-core &
+test_rspec_repo rspec-mocks &
+test_rspec_repo rspec-expectations &
+wait

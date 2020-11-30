@@ -1615,7 +1615,6 @@ impl Yield {
 
 impl ToMethodCall for Yield {
     fn to_method_call(self) -> MethodCall {
-        eprintln!("{:?}", self.1);
         let use_parens = match &self.1 {
             ParenOrArgsAddBlock::ArgsAddBlock(ArgsAddBlock(
                 _,
