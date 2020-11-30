@@ -41,7 +41,7 @@ jobs:
         path: |
           librubyfmt/ruby_checkout/ruby-2.6.6
         key: ${{ runner.os }}-ruby26-full
-    - uses: actions/setup-ruby@v1.0.0
+    - uses: actions/setup-ruby@v1
       with:
         version: 2.6
     - if: runner.os == 'Linux'
