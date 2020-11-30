@@ -71,8 +71,6 @@ impl ConcreteLineToken {
     }
 
     fn is_block_closing_token(&self) -> bool {
-        eprintln!("{:?}", self);
-
         match self {
             Self::End => true,
             Self::DirectPart { part } => part == "}" || part == "]" || part == ")",

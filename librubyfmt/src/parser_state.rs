@@ -327,10 +327,6 @@ impl ConcreteParserState for BaseParserState {
         let comments = self.comments_hash.extract_comments_to_line(line_number);
         self.push_comments(comments);
 
-        eprintln!(
-            "ln, oln {:?} {:?}",
-            line_number, self.current_orig_line_number
-        );
         if line_number - self.current_orig_line_number >= 2 && self.insert_user_newlines {
             self.insert_extra_newline_at_last_newline();
         }
@@ -695,7 +691,6 @@ impl BaseParserState {
             None => 0,
         };
 
-        eprintln!("insert extra was called");
         self.insert_concrete_tokens(insert_idx, vec![ConcreteLineToken::HardNewLine]);
     }
 
