@@ -1,6 +1,9 @@
 #!/bin/bash
 REPO_BASE=$(git rev-parse --show-toplevel)
 
+# Prefer colordiff if installed
+DIFF_BINARY=$( command -v colordiff || echo "diff" )
+
 f_md5() {
     if command -v md5sum >/dev/null
     then
@@ -14,12 +17,11 @@ f_rubyfmt() {
     "${REPO_BASE}/target/release/rubyfmt-main" "$@"
 }
 
-
 diff_files() {
     ACTUAL=$1
     EXPECTED=$2
 
-    if ! diff -u "$ACTUAL" "$EXPECTED"
+    if ! $DIFF_BINARY -u "$ACTUAL" "$EXPECTED"
     then
         echo "got diff between formated formatted actual and expected"
         exit 1
