@@ -586,6 +586,16 @@ pub fn format_ensure(ps: &mut dyn ConcreteParserState, ensure_part: Option<Ensur
     }
 }
 
+pub fn get_def_expression_from_args(args: &ArgsAddStarOrExpressionList) -> Option<&Def> {
+    if let ArgsAddStarOrExpressionList::ExpressionList(el) = args {
+        if let Some(Expression::Def(def)) = el.first() {
+            return Some(def);
+        }
+    }
+
+    None
+}
+
 pub fn use_parens_for_method_call(
     ps: &dyn ConcreteParserState,
     chain: &[CallChainElement],
@@ -633,6 +643,15 @@ pub fn use_parens_for_method_call(
 
     if args.is_empty() {
         return false;
+    } else {
+        // If the first argument to this method call is `def`, we don't want
+        // to use parens. Example:
+        //
+        //   private def foo
+        //   end
+        if get_def_expression_from_args(&args).is_some() {
+            return false;
+        }
     }
 
     if context == FormattingContext::ClassOrModule && !original_used_parens {
@@ -708,20 +727,35 @@ pub fn format_method_call(ps: &mut dyn ConcreteParserState, method_call: MethodC
             };
 
             if !args.is_empty() {
-                ps.breakable_of(
-                    delims,
-                    Box::new(|ps| {
+                match get_def_expression_from_args(&args) {
+                    Some(_) => {
+                        // If we match `def ...` as the first argument, just
+                        // emit it without any delimiters.
                         ps.with_formatting_context(
                             FormattingContext::ArgsList,
                             Box::new(|ps| {
-                                format_list_like_thing(ps, args, false);
-                                ps.emit_collapsing_newline();
+                                ps.emit_space();
+                                format_list_like_thing(ps, args, true);
                             }),
                         );
-                        debug!("end of format method call");
-                        ps.wind_line_if_needed_for_array();
-                    }),
-                );
+                    }
+                    None => {
+                        ps.breakable_of(
+                            delims,
+                            Box::new(|ps| {
+                                ps.with_formatting_context(
+                                    FormattingContext::ArgsList,
+                                    Box::new(|ps| {
+                                        format_list_like_thing(ps, args, false);
+                                        ps.emit_collapsing_newline();
+                                    }),
+                                );
+                                debug!("end of format method call");
+                                ps.wind_line_if_needed_for_array();
+                            }),
+                        );
+                    }
+                }
             } else if use_parens {
                 ps.emit_open_paren();
                 ps.emit_close_paren();
