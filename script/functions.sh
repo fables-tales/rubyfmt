@@ -30,7 +30,10 @@ diff_files() {
 test_fixtures_folder() {
     current_dir="$1"
 
-    find "$current_dir" -name "*_expected.rb" -maxdepth 1 | while read -r expected_file; do
+    # Fallback to * (all tests)
+    fixture_name=${FIXTURE_NAME:-*}
+
+    find "$current_dir" -name "${fixture_name}_expected.rb" -maxdepth 1 | while read -r expected_file; do
       actual_file="${expected_file//expected/actual}"
 
       ## Test if the formatting works as expected
