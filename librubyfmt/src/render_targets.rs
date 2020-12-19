@@ -44,6 +44,18 @@ impl BaseQueue {
     }
 }
 
+pub trait AbstractTokenTarget: std::fmt::Debug {
+    fn push(&mut self, lt: AbstractLineToken);
+    fn insert_at(&mut self, idx: usize, tokens: &mut Vec<AbstractLineToken>);
+    fn into_tokens(self, ct: ConvertType) -> Vec<ConcreteLineTokenAndTargets>;
+    fn is_multiline(&self) -> bool;
+    fn push_line_number(&mut self, number: LineNumber);
+    fn single_line_string_length(&self) -> usize;
+    fn index_of_prev_newline(&self) -> Option<usize>;
+    fn last_token_is_a_newline(&self) -> bool;
+    fn to_breakable_entry(self: Box<Self>) -> BreakableEntry;
+}
+
 #[derive(Debug, Clone)]
 pub struct BreakableEntry {
     spaces: ColNumber,
@@ -52,25 +64,19 @@ pub struct BreakableEntry {
     delims: BreakableDelims,
 }
 
-impl BreakableEntry {
-    pub fn new(spaces: ColNumber, delims: BreakableDelims) -> Self {
-        BreakableEntry {
-            spaces,
-            tokens: Vec::new(),
-            line_numbers: HashSet::new(),
-            delims,
-        }
+impl AbstractTokenTarget for BreakableEntry {
+    fn to_breakable_entry(self: Box<Self>) -> BreakableEntry {
+        *self
     }
-
-    pub fn push(&mut self, lt: AbstractLineToken) {
+    fn push(&mut self, lt: AbstractLineToken) {
         self.tokens.push(lt);
     }
 
-    pub fn insert_at(&mut self, idx: usize, tokens: &mut Vec<AbstractLineToken>) {
+    fn insert_at(&mut self, idx: usize, tokens: &mut Vec<AbstractLineToken>) {
         insert_at(idx, &mut self.tokens, tokens)
     }
 
-    pub fn into_tokens(self, ct: ConvertType) -> Vec<ConcreteLineTokenAndTargets> {
+    fn into_tokens(self, ct: ConvertType) -> Vec<ConcreteLineTokenAndTargets> {
         match ct {
             ConvertType::MultiLine => {
                 let mut new_tokens: Vec<_> = self
@@ -95,14 +101,14 @@ impl BreakableEntry {
         }
     }
 
-    pub fn last_token_is_a_newline(&self) -> bool {
+    fn last_token_is_a_newline(&self) -> bool {
         match self.tokens.last() {
             Some(x) => x.is_newline(),
             _ => false,
         }
     }
 
-    pub fn index_of_prev_newline(&self) -> Option<usize> {
+    fn index_of_prev_newline(&self) -> Option<usize> {
         let first_idx = self
             .tokens
             .iter()
@@ -121,7 +127,7 @@ impl BreakableEntry {
         }
     }
 
-    pub fn single_line_string_length(&self) -> usize {
+    fn single_line_string_length(&self) -> usize {
         self.tokens
             .iter()
             .map(|tok| tok.clone().into_single_line())
@@ -129,11 +135,22 @@ impl BreakableEntry {
             .sum()
     }
 
-    pub fn push_line_number(&mut self, number: LineNumber) {
+    fn push_line_number(&mut self, number: LineNumber) {
         self.line_numbers.insert(number);
     }
 
-    pub fn is_multiline(&self) -> bool {
+    fn is_multiline(&self) -> bool {
         self.line_numbers.len() > 1
+    }
+}
+
+impl BreakableEntry {
+    pub fn new(spaces: ColNumber, delims: BreakableDelims) -> Self {
+        BreakableEntry {
+            spaces,
+            tokens: Vec::new(),
+            line_numbers: HashSet::new(),
+            delims,
+        }
     }
 }

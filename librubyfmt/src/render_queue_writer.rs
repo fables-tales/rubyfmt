@@ -1,6 +1,6 @@
 use crate::intermediary::{BlanklineReason, Intermediary};
 use crate::line_tokens::*;
-use crate::render_targets::{BreakableEntry, ConvertType};
+use crate::render_targets::{AbstractTokenTarget, BreakableEntry, ConvertType};
 #[cfg(debug_assertions)]
 use log::debug;
 use std::io::{self, Write};

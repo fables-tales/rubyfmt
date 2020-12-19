@@ -4,7 +4,7 @@ use crate::file_comments::FileComments;
 use crate::format::{format_inner_string, StringType};
 use crate::line_tokens::*;
 use crate::render_queue_writer::RenderQueueWriter;
-use crate::render_targets::{BaseQueue, BreakableEntry};
+use crate::render_targets::{AbstractTokenTarget, BaseQueue, BreakableEntry};
 use crate::ripper_tree_types::StringContentPart;
 use crate::types::{ColNumber, LineNumber};
 use log::debug;
@@ -174,7 +174,7 @@ pub struct BaseParserState {
     comments_hash: FileComments,
     heredoc_strings: Vec<HeredocString>,
     comments_to_insert: Option<CommentBlock>,
-    breakable_entry_stack: Vec<BreakableEntry>,
+    breakable_entry_stack: Vec<Box<dyn AbstractTokenTarget>>,
     formatting_context: Vec<FormattingContext>,
     absorbing_indents: i32,
     insert_user_newlines: bool,
@@ -257,7 +257,7 @@ impl ConcreteParserState for BaseParserState {
         self.shift_comments();
         let mut be = BreakableEntry::new(self.current_spaces(), delims);
         be.push_line_number(self.current_orig_line_number);
-        self.breakable_entry_stack.push(be);
+        self.breakable_entry_stack.push(Box::new(be));
 
         self.new_block(Box::new(|ps| {
             ps.emit_collapsing_newline();
@@ -269,7 +269,8 @@ impl ConcreteParserState for BaseParserState {
         let insert_be = self
             .breakable_entry_stack
             .pop()
-            .expect("cannot have empty here because we just pushed");
+            .expect("cannot have empty here because we just pushed")
+            .to_breakable_entry();
         self.push_target(ConcreteLineTokenAndTargets::BreakableEntry(insert_be));
     }
 
