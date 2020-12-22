@@ -21,7 +21,7 @@ diff_files() {
     ACTUAL=$1
     EXPECTED=$2
 
-    if ! $DIFF_BINARY -u "$ACTUAL" "$EXPECTED"
+    if ! $DIFF_BINARY -u "$EXPECTED" "$ACTUAL"
     then
         echo "got diff between formated formatted actual and expected"
         exit 1
