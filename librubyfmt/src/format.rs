@@ -666,9 +666,11 @@ pub fn format_list_like_thing_items(
     single_line: bool,
 ) -> bool {
     let mut emitted_args = false;
+    let skip_magic_comments = args
+        .iter()
+        .any(|i| matches!(i, Expression::StringConcat(..)));
     let args_count = args.len();
-
-    ps.magic_handle_comments_for_mulitiline_arrays(Box::new(|ps| {
+    let cls: Box<dyn FnOnce(&mut dyn ConcreteParserState)> = Box::new(|ps| {
         for (idx, expr) in args.into_iter().enumerate() {
             // this raise was present in the ruby source code of rubyfmt
             // but I'm pretty sure it's categorically impossible now. Thanks
@@ -702,7 +704,13 @@ pub fn format_list_like_thing_items(
             };
             emitted_args = true;
         }
-    }));
+    });
+
+    if skip_magic_comments {
+        cls(ps)
+    } else {
+        ps.magic_handle_comments_for_mulitiline_arrays(cls);
+    }
     emitted_args
 }
 
@@ -2214,7 +2222,29 @@ pub fn format_backref(ps: &mut dyn ConcreteParserState, backref: Backref) {
     }
 }
 
+fn is_rspec_like_describe_call(cc: &[CallChainElement]) -> bool {
+    let is_bare_it_or_describe = match cc.get(0) {
+        Some(CallChainElement::IdentOrOpOrKeywordOrConst(IdentOrOpOrKeywordOrConst::Ident(
+            Ident(_, ident, _),
+        ))) => ident == "it" || ident == "describe",
+        _ => false,
+    };
+
+    let is_rspec_describe = match (cc.get(0), cc.get(2)) {
+        (
+            Some(CallChainElement::VarRef(VarRef(_, VarRefType::Const(Const(_, c, _))))),
+            Some(CallChainElement::IdentOrOpOrKeywordOrConst(IdentOrOpOrKeywordOrConst::Ident(
+                Ident(_, i, _),
+            ))),
+        ) => c == "RSpec" && i == "describe",
+        _ => false,
+    };
+
+    is_bare_it_or_describe || is_rspec_describe
+}
+
 fn format_call_chain(ps: &mut dyn ConcreteParserState, cc: Vec<CallChainElement>) {
+    let elide_parens = is_rspec_like_describe_call(&cc);
     for cc_elem in cc.into_iter() {
         match cc_elem {
             CallChainElement::Paren(p) => format_paren(ps, p),
@@ -2226,12 +2256,16 @@ fn format_call_chain(ps: &mut dyn ConcreteParserState, cc: Vec<CallChainElement>
             CallChainElement::VarRef(vr) => format_var_ref(ps, vr),
             CallChainElement::ArgsAddStarOrExpressionList(aas) => {
                 if !aas.is_empty() {
-                    ps.breakable_of(
-                        BreakableDelims::for_method_call(),
-                        Box::new(|ps| {
-                            format_list_like_thing(ps, aas, false);
-                        }),
-                    );
+                    let cls: Box<dyn FnOnce(&mut dyn ConcreteParserState)> = Box::new(|ps| {
+                        format_list_like_thing(ps, aas, elide_parens);
+                    });
+
+                    if elide_parens {
+                        ps.emit_space();
+                        cls(ps);
+                    } else {
+                        ps.breakable_of(BreakableDelims::for_method_call(), cls);
+                    }
                 }
             }
             CallChainElement::DotTypeOrOp(d) => format_dot(ps, d),
@@ -2346,6 +2380,7 @@ pub fn format_do_block(ps: &mut dyn ConcreteParserState, do_block: DoBlock) {
             true,
             Box::new(|ps| {
                 ps.emit_newline();
+                ps.wind_line_forward();
                 format_bodystmt(ps, body);
             }),
         );
