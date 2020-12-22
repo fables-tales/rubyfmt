@@ -123,6 +123,7 @@ pub trait ConcreteParserState {
     fn is_absorbing_indents(&self) -> bool;
 
     // blocks
+    fn with_string_concat<'a>(&mut self, f: Box<dyn FnOnce(&mut dyn ConcreteParserState) + 'a>);
     fn with_formatting_context<'a>(
         &mut self,
         fc: FormattingContext,
@@ -174,7 +175,7 @@ pub struct BaseParserState {
     comments_hash: FileComments,
     heredoc_strings: Vec<HeredocString>,
     comments_to_insert: Option<CommentBlock>,
-    breakable_entry_stack: Vec<Box<dyn AbstractTokenTarget>>,
+    abstract_target_stack: Vec<Box<dyn AbstractTokenTarget>>,
     formatting_context: Vec<FormattingContext>,
     absorbing_indents: i32,
     insert_user_newlines: bool,
@@ -257,7 +258,7 @@ impl ConcreteParserState for BaseParserState {
         self.shift_comments();
         let mut be = BreakableEntry::new(self.current_spaces(), delims);
         be.push_line_number(self.current_orig_line_number);
-        self.breakable_entry_stack.push(Box::new(be));
+        self.abstract_target_stack.push(Box::new(be));
 
         self.new_block(Box::new(|ps| {
             ps.emit_collapsing_newline();
@@ -267,7 +268,24 @@ impl ConcreteParserState for BaseParserState {
         self.emit_soft_indent();
 
         let insert_be = self
-            .breakable_entry_stack
+            .abstract_target_stack
+            .pop()
+            .expect("cannot have empty here because we just pushed")
+            .to_breakable_entry();
+        self.push_target(ConcreteLineTokenAndTargets::BreakableEntry(insert_be));
+    }
+
+    fn with_string_concat<'a>(&mut self, f: Box<dyn FnOnce(&mut dyn ConcreteParserState) + 'a>) {
+        self.shift_comments();
+        let mut be = StringConcat::new();
+        self.abstract_target_stack.push(Box::new(be));
+
+        Box::new(|ps| {
+            f(ps);
+        });
+
+        let insert_be = self
+            .abstract_target_stack
             .pop()
             .expect("cannot have empty here because we just pushed")
             .to_breakable_entry();
@@ -321,7 +339,7 @@ impl ConcreteParserState for BaseParserState {
         }
         debug!("on_line called: {}", line_number);
 
-        for be in self.breakable_entry_stack.iter_mut().rev() {
+        for be in self.abstract_target_stack.iter_mut().rev() {
             be.push_line_number(line_number);
         }
 
@@ -649,7 +667,7 @@ impl BaseParserState {
             comments_hash: fc,
             heredoc_strings: vec![],
             comments_to_insert: None,
-            breakable_entry_stack: vec![],
+            abstract_target_stack: vec![],
             formatting_context: vec![FormattingContext::Main],
             absorbing_indents: 0,
             insert_user_newlines: true,
@@ -662,7 +680,7 @@ impl BaseParserState {
     }
 
     fn last_breakable_is_multiline(&self) -> bool {
-        self.breakable_entry_stack
+        self.abstract_target_stack
             .last()
             .map(|o| o.is_multiline())
             .unwrap_or(false)
@@ -704,14 +722,14 @@ impl BaseParserState {
     }
 
     fn last_token_is_a_newline(&self) -> bool {
-        match self.breakable_entry_stack.last() {
+        match self.abstract_target_stack.last() {
             Some(be) => be.last_token_is_a_newline(),
             None => self.render_queue.last_token_is_a_newline(),
         }
     }
 
     pub fn index_of_prev_hard_newline(&self) -> Option<usize> {
-        match self.breakable_entry_stack.last() {
+        match self.abstract_target_stack.last() {
             Some(be) => be.index_of_prev_newline(),
             None => self.render_queue.index_of_prev_newline(),
         }
@@ -773,7 +791,7 @@ impl BaseParserState {
     }
 
     fn insert_concrete_tokens(&mut self, insert_idx: usize, clts: Vec<ConcreteLineToken>) {
-        match self.breakable_entry_stack.last_mut() {
+        match self.abstract_target_stack.last_mut() {
             Some(be) => be.insert_at(
                 insert_idx,
                 &mut clts
@@ -792,7 +810,7 @@ impl BaseParserState {
     }
 
     fn push_concrete_token(&mut self, t: ConcreteLineToken) {
-        match self.breakable_entry_stack.last_mut() {
+        match self.abstract_target_stack.last_mut() {
             Some(be) => be.push(AbstractLineToken::ConcreteLineToken(t)),
             None => self
                 .render_queue
@@ -801,14 +819,14 @@ impl BaseParserState {
     }
 
     fn push_target(&mut self, t: ConcreteLineTokenAndTargets) {
-        match self.breakable_entry_stack.last_mut() {
+        match self.abstract_target_stack.last_mut() {
             Some(be) => be.push(t.into()),
             None => self.render_queue.push(t),
         }
     }
 
     fn push_abstract_token(&mut self, t: AbstractLineToken) {
-        match self.breakable_entry_stack.last_mut() {
+        match self.abstract_target_stack.last_mut() {
             Some(be) => be.push(t),
             None => self.render_queue.push(Self::dangerously_convert(t)),
         }

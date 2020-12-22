@@ -154,3 +154,9 @@ impl BreakableEntry {
         }
     }
 }
+
+#[derive(Debug, Clone)]
+pub struct StringConcat {
+    tokens: Vec<AbstractLineToken>,
+}
+
