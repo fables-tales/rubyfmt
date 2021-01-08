@@ -644,7 +644,17 @@ impl<'de> Deserialize<'de> for ArgsAddStar {
 
 def_tag!(alias_tag, "alias");
 #[derive(Deserialize, Debug, Clone)]
-pub struct Alias(pub alias_tag, pub SymbolLiteral, pub SymbolLiteral);
+pub struct Alias(
+    pub alias_tag,
+    pub SymbolLiteralOrDynaSymbol,
+    pub SymbolLiteralOrDynaSymbol,
+);
+
+#[derive(RipperDeserialize, Debug, Clone)]
+pub enum SymbolLiteralOrDynaSymbol {
+    DynaSymbol(DynaSymbol),
+    SymbolLiteral(SymbolLiteral),
+}
 
 #[derive(RipperDeserialize, Debug, Clone)]
 pub enum ParenExpressionOrExpressions {

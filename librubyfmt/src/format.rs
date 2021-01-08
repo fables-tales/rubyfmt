@@ -764,14 +764,26 @@ pub fn format_alias(ps: &mut dyn ConcreteParserState, alias: Alias) {
     ps.with_start_of_line(
         false,
         Box::new(|ps| {
-            format_symbol_literal(ps, alias.1);
+            format_symbol_literal_or_dyna_symbol(ps, alias.1);
             ps.emit_space();
-            format_symbol_literal(ps, alias.2);
+            format_symbol_literal_or_dyna_symbol(ps, alias.2);
         }),
     );
 
     if ps.at_start_of_line() {
         ps.emit_newline();
+    }
+}
+
+pub fn format_symbol_literal_or_dyna_symbol(
+    ps: &mut dyn ConcreteParserState,
+    symbol_literal_or_dyna_symbol: SymbolLiteralOrDynaSymbol,
+) {
+    match symbol_literal_or_dyna_symbol {
+        SymbolLiteralOrDynaSymbol::DynaSymbol(dyna_symbol) => format_dyna_symbol(ps, dyna_symbol),
+        SymbolLiteralOrDynaSymbol::SymbolLiteral(symbol_literal) => {
+            format_symbol_literal(ps, symbol_literal)
+        }
     }
 }
 
