@@ -430,10 +430,7 @@ impl ConcreteParserState for BaseParserState {
     fn shift_comments(&mut self) {
         let idx_of_prev_hard_newline = self.index_of_prev_hard_newline();
         if let Some(new_comments) = self.comments_to_insert.take() {
-            let insert_index = match idx_of_prev_hard_newline {
-                Some(idx) => idx,
-                None => 0,
-            };
+            let insert_index = idx_of_prev_hard_newline.unwrap_or(0);
 
             self.insert_concrete_tokens(
                 insert_index,
@@ -687,10 +684,7 @@ impl BaseParserState {
 
     fn insert_extra_newline_at_last_newline(&mut self) {
         let idx = self.index_of_prev_hard_newline();
-        let insert_idx = match idx {
-            Some(idx) => idx,
-            None => 0,
-        };
+        let insert_idx = idx.unwrap_or(0);
 
         self.insert_concrete_tokens(insert_idx, vec![ConcreteLineToken::HardNewLine]);
     }
