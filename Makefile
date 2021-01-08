@@ -23,7 +23,7 @@ target/release/rubyfmt-main: librubyfmt/src/*.rs librubyfmt/Cargo.toml src/*.rs 
 
 submodules:
 	git submodule init
-	git submodule update
+	git submodule update --remote
 
 target/c_main_debug: main.c target/debug/librubyfmt.a
 	clang -O3 main.c target/debug/librubyfmt.a $(LDFLAGS) -o $@

@@ -1,3 +1,4 @@
 [submodule "librubyfmt/ruby_checkout/ruby-2.6.6"]
 	path = librubyfmt/ruby_checkout/ruby-2.6.6
-	url = https://github.com/ruby/ruby
+	url = https://github.com/nobu/ruby
+	branch = 2.6-bison3
