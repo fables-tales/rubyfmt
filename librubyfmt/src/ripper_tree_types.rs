@@ -1756,7 +1756,7 @@ pub struct SClass(sclass_tag, pub Box<Expression>, pub Box<BodyStmt>);
 // deals with both cases
 #[derive(RipperDeserialize, Debug, Clone)]
 pub enum ExpressionListOrBodyStmt {
-    ExpresionList(Vec<Expression>),
+    ExpressionList(Vec<Expression>),
     BodyStmt(Box<BodyStmt>),
 }
 

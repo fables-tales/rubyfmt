@@ -99,11 +99,11 @@ fn handle_error_from(err: rubyfmt::RichFormatError, source: &str, error_exit: Er
             e();
         }
         IOError(ioe) => {
-            eprintln!("IO error occured while running rubyfmt: {:?}, this may indicate a programming error, please file a bug report at https://github.com/penelopezone/rubyfmt/issues/new", ioe);
+            eprintln!("IO error occurred while running rubyfmt: {:?}, this may indicate a programming error, please file a bug report at https://github.com/penelopezone/rubyfmt/issues/new", ioe);
             e();
         }
         rubyfmt::RichFormatError::OtherRubyError(s) => {
-            eprintln!("A ruby error occured: {}, please file a bug report at https://github.com/penelopezone/rubyfmt/issues/new", s);
+            eprintln!("A ruby error occurred: {}, please file a bug report at https://github.com/penelopezone/rubyfmt/issues/new", s);
             exit(1);
         }
     }
@@ -125,7 +125,7 @@ fn main() {
         let mut buffer = String::new();
         io::stdin()
             .read_to_string(&mut buffer)
-            .expect("reading frmo stdin to not fail");
+            .expect("reading from stdin to not fail");
         let res = rubyfmt::format_buffer(&buffer);
         match res {
             Ok(res) => {

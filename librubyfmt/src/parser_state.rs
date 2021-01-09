@@ -144,13 +144,13 @@ pub trait ConcreteParserState {
         &mut self,
         f: Box<dyn FnOnce(&mut dyn ConcreteParserState) + 'a>,
     );
-    fn magic_handle_comments_for_mulitiline_arrays<'a>(
+    fn magic_handle_comments_for_multiline_arrays<'a>(
         &mut self,
         f: Box<dyn FnOnce(&mut dyn ConcreteParserState) + 'a>,
     );
-    fn with_surpress_comments<'a>(
+    fn with_suppress_comments<'a>(
         &mut self,
-        surpress: bool,
+        suppress: bool,
         f: Box<dyn FnOnce(&mut dyn ConcreteParserState) + 'a>,
     );
     fn will_render_as_multiline<'a>(
@@ -168,7 +168,7 @@ pub trait ConcreteParserState {
 pub struct BaseParserState {
     depth_stack: Vec<IndentDepth>,
     start_of_line: Vec<bool>,
-    surpress_comments_stack: Vec<bool>,
+    suppress_comments_stack: Vec<bool>,
     render_queue: BaseQueue,
     current_orig_line_number: LineNumber,
     comments_hash: FileComments,
@@ -203,7 +203,7 @@ impl ConcreteParserState for BaseParserState {
             .push(HeredocString::new(symbol, is_squiggly, data));
     }
 
-    fn magic_handle_comments_for_mulitiline_arrays<'a>(
+    fn magic_handle_comments_for_multiline_arrays<'a>(
         &mut self,
         f: Box<dyn FnOnce(&mut dyn ConcreteParserState) + 'a>,
     ) {
@@ -274,23 +274,23 @@ impl ConcreteParserState for BaseParserState {
         self.push_target(ConcreteLineTokenAndTargets::BreakableEntry(insert_be));
     }
 
-    fn with_surpress_comments<'a>(
+    fn with_suppress_comments<'a>(
         &mut self,
-        surpress: bool,
+        suppress: bool,
         f: Box<dyn FnOnce(&mut dyn ConcreteParserState) + 'a>,
     ) {
-        self.surpress_comments_stack.push(surpress);
+        self.suppress_comments_stack.push(suppress);
         f(self);
-        self.surpress_comments_stack.pop();
+        self.suppress_comments_stack.pop();
     }
 
     fn with_absorbing_indent_block<'a>(
         &mut self,
         f: Box<dyn FnOnce(&mut dyn ConcreteParserState) + 'a>,
     ) {
-        let was_absorving = self.absorbing_indents != 0;
+        let was_absorbing = self.absorbing_indents != 0;
         self.absorbing_indents += 1;
-        if was_absorving {
+        if was_absorbing {
             f(self);
         } else {
             self.new_block(f);
@@ -599,7 +599,7 @@ impl ConcreteParserState for BaseParserState {
             };
 
             self.push_concrete_token(ConcreteLineToken::DirectPart {
-                part: String::from_utf8(next_heredoc.buf).expect("hereoc is utf8"),
+                part: String::from_utf8(next_heredoc.buf).expect("heredoc is utf8"),
             });
             self.emit_newline();
             if next_heredoc.squiggly {
@@ -640,7 +640,7 @@ impl BaseParserState {
         BaseParserState {
             depth_stack: vec![IndentDepth::new()],
             start_of_line: vec![true],
-            surpress_comments_stack: vec![false],
+            suppress_comments_stack: vec![false],
             render_queue: BaseQueue::default(),
             current_orig_line_number: 0,
             comments_hash: fc,
@@ -670,7 +670,7 @@ impl BaseParserState {
             None => {}
             Some(comments) => {
                 if !self
-                    .surpress_comments_stack
+                    .suppress_comments_stack
                     .last()
                     .expect("comments stack is never empty")
                 {
