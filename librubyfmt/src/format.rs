@@ -1427,7 +1427,10 @@ pub fn format_field(ps: &mut dyn ConcreteParserState, f: Field) {
         Box::new(|ps| {
             format_expression(ps, *f.1);
             format_dot(ps, f.2);
-            format_ident(ps, f.3);
+            match f.3 {
+                IdentOrConst::Const(c) => format_const(ps, c),
+                IdentOrConst::Ident(i) => format_ident(ps, i),
+            }
         }),
     );
 

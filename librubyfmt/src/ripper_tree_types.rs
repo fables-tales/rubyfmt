@@ -433,7 +433,7 @@ pub struct Field(
     pub field_tag,
     pub Box<Expression>,
     pub DotTypeOrOp,
-    pub Ident,
+    pub IdentOrConst,
 );
 
 def_tag!(var_ref_tag, "var_ref");
