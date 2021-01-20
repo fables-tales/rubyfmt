@@ -741,9 +741,12 @@ impl BaseParserState {
                     .expect("comments stack is never empty")
                 {
                     let len = comments.len();
+                    let trailing_comment = comments.is_trailing();
                     self.insert_comment_collection(comments);
-                    self.current_orig_line_number += len as u64;
-                    debug!("pe coln: {}", len);
+                    if !trailing_comment {
+                        self.current_orig_line_number += len as u64;
+                        debug!("pe coln: {}", len);
+                    }
                 }
             }
         }

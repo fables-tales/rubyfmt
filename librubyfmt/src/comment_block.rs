@@ -49,6 +49,10 @@ impl CommentBlock {
     pub fn len(&self) -> usize {
         self.comments.len()
     }
+
+    pub fn is_trailing(&self) -> bool {
+        self.span.start + 1 == self.span.end
+    }
 }
 
 pub trait Merge<Other = Self> {
