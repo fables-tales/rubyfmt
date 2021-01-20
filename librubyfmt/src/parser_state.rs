@@ -375,6 +375,9 @@ impl ConcreteParserState for BaseParserState {
     }
 
     fn emit_string_content(&mut self, s: String) {
+        let newline_count = s.matches('\n').count() as u64;
+        self.current_orig_line_number += newline_count;
+
         self.push_concrete_token(ConcreteLineToken::LTStringContent { content: s });
     }
 
