@@ -4,7 +4,7 @@ use crate::file_comments::FileComments;
 use crate::format::{format_inner_string, StringType};
 use crate::line_tokens::*;
 use crate::render_queue_writer::RenderQueueWriter;
-use crate::render_targets::{AbstractTokenTarget, BaseQueue, BreakableEntry};
+use crate::render_targets::{AbstractTokenTarget, BaseQueue, BreakableEntry, HeredocString};
 use crate::ripper_tree_types::StringContentPart;
 use crate::types::{ColNumber, LineNumber};
 use log::debug;
@@ -46,22 +46,6 @@ impl IndentDepth {
     }
 }
 
-#[derive(Debug)]
-pub struct HeredocString {
-    symbol: String,
-    squiggly: bool,
-    buf: Vec<u8>,
-}
-
-impl HeredocString {
-    pub fn new(symbol: String, squiggly: bool, buf: Vec<u8>) -> Self {
-        HeredocString {
-            symbol,
-            squiggly,
-            buf,
-        }
-    }
-}
 pub trait ConcreteParserState {
     // token emitters
     fn emit_conditional_keyword(&mut self, contents: String);
@@ -108,7 +92,6 @@ pub trait ConcreteParserState {
     fn wind_dumping_comments(&mut self);
     fn shift_comments(&mut self);
     fn wind_line_forward(&mut self);
-    fn render_heredocs(&mut self, skip: bool);
     fn push_heredoc_content(
         &mut self,
         symbol: String,
@@ -172,7 +155,6 @@ pub struct BaseParserState {
     render_queue: BaseQueue,
     current_orig_line_number: LineNumber,
     comments_hash: FileComments,
-    heredoc_strings: Vec<HeredocString>,
     comments_to_insert: Option<CommentBlock>,
     breakable_entry_stack: Vec<Box<dyn AbstractTokenTarget>>,
     formatting_context: Vec<FormattingContext>,
@@ -188,19 +170,24 @@ impl ConcreteParserState for BaseParserState {
         is_squiggly: bool,
         parts: Vec<StringContentPart>,
     ) {
-        let mut next_ps = BaseParserState::render_with_blank_state(self, |n| {
+        let next_ps = BaseParserState::render_with_blank_state(self, |n| {
             n.insert_user_newlines = false;
             format_inner_string(n, parts, StringType::Heredoc);
-            n.emit_newline();
         });
 
-        for hs in next_ps.heredoc_strings.drain(0..) {
-            self.heredoc_strings.push(hs);
-        }
+        self.current_orig_line_number = next_ps.current_orig_line_number;
+        debug!("push_heredoc_content: current_orig_line_number {}", self.current_orig_line_number);
 
-        let data = next_ps.render_to_buffer();
-        self.heredoc_strings
-            .push(HeredocString::new(symbol, is_squiggly, data));
+        let content = String::from_utf8(next_ps.render_to_buffer()).expect("string is utf8");
+
+        let indent = if is_squiggly {
+            self.current_spaces()
+        } else {
+            0
+        };
+
+        let hs = HeredocString::new(symbol.replace("'", ""), is_squiggly, content, indent);
+        self.push_target(ConcreteLineTokenAndTargets::HeredocString(hs));
     }
 
     fn magic_handle_comments_for_mulitiline_arrays<'a>(
@@ -319,7 +306,6 @@ impl ConcreteParserState for BaseParserState {
         if line_number < self.current_orig_line_number {
             return;
         }
-        debug!("on_line called: {}", line_number);
 
         for be in self.breakable_entry_stack.iter_mut().rev() {
             be.push_line_number(line_number);
@@ -328,6 +314,7 @@ impl ConcreteParserState for BaseParserState {
         let comments = self.comments_hash.extract_comments_to_line(line_number);
         self.push_comments(comments);
 
+        debug!("on_line called with {}, self.current_orig_line_number: {}", line_number, self.current_orig_line_number);
         if line_number - self.current_orig_line_number >= 2 && self.insert_user_newlines {
             self.insert_extra_newline_at_last_newline();
         }
@@ -397,7 +384,6 @@ impl ConcreteParserState for BaseParserState {
 
         self.shift_comments();
         self.push_concrete_token(ConcreteLineToken::HardNewLine);
-        self.render_heredocs(false);
         self.spaces_after_last_newline = self.current_spaces();
     }
 
@@ -588,38 +574,6 @@ impl ConcreteParserState for BaseParserState {
         });
     }
 
-    fn render_heredocs(&mut self, skip: bool) {
-        while !self.heredoc_strings.is_empty() {
-            let mut next_heredoc = self.heredoc_strings.pop().expect("we checked it's there");
-            let want_newline = !self.last_token_is_a_newline();
-            if want_newline {
-                self.push_concrete_token(ConcreteLineToken::HardNewLine);
-            }
-
-            if let Some(b'\n') = next_heredoc.buf.last() {
-                next_heredoc.buf.pop();
-            };
-
-            if let Some(b'\n') = next_heredoc.buf.last() {
-                next_heredoc.buf.pop();
-            };
-
-            self.push_concrete_token(ConcreteLineToken::DirectPart {
-                part: String::from_utf8(next_heredoc.buf).expect("hereoc is utf8"),
-            });
-            self.emit_newline();
-            if next_heredoc.squiggly {
-                self.emit_indent();
-            } else {
-                self.push_concrete_token(ConcreteLineToken::Indent { depth: 0 });
-            }
-            self.emit_ident(next_heredoc.symbol.replace("'", ""));
-            if !skip {
-                self.emit_newline();
-            }
-        }
-    }
-
     fn is_absorbing_indents(&self) -> bool {
         self.absorbing_indents >= 1
     }
@@ -650,7 +604,6 @@ impl BaseParserState {
             render_queue: BaseQueue::default(),
             current_orig_line_number: 0,
             comments_hash: fc,
-            heredoc_strings: vec![],
             comments_to_insert: None,
             breakable_entry_stack: vec![],
             formatting_context: vec![FormattingContext::Main],

@@ -1,5 +1,5 @@
 a = <<EOD
-part 1 of heredoc #{"not a heredoc" + <<EOM}
+part 1 of heredoc #{"not a heredoc" + <<EOM} after brace before newline
 eom part
 EOM
 part 2 of heredoc

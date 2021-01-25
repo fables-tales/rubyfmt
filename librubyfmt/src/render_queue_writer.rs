@@ -1,6 +1,6 @@
 use crate::intermediary::{BlanklineReason, Intermediary};
 use crate::line_tokens::*;
-use crate::render_targets::{AbstractTokenTarget, BreakableEntry, ConvertType};
+use crate::render_targets::{AbstractTokenTarget, BreakableEntry, ConvertType, HeredocString};
 #[cfg(debug_assertions)]
 use log::debug;
 use std::io::{self, Write};
@@ -18,21 +18,59 @@ impl RenderQueueWriter {
 
     pub fn write<W: Write>(self, writer: &mut W) -> io::Result<()> {
         let mut accum = Intermediary::new();
+        let mut heredocs = vec![];
         #[cfg(debug_assertions)]
         {
             debug!("first tokens {:?}", self.tokens);
         }
-        Self::render_as(&mut accum, self.tokens);
+        Self::render_as(&mut accum, self.tokens, &mut heredocs);
         Self::write_final_tokens(writer, accum.into_tokens())
     }
 
-    fn render_as(accum: &mut Intermediary, tokens: Vec<ConcreteLineTokenAndTargets>) {
+    fn render_as(accum: &mut Intermediary, tokens: Vec<ConcreteLineTokenAndTargets>, heredocs: &mut Vec<HeredocString>) {
         for next_token in tokens.into_iter() {
             match next_token {
                 ConcreteLineTokenAndTargets::BreakableEntry(be) => {
-                    Self::format_breakable_entry(accum, be)
+                    Self::format_breakable_entry(accum, be, heredocs)
                 }
-                ConcreteLineTokenAndTargets::ConcreteLineToken(x) => accum.push(x),
+                ConcreteLineTokenAndTargets::HeredocString(hs) => {
+                    heredocs.push(hs);
+                    #[cfg(debug_assertions)]
+                    {
+                        debug!("render_as: got heredoc {}", heredocs.len())
+                    }
+                }
+                ConcreteLineTokenAndTargets::ConcreteLineToken(ConcreteLineToken::LTStringContent {content}) => {
+                    let parts: Vec<&str> = content.splitn(2, '\n').collect();
+
+                    if !parts[0].is_empty() {
+                        accum.push(ConcreteLineToken::LTStringContent {
+                            content: parts[0].to_string()
+                        });
+                    }
+                    if parts.len() == 2 {
+                        accum.push(ConcreteLineToken::HardNewLine);
+                        Self::format_heredocs(accum, heredocs);
+
+                        if !parts[1].is_empty() {
+                            accum.push(ConcreteLineToken::LTStringContent {
+                                content: parts[1].to_string()
+                            });
+                        }
+                    }
+
+                }
+                ConcreteLineTokenAndTargets::ConcreteLineToken(x) => {
+                    let is_newline = x.is_newline();
+                    accum.push(x);
+                    if is_newline {
+                        #[cfg(debug_assertions)]
+                        {
+                            debug!("render_as: got newline")
+                        }
+                        Self::format_heredocs(accum, heredocs);
+                    }
+                }
             }
 
             if accum.len() >= 4 {
@@ -51,18 +89,37 @@ impl RenderQueueWriter {
         }
     }
 
-    fn format_breakable_entry(accum: &mut Intermediary, be: BreakableEntry) {
+    fn format_breakable_entry(accum: &mut Intermediary, be: BreakableEntry, heredocs: &mut Vec<HeredocString>) {
         let length = be.single_line_string_length();
 
         if length > MAX_LINE_LENGTH || be.is_multiline() {
-            Self::render_as(accum, be.into_tokens(ConvertType::MultiLine));
+            Self::render_as(accum, be.into_tokens(ConvertType::MultiLine), heredocs);
         } else {
-            Self::render_as(accum, be.into_tokens(ConvertType::SingleLine));
+            Self::render_as(accum, be.into_tokens(ConvertType::SingleLine), heredocs);
             // after running accum looks like this (or some variant):
             // [.., Comma, Space, DirectPart {part: ""}, <close_delimiter>]
             // so we remove items at positions length-2 until there is nothing
             // in that position that is garbage.
             accum.clear_breakable_garbage();
+        }
+    }
+
+    fn format_heredocs(accum: &mut Intermediary, heredocs: &mut Vec<HeredocString>) {
+        #[cfg(debug_assertions)]
+        {
+            debug!("format_heredocs {}", heredocs.len())
+        }
+        for hs in heredocs.drain(0..) {
+            accum.push(ConcreteLineToken::LTStringContent {
+                content: hs.content
+            });
+            accum.push(ConcreteLineToken::Indent {
+                depth: hs.indent
+            });
+            accum.push(ConcreteLineToken::DirectPart {
+                part: hs.symbol
+            });
+            accum.push(ConcreteLineToken::HardNewLine);
         }
     }
 

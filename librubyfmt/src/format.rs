@@ -1241,17 +1241,6 @@ pub fn format_inner_string(
                     }),
                 );
                 ps.emit_string_content("}".to_string());
-
-                let on_line_skip = tipe == StringType::Heredoc
-                    && match peekable.peek() {
-                        Some(StringContentPart::TStringContent(TStringContent(_, s, _))) => {
-                            s.starts_with('\n')
-                        }
-                        _ => false,
-                    };
-                if on_line_skip {
-                    ps.render_heredocs(true)
-                }
             }
             StringContentPart::StringDVar(dv) => {
                 ps.emit_string_content("#{".to_string());

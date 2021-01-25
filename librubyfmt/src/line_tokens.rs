@@ -1,4 +1,4 @@
-use crate::render_targets::{AbstractTokenTarget, BreakableEntry, ConvertType};
+use crate::render_targets::{AbstractTokenTarget, BreakableEntry, ConvertType, HeredocString};
 
 // represents something that will actually end up as a ruby token, as opposed to
 // something that has to be transformd to become a ruby token
@@ -120,6 +120,13 @@ impl ConcreteLineToken {
     pub fn is_in_need_of_a_trailing_blankline(&self) -> bool {
         self.is_conditional_spaced_token() && !self.is_block_closing_token()
     }
+
+    pub fn contains_newline(&self) -> bool {
+        match self {
+            Self::LTStringContent { content } => content.contains('\n'),
+            _ => false,
+        }
+    }
 }
 
 impl From<ConcreteLineToken> for ConcreteLineTokenAndTargets {
@@ -137,6 +144,9 @@ impl Into<AbstractLineToken> for ConcreteLineTokenAndTargets {
             ConcreteLineTokenAndTargets::ConcreteLineToken(clt) => {
                 AbstractLineToken::ConcreteLineToken(clt)
             }
+            ConcreteLineTokenAndTargets::HeredocString(hs) => {
+                AbstractLineToken::HeredocString(hs)
+            }
         }
     }
 }
@@ -145,6 +155,7 @@ impl Into<AbstractLineToken> for ConcreteLineTokenAndTargets {
 pub enum ConcreteLineTokenAndTargets {
     ConcreteLineToken(ConcreteLineToken),
     BreakableEntry(BreakableEntry),
+    HeredocString(HeredocString)
 }
 
 impl ConcreteLineTokenAndTargets {
@@ -170,6 +181,7 @@ impl ConcreteLineTokenAndTargets {
                 .fold("".to_string(), |accum, tok| {
                     format!("{}{}", accum, tok.into_ruby())
                 }),
+            Self::HeredocString(_hs) => "".to_string(),
             Self::ConcreteLineToken(clt) => clt.into_ruby(),
         }
     }
@@ -183,6 +195,7 @@ pub enum AbstractLineToken {
     SoftNewline,
     SoftIndent { depth: u32 },
     BreakableEntry(BreakableEntry),
+    HeredocString(HeredocString),
 }
 
 impl AbstractLineToken {
@@ -203,6 +216,7 @@ impl AbstractLineToken {
             }
             Self::ConcreteLineToken(clt) => ConcreteLineTokenAndTargets::ConcreteLineToken(clt),
             Self::BreakableEntry(be) => ConcreteLineTokenAndTargets::BreakableEntry(be),
+            Self::HeredocString(hs) => ConcreteLineTokenAndTargets::HeredocString(hs),
         }
     }
 
@@ -219,6 +233,7 @@ impl AbstractLineToken {
             }
             Self::ConcreteLineToken(clt) => ConcreteLineTokenAndTargets::ConcreteLineToken(clt),
             Self::BreakableEntry(be) => ConcreteLineTokenAndTargets::BreakableEntry(be),
+            Self::HeredocString(hs) => ConcreteLineTokenAndTargets::HeredocString(hs),
         }
     }
 

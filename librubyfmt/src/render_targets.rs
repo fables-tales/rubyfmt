@@ -154,3 +154,22 @@ impl BreakableEntry {
         }
     }
 }
+
+#[derive(Debug, Clone)]
+pub struct HeredocString {
+    pub symbol: String,
+    pub squiggly: bool,
+    pub content: String,
+    pub indent: u32,
+}
+
+impl HeredocString {
+    pub fn new(symbol: String, squiggly: bool, content: String, indent: u32) -> Self {
+        HeredocString {
+            symbol,
+            squiggly,
+            content,
+            indent,
+        }
+    }
+}
