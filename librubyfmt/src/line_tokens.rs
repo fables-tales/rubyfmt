@@ -128,9 +128,9 @@ impl From<ConcreteLineToken> for ConcreteLineTokenAndTargets {
     }
 }
 
-impl Into<AbstractLineToken> for ConcreteLineTokenAndTargets {
-    fn into(self) -> AbstractLineToken {
-        match self {
+impl From<ConcreteLineTokenAndTargets> for AbstractLineToken {
+    fn from(cltat: ConcreteLineTokenAndTargets) -> AbstractLineToken {
+        match cltat {
             ConcreteLineTokenAndTargets::BreakableEntry(be) => {
                 AbstractLineToken::BreakableEntry(be)
             }
