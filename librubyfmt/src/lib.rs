@@ -1,4 +1,5 @@
 #![deny(warnings, missing_copy_implementations)]
+#![allow(clippy::upper_case_acronyms)]
 
 use serde::de::value;
 use std::io::{Cursor, Write};
