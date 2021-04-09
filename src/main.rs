@@ -12,7 +12,7 @@ use glob::glob;
 
 #[derive(Debug)]
 enum FileError {
-    IO(io::Error),
+    Io(io::Error),
     SyntaxError,
 }
 
@@ -23,7 +23,7 @@ enum ErrorExit {
 }
 
 fn rubyfmt_file(file_path: PathBuf) -> Result<(), FileError> {
-    let buffer = read_to_string(file_path.clone()).map_err(FileError::IO)?;
+    let buffer = read_to_string(file_path.clone()).map_err(FileError::Io)?;
     let res = rubyfmt::format_buffer(&buffer);
     match res {
         Ok(res) => {
@@ -32,7 +32,7 @@ fn rubyfmt_file(file_path: PathBuf) -> Result<(), FileError> {
                 .truncate(true)
                 .open(file_path)
                 .expect("file");
-            write!(file, "{}", res).map_err(FileError::IO)?;
+            write!(file, "{}", res).map_err(FileError::Io)?;
             Ok(())
         }
         Err(rubyfmt::RichFormatError::SyntaxError) => Err(FileError::SyntaxError),
