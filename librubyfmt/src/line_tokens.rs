@@ -1,7 +1,7 @@
 use crate::render_targets::{AbstractTokenTarget, BreakableEntry, ConvertType};
 
 // represents something that will actually end up as a ruby token, as opposed to
-// something that has to be transformd to become a ruby token
+// something that has to be transformed to become a ruby token
 #[derive(Debug, Clone)]
 pub enum ConcreteLineToken {
     HardNewLine,

@@ -709,7 +709,7 @@ pub fn format_list_like_thing_items(
     if skip_magic_comments {
         cls(ps)
     } else {
-        ps.magic_handle_comments_for_mulitiline_arrays(cls);
+        ps.magic_handle_comments_for_multiline_arrays(cls);
     }
     emitted_args
 }
@@ -1277,7 +1277,7 @@ pub fn format_heredoc_string_literal(
         ps.emit_indent();
     }
 
-    ps.with_surpress_comments(
+    ps.with_suppress_comments(
         true,
         Box::new(|ps| {
             let heredoc_type = (hd.1).0;
@@ -1919,7 +1919,7 @@ pub fn format_class(ps: &mut dyn ConcreteParserState, class: Class) {
         );
     }));
 
-    debug!("emptuy? {}", empty);
+    debug!("empty? {}", empty);
     if !empty {
         ps.wind_dumping_comments();
     } else {
@@ -2717,7 +2717,7 @@ pub fn format_stabby_lambda(ps: &mut dyn ConcreteParserState, sl: StabbyLambda) 
             };
 
             match body {
-                ExpressionListOrBodyStmt::ExpresionList(bud) => {
+                ExpressionListOrBodyStmt::ExpressionList(bud) => {
                     let mut b = bud;
                     //lambdas typically are a single statement, so line breaking them would
                     //be masochistic
