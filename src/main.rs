@@ -12,7 +12,7 @@ use glob::glob;
 
 #[derive(Debug)]
 enum FileError {
-    IO(io::Error),
+    Io(io::Error),
     SyntaxError,
 }
 
@@ -23,7 +23,7 @@ enum ErrorExit {
 }
 
 fn rubyfmt_file(file_path: PathBuf) -> Result<(), FileError> {
-    let buffer = read_to_string(file_path.clone()).map_err(FileError::IO)?;
+    let buffer = read_to_string(file_path.clone()).map_err(FileError::Io)?;
     let res = rubyfmt::format_buffer(&buffer);
     match res {
         Ok(res) => {
@@ -32,7 +32,7 @@ fn rubyfmt_file(file_path: PathBuf) -> Result<(), FileError> {
                 .truncate(true)
                 .open(file_path)
                 .expect("file");
-            write!(file, "{}", res).map_err(FileError::IO)?;
+            write!(file, "{}", res).map_err(FileError::Io)?;
             Ok(())
         }
         Err(rubyfmt::RichFormatError::SyntaxError) => Err(FileError::SyntaxError),
@@ -44,7 +44,7 @@ fn rubyfmt_file(file_path: PathBuf) -> Result<(), FileError> {
     }
 }
 
-fn rubyfmt_dir(path: &str) -> io::Result<()> {
+fn rubyfmt_dir(path: &str) {
     for entry in glob(&format!("{}/**/*.rb", path)).expect("it exists") {
         let p = entry.expect("should not be null");
         let res = rubyfmt_file(p.clone());
@@ -55,14 +55,13 @@ fn rubyfmt_dir(path: &str) -> io::Result<()> {
             );
         }
     }
-    Ok(())
 }
 
 fn format_parts(parts: &[String]) {
     for part in parts {
         if let Ok(md) = metadata(part) {
             if md.is_dir() {
-                rubyfmt_dir(part).expect("failed to format dir");
+                rubyfmt_dir(part);
             } else if md.is_file() {
                 rubyfmt_file(part.into()).expect("failed to format file");
             }
