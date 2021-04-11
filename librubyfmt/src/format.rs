@@ -1810,7 +1810,10 @@ pub fn format_undef(ps: &mut dyn ConcreteParserState, undef: Undef) {
     ps.emit_ident("undef ".to_string());
     let length = undef.1.len();
     for (idx, literal) in undef.1.into_iter().enumerate() {
-        ps.with_start_of_line(false, Box::new(|ps| format_symbol_literal(ps, literal)));
+        ps.with_start_of_line(
+            false,
+            Box::new(|ps| format_symbol_literal_or_dyna_symbol(ps, literal)),
+        );
         if idx != length - 1 {
             ps.emit_comma_space();
         }

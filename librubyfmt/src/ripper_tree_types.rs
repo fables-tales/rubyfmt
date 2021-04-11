@@ -256,7 +256,7 @@ pub struct Else(pub else_tag, pub Vec<Expression>);
 
 def_tag!(undef_tag, "undef");
 #[derive(Deserialize, Debug, Clone)]
-pub struct Undef(pub undef_tag, pub Vec<SymbolLiteral>);
+pub struct Undef(pub undef_tag, pub Vec<SymbolLiteralOrDynaSymbol>);
 
 def_tag!(string_concat_tag, "string_concat");
 #[derive(Deserialize, Debug, Clone)]
