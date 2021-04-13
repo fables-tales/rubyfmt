@@ -18,7 +18,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest]
+        os: [ubuntu-latest, macos-latest]
     steps:
     - uses: actions/checkout@v2
     - run: |
@@ -54,4 +54,12 @@ jobs:
         rustup component add clippy --toolchain stable-x86_64-apple-darwin
         rustup component add rustfmt --toolchain stable-x86_64-apple-darwin
         brew install shellcheck sccache
+
+        # Homebrew installs autoconf 2.71 which is incompatible with the
+        # version of ruby embedded in this project, so force the installation
+        # of the last known good version, 2.69.
+        brew unlink autoconf
+        brew tap-new $USER/local-autoconf
+        brew extract --version=2.69 autoconf $USER/local-autoconf
+        brew install autoconf@2.69
     - run: ./script/ci
