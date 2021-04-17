@@ -141,6 +141,7 @@ pub enum Expression {
     UnlessMod(UnlessMod),
     Case(Case),
     Retry(Retry),
+    Redo(Redo),
     SClass(SClass),
     Break(Break),
     StabbyLambda(StabbyLambda),
@@ -1757,6 +1758,10 @@ pub struct CaseElse(case_else_tag, pub Vec<Expression>);
 def_tag!(retry_tag, "retry");
 #[derive(Deserialize, Debug, Clone)]
 pub struct Retry(retry_tag);
+
+def_tag!(redo_tag, "redo");
+#[derive(Deserialize, Debug, Clone)]
+pub struct Redo(redo_tag);
 
 def_tag!(sclass_tag, "sclass");
 #[derive(Deserialize, Debug, Clone)]
