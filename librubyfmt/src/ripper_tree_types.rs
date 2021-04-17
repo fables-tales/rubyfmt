@@ -1559,6 +1559,7 @@ pub enum IdentOrKw {
 pub enum Singleton {
     VarRef(VarRef),
     Paren(ParenExpr),
+    VCall(VCall),
 }
 
 // can only occur in defs, Op is always `::`

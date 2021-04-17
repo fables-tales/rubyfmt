@@ -1847,6 +1847,9 @@ pub fn format_defs(ps: &mut dyn ConcreteParserState, defs: Defs) {
                 Singleton::Paren(pe) => {
                     format_paren(ps, pe);
                 }
+                Singleton::VCall(vc) => {
+                    format_method_call(ps, vc.to_method_call());
+                }
             }
 
             ps.emit_dot();
