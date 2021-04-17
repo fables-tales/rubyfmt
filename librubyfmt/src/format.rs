@@ -2667,6 +2667,18 @@ pub fn format_retry(ps: &mut dyn ConcreteParserState, _r: Retry) {
     }
 }
 
+pub fn format_redo(ps: &mut dyn ConcreteParserState, _r: Redo) {
+    if ps.at_start_of_line() {
+        ps.emit_indent();
+    }
+
+    ps.emit_keyword("redo".to_string());
+
+    if ps.at_start_of_line() {
+        ps.emit_newline();
+    }
+}
+
 pub fn format_sclass(ps: &mut dyn ConcreteParserState, sc: SClass) {
     if ps.at_start_of_line() {
         ps.emit_indent();
@@ -3081,6 +3093,7 @@ pub fn format_expression(ps: &mut dyn ConcreteParserState, expression: Expressio
         Expression::UnlessMod(um) => format_mod_statement(ps, um.1, um.2, "unless".to_string()),
         Expression::Case(c) => format_case(ps, c),
         Expression::Retry(r) => format_retry(ps, r),
+        Expression::Redo(r) => format_redo(ps, r),
         Expression::SClass(sc) => format_sclass(ps, sc),
         Expression::StabbyLambda(sl) => format_stabby_lambda(ps, sl),
         Expression::Rational(rational) => format_rational(ps, rational),
