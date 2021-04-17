@@ -54,7 +54,7 @@ macro_rules! def_tag {
                         } else {
                             #[cfg(debug_assertions)]
                             {
-                                debug!("rejectd at {:?} {:?}", s, $tag);
+                                debug!("rejected at {:?} {:?}", s, $tag);
                             }
                             Err(E::custom("mismatched tag"))
                         }
