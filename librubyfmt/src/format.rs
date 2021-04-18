@@ -672,11 +672,6 @@ pub fn format_list_like_thing_items(
     let args_count = args.len();
     let cls: Box<dyn FnOnce(&mut dyn ConcreteParserState)> = Box::new(|ps| {
         for (idx, expr) in args.into_iter().enumerate() {
-            // this raise was present in the ruby source code of rubyfmt
-            // but I'm pretty sure it's categorically impossible now. Thanks
-            // type system
-            //raise "this is bad" if expr[0] == :tstring_content
-
             if single_line {
                 match expr {
                     Expression::BareAssocHash(bah) => {
