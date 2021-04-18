@@ -2,6 +2,7 @@ use crate::comment_block::{CommentBlock, Merge};
 use crate::delimiters::BreakableDelims;
 use crate::file_comments::FileComments;
 use crate::format::{format_inner_string, StringType};
+use crate::heredoc_string::HeredocString;
 use crate::line_tokens::*;
 use crate::render_queue_writer::RenderQueueWriter;
 use crate::render_targets::{AbstractTokenTarget, BaseQueue, BreakableEntry};
@@ -41,27 +42,11 @@ impl IndentDepth {
         self.depth -= 1;
     }
 
-    fn get(self) -> ColNumber {
+    fn get(self) -> u32 {
         self.depth
     }
 }
 
-#[derive(Debug)]
-pub struct HeredocString {
-    symbol: String,
-    squiggly: bool,
-    buf: Vec<u8>,
-}
-
-impl HeredocString {
-    pub fn new(symbol: String, squiggly: bool, buf: Vec<u8>) -> Self {
-        HeredocString {
-            symbol,
-            squiggly,
-            buf,
-        }
-    }
-}
 pub trait ConcreteParserState {
     // token emitters
     fn emit_conditional_keyword(&mut self, contents: String);
@@ -100,6 +85,7 @@ pub trait ConcreteParserState {
     fn emit_op(&mut self, op: String);
     fn emit_def(&mut self, def_name: String);
     fn emit_indent(&mut self);
+    fn emit_heredoc_start(&mut self, hd_type: String, symbol: String);
 
     // other state changers
     fn insert_comment_collection(&mut self, comments: CommentBlock);
@@ -199,8 +185,17 @@ impl ConcreteParserState for BaseParserState {
         }
 
         let data = next_ps.render_to_buffer();
-        self.heredoc_strings
-            .push(HeredocString::new(symbol, is_squiggly, data));
+        self.heredoc_strings.push(HeredocString::new(
+            symbol,
+            is_squiggly,
+            data,
+            self.current_spaces(),
+        ));
+    }
+
+    fn emit_heredoc_start(&mut self, hd_type: String, symbol: String) {
+        self.push_concrete_token(ConcreteLineToken::DirectPart { part: hd_type });
+        self.push_concrete_token(ConcreteLineToken::DirectPart { part: symbol });
     }
 
     fn magic_handle_comments_for_multiline_arrays<'a>(
@@ -443,7 +438,8 @@ impl ConcreteParserState for BaseParserState {
         self.new_block(Box::new(|ps| {
             ps.shift_comments();
         }));
-        self.push_abstract_token(AbstractLineToken::SoftNewline);
+        let hd = self.gather_heredocs();
+        self.push_abstract_token(AbstractLineToken::SoftNewline(hd));
         self.spaces_after_last_newline = self.current_spaces();
     }
 
@@ -455,7 +451,8 @@ impl ConcreteParserState for BaseParserState {
 
     fn emit_collapsing_newline(&mut self) {
         if !self.last_token_is_a_newline() {
-            self.push_abstract_token(AbstractLineToken::CollapsingNewLine);
+            let hd = self.gather_heredocs();
+            self.push_abstract_token(AbstractLineToken::CollapsingNewLine(hd));
         }
         self.spaces_after_last_newline = self.current_spaces();
     }
@@ -607,7 +604,7 @@ impl ConcreteParserState for BaseParserState {
             } else {
                 self.push_concrete_token(ConcreteLineToken::Indent { depth: 0 });
             }
-            self.emit_ident(next_heredoc.symbol.replace("'", ""));
+            self.emit_heredoc_close(next_heredoc.symbol.replace("'", ""));
             if !skip {
                 self.emit_newline();
             }
@@ -656,6 +653,22 @@ impl BaseParserState {
 
     fn consume_to_render_queue(self) -> Vec<ConcreteLineTokenAndTargets> {
         self.render_queue.into_tokens()
+    }
+
+    fn gather_heredocs(&mut self) -> Option<Vec<HeredocString>> {
+        if self.heredoc_strings.is_empty() {
+            None
+        } else {
+            let mut hds = vec![];
+            while !self.heredoc_strings.is_empty() {
+                hds.push(
+                    self.heredoc_strings
+                        .pop()
+                        .expect("we checked it's not empty"),
+                );
+            }
+            Some(hds)
+        }
     }
 
     fn last_breakable_is_multiline(&self) -> bool {
@@ -806,6 +819,10 @@ impl BaseParserState {
             Some(be) => be.push(t),
             None => self.render_queue.push(Self::dangerously_convert(t)),
         }
+    }
+
+    fn emit_heredoc_close(&mut self, symbol: String) {
+        self.push_concrete_token(ConcreteLineToken::HeredocClose { symbol });
     }
 
     fn render_with_blank_state<F>(ps: &mut BaseParserState, f: F) -> BaseParserState

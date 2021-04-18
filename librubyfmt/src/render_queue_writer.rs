@@ -37,6 +37,16 @@ impl RenderQueueWriter {
 
             if accum.len() >= 4 {
                 if let (
+                    &ConcreteLineToken::HeredocClose { .. },
+                    &ConcreteLineToken::HardNewLine,
+                    &ConcreteLineToken::Indent { .. },
+                    &ConcreteLineToken::HardNewLine,
+                ) = accum.last_4().expect("we checked length")
+                {
+                    accum.pop_heredoc_mistake();
+                }
+
+                if let (
                     &ConcreteLineToken::End,
                     &ConcreteLineToken::HardNewLine,
                     &ConcreteLineToken::Indent { .. },

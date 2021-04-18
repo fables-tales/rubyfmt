@@ -1,4 +1,5 @@
-raise <<-EOM.gsub(/^\s+\|/, "")
+raise(
+  <<-EOM.gsub(
               |#{"*" * 50}
               |:#{key} is not allowed
               |
@@ -12,3 +13,7 @@ raise <<-EOM.gsub(/^\s+\|/, "")
               |  #{RESERVED_KEYS.join("\n  ")}
               |#{"*" * 50}
 EOM
+    /^\s+\|/,
+    ""
+  )
+)

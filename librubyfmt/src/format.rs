@@ -1294,8 +1294,7 @@ pub fn format_heredoc_string_literal(
         Box::new(|ps| {
             let heredoc_type = (hd.1).0;
             let heredoc_symbol = (hd.1).1;
-            ps.emit_ident(heredoc_type.clone());
-            ps.emit_ident(heredoc_symbol.clone());
+            ps.emit_heredoc_start(heredoc_type.clone(), heredoc_symbol.clone());
 
             ps.push_heredoc_content(heredoc_symbol, heredoc_type.contains('~'), parts);
         }),

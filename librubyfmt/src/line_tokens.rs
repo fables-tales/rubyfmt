@@ -1,4 +1,22 @@
+use crate::heredoc_string::HeredocString;
 use crate::render_targets::{AbstractTokenTarget, BreakableEntry, ConvertType};
+use crate::types::ColNumber;
+
+pub fn cltats_hard_newline() -> ConcreteLineTokenAndTargets {
+    ConcreteLineTokenAndTargets::ConcreteLineToken(ConcreteLineToken::HardNewLine)
+}
+
+pub fn clats_direct_part(part: String) -> ConcreteLineTokenAndTargets {
+    ConcreteLineTokenAndTargets::ConcreteLineToken(ConcreteLineToken::DirectPart { part })
+}
+
+pub fn clats_heredoc_close(symbol: String) -> ConcreteLineTokenAndTargets {
+    ConcreteLineTokenAndTargets::ConcreteLineToken(ConcreteLineToken::HeredocClose { symbol })
+}
+
+pub fn clats_indent(depth: ColNumber) -> ConcreteLineTokenAndTargets {
+    ConcreteLineTokenAndTargets::ConcreteLineToken(ConcreteLineToken::Indent { depth })
+}
 
 // represents something that will actually end up as a ruby token, as opposed to
 // something that has to be transformed to become a ruby token
@@ -33,6 +51,7 @@ pub enum ConcreteLineToken {
     Comment { contents: String },
     Delim { contents: String },
     End,
+    HeredocClose { symbol: String },
 }
 
 impl ConcreteLineToken {
@@ -67,6 +86,7 @@ impl ConcreteLineToken {
             Self::Comment { contents } => contents,
             Self::Delim { contents } => contents,
             Self::End => "end".to_string(),
+            Self::HeredocClose { symbol } => symbol,
         }
     }
 
@@ -179,8 +199,8 @@ impl ConcreteLineTokenAndTargets {
 pub enum AbstractLineToken {
     // this is all bodil's fault
     ConcreteLineToken(ConcreteLineToken),
-    CollapsingNewLine,
-    SoftNewline,
+    CollapsingNewLine(Option<Vec<HeredocString>>),
+    SoftNewline(Option<Vec<HeredocString>>),
     SoftIndent { depth: u32 },
     BreakableEntry(BreakableEntry),
 }
@@ -188,12 +208,17 @@ pub enum AbstractLineToken {
 impl AbstractLineToken {
     pub fn into_single_line(self) -> ConcreteLineTokenAndTargets {
         match self {
-            Self::CollapsingNewLine => {
+            Self::CollapsingNewLine(_) => {
+                // we ignore the heredoc part of the collapsing newline here because the
+                // line length check is only used to calculate if we're going to render
+                // the breakable as multiline, and we always render heredoc strings as
+                // multiline
                 ConcreteLineTokenAndTargets::ConcreteLineToken(ConcreteLineToken::DirectPart {
                     part: "".to_string(),
                 })
             }
-            Self::SoftNewline => {
+            Self::SoftNewline(_) => {
+                // see comment above
                 ConcreteLineTokenAndTargets::ConcreteLineToken(ConcreteLineToken::Space)
             }
             Self::SoftIndent { .. } => {
@@ -206,20 +231,66 @@ impl AbstractLineToken {
         }
     }
 
-    pub fn into_multi_line(self) -> ConcreteLineTokenAndTargets {
+    pub fn into_multi_line(self) -> Vec<ConcreteLineTokenAndTargets> {
         match self {
-            Self::CollapsingNewLine => {
-                ConcreteLineTokenAndTargets::ConcreteLineToken(ConcreteLineToken::HardNewLine)
+            Self::CollapsingNewLine(heredoc_strings) => {
+                let mut res = vec![cltats_hard_newline()];
+                res.extend(Self::shimmy_and_shake_heredocs(heredoc_strings));
+                res
             }
-            Self::SoftNewline => {
-                ConcreteLineTokenAndTargets::ConcreteLineToken(ConcreteLineToken::HardNewLine)
+            Self::SoftNewline(heredoc_strings) => {
+                let mut res = vec![cltats_hard_newline()];
+                res.extend(Self::shimmy_and_shake_heredocs(heredoc_strings));
+                res
             }
             Self::SoftIndent { depth } => {
-                ConcreteLineTokenAndTargets::ConcreteLineToken(ConcreteLineToken::Indent { depth })
+                vec![ConcreteLineTokenAndTargets::ConcreteLineToken(
+                    ConcreteLineToken::Indent { depth },
+                )]
             }
-            Self::ConcreteLineToken(clt) => ConcreteLineTokenAndTargets::ConcreteLineToken(clt),
-            Self::BreakableEntry(be) => ConcreteLineTokenAndTargets::BreakableEntry(be),
+            Self::ConcreteLineToken(clt) => {
+                vec![ConcreteLineTokenAndTargets::ConcreteLineToken(clt)]
+            }
+            Self::BreakableEntry(be) => vec![ConcreteLineTokenAndTargets::BreakableEntry(be)],
         }
+    }
+
+    fn shimmy_and_shake_heredocs(
+        heredoc_strings: Option<Vec<HeredocString>>,
+    ) -> Vec<ConcreteLineTokenAndTargets> {
+        let mut res = vec![];
+        if let Some(values) = heredoc_strings {
+            for hds in values {
+                let mut s = std::str::from_utf8(&hds.buf)
+                    .expect("it's utf8")
+                    .to_string();
+                while s.ends_with('\n') {
+                    s.pop();
+                }
+
+                if hds.squiggly {
+                    s = s
+                        .split('\n')
+                        .map(|l| format!("{}{}", " ".repeat(hds.indent as usize), l))
+                        .collect::<Vec<String>>()
+                        .join("\n")
+                }
+                res.push(clats_direct_part(s));
+                res.push(cltats_hard_newline());
+                if hds.squiggly {
+                    res.push(clats_indent(hds.indent));
+                }
+                res.push(clats_heredoc_close(hds.symbol));
+                res.push(cltats_hard_newline());
+                let indent = if hds.indent != 0 {
+                    hds.indent - 2
+                } else {
+                    hds.indent
+                };
+                res.push(clats_indent(indent));
+            }
+        }
+        res
     }
 
     pub fn is_comment(&self) -> bool {
@@ -232,8 +303,8 @@ impl AbstractLineToken {
     pub fn is_newline(&self) -> bool {
         match self {
             Self::ConcreteLineToken(clt) => clt.is_newline(),
-            Self::SoftNewline => true,
-            Self::CollapsingNewLine => true,
+            Self::SoftNewline(_) => true,
+            Self::CollapsingNewLine(_) => true,
             _ => false,
         }
     }
