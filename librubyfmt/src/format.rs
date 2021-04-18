@@ -678,7 +678,12 @@ pub fn format_list_like_thing_items(
             //raise "this is bad" if expr[0] == :tstring_content
 
             if single_line {
-                format_expression(ps, expr);
+                match expr {
+                    Expression::BareAssocHash(bah) => {
+                        format_assocs(ps, bah.1, SpecialCase::NoLeadingTrailingCollectionMarkers)
+                    }
+                    expr => format_expression(ps, expr),
+                }
                 if idx != args_count - 1 {
                     ps.emit_comma_space();
                 }
