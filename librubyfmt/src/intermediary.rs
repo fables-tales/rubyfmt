@@ -35,6 +35,12 @@ impl Intermediary {
         self.tokens.len()
     }
 
+    pub fn pop_heredoc_mistake(&mut self) {
+        self.tokens.remove(self.tokens.len() - 1);
+        self.tokens.remove(self.tokens.len() - 1);
+        self.index_of_last_hard_newline = self.tokens.len() - 1;
+    }
+
     pub fn last_4(
         &self,
     ) -> Option<(

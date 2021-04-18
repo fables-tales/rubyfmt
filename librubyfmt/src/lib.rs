@@ -19,6 +19,7 @@ mod de;
 mod delimiters;
 mod file_comments;
 mod format;
+mod heredoc_string;
 mod intermediary;
 mod line_metadata;
 mod line_tokens;

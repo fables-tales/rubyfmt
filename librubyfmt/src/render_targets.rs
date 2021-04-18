@@ -82,7 +82,7 @@ impl AbstractTokenTarget for BreakableEntry {
                 let mut new_tokens: Vec<_> = self
                     .tokens
                     .into_iter()
-                    .map(|t| t.into_multi_line())
+                    .flat_map(|t| t.into_multi_line())
                     .collect();
                 new_tokens.insert(0, self.delims.multi_line_open().into());
                 new_tokens.push(self.delims.multi_line_close().into());
@@ -115,8 +115,8 @@ impl AbstractTokenTarget for BreakableEntry {
             .rposition(|v| v.is_newline() || v.is_comment());
         match first_idx {
             Some(x) => {
-                if matches!(self.tokens[x], AbstractLineToken::CollapsingNewLine)
-                    || matches!(self.tokens[x], AbstractLineToken::SoftNewline)
+                if matches!(self.tokens[x], AbstractLineToken::CollapsingNewLine(_))
+                    || matches!(self.tokens[x], AbstractLineToken::SoftNewline(_))
                 {
                     Some(x + 1)
                 } else {
@@ -140,7 +140,7 @@ impl AbstractTokenTarget for BreakableEntry {
     }
 
     fn is_multiline(&self) -> bool {
-        self.line_numbers.len() > 1
+        self.line_numbers.len() > 1 || self.any_collapsing_newline_has_heredoc_content()
     }
 }
 
@@ -152,5 +152,16 @@ impl BreakableEntry {
             line_numbers: HashSet::new(),
             delims,
         }
+    }
+
+    fn any_collapsing_newline_has_heredoc_content(&self) -> bool {
+        self.tokens.iter().any(|t| match t {
+            AbstractLineToken::CollapsingNewLine(Some(..)) => true,
+            AbstractLineToken::SoftNewline(Some(..)) => true,
+            AbstractLineToken::BreakableEntry(be) => {
+                be.any_collapsing_newline_has_heredoc_content()
+            }
+            _ => false,
+        })
     }
 }
