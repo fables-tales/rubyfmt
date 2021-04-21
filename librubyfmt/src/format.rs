@@ -658,6 +658,7 @@ pub fn format_method_call(ps: &mut dyn ConcreteParserState, method_call: MethodC
 pub enum SpecialCase {
     NoSpecialCase,
     NoLeadingTrailingCollectionMarkers,
+    SingleLine,
 }
 
 pub fn format_list_like_thing_items(
@@ -675,7 +676,7 @@ pub fn format_list_like_thing_items(
             if single_line {
                 match expr {
                     Expression::BareAssocHash(bah) => {
-                        format_assocs(ps, bah.1, SpecialCase::NoLeadingTrailingCollectionMarkers)
+                        format_assocs(ps, bah.1, SpecialCase::SingleLine)
                     }
                     expr => format_expression(ps, expr),
                 }
@@ -683,7 +684,6 @@ pub fn format_list_like_thing_items(
                     ps.emit_comma_space();
                 }
             } else {
-                ps.emit_soft_indent();
                 ps.with_start_of_line(
                     false,
                     Box::new(|ps| {
@@ -693,7 +693,10 @@ pub fn format_list_like_thing_items(
                                 bah.1,
                                 SpecialCase::NoLeadingTrailingCollectionMarkers,
                             ),
-                            expr => format_expression(ps, expr),
+                            expr => {
+                                ps.emit_soft_indent();
+                                format_expression(ps, expr);
+                            }
                         }
                         if idx != args_count - 1 {
                             ps.emit_comma();
@@ -852,7 +855,7 @@ pub fn format_assocs(
 ) {
     let len = assocs.len();
     for (idx, assoc) in assocs.into_iter().enumerate() {
-        if sc != SpecialCase::NoLeadingTrailingCollectionMarkers || idx != 0 {
+        if sc != SpecialCase::SingleLine {
             ps.emit_soft_indent();
         }
         ps.with_start_of_line(
@@ -879,11 +882,16 @@ pub fn format_assocs(
                 }
             }),
         );
+        if idx == len - 1 && sc == SpecialCase::NoSpecialCase {
+            ps.emit_soft_newline();
+        }
         if idx != len - 1 {
             ps.emit_comma();
-        }
-        if idx != len - 1 || sc != SpecialCase::NoLeadingTrailingCollectionMarkers {
-            ps.emit_soft_newline();
+
+            match sc {
+                SpecialCase::SingleLine => ps.emit_space(),
+                _ => ps.emit_soft_newline(),
+            }
         }
     }
 }
