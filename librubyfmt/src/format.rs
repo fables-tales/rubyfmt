@@ -658,7 +658,6 @@ pub fn format_method_call(ps: &mut dyn ConcreteParserState, method_call: MethodC
 pub enum SpecialCase {
     NoSpecialCase,
     NoLeadingTrailingCollectionMarkers,
-    SingleLine,
 }
 
 pub fn format_list_like_thing_items(
@@ -675,9 +674,7 @@ pub fn format_list_like_thing_items(
         for (idx, expr) in args.into_iter().enumerate() {
             if single_line {
                 match expr {
-                    Expression::BareAssocHash(bah) => {
-                        format_assocs(ps, bah.1, SpecialCase::SingleLine)
-                    }
+                    Expression::BareAssocHash(bah) => format_assocs_single_line(ps, bah.1),
                     expr => format_expression(ps, expr),
                 }
                 if idx != args_count - 1 {
@@ -855,45 +852,55 @@ pub fn format_assocs(
 ) {
     let len = assocs.len();
     for (idx, assoc) in assocs.into_iter().enumerate() {
-        if sc != SpecialCase::SingleLine {
-            ps.emit_soft_indent();
-        }
-        ps.with_start_of_line(
-            false,
-            Box::new(|ps| match assoc {
-                AssocNewOrAssocSplat::AssocNew(new) => {
-                    match new.1 {
-                        AssocKey::Label(label) => {
-                            handle_string_and_linecol(ps, label.1, label.2);
-                            ps.emit_space();
-                        }
-                        AssocKey::Expression(expression) => {
-                            format_expression(ps, expression);
-                            ps.emit_space();
-                            ps.emit_ident("=>".to_string());
-                            ps.emit_space();
-                        }
-                    }
-                    format_expression(ps, new.2);
-                }
-                AssocNewOrAssocSplat::AssocSplat(splat) => {
-                    ps.emit_ident("**".to_string());
-                    format_expression(ps, splat.1);
-                }
-            }),
-        );
-        if idx == len - 1 && sc == SpecialCase::NoSpecialCase {
-            ps.emit_soft_newline();
-        }
+        ps.emit_soft_indent();
+        format_assoc(ps, assoc);
         if idx != len - 1 {
             ps.emit_comma();
-
-            match sc {
-                SpecialCase::SingleLine => ps.emit_space(),
-                _ => ps.emit_soft_newline(),
-            }
+        }
+        if !(idx == len - 1 && sc == SpecialCase::NoLeadingTrailingCollectionMarkers) {
+            ps.emit_soft_newline();
         }
     }
+}
+
+pub fn format_assocs_single_line(
+    ps: &mut dyn ConcreteParserState,
+    assocs: Vec<AssocNewOrAssocSplat>,
+) {
+    let len = assocs.len();
+    for (idx, assoc) in assocs.into_iter().enumerate() {
+        format_assoc(ps, assoc);
+        if idx != len - 1 {
+            ps.emit_comma_space();
+        }
+    }
+}
+
+pub fn format_assoc(ps: &mut dyn ConcreteParserState, assoc: AssocNewOrAssocSplat) {
+    ps.with_start_of_line(
+        false,
+        Box::new(|ps| match assoc {
+            AssocNewOrAssocSplat::AssocNew(new) => {
+                match new.1 {
+                    AssocKey::Label(label) => {
+                        handle_string_and_linecol(ps, label.1, label.2);
+                        ps.emit_space();
+                    }
+                    AssocKey::Expression(expression) => {
+                        format_expression(ps, expression);
+                        ps.emit_space();
+                        ps.emit_ident("=>".to_string());
+                        ps.emit_space();
+                    }
+                }
+                format_expression(ps, new.2);
+            }
+            AssocNewOrAssocSplat::AssocSplat(splat) => {
+                ps.emit_ident("**".to_string());
+                format_expression(ps, splat.1);
+            }
+        }),
+    );
 }
 
 pub fn format_begin(ps: &mut dyn ConcreteParserState, begin: Begin) {
