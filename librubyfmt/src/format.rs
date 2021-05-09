@@ -1502,6 +1502,7 @@ pub fn format_field(ps: &mut dyn ConcreteParserState, f: Field) {
 pub fn format_assignable(ps: &mut dyn ConcreteParserState, v: Assignable) {
     match v {
         Assignable::VarField(vf) => {
+            bind_var_field(ps, &vf);
             format_var_field(ps, vf);
         }
         Assignable::ConstPathField(cf) => {
@@ -1520,6 +1521,7 @@ pub fn format_assignable(ps: &mut dyn ConcreteParserState, v: Assignable) {
             format_field(ps, field);
         }
         Assignable::Ident(ident) => {
+            bind_ident(ps, &ident);
             format_ident(ps, ident);
         }
     }
