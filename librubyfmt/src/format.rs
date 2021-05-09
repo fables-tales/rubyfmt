@@ -566,6 +566,7 @@ pub fn format_ensure(ps: &mut dyn ConcreteParserState, ensure_part: Option<Ensur
 
 pub fn use_parens_for_method_call(
     ps: &dyn ConcreteParserState,
+    chain: &[CallChainElement],
     method: &IdentOrOpOrKeywordOrConst,
     args: &ArgsAddStarOrExpressionList,
     original_used_parens: bool,
@@ -578,7 +579,15 @@ pub fn use_parens_for_method_call(
     }
 
     if ps.scope_has_variable(&name) {
-        return true;
+        match chain.first() {
+            None => return true,
+            Some(CallChainElement::VarRef(VarRef(_, VarRefType::Kw(Kw(_, x, _))))) => {
+                if x == "self" {
+                    return true;
+                }
+            }
+            _ => {}
+        }
     }
 
     if name == "yield" {
@@ -657,6 +666,7 @@ pub fn format_method_call(ps: &mut dyn ConcreteParserState, method_call: MethodC
     debug!("method call!!");
     let use_parens = use_parens_for_method_call(
         ps,
+        &chain,
         &method,
         &args,
         original_used_parens,

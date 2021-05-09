@@ -14,4 +14,9 @@ def bees
   p head
 end
 
+def cheese
+  head = 1
+  self.head
+end
+
 bees
