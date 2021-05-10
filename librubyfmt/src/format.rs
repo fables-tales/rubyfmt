@@ -1285,8 +1285,17 @@ pub fn format_list_like_thing(
                     format_expression(ps, *star);
 
                     for expr in right {
-                        emit_intermediate_array_separator(ps, single_line);
-                        format_expression(ps, expr);
+                        match expr {
+                            Expression::BareAssocHash(bah) => {
+                                ps.emit_comma();
+                                ps.emit_soft_newline();
+                                format_assocs(ps, bah.1, SpecialCase::NoLeadingTrailingCollectionMarkers);
+                            },
+                            e => {
+                                emit_intermediate_array_separator(ps, single_line);
+                                format_expression(ps, e);
+                            }
+                        }
                     }
                 }),
             );

@@ -47,7 +47,7 @@ impl IndentDepth {
     }
 }
 
-pub trait ConcreteParserState {
+pub trait ConcreteParserState where Self: std::fmt::Debug {
     // token emitters
     fn emit_conditional_keyword(&mut self, contents: String);
     fn emit_mod_keyword(&mut self, contents: String);
