@@ -1289,8 +1289,12 @@ pub fn format_list_like_thing(
                             Expression::BareAssocHash(bah) => {
                                 ps.emit_comma();
                                 ps.emit_soft_newline();
-                                format_assocs(ps, bah.1, SpecialCase::NoLeadingTrailingCollectionMarkers);
-                            },
+                                format_assocs(
+                                    ps,
+                                    bah.1,
+                                    SpecialCase::NoLeadingTrailingCollectionMarkers,
+                                );
+                            }
                             e => {
                                 emit_intermediate_array_separator(ps, single_line);
                                 format_expression(ps, e);
