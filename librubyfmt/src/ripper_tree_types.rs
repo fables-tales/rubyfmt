@@ -451,6 +451,19 @@ pub enum VarRefType {
     Kw(Kw),
 }
 
+impl VarRefType {
+    pub fn to_local_string(self) -> String {
+        match self {
+            VarRefType::GVar(v) => v.1,
+            VarRefType::IVar(v) => v.1,
+            VarRefType::CVar(v) => v.1,
+            VarRefType::Ident(v) => v.1,
+            VarRefType::Const(v) => v.1,
+            VarRefType::Kw(v) => v.1,
+        }
+    }
+}
+
 def_tag!(gvar_tag, "@gvar");
 #[derive(Deserialize, Debug, Clone)]
 pub struct GVar(pub gvar_tag, pub String, pub LineCol);

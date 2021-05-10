@@ -7,27 +7,30 @@ pub fn format_def(ps: &mut dyn ConcreteParserState, def: Def) {
     let def_expression = (def.1).to_def_parts();
 
     let body = def.3;
+    let pp = def.2;
     ps.on_line((def_expression.1).0);
     if ps.at_start_of_line() {
         ps.emit_indent();
     }
     ps.emit_def(def_expression.0);
-    format_paren_or_params(ps, def.2);
+    ps.new_scope(Box::new(|ps| {
+        format_paren_or_params(ps, pp);
 
-    ps.with_formatting_context(
-        FormattingContext::Def,
-        Box::new(|ps| {
-            ps.new_block(Box::new(|ps| {
-                ps.emit_newline();
-                ps.with_start_of_line(
-                    true,
-                    Box::new(|ps| {
-                        format_bodystmt(ps, body);
-                    }),
-                );
-            }));
-        }),
-    );
+        ps.with_formatting_context(
+            FormattingContext::Def,
+            Box::new(|ps| {
+                ps.new_block(Box::new(|ps| {
+                    ps.emit_newline();
+                    ps.with_start_of_line(
+                        true,
+                        Box::new(|ps| {
+                            format_bodystmt(ps, body);
+                        }),
+                    );
+                }));
+            }),
+        );
+    }));
 
     ps.with_start_of_line(
         true,
@@ -174,6 +177,7 @@ pub fn format_kwrest_params(
             ps.emit_ident("**".to_string());
             let ident = (kwrest_params.unwrap()).1;
             if let Some(ident) = ident {
+                bind_ident(ps, &ident);
                 format_ident(ps, ident);
             }
         }),
@@ -182,20 +186,22 @@ pub fn format_kwrest_params(
 }
 
 pub fn format_block_arg(ps: &mut dyn ConcreteParserState, block_arg: Option<BlockArg>) -> bool {
-    if block_arg.is_none() {
-        return false;
+    match block_arg {
+        None => false,
+        Some(ba) => {
+            ps.with_start_of_line(
+                false,
+                Box::new(|ps| {
+                    ps.emit_soft_indent();
+                    ps.emit_ident("&".to_string());
+                    bind_ident(ps, &ba.1);
+                    format_ident(ps, ba.1);
+                }),
+            );
+
+            true
+        }
     }
-
-    ps.with_start_of_line(
-        false,
-        Box::new(|ps| {
-            ps.emit_soft_indent();
-            ps.emit_ident("&".to_string());
-            format_ident(ps, block_arg.unwrap().1);
-        }),
-    );
-
-    true
 }
 
 pub fn format_kwargs(
@@ -212,6 +218,7 @@ pub fn format_kwargs(
             let len = kwargs.len();
             for (idx, (label, expr_or_false)) in kwargs.into_iter().enumerate() {
                 ps.emit_soft_indent();
+                ps.bind_variable((label.1).clone());
                 handle_string_and_linecol(ps, label.1, label.2);
 
                 match expr_or_false {
@@ -244,9 +251,11 @@ pub fn format_rest_param(
                 Box::new(|ps| {
                     match rp.1 {
                         Some(IdentOrVarField::Ident(i)) => {
+                            bind_ident(ps, &i);
                             format_ident(ps, i);
                         }
                         Some(IdentOrVarField::VarField(vf)) => {
+                            bind_var_field(ps, &vf);
                             format_var_field(ps, vf);
                         }
                         None => {
@@ -275,6 +284,7 @@ pub fn format_optional_params(
             let len = optional_params.len();
             for (idx, (left, right)) in optional_params.into_iter().enumerate() {
                 ps.emit_soft_indent();
+                bind_ident(ps, &left);
                 format_ident(ps, left);
                 ps.emit_ident(" = ".to_string());
                 format_expression(ps, right);
@@ -315,6 +325,32 @@ pub fn format_mlhs(ps: &mut dyn ConcreteParserState, mlhs: MLhs) {
     ps.emit_close_paren();
 }
 
+fn bind_var_field(ps: &mut dyn ConcreteParserState, vf: &VarField) {
+    ps.bind_variable((vf.1).clone().to_local_string())
+}
+
+fn bind_ident(ps: &mut dyn ConcreteParserState, id: &Ident) {
+    ps.bind_variable((id.1).clone())
+}
+
+fn bind_mlhs(ps: &mut dyn ConcreteParserState, mlhs: &MLhs) {
+    for value in (mlhs.0).iter() {
+        match value {
+            MLhsInner::VarField(v) => bind_var_field(ps, v),
+            MLhsInner::Field(_) => {
+                // TODO(penelopezone) is something missing here?
+            }
+            MLhsInner::RestParam(v) => match v.1 {
+                Some(IdentOrVarField::Ident(ref i)) => bind_ident(ps, &i),
+                Some(IdentOrVarField::VarField(ref v)) => bind_var_field(ps, &v),
+                _ => {}
+            },
+            MLhsInner::Ident(i) => bind_ident(ps, i),
+            MLhsInner::MLhs(m) => bind_mlhs(ps, m),
+        }
+    }
+}
+
 pub fn format_required_params(
     ps: &mut dyn ConcreteParserState,
     required_params: Vec<IdentOrMLhs>,
@@ -330,8 +366,14 @@ pub fn format_required_params(
             for (idx, ident) in required_params.into_iter().enumerate() {
                 ps.emit_soft_indent();
                 match ident {
-                    IdentOrMLhs::Ident(ident) => format_ident(ps, ident),
-                    IdentOrMLhs::MLhs(mlhs) => format_mlhs(ps, mlhs),
+                    IdentOrMLhs::Ident(ident) => {
+                        bind_ident(ps, &ident);
+                        format_ident(ps, ident);
+                    }
+                    IdentOrMLhs::MLhs(mlhs) => {
+                        bind_mlhs(ps, &mlhs);
+                        format_mlhs(ps, mlhs);
+                    }
                 }
                 emit_params_separator(ps, idx, len);
             }
@@ -524,6 +566,7 @@ pub fn format_ensure(ps: &mut dyn ConcreteParserState, ensure_part: Option<Ensur
 
 pub fn use_parens_for_method_call(
     ps: &dyn ConcreteParserState,
+    chain: &[CallChainElement],
     method: &IdentOrOpOrKeywordOrConst,
     args: &ArgsAddStarOrExpressionList,
     original_used_parens: bool,
@@ -533,6 +576,18 @@ pub fn use_parens_for_method_call(
     debug!("name: {:?}", name);
     if name.starts_with("attr_") && context == FormattingContext::ClassOrModule {
         return false;
+    }
+
+    if ps.scope_has_variable(&name) {
+        match chain.first() {
+            None => return true,
+            Some(CallChainElement::VarRef(VarRef(_, VarRefType::Kw(Kw(_, x, _))))) => {
+                if x == "self" {
+                    return true;
+                }
+            }
+            _ => {}
+        }
     }
 
     if name == "yield" {
@@ -611,6 +666,7 @@ pub fn format_method_call(ps: &mut dyn ConcreteParserState, method_call: MethodC
     debug!("method call!!");
     let use_parens = use_parens_for_method_call(
         ps,
+        &chain,
         &method,
         &args,
         original_used_parens,
@@ -1456,6 +1512,7 @@ pub fn format_field(ps: &mut dyn ConcreteParserState, f: Field) {
 pub fn format_assignable(ps: &mut dyn ConcreteParserState, v: Assignable) {
     match v {
         Assignable::VarField(vf) => {
+            bind_var_field(ps, &vf);
             format_var_field(ps, vf);
         }
         Assignable::ConstPathField(cf) => {
@@ -1474,6 +1531,7 @@ pub fn format_assignable(ps: &mut dyn ConcreteParserState, v: Assignable) {
             format_field(ps, field);
         }
         Assignable::Ident(ident) => {
+            bind_ident(ps, &ident);
             format_ident(ps, ident);
         }
     }

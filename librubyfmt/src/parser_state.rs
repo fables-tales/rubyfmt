@@ -88,6 +88,8 @@ pub trait ConcreteParserState {
     fn emit_heredoc_start(&mut self, hd_type: String, symbol: String);
 
     // other state changers
+    fn bind_variable(&mut self, s: String);
+    fn scope_has_variable(&self, s: &str) -> bool;
     fn insert_comment_collection(&mut self, comments: CommentBlock);
     fn wind_line_if_needed_for_array(&mut self);
     fn on_line(&mut self, line_number: LineNumber);
@@ -114,6 +116,7 @@ pub trait ConcreteParserState {
         fc: FormattingContext,
         f: Box<dyn FnOnce(&mut dyn ConcreteParserState) + 'a>,
     );
+    fn new_scope<'a>(&mut self, f: Box<dyn FnOnce(&mut dyn ConcreteParserState) + 'a>);
     fn new_block<'a>(&mut self, f: Box<dyn FnOnce(&mut dyn ConcreteParserState) + 'a>);
     fn with_start_of_line<'a>(
         &mut self,
@@ -165,9 +168,24 @@ pub struct BaseParserState {
     absorbing_indents: i32,
     insert_user_newlines: bool,
     spaces_after_last_newline: ColNumber,
+    scopes: Vec<Vec<String>>,
 }
 
 impl ConcreteParserState for BaseParserState {
+    fn scope_has_variable(&self, s: &str) -> bool {
+        self.scopes
+            .last()
+            .expect("it's never empty")
+            .contains(&s.to_string())
+    }
+    fn new_scope<'a>(&mut self, f: Box<dyn FnOnce(&mut dyn ConcreteParserState) + 'a>) {
+        self.scopes.push(vec![]);
+        f(self);
+        self.scopes.pop();
+    }
+    fn bind_variable(&mut self, s: String) {
+        self.scopes.last_mut().expect("it's never empty").push(s);
+    }
     fn push_heredoc_content(
         &mut self,
         symbol: String,
@@ -648,6 +666,7 @@ impl BaseParserState {
             absorbing_indents: 0,
             insert_user_newlines: true,
             spaces_after_last_newline: 0,
+            scopes: vec![vec![]],
         }
     }
 
