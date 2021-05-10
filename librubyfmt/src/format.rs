@@ -75,7 +75,9 @@ pub fn inner_format_params(ps: &mut dyn ConcreteParserState, params: Box<Params>
         Box::new(move |ps: &mut dyn ConcreteParserState| {
             format_optional_params(ps, optional_params)
         }),
-        Box::new(move |ps: &mut dyn ConcreteParserState| format_rest_param(ps, rest_param)),
+        Box::new(move |ps: &mut dyn ConcreteParserState| {
+            format_rest_param(ps, rest_param, SpecialCase::NoSpecialCase)
+        }),
         Box::new(move |ps: &mut dyn ConcreteParserState| {
             format_required_params(ps, more_required_params)
         }),
@@ -239,35 +241,46 @@ pub fn format_kwargs(
 pub fn format_rest_param(
     ps: &mut dyn ConcreteParserState,
     rest_param: Option<RestParamOr0OrExcessedComma>,
+    special_case: SpecialCase,
 ) -> bool {
-    match rest_param {
-        None => false,
-        Some(RestParamOr0OrExcessedComma::ExcessedComma(_)) => false,
-        Some(RestParamOr0OrExcessedComma::Zero(_)) => false,
-        Some(RestParamOr0OrExcessedComma::RestParam(rp)) => {
-            ps.emit_ident("*".to_string());
-            ps.with_start_of_line(
-                false,
-                Box::new(|ps| {
-                    match rp.1 {
-                        Some(IdentOrVarField::Ident(i)) => {
-                            bind_ident(ps, &i);
-                            format_ident(ps, i);
-                        }
-                        Some(IdentOrVarField::VarField(vf)) => {
-                            bind_var_field(ps, &vf);
-                            format_var_field(ps, vf);
-                        }
-                        None => {
-                            // deliberately do nothing
-                        }
+    let mut res = false;
+    ps.with_start_of_line(
+        false,
+        Box::new(|ps| {
+            match rest_param {
+                None => {}
+                Some(RestParamOr0OrExcessedComma::ExcessedComma(_)) => {}
+                Some(RestParamOr0OrExcessedComma::Zero(_)) => {}
+                Some(RestParamOr0OrExcessedComma::RestParam(rp)) => {
+                    if special_case != SpecialCase::RestParamOutsideOfParamDef {
+                        ps.emit_soft_indent();
                     }
-                }),
-            );
+                    ps.emit_ident("*".to_string());
+                    ps.with_start_of_line(
+                        false,
+                        Box::new(|ps| {
+                            match rp.1 {
+                                Some(IdentOrVarField::Ident(i)) => {
+                                    bind_ident(ps, &i);
+                                    format_ident(ps, i);
+                                }
+                                Some(IdentOrVarField::VarField(vf)) => {
+                                    bind_var_field(ps, &vf);
+                                    format_var_field(ps, vf);
+                                }
+                                None => {
+                                    // deliberately do nothing
+                                }
+                            }
+                        }),
+                    );
 
-            true
-        }
-    }
+                    res = true;
+                }
+            }
+        }),
+    );
+    res
 }
 
 pub fn format_optional_params(
@@ -313,7 +326,11 @@ pub fn format_mlhs(ps: &mut dyn ConcreteParserState, mlhs: MLhs) {
                     MLhsInner::Field(f) => format_field(ps, f),
                     MLhsInner::Ident(i) => format_ident(ps, i),
                     MLhsInner::RestParam(rp) => {
-                        format_rest_param(ps, Some(RestParamOr0OrExcessedComma::RestParam(rp)));
+                        format_rest_param(
+                            ps,
+                            Some(RestParamOr0OrExcessedComma::RestParam(rp)),
+                            SpecialCase::NoSpecialCase,
+                        );
                     }
                     MLhsInner::VarField(vf) => format_var_field(ps, vf),
                     MLhsInner::MLhs(mlhs) => format_mlhs(ps, *mlhs),
@@ -714,6 +731,7 @@ pub fn format_method_call(ps: &mut dyn ConcreteParserState, method_call: MethodC
 pub enum SpecialCase {
     NoSpecialCase,
     NoLeadingTrailingCollectionMarkers,
+    RestParamOutsideOfParamDef,
 }
 
 pub fn format_list_like_thing_items(
@@ -1519,7 +1537,11 @@ pub fn format_assignable(ps: &mut dyn ConcreteParserState, v: Assignable) {
             format_const_path_field(ps, cf);
         }
         Assignable::RestParam(rp) => {
-            format_rest_param(ps, Some(RestParamOr0OrExcessedComma::RestParam(rp)));
+            format_rest_param(
+                ps,
+                Some(RestParamOr0OrExcessedComma::RestParam(rp)),
+                SpecialCase::RestParamOutsideOfParamDef,
+            );
         }
         Assignable::TopConstField(tcf) => {
             format_top_const_field(ps, tcf);
