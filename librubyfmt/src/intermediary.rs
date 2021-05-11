@@ -127,6 +127,36 @@ impl Intermediary {
                     Some((_, _, ConcreteLineToken::End, ConcreteLineToken::HardNewLine))
                 ) {
                     self.insert_trailing_blankline(BlanklineReason::CommentAfterEnd);
+                } else if matches!(
+                    self.last_4(),
+                    Some((
+                        _,
+                        _,
+                        ConcreteLineToken::HardNewLine,
+                        ConcreteLineToken::HardNewLine
+                    ))
+                ) {
+                    let mut module_or_class_before_newline = false;
+                    let mut past_first_two_newlines = 0;
+                    for tok in self.tokens.iter().rev() {
+                        if tok == &ConcreteLineToken::HardNewLine {
+                            if past_first_two_newlines < 2 {
+                                past_first_two_newlines += 1;
+                            } else {
+                                break;
+                            }
+                        }
+                        if tok == &ConcreteLineToken::ModuleKeyword
+                            || tok == &ConcreteLineToken::ClassKeyword
+                        {
+                            module_or_class_before_newline = true;
+                        }
+                    }
+
+                    if module_or_class_before_newline {
+                        self.tokens.pop();
+                        self.index_of_last_hard_newline = self.tokens.len() - 1;
+                    }
                 }
             }
             _ => {}
