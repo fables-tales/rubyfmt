@@ -1,3 +1,9 @@
+[workspace]
+members = [
+  "librubyfmt",
+  "librubyfmt/ripper_deserialize"
+]
+
 [package]
 name = "rubyfmt-main"
 version = "0.1.0"
