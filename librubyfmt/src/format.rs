@@ -482,7 +482,7 @@ pub fn format_rescue(ps: &mut dyn ConcreteParserState, rescue_part: Option<Rescu
                         if class.is_none() && capture.is_none() {
                             ps.wind_line_forward();
                             ps.wind_line_forward();
-                            return
+                            return;
                         }
                         let cs = class.is_some();
                         if cs || capture.is_some() {
