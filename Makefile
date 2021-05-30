@@ -1,4 +1,4 @@
-.PHONY: clean clippy lint fmt all release debug
+.PHONY: clean clippy lint fmt all release debug ubuntu_shell
 
 UNAME_S := $(shell uname -s)
 ifeq ($(UNAME_S), Darwin)
@@ -32,6 +32,10 @@ target/c_main_release: target/release/deps/librubyfmt-*.a src/main.c
 target/release/deps/librubyfmt-*.a: release
 
 target/debug/deps/librubyfmt-*.a: debug
+
+ubuntu_shell:
+	docker build -t rubyfmt_testing_container:$(shell git rev-parse HEAD) -f ./dockerfiles/build.Dockerfile ./
+	docker run -it rubyfmt_testing_container:$(shell git rev-parse HEAD) bash
 
 lint: clippy
 	./script/lints/lint_fixtures.sh
