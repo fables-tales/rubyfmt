@@ -2720,6 +2720,7 @@ pub fn format_when_or_else(ps: &mut dyn ConcreteParserState, tail: WhenOrElse) {
             ps.emit_indent();
             ps.emit_else();
             ps.emit_newline();
+            ps.wind_line_forward();
 
             ps.new_block(Box::new(|ps| {
                 ps.with_start_of_line(

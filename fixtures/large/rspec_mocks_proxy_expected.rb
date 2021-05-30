@@ -475,7 +475,6 @@ module RSpec
           @warn_about_expectations = false
           @disallow_expectations = false
         else
-
           @warn_about_expectations = true
           @disallow_expectations = false
         end
