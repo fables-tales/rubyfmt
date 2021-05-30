@@ -4,7 +4,7 @@ REPO_BASE=$(git rev-parse --show-toplevel)
 f_md5() {
     if command -v md5sum >/dev/null
     then
-        md5sum "$@" | sed 's/[ \t]*-//'
+        md5sum | sed 's/[ \t]*-//'
     else
         md5
     fi
