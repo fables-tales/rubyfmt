@@ -11,6 +11,8 @@ mkdir -p "${RELEASE_DIR}"
 mkdir -p "${RELEASE_DIR}/lib/"
 mkdir -p "${RELEASE_DIR}/include/"
 
+cargo build --release && cd librubyfmt && cargo build --release
+
 cp target/release/rubyfmt-main "${RELEASE_DIR}/rubyfmt"
 cp target/debug/rubyfmt-main "${RELEASE_DIR}/rubyfmt-debug"
 cp librubyfmt/target/release/librubyfmt.a "${RELEASE_DIR}/lib/librubyfmt.a"
