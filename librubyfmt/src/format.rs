@@ -718,6 +718,8 @@ pub fn format_method_call(ps: &mut dyn ConcreteParserState, method_call: MethodC
                                 ps.emit_collapsing_newline();
                             }),
                         );
+                        debug!("end of format method call");
+                        ps.wind_line_if_needed_for_array();
                     }),
                 );
             } else if use_parens {

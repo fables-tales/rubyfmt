@@ -52,7 +52,6 @@ class Parser < Ripper::SexpBuilderPP
     @lbrace_stack = []
     @comments = {}
     @last_ln = 0
-    STDERR.write("initialize finished");
   end
 
   def on_nl(*args)
@@ -65,8 +64,6 @@ class Parser < Ripper::SexpBuilderPP
 
     if res != nil
       x = [res, @comments, @lines_with_any_ruby, @last_ln]
-      STDERR.puts("parse succeeded on the ruby side")
-      STDERR.flush
       x
     else
       nil
