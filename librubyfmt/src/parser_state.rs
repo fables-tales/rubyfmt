@@ -417,10 +417,16 @@ impl ConcreteParserState for BaseParserState {
     fn wind_dumping_comments(&mut self) {
         self.on_line(self.current_orig_line_number + 1);
         let mut did_wind = false;
-        while self
-            .comments_hash
-            .has_line(self.current_orig_line_number + 1)
-        {
+        let should_iter = |ps: &BaseParserState, ln| {
+            debug!("{}", ln);
+            ps.comments_hash.still_in_file(ln) && (ps.comments_hash.has_line(ln+1) || ps.comments_hash.is_empty_line(ln+1))
+        };
+        while should_iter(self, self.current_orig_line_number) {
+            if !self.comments_hash.has_line(self.current_orig_line_number+1) && self.comments_hash.is_empty_line(self.current_orig_line_number+1) {
+                if self.comments_to_insert.is_some() {
+                    self.comments_to_insert.as_mut().expect("it's not nil").add_line("".to_string());
+                }
+            }
             self.on_line(self.current_orig_line_number + 1);
             did_wind = true;
         }

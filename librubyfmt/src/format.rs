@@ -2107,6 +2107,8 @@ pub fn format_module(ps: &mut dyn ConcreteParserState, module: Module) {
         );
     }));
 
+    ps.wind_dumping_comments();
+
     ps.with_start_of_line(
         true,
         Box::new(|ps| {

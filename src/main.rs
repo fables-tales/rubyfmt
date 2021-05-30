@@ -112,7 +112,7 @@ fn handle_error_from(err: rubyfmt::RichFormatError, source: &str, error_exit: Er
 fn main() {
     let res = rubyfmt::rubyfmt_init();
     if res != rubyfmt::InitStatus::OK as libc::c_int {
-        panic!("bad init status");
+        panic!("bad init status: {}", rubyfmt::ruby::current_exception_as_rust_string());
     }
     let args: Vec<String> = std::env::args().collect();
     if args.len() >= 2 && (args[1] == "--help" || args[1] == "-h") {
