@@ -4,23 +4,23 @@ set -euxo pipefail
 TAG=$(git describe --exact-match HEAD)
 RELEASE_DIR="tmp/releases/${TAG}-$(uname -s)/"
 
-#./script/ci
+./script/ci
 rm -rf "${RELEASE_DIR}"
 
 mkdir -p "${RELEASE_DIR}"
 mkdir -p "${RELEASE_DIR}/lib/"
 mkdir -p "${RELEASE_DIR}/include/"
 
-(cargo build && cd librubyfmt && cargo build)
-(cargo build --release && cd librubyfmt && cargo build --release)
+cargo build
+cargo build --release
 
 cp target/release/rubyfmt-main "${RELEASE_DIR}/rubyfmt"
 pwd
 cp target/debug/rubyfmt-main "${RELEASE_DIR}/rubyfmt-debug"
 pwd
-cp librubyfmt/target/release/librubyfmt.a "${RELEASE_DIR}/lib/librubyfmt.a"
+cp target/release/librubyfmt.a "${RELEASE_DIR}/lib/librubyfmt.a"
 pwd
-cp librubyfmt/target/debug/librubyfmt.a "${RELEASE_DIR}/lib/librubyfmt-debug.a"
+cp target/debug/librubyfmt.a "${RELEASE_DIR}/lib/librubyfmt-debug.a"
 pwd
 cp librubyfmt/include/rubyfmt.h "${RELEASE_DIR}/include/rubyfmt.h"
 pwd
