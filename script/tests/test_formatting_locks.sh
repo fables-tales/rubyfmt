@@ -1,5 +1,5 @@
 #!/bin/bash
-set -euo pipefail
+set -euxo pipefail
 source ./script/functions.sh
 REPO_DIRS=$(find ./formatting_locks -type d -mindepth 2)
 for REPO_DIR in $REPO_DIRS
@@ -20,7 +20,7 @@ do
         res_md5=$(f_md5 < "$fn")
         if [[ "$res_md5" != "$expected_md5" ]]
         then
-            echo "$fn did not match"
+            echo "$fn did not match expected: $expected_md5 got $res_md5"
             exit 1
         fi
 
