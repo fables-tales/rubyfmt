@@ -352,7 +352,10 @@ impl ConcreteParserState for BaseParserState {
         }
 
         self.current_orig_line_number = line_number;
-        debug!("set current orig line number: {}", self.current_orig_line_number);
+        debug!(
+            "set current orig line number: {}",
+            self.current_orig_line_number
+        );
     }
 
     fn emit_indent(&mut self) {
@@ -425,7 +428,7 @@ impl ConcreteParserState for BaseParserState {
         let mut did_wind = false;
         let should_iter = |ps: &BaseParserState, ln| {
             debug!("{}", ln);
-            ps.comments_hash.still_in_file(ln+1)
+            ps.comments_hash.still_in_file(ln + 1)
                 && (ps.comments_hash.has_line(ln + 1) || ps.comments_hash.is_empty_line(ln + 1))
         };
         while should_iter(self, self.current_orig_line_number) {
