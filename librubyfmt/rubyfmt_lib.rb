@@ -1,8 +1,15 @@
+module TrackAllScannerEvents
+  Ripper::SCANNER_EVENTS.reject { |x| x == :sp || x == :nl || x == :ignored_nl }.each do |se|
+    define_method(:"on_#{se}") do |*args|
+      @lines_with_any_ruby[lineno] = true
+      super(*args)
+    end
+  end
+
+end
 class Parser < Ripper::SexpBuilderPP
   ARRAY_SYMBOLS = {qsymbols: "%i", qwords: "%w", symbols: "%I", words: "%W"}.freeze
 
-  def initialize(buf)
-  end
   def self.is_percent_array?(rest)
     return false if rest.nil?
     return false if rest[0].nil?
@@ -13,10 +20,13 @@ class Parser < Ripper::SexpBuilderPP
     ARRAY_SYMBOLS[rest[0][0]]
   end
 
+  include TrackAllScannerEvents
+
   def initialize(file_data)
-    STDOUT.flush
     super(file_data)
     @file_lines = file_data.split("\n")
+
+    @lines_with_any_ruby = {}
 
     # heredoc stack is the stack of identified heredocs
     @heredoc_stack = []
@@ -41,21 +51,26 @@ class Parser < Ripper::SexpBuilderPP
     @array_location_stacks = []
     @lbrace_stack = []
     @comments = {}
+    @last_ln = 0
+  end
+
+  def on_nl(*args)
+    @last_ln = lineno+1
+    super(*args)
   end
 
   def parse
     res = super
 
     if res != nil
-      [res, @comments]
+      x = [res, @comments, @lines_with_any_ruby, @last_ln]
+      x
     else
       nil
     end
   end
 
   attr_reader :comments_delete
-
-  private
 
   DELIM_CLOSE_PAREN={ '{' => '}', '[' => ']', '(' => ')', '<' => '>' }
 

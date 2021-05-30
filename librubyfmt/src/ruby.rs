@@ -104,7 +104,10 @@ macro_rules! intern {
     };
 }
 
-// Safety: This function expects an initialized Ruby VM capable of evaling code
+/// # Safety
+///
+/// This function expects an initialized Ruby VM capable of evaling code
+#[allow(clippy::result_unit_err)]
 pub unsafe fn eval_str(s: &str) -> Result<VALUE, ()> {
     let rubyfmt_program_as_c = CString::new(s).expect("unexpected nul byte in Ruby code");
     let mut state = 0;
@@ -142,18 +145,22 @@ pub fn raise(s: &str) {
     }
 }
 
-// Safety: The given VALUE must be a valid Ruby array. The lifetime is not
-// checked by the compiler. The returned slice must not outlive the given
-// Ruby array. The Ruby array must not be modified while the returned slice
-// is live.
+/// # Safety
+///
+/// The given VALUE must be a valid Ruby array. The lifetime is not
+/// checked by the compiler. The returned slice must not outlive the given
+/// Ruby array. The Ruby array must not be modified while the returned slice
+/// is live.
 pub unsafe fn ruby_array_to_slice<'a>(ary: VALUE) -> &'a [VALUE] {
     std::slice::from_raw_parts(rubyfmt_rb_ary_ptr(ary), rubyfmt_rb_ary_len(ary) as _)
 }
 
-// Safety: The given VALUE must be a valid Ruby string. The lifetime is not
-// checked by the compiler. The returned str must not outlive the given
-// Ruby string. The Ruby string must not be modified while the returned str
-// is live.
+/// # Safety
+///
+/// The given VALUE must be a valid Ruby string. The lifetime is not
+/// checked by the compiler. The returned str must not outlive the given
+/// Ruby string. The Ruby string must not be modified while the returned str
+/// is live.
 pub unsafe fn ruby_string_to_str<'a>(s: VALUE) -> &'a str {
     let bytes =
         std::slice::from_raw_parts(rubyfmt_rstring_ptr(s) as _, rubyfmt_rstring_len(s) as _);

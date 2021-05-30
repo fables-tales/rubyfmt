@@ -234,6 +234,7 @@ impl ConcreteParserState for BaseParserState {
             self.shift_comments();
         }
         self.current_orig_line_number = new_line_number;
+        debug!("coln: {}", new_line_number);
     }
 
     fn will_render_as_multiline<'a>(
@@ -344,11 +345,17 @@ impl ConcreteParserState for BaseParserState {
         let comments = self.comments_hash.extract_comments_to_line(line_number);
         self.push_comments(comments);
 
+        debug!("lns: {} {}", line_number, self.current_orig_line_number);
         if line_number - self.current_orig_line_number >= 2 && self.insert_user_newlines {
+            debug!("extra line");
             self.insert_extra_newline_at_last_newline();
         }
 
         self.current_orig_line_number = line_number;
+        debug!(
+            "set current orig line number: {}",
+            self.current_orig_line_number
+        );
     }
 
     fn emit_indent(&mut self) {
@@ -372,6 +379,8 @@ impl ConcreteParserState for BaseParserState {
     }
 
     fn wind_line_if_needed_for_array(&mut self) {
+        debug!("bestack {:?}", self.breakable_entry_stack);
+        debug!("lbimul {}", self.last_breakable_is_multiline());
         if self.last_breakable_is_multiline() {
             self.wind_line_forward()
         }
@@ -417,15 +426,34 @@ impl ConcreteParserState for BaseParserState {
     fn wind_dumping_comments(&mut self) {
         self.on_line(self.current_orig_line_number + 1);
         let mut did_wind = false;
-        while self
-            .comments_hash
-            .has_line(self.current_orig_line_number + 1)
-        {
+        let should_iter = |ps: &BaseParserState, ln| {
+            debug!("{}", ln);
+            ps.comments_hash.still_in_file(ln + 1)
+                && (ps.comments_hash.has_line(ln + 1) || ps.comments_hash.is_empty_line(ln + 1))
+        };
+        while should_iter(self, self.current_orig_line_number) {
+            if !self
+                .comments_hash
+                .has_line(self.current_orig_line_number + 1)
+                && self
+                    .comments_hash
+                    .is_empty_line(self.current_orig_line_number + 1)
+                && self.comments_to_insert.is_some()
+            {
+                debug!("{}", self.current_orig_line_number);
+                let mr = self.comments_to_insert.as_mut().expect("it's not nil");
+                if mr.len() == 0 {
+                    break;
+                }
+                mr.add_line("".to_string());
+            }
             self.on_line(self.current_orig_line_number + 1);
             did_wind = true;
+            debug!("{}", self.current_orig_line_number);
         }
         if did_wind {
             self.on_line(self.current_orig_line_number + 1);
+            debug!("{}", self.current_orig_line_number);
         }
     }
 
@@ -712,6 +740,7 @@ impl BaseParserState {
                     let len = comments.len();
                     self.insert_comment_collection(comments);
                     self.current_orig_line_number += len as u64;
+                    debug!("pe coln: {}", len);
                 }
             }
         }

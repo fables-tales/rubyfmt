@@ -479,6 +479,11 @@ pub fn format_rescue(ps: &mut dyn ConcreteParserState, rescue_part: Option<Rescu
                 ps.with_start_of_line(
                     false,
                     Box::new(|ps| {
+                        if class.is_none() && capture.is_none() {
+                            ps.wind_line_forward();
+                            ps.wind_line_forward();
+                            return;
+                        }
                         let cs = class.is_some();
                         if cs || capture.is_some() {
                             ps.emit_space();
@@ -713,6 +718,8 @@ pub fn format_method_call(ps: &mut dyn ConcreteParserState, method_call: MethodC
                                 ps.emit_collapsing_newline();
                             }),
                         );
+                        debug!("end of format method call");
+                        ps.wind_line_if_needed_for_array();
                     }),
                 );
             } else if use_parens {
@@ -2102,6 +2109,8 @@ pub fn format_module(ps: &mut dyn ConcreteParserState, module: Module) {
         );
     }));
 
+    ps.wind_dumping_comments();
+
     ps.with_start_of_line(
         true,
         Box::new(|ps| {
@@ -2715,6 +2724,7 @@ pub fn format_when_or_else(ps: &mut dyn ConcreteParserState, tail: WhenOrElse) {
             ps.emit_indent();
             ps.emit_else();
             ps.emit_newline();
+            ps.wind_line_forward();
 
             ps.new_block(Box::new(|ps| {
                 ps.with_start_of_line(

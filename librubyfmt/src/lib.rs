@@ -13,7 +13,7 @@ static ALLOC: jemallocator::Jemalloc = jemallocator::Jemalloc;
 pub type RawStatus = i64;
 
 #[macro_use]
-mod ruby;
+pub mod ruby;
 mod comment_block;
 mod de;
 mod delimiters;

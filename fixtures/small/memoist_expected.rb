@@ -2,7 +2,6 @@ memoize(
   def foo
   end
 )
-
 memoize(
   def foo(x, y, z)
     aboiqjfdw

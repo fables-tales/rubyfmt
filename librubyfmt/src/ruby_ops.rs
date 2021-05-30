@@ -44,18 +44,18 @@ impl Parser {
 
     pub fn parse(self) -> Result<(RipperTree, FileComments), ParseError> {
         let mut state = 0;
-        let maybe_tree_and_comments =
+        let maybe_ret_tuple =
             unsafe { rb_protect(Parser::real_run_parser as _, self.0 as _, &mut state) };
         if state == 0 {
-            if maybe_tree_and_comments != Qnil {
-                let tree_and_comments = unsafe { ruby_array_to_slice(maybe_tree_and_comments) };
-                if let [tree, comments] = tree_and_comments {
-                    let fc = FileComments::from_ruby_hash(*comments);
+            if maybe_ret_tuple != Qnil {
+                let ret_tuple = unsafe { ruby_array_to_slice(maybe_ret_tuple) };
+                if let [tree, comments, lines, last_lineno] = ret_tuple {
+                    let fc = FileComments::from_ruby_hash(*comments, *lines, *last_lineno);
                     Ok((RipperTree::new(*tree), fc))
                 } else {
                     panic!(
-                        "expected tree to contain two elements, actually got: {}",
-                        tree_and_comments.len(),
+                        "expected return tuple to match expected, actually got: {}",
+                        ret_tuple.len(),
                     )
                 }
             } else {
