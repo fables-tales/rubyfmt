@@ -3068,11 +3068,12 @@ pub fn format_to_proc(ps: &mut dyn ConcreteParserState, e: Box<Expression>) {
     ps.with_start_of_line(false, Box::new(|ps| format_expression(ps, *e)));
 }
 
-pub fn format_zsuper(ps: &mut dyn ConcreteParserState) {
+pub fn format_zsuper(ps: &mut dyn ConcreteParserState, lc: LineCol) {
     if ps.at_start_of_line() {
         ps.emit_indent();
     }
 
+    ps.on_line(lc.0);
     ps.emit_keyword("super".to_string());
 
     if ps.at_start_of_line() {
@@ -3229,7 +3230,7 @@ pub fn format_expression(ps: &mut dyn ConcreteParserState, expression: Expressio
         Expression::OpAssign(op) => format_opassign(ps, op),
         Expression::Unless(u) => format_unless(ps, u),
         Expression::ToProc(ToProc(_, e)) => format_to_proc(ps, e),
-        Expression::ZSuper(..) => format_zsuper(ps),
+        Expression::ZSuper(ZSuper(_, lc)) => format_zsuper(ps, lc),
         Expression::Yield0(..) => format_yield0(ps),
         Expression::Return(ret) => format_return(ps, ret),
         Expression::BeginBlock(begin) => format_begin_block(ps, begin),

@@ -9,4 +9,4 @@
 ./lib/concurrent-ruby/concurrent/collection/copy_on_notify_observer_set.rb,8f66025b704828fb0105d5cc983e4b7c
 ./lib/concurrent-ruby/concurrent/collection/map/truffleruby_map_backend.rb,e13fe7f9707411726b57136120d3eec9
 ./lib/concurrent-ruby/concurrent/collection/map/synchronized_map_backend.rb,71734308245a3edb0d0ea6ea3d327200
-./lib/concurrent-ruby/concurrent/collection/map/non_concurrent_map_backend.rb,5b3c94bbc49f1d3df0aea3e4999d4d24
+./lib/concurrent-ruby/concurrent/collection/map/non_concurrent_map_backend.rb,e1077772d1235d85f2a27e38e0642ed8

@@ -1,0 +1,8 @@
+#!/bin/bash
+set -euxo pipefail
+VERSION=$1
+
+while IFS= read -r -d '' file
+do
+    gpg --detach-sig --armor "$file"
+done <   <(find "releases/$VERSION" -type f -print0)
