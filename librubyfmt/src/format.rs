@@ -1872,6 +1872,9 @@ pub fn format_unary(ps: &mut dyn ConcreteParserState, unary: Unary) {
 }
 
 pub fn format_string_concat(ps: &mut dyn ConcreteParserState, sc: StringConcat) {
+    if ps.at_start_of_line() {
+        ps.emit_indent();
+    }
     ps.with_absorbing_indent_block(Box::new(|ps| {
         let nested = sc.1;
         let sl = sc.2;
