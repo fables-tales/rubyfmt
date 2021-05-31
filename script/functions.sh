@@ -1,6 +1,9 @@
 #!/bin/bash
 REPO_BASE=$(git rev-parse --show-toplevel)
 
+# Prefer colordiff if installed
+DIFF_BINARY=$( command -v colordiff || echo "diff" )
+
 f_md5() {
     if command -v md5sum >/dev/null
     then
@@ -14,13 +17,12 @@ f_rubyfmt() {
     "${REPO_BASE}/target/release/rubyfmt-main" "$@"
 }
 
-
 diff_files() {
     IDEMPOTENCY=$1
     ACTUAL=$2
     EXPECTED=$3
 
-    if ! diff -u "$ACTUAL" "$EXPECTED"
+    if ! $DIFF_BINARY -u "$EXPECTED" "$ACTUAL"
     then
         if [[ $IDEMPOTENCY == "i" ]]
         then
