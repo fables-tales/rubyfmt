@@ -1973,7 +1973,6 @@ pub fn format_defs(ps: &mut dyn ConcreteParserState, defs: Defs) {
             let (ident, linecol) = ident_or_kw.to_def_parts();
             handle_string_and_linecol(ps, ident, linecol);
             format_paren_or_params(ps, paren_or_params);
-            ps.emit_newline();
         }),
     );
 
@@ -1981,6 +1980,7 @@ pub fn format_defs(ps: &mut dyn ConcreteParserState, defs: Defs) {
         FormattingContext::Def,
         Box::new(|ps| {
             ps.new_block(Box::new(|ps| {
+                ps.emit_newline();
                 ps.with_start_of_line(
                     true,
                     Box::new(|ps| {
@@ -1991,6 +1991,7 @@ pub fn format_defs(ps: &mut dyn ConcreteParserState, defs: Defs) {
         }),
     );
 
+    ps.wind_line_forward();
     ps.emit_end();
 
     if ps.at_start_of_line() {
