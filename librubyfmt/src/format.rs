@@ -1991,7 +1991,7 @@ pub fn format_defs(ps: &mut dyn ConcreteParserState, defs: Defs) {
         }),
     );
 
-    ps.wind_line_forward();
+    ps.wind_dumping_comments();
     ps.emit_end();
 
     if ps.at_start_of_line() {
