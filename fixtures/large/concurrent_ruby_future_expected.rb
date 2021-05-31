@@ -131,7 +131,6 @@ module Concurrent
 
     def ns_initialize(value, opts)
       super
-
       @state = :unscheduled
       @task = opts[:__task_from_block__]
       @executor = Options.executor_from_options(opts) || Concurrent.global_io_executor

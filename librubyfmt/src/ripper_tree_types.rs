@@ -200,11 +200,11 @@ impl<'de> Deserialize<'de> for MLhs {
 
 def_tag!(zsuper_tag, "zsuper");
 #[derive(Deserialize, Debug, Clone)]
-pub struct ZSuper(zsuper_tag);
+pub struct ZSuper(pub zsuper_tag, pub LineCol);
 
 impl ZSuper {
     fn into_call_chain(self) -> Vec<CallChainElement> {
-        vec![ident_as_cc("super".to_string(), LineCol::unknown())]
+        vec![ident_as_cc("super".to_string(), self.1)]
     }
 }
 

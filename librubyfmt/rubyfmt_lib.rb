@@ -138,6 +138,10 @@ class Parser < Ripper::SexpBuilderPP
     [:hash, assocs, @lbrace_stack.pop]
   end
 
+  def on_zsuper
+    [:zsuper, [lineno, column]]
+  end
+
   def on_lbracket(*args)
     @array_location_stacks << [lineno, column]
   end
