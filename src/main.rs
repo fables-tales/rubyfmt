@@ -1,5 +1,7 @@
 #![deny(warnings, missing_copy_implementations)]
 
+mod updates;
+
 use std::ffi::{OsStr, OsString};
 use std::fs::{self, metadata, read_to_string, OpenOptions};
 use std::io::{self, Read, Write};
@@ -111,6 +113,7 @@ fn handle_error_from(err: rubyfmt::RichFormatError, source: &Path, error_exit: E
 }
 
 fn main() {
+    updates::begin_checking_for_updates();
     let res = rubyfmt::rubyfmt_init();
     if res != rubyfmt::InitStatus::OK as libc::c_int {
         panic!(
@@ -142,6 +145,9 @@ fn main() {
             eprintln!("{}", include_str!("../README.md"));
             exit(1);
         }
+        (Some("--internal-fetch-latest-version"), _) => {
+            updates::fetch_latest_version().unwrap();
+        }
         // Single file
         (_, [filename]) => {
             if let Ok(md) = metadata(&filename) {
@@ -168,4 +174,5 @@ fn main() {
             format_parts(parts);
         }
     }
+    updates::report_if_update_available();
 }
