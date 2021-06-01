@@ -5,8 +5,8 @@ module TrackAllScannerEvents
       super(*args)
     end
   end
-
 end
+
 class Parser < Ripper::SexpBuilderPP
   ARRAY_SYMBOLS = {qsymbols: "%i", qwords: "%w", symbols: "%I", words: "%W"}.freeze
 
