@@ -5,8 +5,8 @@ module TrackAllScannerEvents
       super(*args)
     end
   end
-
 end
+
 class Parser < Ripper::SexpBuilderPP
   ARRAY_SYMBOLS = {qsymbols: "%i", qwords: "%w", symbols: "%I", words: "%W"}.freeze
 
@@ -213,7 +213,7 @@ class Parser < Ripper::SexpBuilderPP
       end_delim = @string_stack.pop
       start_delim = @string_stack.pop
 
-      if start_delim != "\""
+      if start_delim && end_delim && start_delim != "\""
         if start_delim == "'" || start_delim.start_with?("%q")
           # re-evaluate the string with its own quotes to handle escaping.
           if args[0][1]
