@@ -3,9 +3,10 @@ extern crate glob;
 extern crate libc;
 extern crate rubyfmt;
 
+use std::ffi::OsString;
 use std::fs::{metadata, read_to_string, OpenOptions};
 use std::io::{self, Read, Write};
-use std::path::PathBuf;
+use std::path::Path;
 use std::process::exit;
 
 use glob::glob;
@@ -22,8 +23,8 @@ enum ErrorExit {
     Exit,
 }
 
-fn rubyfmt_file(file_path: PathBuf) -> Result<(), FileError> {
-    let buffer = read_to_string(file_path.clone()).map_err(FileError::Io)?;
+fn rubyfmt_file(file_path: &Path) -> Result<(), FileError> {
+    let buffer = read_to_string(&file_path).map_err(FileError::Io)?;
     let res = rubyfmt::format_buffer(&buffer);
     match res {
         Ok(res) => {
@@ -38,16 +39,17 @@ fn rubyfmt_file(file_path: PathBuf) -> Result<(), FileError> {
         Err(rubyfmt::RichFormatError::SyntaxError) => Err(FileError::SyntaxError),
         Err(e) => {
             // we're in a formatting loop, so print, and OK
-            handle_error_from(e, &format!("{}", file_path.display()), ErrorExit::NoExit);
+            handle_error_from(e, &file_path, ErrorExit::NoExit);
             Ok(())
         }
     }
 }
 
-fn rubyfmt_dir(path: &str) {
-    for entry in glob(&format!("{}/**/*.rb", path)).expect("it exists") {
+fn rubyfmt_dir(path: &Path) {
+    // FIXME: Look for an implementation of glob that actually takes a proper base dir
+    for entry in glob(&format!("{}/**/*.rb", path.display())).expect("it exists") {
         let p = entry.expect("should not be null");
-        let res = rubyfmt_file(p.clone());
+        let res = rubyfmt_file(&p);
         if let Err(FileError::SyntaxError) = res {
             eprintln!(
                 "warning: {} contains syntax errors, ignoring for now",
@@ -57,19 +59,19 @@ fn rubyfmt_dir(path: &str) {
     }
 }
 
-fn format_parts(parts: &[String]) {
+fn format_parts(parts: &[OsString]) {
     for part in parts {
         if let Ok(md) = metadata(part) {
             if md.is_dir() {
-                rubyfmt_dir(part);
+                rubyfmt_dir(part.as_ref());
             } else if md.is_file() {
-                rubyfmt_file(part.into()).expect("failed to format file");
+                rubyfmt_file(part.as_ref()).expect("failed to format file");
             }
         }
     }
 }
 
-fn handle_error_from(err: rubyfmt::RichFormatError, source: &str, error_exit: ErrorExit) {
+fn handle_error_from(err: rubyfmt::RichFormatError, source: &Path, error_exit: ErrorExit) {
     use rubyfmt::RichFormatError::*;
     let e = || {
         if error_exit == ErrorExit::Exit {
@@ -78,7 +80,7 @@ fn handle_error_from(err: rubyfmt::RichFormatError, source: &str, error_exit: Er
     };
     match err {
         SyntaxError => {
-            eprintln!("{} contained invalid ruby syntax", source);
+            eprintln!("{} contained invalid ruby syntax", source.display());
             e();
         }
         rubyfmt::RichFormatError::RipperParseFailure(_) => {
@@ -95,7 +97,7 @@ fn handle_error_from(err: rubyfmt::RichFormatError, source: &str, error_exit: Er
 🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛
             ";
             eprintln!("{}", bug_report);
-            eprintln!("file was: {}", source);
+            eprintln!("file was: {}", source.display());
             e();
         }
         IOError(ioe) => {
@@ -117,53 +119,54 @@ fn main() {
             rubyfmt::ruby::current_exception_as_rust_string()
         );
     }
-    let args: Vec<String> = std::env::args().collect();
-    if args.len() >= 2 && (args[1] == "--help" || args[1] == "-h") {
-        eprintln!("{}", include_str!("../README.md"));
-        exit(1);
-    }
-
-    if args.len() == 1 {
-        // consume stdin
-        let mut buffer = String::new();
-        io::stdin()
-            .read_to_string(&mut buffer)
-            .expect("reading from stdin to not fail");
-        let res = rubyfmt::format_buffer(&buffer);
-        match res {
-            Ok(res) => {
-                write!(io::stdout(), "{}", res).expect("write works");
-                io::stdout().flush().expect("flush works");
-            }
-            Err(e) => handle_error_from(e, "stdin", ErrorExit::Exit),
-        }
-    } else if args.len() == 2 {
-        // consume a filename
-        if let Ok(md) = metadata(args[1].clone()) {
-            if md.is_dir() {
-                format_parts(&[args[1].clone()])
-            } else {
-                let buffer = read_to_string(args[1].clone()).expect("file exists");
-                let res = rubyfmt::format_buffer(&buffer);
-                match res {
-                    Ok(res) => {
-                        write!(io::stdout(), "{}", res).expect("write works");
-                        io::stdout().flush().expect("flush works");
-                    }
-                    Err(e) => handle_error_from(e, &args[1], ErrorExit::Exit),
+    let args: Vec<OsString> = std::env::args_os().skip(1).collect();
+    let command = args.get(0).and_then(|x| x.to_str());
+    match (command, &*args) {
+        // Read from stdin
+        (_, []) => {
+            let mut buffer = String::new();
+            io::stdin()
+                .read_to_string(&mut buffer)
+                .expect("reading from stdin to not fail");
+            let res = rubyfmt::format_buffer(&buffer);
+            match res {
+                Ok(res) => {
+                    write!(io::stdout(), "{}", res).expect("write works");
+                    io::stdout().flush().expect("flush works");
                 }
+                Err(e) => handle_error_from(e, Path::new("stdin"), ErrorExit::Exit),
             }
-        } else {
-            eprintln!("{} does not exist", args[1]);
-            exit(1)
         }
-    } else if args[1] == "-i" {
-        // inline a file or directory
-        let parts = &args[2..args.len()];
-        format_parts(parts);
-    } else {
-        // inline many files and directories
-        let parts = &args[1..args.len()];
-        format_parts(parts);
+        // In Rust 1.53
+        // (Some("--help" | "-h"), _) => {
+        (Some("--help"), _) | (Some("-h"), _) => {
+            eprintln!("{}", include_str!("../README.md"));
+            exit(1);
+        }
+        // Single file
+        (_, [filename]) => {
+            if let Ok(md) = metadata(&filename) {
+                if md.is_dir() {
+                    format_parts(&[filename.clone()])
+                } else {
+                    let buffer = read_to_string(&filename).expect("file exists");
+                    let res = rubyfmt::format_buffer(&buffer);
+                    match res {
+                        Ok(res) => {
+                            write!(io::stdout(), "{}", res).expect("write works");
+                            io::stdout().flush().expect("flush works");
+                        }
+                        Err(e) => handle_error_from(e, filename.as_ref(), ErrorExit::Exit),
+                    }
+                }
+            } else {
+                eprintln!("{} does not exist", Path::new(&filename).display());
+                exit(1)
+            }
+        }
+        // Multiple files
+        (Some("-i"), [_, parts @ ..]) | (_, parts) => {
+            format_parts(parts);
+        }
     }
 }
