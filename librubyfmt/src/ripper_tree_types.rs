@@ -1160,18 +1160,19 @@ impl IdentOrConst {
 }
 
 #[derive(RipperDeserialize, Debug, Clone)]
-pub enum IdentOrConstOrKwOrOpOrIvarOrGvar {
+pub enum IdentOrConstOrKwOrOpOrIvarOrGvarOrCvar {
     Ident(Ident),
     Const(Const),
     Keyword(Kw),
     Op(Op),
     IVar(IVar),
     GVar(GVar),
+    CVar(CVar),
 }
 
 def_tag!(symbol_tag, "symbol");
 #[derive(Deserialize, Debug, Clone)]
-pub struct Symbol(pub symbol_tag, pub IdentOrConstOrKwOrOpOrIvarOrGvar);
+pub struct Symbol(pub symbol_tag, pub IdentOrConstOrKwOrOpOrIvarOrGvarOrCvar);
 
 #[derive(RipperDeserialize, Debug, Clone)]
 pub enum CallLeft {

@@ -892,15 +892,18 @@ pub fn format_kw(ps: &mut dyn ConcreteParserState, kw: Kw) {
 pub fn format_symbol(ps: &mut dyn ConcreteParserState, symbol: Symbol) {
     ps.emit_ident(":".to_string());
     match symbol.1 {
-        IdentOrConstOrKwOrOpOrIvarOrGvar::Ident(i) => format_ident(ps, i),
-        IdentOrConstOrKwOrOpOrIvarOrGvar::Const(c) => format_const(ps, c),
-        IdentOrConstOrKwOrOpOrIvarOrGvar::Keyword(kw) => format_kw(ps, kw),
-        IdentOrConstOrKwOrOpOrIvarOrGvar::Op(op) => format_op(ps, op),
-        IdentOrConstOrKwOrOpOrIvarOrGvar::IVar(ivar) => {
+        IdentOrConstOrKwOrOpOrIvarOrGvarOrCvar::Ident(i) => format_ident(ps, i),
+        IdentOrConstOrKwOrOpOrIvarOrGvarOrCvar::Const(c) => format_const(ps, c),
+        IdentOrConstOrKwOrOpOrIvarOrGvarOrCvar::Keyword(kw) => format_kw(ps, kw),
+        IdentOrConstOrKwOrOpOrIvarOrGvarOrCvar::Op(op) => format_op(ps, op),
+        IdentOrConstOrKwOrOpOrIvarOrGvarOrCvar::IVar(ivar) => {
             format_var_ref_type(ps, VarRefType::IVar(ivar))
         }
-        IdentOrConstOrKwOrOpOrIvarOrGvar::GVar(gvar) => {
+        IdentOrConstOrKwOrOpOrIvarOrGvarOrCvar::GVar(gvar) => {
             format_var_ref_type(ps, VarRefType::GVar(gvar))
+        }
+        IdentOrConstOrKwOrOpOrIvarOrGvarOrCvar::CVar(cvar) => {
+            format_var_ref_type(ps, VarRefType::CVar(cvar))
         }
     }
 }
