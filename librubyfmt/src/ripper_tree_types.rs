@@ -1160,7 +1160,7 @@ impl IdentOrConst {
 }
 
 #[derive(RipperDeserialize, Debug, Clone)]
-pub enum IdentOrConstOrKwOrOpOrIvarOrGvarOrCvar {
+pub enum IdentOrConstOrKwOrOpOrIvarOrGvarOrCvarOrBacktick {
     Ident(Ident),
     Const(Const),
     Keyword(Kw),
@@ -1168,11 +1168,15 @@ pub enum IdentOrConstOrKwOrOpOrIvarOrGvarOrCvar {
     IVar(IVar),
     GVar(GVar),
     CVar(CVar),
+    Backtick(Backtick),
 }
 
 def_tag!(symbol_tag, "symbol");
 #[derive(Deserialize, Debug, Clone)]
-pub struct Symbol(pub symbol_tag, pub IdentOrConstOrKwOrOpOrIvarOrGvarOrCvar);
+pub struct Symbol(
+    pub symbol_tag,
+    pub IdentOrConstOrKwOrOpOrIvarOrGvarOrCvarOrBacktick,
+);
 
 #[derive(RipperDeserialize, Debug, Clone)]
 pub enum CallLeft {
@@ -1832,3 +1836,7 @@ pub struct IfOp(
     pub Box<Expression>,
     pub Box<Expression>,
 );
+
+def_tag!(backtick_tag, "@backtick");
+#[derive(Deserialize, Debug, Clone)]
+pub struct Backtick(backtick_tag, pub String, pub LineCol);
