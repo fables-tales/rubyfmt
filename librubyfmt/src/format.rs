@@ -889,21 +889,36 @@ pub fn format_kw(ps: &mut dyn ConcreteParserState, kw: Kw) {
     }
 }
 
+pub fn format_backtick(ps: &mut dyn ConcreteParserState, backtick: Backtick) {
+    if ps.at_start_of_line() {
+        ps.emit_indent();
+    }
+
+    handle_string_and_linecol(ps, backtick.1, backtick.2);
+
+    if ps.at_start_of_line() {
+        ps.emit_newline();
+    }
+}
+
 pub fn format_symbol(ps: &mut dyn ConcreteParserState, symbol: Symbol) {
     ps.emit_ident(":".to_string());
     match symbol.1 {
-        IdentOrConstOrKwOrOpOrIvarOrGvarOrCvar::Ident(i) => format_ident(ps, i),
-        IdentOrConstOrKwOrOpOrIvarOrGvarOrCvar::Const(c) => format_const(ps, c),
-        IdentOrConstOrKwOrOpOrIvarOrGvarOrCvar::Keyword(kw) => format_kw(ps, kw),
-        IdentOrConstOrKwOrOpOrIvarOrGvarOrCvar::Op(op) => format_op(ps, op),
-        IdentOrConstOrKwOrOpOrIvarOrGvarOrCvar::IVar(ivar) => {
+        IdentOrConstOrKwOrOpOrIvarOrGvarOrCvarOrBacktick::Ident(i) => format_ident(ps, i),
+        IdentOrConstOrKwOrOpOrIvarOrGvarOrCvarOrBacktick::Const(c) => format_const(ps, c),
+        IdentOrConstOrKwOrOpOrIvarOrGvarOrCvarOrBacktick::Keyword(kw) => format_kw(ps, kw),
+        IdentOrConstOrKwOrOpOrIvarOrGvarOrCvarOrBacktick::Op(op) => format_op(ps, op),
+        IdentOrConstOrKwOrOpOrIvarOrGvarOrCvarOrBacktick::IVar(ivar) => {
             format_var_ref_type(ps, VarRefType::IVar(ivar))
         }
-        IdentOrConstOrKwOrOpOrIvarOrGvarOrCvar::GVar(gvar) => {
+        IdentOrConstOrKwOrOpOrIvarOrGvarOrCvarOrBacktick::GVar(gvar) => {
             format_var_ref_type(ps, VarRefType::GVar(gvar))
         }
-        IdentOrConstOrKwOrOpOrIvarOrGvarOrCvar::CVar(cvar) => {
+        IdentOrConstOrKwOrOpOrIvarOrGvarOrCvarOrBacktick::CVar(cvar) => {
             format_var_ref_type(ps, VarRefType::CVar(cvar))
+        }
+        IdentOrConstOrKwOrOpOrIvarOrGvarOrCvarOrBacktick::Backtick(backtick) => {
+            format_backtick(ps, backtick)
         }
     }
 }
