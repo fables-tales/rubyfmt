@@ -1,15 +1,10 @@
 #![deny(warnings, missing_copy_implementations)]
-extern crate glob;
-extern crate libc;
-extern crate rubyfmt;
 
-use std::ffi::OsString;
-use std::fs::{metadata, read_to_string, OpenOptions};
+use std::ffi::{OsStr, OsString};
+use std::fs::{self, metadata, read_to_string, OpenOptions};
 use std::io::{self, Read, Write};
 use std::path::Path;
 use std::process::exit;
-
-use glob::glob;
 
 #[derive(Debug)]
 enum FileError {
@@ -45,25 +40,29 @@ fn rubyfmt_file(file_path: &Path) -> Result<(), FileError> {
     }
 }
 
-fn rubyfmt_dir(path: &Path) {
-    // FIXME: Look for an implementation of glob that actually takes a proper base dir
-    for entry in glob(&format!("{}/**/*.rb", path.display())).expect("it exists") {
-        let p = entry.expect("should not be null");
-        let res = rubyfmt_file(&p);
-        if let Err(FileError::SyntaxError) = res {
-            eprintln!(
-                "warning: {} contains syntax errors, ignoring for now",
-                p.display()
-            );
+fn rubyfmt_dir(path: &Path) -> io::Result<()> {
+    for entry in fs::read_dir(path)? {
+        let path = entry?.path();
+        if path.is_dir() {
+            rubyfmt_dir(&path)?;
+        } else if path.extension() == Some(OsStr::new("rb")) {
+            let res = rubyfmt_file(&path);
+            if let Err(FileError::SyntaxError) = res {
+                eprintln!(
+                    "warning: {} contains syntax errors, ignoring for now",
+                    path.display()
+                );
+            }
         }
     }
+    Ok(())
 }
 
 fn format_parts(parts: &[OsString]) {
     for part in parts {
         if let Ok(md) = metadata(part) {
             if md.is_dir() {
-                rubyfmt_dir(part.as_ref());
+                rubyfmt_dir(part.as_ref()).expect("failed to format directory");
             } else if md.is_file() {
                 rubyfmt_file(part.as_ref()).expect("failed to format file");
             }
