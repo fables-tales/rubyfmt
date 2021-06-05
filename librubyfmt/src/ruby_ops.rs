@@ -35,7 +35,7 @@ impl Parser {
 
     pub fn new(buf: &str) -> Self {
         unsafe {
-            let buffer_string = rb_utf8_str_new(buf.as_ptr() as _, buf.len() as i64);
+            let buffer_string = rb_utf8_str_new(buf.as_ptr() as _, buf.len() as libc::c_long);
             let parser_class = rb_const_get_at(rb_cObject, intern!("Parser"));
             let parser_instance = rb_funcall(parser_class, intern!("new"), 1, buffer_string);
             Parser(parser_instance)
