@@ -35,8 +35,6 @@ class Parser < Ripper::SexpBuilderPP
     # we haven't emitted yet
     @next_heredoc_stack = []
     @heredoc_regex = /(<<[-~]?)(.*$)/
-    @next_comment_delete = []
-    @comments_delete = []
     @regexp_stack = []
     @string_stack = []
     @kw_stacks = {
@@ -68,8 +66,6 @@ class Parser < Ripper::SexpBuilderPP
       [res, @comments, @lines_with_any_ruby, @last_ln]
     end
   end
-
-  attr_reader :comments_delete
 
   DELIM_CLOSE_PAREN={ '{' => '}', '[' => ']', '(' => ')', '<' => '>' }
 
@@ -192,15 +188,11 @@ class Parser < Ripper::SexpBuilderPP
     heredoc_parts = @heredoc_regex.match(args[0]).captures
     raise "bad heredoc" unless heredoc_parts.select { |x| x != nil }.count == 2
     @next_heredoc_stack.push(heredoc_parts)
-    @next_comment_delete.push(lineno)
     super
   end
 
   def on_heredoc_end(*args, &blk)
     @heredoc_stack.push(@next_heredoc_stack.pop)
-    start_com = @next_comment_delete.pop
-    end_com = lineno
-    @comments_delete.push([start_com, end_com])
     super
   end
 
