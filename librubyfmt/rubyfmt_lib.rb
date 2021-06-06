@@ -62,11 +62,10 @@ class Parser < Ripper::SexpBuilderPP
   def parse
     res = super
 
-    if res != nil
-      x = [res, @comments, @lines_with_any_ruby, @last_ln]
-      x
-    else
+    if res == nil || error?
       nil
+    else
+      [res, @comments, @lines_with_any_ruby, @last_ln]
     end
   end
 
