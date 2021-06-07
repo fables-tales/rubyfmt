@@ -57,8 +57,6 @@ fn main() -> Output {
 
 #[cfg(unix)]
 fn make_configure(ruby_checkout_path: &Path) -> Output {
-    eprintln!("{}", ruby_checkout_path.display());
-    eprintln!("{}", ruby_checkout_path.exists());
     if ruby_checkout_path.join("Makefile").exists() {
         let o = Command::new("make")
             .arg("configure")
@@ -66,6 +64,17 @@ fn make_configure(ruby_checkout_path: &Path) -> Output {
             .status()?;
         check_process_success("make configure", o)
     } else {
+        let o = Command::new("which")
+            .arg("autoconf")
+            .output()?;
+        epritnln!("stdout {}", String::from_utf8(output.stdout)?);
+        epritnln!("stderr {}", String::from_utf8(output.stderr)?);
+        let o = Command::new("which")
+            .arg("autoconf")
+            .current_dir(ruby_checkout_path)
+            .output()?;
+        epritnln!("stdout {}", String::from_utf8(output.stdout)?);
+        epritnln!("stderr {}", String::from_utf8(output.stderr)?);
         let o = Command::new("autoconf")
             .current_dir(ruby_checkout_path)
             .status()?;
