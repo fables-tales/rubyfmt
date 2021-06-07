@@ -57,6 +57,8 @@ fn main() -> Output {
 
 #[cfg(unix)]
 fn make_configure(ruby_checkout_path: &Path) -> Output {
+    eprintln!("{}", ruby_checkout_path);
+    eprintln!("{}", ruby_checkout_path.exists());
     if ruby_checkout_path.join("Makefile").exists() {
         let o = Command::new("make")
             .arg("configure")
