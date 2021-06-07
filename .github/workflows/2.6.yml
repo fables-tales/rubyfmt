@@ -39,7 +39,7 @@ jobs:
     - uses: actions/cache@v2
       with:
         path: |
-          librubyfmt/ruby_checkout/ruby-2.6.6
+          librubyfmt/ruby_checkout
         key: ${{ runner.os }}-ruby26-full
     - uses: actions/setup-ruby@v1
       with:

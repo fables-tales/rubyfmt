@@ -19,7 +19,7 @@ fn main() -> Output {
     compile_error!("rubyfmt on Windows is currently only supported with msvc");
 
     let path = std::env::current_dir()?;
-    let ruby_checkout_path = path.join("ruby_checkout").join("ruby-2.6.6");
+    let ruby_checkout_path = path.join("ruby_checkout");
     make_configure(&ruby_checkout_path)?;
     run_configure(&ruby_checkout_path)?;
     build_ruby(&ruby_checkout_path)?;
