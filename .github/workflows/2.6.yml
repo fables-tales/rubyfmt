@@ -70,5 +70,5 @@ jobs:
         brew tap-new $USER/local-autoconf
         brew extract --version=2.69 autoconf $USER/local-autoconf
         brew install autoconf@2.69
-        echo "/usr/local/opt/autoconf@2.69/bin" >> $GITHUB_PATH
+        brew link autoconf@2.69 --force
     - run: ./script/ci
