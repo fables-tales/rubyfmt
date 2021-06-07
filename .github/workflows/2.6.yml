@@ -67,6 +67,9 @@ jobs:
         # version of ruby embedded in this project, so force the installation
         # of the last known good version, 2.69.
         brew unlink autoconf
+        brew tap-new $USER/local-autoconf
+        brew extract --version=2.69 autoconf $USER/local-autoconf
         brew install autoconf@2.69
-        brew switch autoconf 2.69
+        brew link autoconf@2.69 --force
+        ln -s /usr/bin/perl5.30 /usr/bin/perl
     - run: ./script/ci
