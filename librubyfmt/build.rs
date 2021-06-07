@@ -1,8 +1,8 @@
+use stable_eyre::eyre::{eyre, Report};
 #[cfg(windows)]
 use std::env;
 use std::path::Path;
 use std::process::{Command, ExitStatus};
-use stable_eyre::eyre::{eyre, Report};
 
 type Output = Result<(), Report>;
 
