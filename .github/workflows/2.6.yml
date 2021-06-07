@@ -39,8 +39,8 @@ jobs:
     - uses: actions/cache@v2
       with:
         path: |
-          librubyfmt/ruby_checkout/ruby-2.6.6
-        key: ${{ runner.os }}-ruby-${{ hashFiles('.git/modules/librubyfmt/ruby_checkout/ruby-2.6.6/HEAD') }}
+          librubyfmt/ruby_checkout
+        key: ${{ runner.os }}-ruby-v0-${{ hashFiles('.git/modules/librubyfmt/ruby_checkout/HEAD') }}
     - if: runner.os == 'Linux'
       run: |
         sudo apt-get install -y shellcheck build-essential ruby-dev bison
