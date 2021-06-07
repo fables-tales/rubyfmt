@@ -1,12 +1,14 @@
 #[cfg(windows)]
 use std::env;
-use std::error::Error;
 use std::path::Path;
 use std::process::{Command, ExitStatus};
+use stable_eyre::eyre::{eyre, Report};
 
-type Output = Result<(), Box<dyn Error>>;
+type Output = Result<(), Report>;
 
 fn main() -> Output {
+    stable_eyre::install()?;
+
     #[cfg(target_os = "linux")]
     let libname = "ruby-static";
     #[cfg(target_os = "macos")]
@@ -120,7 +122,7 @@ fn build_ruby(ruby_checkout_path: &Path) -> Output {
 }
 
 #[cfg(windows)]
-fn find_tool(tool: &str) -> Result<cc::Tool, Box<dyn Error>> {
+fn find_tool(tool: &str) -> Result<cc::Tool, Report> {
     let target = env::var("TARGET")?;
     cc::windows_registry::find_tool(&target, tool)
         .ok_or_else(|| format!("Failed to find {}", tool).into())
@@ -130,6 +132,6 @@ fn check_process_success(command: &str, code: ExitStatus) -> Output {
     if code.success() {
         Ok(())
     } else {
-        Err(format!("Command {} failed with: {}", command, code).into())
+        Err(eyre!("Command {} failed with: {}", command, code))
     }
 }

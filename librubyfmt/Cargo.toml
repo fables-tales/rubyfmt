@@ -24,6 +24,7 @@ winapi = { version = "0.3", features = ["everything"] }
 
 [build-dependencies]
 cc = "1.0"
+stable-eyre = "0.2"
 
 [lib]
 name = "rubyfmt"

@@ -12,6 +12,7 @@ env:
     TERM: xterm256
     SCCACHE_DIR: /tmp/sccache
     RUSTC_WRAPPER: sccache
+    RUST_BACKTRACE: 1
 
 jobs:
   CI_26:
