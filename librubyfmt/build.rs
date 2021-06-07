@@ -64,7 +64,6 @@ fn make_configure(ruby_checkout_path: &Path) -> Output {
             .status()?;
         check_process_success("make configure", o)
     } else {
-        eprintln!("{}", std::env::var("PATH")?);
         let o = Command::new("autoconf")
             .current_dir(ruby_checkout_path)
             .status()?;
