@@ -42,7 +42,7 @@ jobs:
       with:
         path: |
           librubyfmt/ruby_checkout
-        key: ${{ runner.os }}-ruby26-full-v2
+        key: ${{ runner.os }}-ruby26-full
     - uses: actions/setup-ruby@v1
       with:
         version: 2.6
@@ -67,8 +67,6 @@ jobs:
         # version of ruby embedded in this project, so force the installation
         # of the last known good version, 2.69.
         brew unlink autoconf
-        brew tap-new $USER/local-autoconf
-        brew extract --version=2.69 autoconf $USER/local-autoconf
         brew install autoconf@2.69
-        brew link autoconf@2.69 --force
+        brew switch autoconf 2.69
     - run: ./script/ci
