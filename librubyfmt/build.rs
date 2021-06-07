@@ -67,14 +67,14 @@ fn make_configure(ruby_checkout_path: &Path) -> Output {
         let o = Command::new("which")
             .arg("autoconf")
             .output()?;
-        epritnln!("stdout {}", String::from_utf8(output.stdout)?);
-        epritnln!("stderr {}", String::from_utf8(output.stderr)?);
+        eprintln!("stdout {}", String::from_utf8(o.stdout)?);
+        eprintln!("stderr {}", String::from_utf8(o.stderr)?);
         let o = Command::new("which")
             .arg("autoconf")
             .current_dir(ruby_checkout_path)
             .output()?;
-        epritnln!("stdout {}", String::from_utf8(output.stdout)?);
-        epritnln!("stderr {}", String::from_utf8(output.stderr)?);
+        eprintln!("stdout {}", String::from_utf8(o.stdout)?);
+        eprintln!("stderr {}", String::from_utf8(o.stderr)?);
         let o = Command::new("autoconf")
             .current_dir(ruby_checkout_path)
             .status()?;
