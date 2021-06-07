@@ -37,11 +37,6 @@ jobs:
         path: |
           /tmp/sccache
         key: ${{ runner.os }}-sccache-${{ hashFiles('**/Cargo.lock') }}
-    - uses: actions/cache@v2
-      with:
-        path: |
-          librubyfmt/ruby_checkout
-        key: ${{ runner.os }}-ruby26-full
     - uses: actions/setup-ruby@v1
       with:
         version: 2.6
