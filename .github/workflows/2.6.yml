@@ -41,7 +41,7 @@ jobs:
       with:
         path: |
           librubyfmt/ruby_checkout
-        key: ${{ runner.os }}-ruby26-full
+        key: ${{ runner.os }}-ruby27-full
     - uses: actions/setup-ruby@v1
       with:
         version: 2.6

@@ -57,18 +57,10 @@ fn main() -> Output {
 
 #[cfg(unix)]
 fn make_configure(ruby_checkout_path: &Path) -> Output {
-    if ruby_checkout_path.join("Makefile").exists() {
-        let o = Command::new("make")
-            .arg("configure")
-            .current_dir(ruby_checkout_path)
-            .status()?;
-        check_process_success("make configure", o)
-    } else {
-        let o = Command::new("autoconf")
-            .current_dir(ruby_checkout_path)
-            .status()?;
-        check_process_success("autoconf", o)
-    }
+    let o = Command::new("autoconf")
+        .current_dir(ruby_checkout_path)
+        .status()?;
+    check_process_success("autoconf", o)
 }
 
 #[cfg(windows)]
