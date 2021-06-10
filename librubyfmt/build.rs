@@ -10,7 +10,7 @@ fn main() -> Output {
     #[cfg(target_os = "linux")]
     let libname = "ruby-static";
     #[cfg(target_os = "macos")]
-    let libname = "ruby.2.6-static";
+    let libname = "ruby.2.7-static";
     #[cfg(all(target_arch = "x86_64", windows))]
     let libname = "x64-vcruntime140-ruby260-static";
     #[cfg(all(target_arch = "x86", windows))]
