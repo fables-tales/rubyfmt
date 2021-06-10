@@ -40,9 +40,6 @@ jobs:
         path: |
           librubyfmt/ruby_checkout/ruby-2.6.6
         key: ${{ runner.os }}-ruby26-full
-    - uses: ruby/setup-ruby@v1
-      with:
-        ruby-version: 2.6
     - if: runner.os == 'Linux'
       run: |
         sudo apt-get install -y shellcheck build-essential ruby-dev bison
