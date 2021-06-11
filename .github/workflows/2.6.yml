@@ -56,5 +56,5 @@ jobs:
       run: |
         rustup component add clippy --toolchain stable-x86_64-apple-darwin
         rustup component add rustfmt --toolchain stable-x86_64-apple-darwin
-        brew install shellcheck sccache
+        brew install shellcheck sccache automake
     - run: ./script/ci
