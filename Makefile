@@ -11,17 +11,13 @@ endif
 
 LDFLAGS +=  -lz
 
-all: submodules release debug
+all: release debug
 
 debug:
 	cargo build
 
 release:
 	cargo build --release
-
-submodules:
-	git submodule init
-	git submodule update
 
 target/c_main_debug: target/debug/deps/librubyfmt-*.a src/main.c
 	clang -O3 src/main.c $< $(LDFLAGS) -o $@

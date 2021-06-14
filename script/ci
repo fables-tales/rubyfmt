@@ -2,7 +2,5 @@
 set -euxo pipefail
 source ./script/functions.sh
 rm -rf tmp/
-git submodule init
-git submodule update
 make lint
 ./script/test.sh

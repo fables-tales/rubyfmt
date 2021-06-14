@@ -22,9 +22,6 @@ jobs:
         os: [ubuntu-latest, macos-latest]
     steps:
     - uses: actions/checkout@v2
-    - run: |
-        git submodule init
-        git submodule update
     - uses: actions/cache@v2
       with:
         path: |

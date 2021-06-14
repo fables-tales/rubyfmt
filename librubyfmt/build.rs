@@ -20,6 +20,13 @@ fn main() -> Output {
 
     let path = std::env::current_dir()?;
     let ruby_checkout_path = path.join("ruby_checkout");
+
+    if !ruby_checkout_path.join(".git").exists() {
+        let _ = Command::new("git")
+            .args(&["submodule", "update", "--init"])
+            .status();
+    }
+
     make_configure(&ruby_checkout_path)?;
     run_configure(&ruby_checkout_path)?;
     build_ruby(&ruby_checkout_path)?;
