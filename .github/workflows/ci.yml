@@ -16,10 +16,15 @@ env:
 jobs:
   CI:
     runs-on: ${{ matrix.os }}
+    continue-on-error: ${{ matrix.allow-failure }}
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest]
+        allow-failure: [false]
+        include:
+          - os: windows-latest
+            allow-failure: true
     steps:
     - uses: actions/checkout@v2
       with:
