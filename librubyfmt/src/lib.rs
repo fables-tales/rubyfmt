@@ -170,20 +170,18 @@ unsafe fn load_ripper() -> Result<(), ()> {
     Init_ripper();
 
     //load each ripper program
+    ruby::eval_str(include_str!("../ruby_checkout/ext/ripper/lib/ripper.rb"))?;
     ruby::eval_str(include_str!(
-        "../ruby_checkout/ruby-2.6.6/ext/ripper/lib/ripper.rb"
+        "../ruby_checkout/ext/ripper/lib/ripper/core.rb"
     ))?;
     ruby::eval_str(include_str!(
-        "../ruby_checkout/ruby-2.6.6/ext/ripper/lib/ripper/core.rb"
+        "../ruby_checkout/ext/ripper/lib/ripper/lexer.rb"
     ))?;
     ruby::eval_str(include_str!(
-        "../ruby_checkout/ruby-2.6.6/ext/ripper/lib/ripper/lexer.rb"
+        "../ruby_checkout/ext/ripper/lib/ripper/filter.rb"
     ))?;
     ruby::eval_str(include_str!(
-        "../ruby_checkout/ruby-2.6.6/ext/ripper/lib/ripper/filter.rb"
-    ))?;
-    ruby::eval_str(include_str!(
-        "../ruby_checkout/ruby-2.6.6/ext/ripper/lib/ripper/sexp.rb"
+        "../ruby_checkout/ext/ripper/lib/ripper/sexp.rb"
     ))?;
 
     Ok(())

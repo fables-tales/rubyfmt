@@ -1,4 +1,4 @@
-name: CI 2.6
+name: CI
 on:
   push:
     branches: [ trunk ]
@@ -14,9 +14,10 @@ env:
     RUSTC_WRAPPER: sccache
 
 jobs:
-  CI_26:
+  CI:
     runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest]
     steps:
@@ -38,8 +39,8 @@ jobs:
     - uses: actions/cache@v2
       with:
         path: |
-          librubyfmt/ruby_checkout/ruby-2.6.6
-        key: ${{ runner.os }}-ruby26-full
+          librubyfmt/ruby_checkout
+        key: ${{ runner.os }}-ruby-v0-${{ hashFiles('.git/modules/librubyfmt/ruby_checkout/HEAD') }}
     - if: runner.os == 'Linux'
       run: |
         sudo apt-get install -y shellcheck build-essential ruby-dev bison
@@ -55,13 +56,5 @@ jobs:
       run: |
         rustup component add clippy --toolchain stable-x86_64-apple-darwin
         rustup component add rustfmt --toolchain stable-x86_64-apple-darwin
-        brew install shellcheck sccache
-
-        # Homebrew installs autoconf 2.71 which is incompatible with the
-        # version of ruby embedded in this project, so force the installation
-        # of the last known good version, 2.69.
-        brew unlink autoconf
-        brew tap-new $USER/local-autoconf
-        brew extract --version=2.69 autoconf $USER/local-autoconf
-        brew install autoconf@2.69
+        brew install shellcheck sccache automake
     - run: ./script/ci

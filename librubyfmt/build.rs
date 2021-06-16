@@ -10,16 +10,16 @@ fn main() -> Output {
     #[cfg(target_os = "linux")]
     let libname = "ruby-static";
     #[cfg(target_os = "macos")]
-    let libname = "ruby.2.6-static";
+    let libname = "ruby.2.7-static";
     #[cfg(all(target_arch = "x86_64", windows))]
-    let libname = "x64-vcruntime140-ruby260-static";
+    let libname = "x64-vcruntime140-ruby270-static";
     #[cfg(all(target_arch = "x86", windows))]
-    let libname = "vcruntime140-ruby260-static";
+    let libname = "vcruntime140-ruby270-static";
     #[cfg(all(target_env = "gnu", windows))]
     compile_error!("rubyfmt on Windows is currently only supported with msvc");
 
     let path = std::env::current_dir()?;
-    let ruby_checkout_path = path.join("ruby_checkout").join("ruby-2.6.6");
+    let ruby_checkout_path = path.join("ruby_checkout");
     make_configure(&ruby_checkout_path)?;
     run_configure(&ruby_checkout_path)?;
     build_ruby(&ruby_checkout_path)?;
@@ -55,18 +55,11 @@ fn main() -> Output {
 
 #[cfg(unix)]
 fn make_configure(ruby_checkout_path: &Path) -> Output {
-    if ruby_checkout_path.join("Makefile").exists() {
-        let o = Command::new("make")
-            .arg("configure")
-            .current_dir(ruby_checkout_path)
-            .status()?;
-        check_process_success("make configure", o)
-    } else {
-        let o = Command::new("autoconf")
-            .current_dir(ruby_checkout_path)
-            .status()?;
-        check_process_success("autoconf", o)
-    }
+    let o = Command::new("autoreconf")
+        .arg("--install")
+        .current_dir(ruby_checkout_path)
+        .status()?;
+    check_process_success("autoreconf --install", o)
 }
 
 #[cfg(windows)]
