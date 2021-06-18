@@ -22,6 +22,8 @@ jobs:
         os: [ubuntu-latest, macos-latest]
     steps:
     - uses: actions/checkout@v2
+      with:
+        submodules: true
     - uses: actions/cache@v2
       with:
         path: |
