@@ -22,9 +22,8 @@ jobs:
         os: [ubuntu-latest, macos-latest]
     steps:
     - uses: actions/checkout@v2
-    - run: |
-        git submodule init
-        git submodule update
+      with:
+        submodules: true
     - uses: actions/cache@v2
       with:
         path: |
@@ -40,7 +39,7 @@ jobs:
       with:
         path: |
           librubyfmt/ruby_checkout
-        key: ${{ runner.os }}-ruby-v0-${{ hashFiles('.git/modules/librubyfmt/ruby_checkout/HEAD') }}
+        key: ${{ runner.os }}-ruby-v1-${{ hashFiles('.git/modules/librubyfmt/ruby_checkout/HEAD') }}
     - if: runner.os == 'Linux'
       run: |
         sudo apt-get install -y shellcheck build-essential ruby-dev bison
