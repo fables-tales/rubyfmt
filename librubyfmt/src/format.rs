@@ -2445,7 +2445,8 @@ pub fn format_method_add_block(ps: &mut dyn ConcreteParserState, mab: MethodAddB
         ps.emit_indent();
     }
 
-    let chain = (mab.1).into_call_chain();
+    let mut chain = (mab.1).into_call_chain();
+    chain.push(CallChainElement::Block(mab.2));
 
     ps.with_start_of_line(
         false,
@@ -2453,16 +2454,6 @@ pub fn format_method_add_block(ps: &mut dyn ConcreteParserState, mab: MethodAddB
             format_call_chain(ps, chain);
         }),
     );
-
-    // safe to unconditionally emit a space here, we don't have to worry
-    // about not having a block, method_add_block can only be parsed if we
-    // do in fact have a block
-    ps.emit_space();
-
-    match mab.2 {
-        Block::DoBlock(do_block) => format_do_block(ps, do_block),
-        Block::BraceBlock(brace_block) => format_brace_block(ps, brace_block),
-    }
 
     if ps.at_start_of_line() {
         ps.emit_newline();
