@@ -586,8 +586,12 @@ pub fn format_ensure(ps: &mut dyn ConcreteParserState, ensure_part: Option<Ensur
     }
 }
 
-pub fn get_def_expression_from_args(args: &ArgsAddStarOrExpressionList) -> Option<&Def> {
+pub fn get_single_def_expression_from_args(args: &ArgsAddStarOrExpressionList) -> Option<&Def> {
     if let ArgsAddStarOrExpressionList::ExpressionList(el) = args {
+        if el.len() != 1 {
+            return None;
+        }
+
         if let Some(Expression::Def(def)) = el.first() {
             return Some(def);
         }
@@ -649,7 +653,7 @@ pub fn use_parens_for_method_call(
         //
         //   private def foo
         //   end
-        if get_def_expression_from_args(&args).is_some() {
+        if get_single_def_expression_from_args(&args).is_some() {
             return false;
         }
     }
@@ -727,7 +731,7 @@ pub fn format_method_call(ps: &mut dyn ConcreteParserState, method_call: MethodC
             };
 
             if !args.is_empty() {
-                match get_def_expression_from_args(&args) {
+                match get_single_def_expression_from_args(&args) {
                     Some(_) => {
                         // If we match `def ...` as the first argument, just
                         // emit it without any delimiters.
