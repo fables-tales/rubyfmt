@@ -2381,7 +2381,7 @@ pub fn format_backref(ps: &mut dyn ConcreteParserState, backref: Backref) {
     }
 }
 
-fn is_rspec_like_describe_call(cc: &[CallChainElement]) -> bool {
+fn can_elide_parens_for_rspec_dsl_call(cc: &[CallChainElement]) -> bool {
     if let Some(CallChainElement::Block(Block::BraceBlock(_))) = cc.last() {
         return false;
     };
@@ -2407,7 +2407,7 @@ fn is_rspec_like_describe_call(cc: &[CallChainElement]) -> bool {
 }
 
 fn format_call_chain(ps: &mut dyn ConcreteParserState, cc: Vec<CallChainElement>) {
-    let elide_parens = is_rspec_like_describe_call(&cc);
+    let elide_parens = can_elide_parens_for_rspec_dsl_call(&cc);
     for cc_elem in cc.into_iter() {
         match cc_elem {
             CallChainElement::Paren(p) => format_paren(ps, p),
