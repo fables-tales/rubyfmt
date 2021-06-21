@@ -2382,6 +2382,10 @@ pub fn format_backref(ps: &mut dyn ConcreteParserState, backref: Backref) {
 }
 
 fn is_rspec_like_describe_call(cc: &[CallChainElement]) -> bool {
+    if let Some(CallChainElement::Block(Block::BraceBlock(_))) = cc.last() {
+        return false;
+    };
+
     let is_bare_it_or_describe = match cc.get(0) {
         Some(CallChainElement::IdentOrOpOrKeywordOrConst(IdentOrOpOrKeywordOrConst::Ident(
             Ident(_, ident, _),
