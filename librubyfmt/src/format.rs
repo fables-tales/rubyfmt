@@ -39,7 +39,10 @@ pub fn format_def(ps: &mut dyn ConcreteParserState, def: Def) {
             ps.emit_end();
         }),
     );
-    ps.emit_newline();
+
+    if ps.at_start_of_line() {
+        ps.emit_newline();
+    }
 }
 
 pub fn inner_format_params(ps: &mut dyn ConcreteParserState, params: Box<Params>) {
@@ -586,18 +589,18 @@ pub fn format_ensure(ps: &mut dyn ConcreteParserState, ensure_part: Option<Ensur
     }
 }
 
-pub fn get_single_def_expression_from_args(args: &ArgsAddStarOrExpressionList) -> Option<&Def> {
+pub fn args_has_single_def_expression(args: &ArgsAddStarOrExpressionList) -> bool {
     if let ArgsAddStarOrExpressionList::ExpressionList(el) = args {
         if el.len() != 1 {
-            return None;
+            return false;
         }
 
-        if let Some(Expression::Def(def)) = el.first() {
-            return Some(def);
+        if let Some(Expression::Def(_)) = el.first() {
+            return true;
         }
     }
 
-    None
+    false
 }
 
 pub fn use_parens_for_method_call(
@@ -653,7 +656,7 @@ pub fn use_parens_for_method_call(
         //
         //   private def foo
         //   end
-        if get_single_def_expression_from_args(&args).is_some() {
+        if args_has_single_def_expression(&args) {
             return false;
         }
     }
@@ -731,34 +734,38 @@ pub fn format_method_call(ps: &mut dyn ConcreteParserState, method_call: MethodC
             };
 
             if !args.is_empty() {
-                match get_single_def_expression_from_args(&args) {
-                    Some(_) => {
-                        // If we match `def ...` as the first argument, just
-                        // emit it without any delimiters.
-                        ps.with_formatting_context(
-                            FormattingContext::ArgsList,
-                            Box::new(|ps| {
-                                ps.emit_space();
-                                format_list_like_thing(ps, args, true);
-                            }),
-                        );
+                if args_has_single_def_expression(&args) {
+                    // If we match `def ...` as the first argument, just
+                    // emit it without any delimiters.
+                    ps.emit_space();
+
+                    if let ArgsAddStarOrExpressionList::ExpressionList(mut el) = args {
+                        let expr = el.pop().expect("checked the list is not empty");
+
+                        if let Expression::Def(def_expression) = expr {
+                            ps.with_start_of_line(
+                                false,
+                                Box::new(|ps| {
+                                    format_def(ps, def_expression);
+                                }),
+                            );
+                        }
                     }
-                    None => {
-                        ps.breakable_of(
-                            delims,
-                            Box::new(|ps| {
-                                ps.with_formatting_context(
-                                    FormattingContext::ArgsList,
-                                    Box::new(|ps| {
-                                        format_list_like_thing(ps, args, false);
-                                        ps.emit_collapsing_newline();
-                                    }),
-                                );
-                                debug!("end of format method call");
-                                ps.wind_line_if_needed_for_array();
-                            }),
-                        );
-                    }
+                } else {
+                    ps.breakable_of(
+                        delims,
+                        Box::new(|ps| {
+                            ps.with_formatting_context(
+                                FormattingContext::ArgsList,
+                                Box::new(|ps| {
+                                    format_list_like_thing(ps, args, false);
+                                    ps.emit_collapsing_newline();
+                                }),
+                            );
+                            debug!("end of format method call");
+                            ps.wind_line_if_needed_for_array();
+                        }),
+                    );
                 }
             } else if use_parens {
                 ps.emit_open_paren();
