@@ -2718,10 +2718,6 @@ pub fn format_mod_statement(
                 ps.emit_end();
             }),
         );
-
-        if ps.at_start_of_line() {
-            ps.emit_newline();
-        }
     } else {
         if ps.at_start_of_line() {
             ps.emit_indent();
@@ -2736,10 +2732,10 @@ pub fn format_mod_statement(
                 format_expression(ps, *conditional);
             }),
         );
+    }
 
-        if ps.at_start_of_line() {
-            ps.emit_newline();
-        }
+    if ps.at_start_of_line() {
+        ps.emit_newline();
     }
 }
 
