@@ -1228,7 +1228,7 @@ impl CallLeft {
             }
             CallLeft::MethodAddBlock(MethodAddBlock(_, left, block)) => {
                 let mut res = left.into_call_chain();
-                res.append(&mut vec![CallChainElement::Block(block)]);
+                res.push(CallChainElement::Block(block));
                 res
             }
             CallLeft::VarRef(v) => vec![CallChainElement::VarRef(v)],
