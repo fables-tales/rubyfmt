@@ -743,12 +743,7 @@ pub fn format_method_call(ps: &mut dyn ConcreteParserState, method_call: MethodC
                         let expr = el.pop().expect("checked the list is not empty");
 
                         if let Expression::Def(def_expression) = expr {
-                            ps.with_start_of_line(
-                                false,
-                                Box::new(|ps| {
-                                    format_def(ps, def_expression);
-                                }),
-                            );
+                            format_def(ps, def_expression);
                         }
                     }
                 } else {
