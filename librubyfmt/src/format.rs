@@ -627,7 +627,7 @@ pub fn use_parens_for_method_call(
         }
     }
 
-    if name == "super" || name == "require" {
+    if name == "super" || name == "require" || name == "require_relative" {
         return original_used_parens;
     }
 
