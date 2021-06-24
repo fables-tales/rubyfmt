@@ -2693,7 +2693,7 @@ pub fn format_mod_statement(
             }),
         );
     }
-    
+
     if ps.at_start_of_line() {
         ps.emit_newline();
     }
