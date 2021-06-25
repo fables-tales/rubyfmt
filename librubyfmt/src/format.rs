@@ -627,7 +627,7 @@ pub fn use_parens_for_method_call(
         }
     }
 
-    if name == "super" || name == "require" {
+    if name == "super" || name == "require" || name == "require_relative" {
         return original_used_parens;
     }
 
@@ -2673,10 +2673,6 @@ pub fn format_mod_statement(
                 ps.emit_end();
             }),
         );
-
-        if ps.at_start_of_line() {
-            ps.emit_newline();
-        }
     } else {
         if ps.at_start_of_line() {
             ps.emit_indent();
@@ -2691,10 +2687,10 @@ pub fn format_mod_statement(
                 format_expression(ps, *conditional);
             }),
         );
+    }
 
-        if ps.at_start_of_line() {
-            ps.emit_newline();
-        }
+    if ps.at_start_of_line() {
+        ps.emit_newline();
     }
 }
 
