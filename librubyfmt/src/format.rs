@@ -39,7 +39,10 @@ pub fn format_def(ps: &mut dyn ConcreteParserState, def: Def) {
             ps.emit_end();
         }),
     );
-    ps.emit_newline();
+
+    if ps.at_start_of_line() {
+        ps.emit_newline();
+    }
 }
 
 pub fn inner_format_params(ps: &mut dyn ConcreteParserState, params: Box<Params>) {
@@ -586,6 +589,20 @@ pub fn format_ensure(ps: &mut dyn ConcreteParserState, ensure_part: Option<Ensur
     }
 }
 
+pub fn args_has_single_def_expression(args: &ArgsAddStarOrExpressionList) -> bool {
+    if let ArgsAddStarOrExpressionList::ExpressionList(el) = args {
+        if el.len() != 1 {
+            return false;
+        }
+
+        if let Some(Expression::Def(_)) = el.first() {
+            return true;
+        }
+    }
+
+    false
+}
+
 pub fn use_parens_for_method_call(
     ps: &dyn ConcreteParserState,
     chain: &[CallChainElement],
@@ -633,6 +650,15 @@ pub fn use_parens_for_method_call(
 
     if args.is_empty() {
         return false;
+    } else {
+        // If the first argument to this method call is `def`, we don't want
+        // to use parens. Example:
+        //
+        //   private def foo
+        //   end
+        if args_has_single_def_expression(&args) {
+            return false;
+        }
     }
 
     if context == FormattingContext::ClassOrModule && !original_used_parens {
@@ -708,20 +734,34 @@ pub fn format_method_call(ps: &mut dyn ConcreteParserState, method_call: MethodC
             };
 
             if !args.is_empty() {
-                ps.breakable_of(
-                    delims,
-                    Box::new(|ps| {
-                        ps.with_formatting_context(
-                            FormattingContext::ArgsList,
-                            Box::new(|ps| {
-                                format_list_like_thing(ps, args, false);
-                                ps.emit_collapsing_newline();
-                            }),
-                        );
-                        debug!("end of format method call");
-                        ps.wind_line_if_needed_for_array();
-                    }),
-                );
+                if args_has_single_def_expression(&args) {
+                    // If we match `def ...` as the first argument, just
+                    // emit it without any delimiters.
+                    ps.emit_space();
+
+                    if let ArgsAddStarOrExpressionList::ExpressionList(mut el) = args {
+                        let expr = el.pop().expect("checked the list is not empty");
+
+                        if let Expression::Def(def_expression) = expr {
+                            format_def(ps, def_expression);
+                        }
+                    }
+                } else {
+                    ps.breakable_of(
+                        delims,
+                        Box::new(|ps| {
+                            ps.with_formatting_context(
+                                FormattingContext::ArgsList,
+                                Box::new(|ps| {
+                                    format_list_like_thing(ps, args, false);
+                                    ps.emit_collapsing_newline();
+                                }),
+                            );
+                            debug!("end of format method call");
+                            ps.wind_line_if_needed_for_array();
+                        }),
+                    );
+                }
             } else if use_parens {
                 ps.emit_open_paren();
                 ps.emit_close_paren();
