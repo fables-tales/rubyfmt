@@ -64,5 +64,7 @@ jobs:
     - if: runner.os == 'Windows'
       run: |
         choco install sccache
+        choco install winflexbison3
+        echo "YACC=win_bison" >> $GITHUB_ENV
     - run: ./script/ci
       shell: 'bash'
