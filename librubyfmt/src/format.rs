@@ -361,8 +361,8 @@ fn bind_mlhs(ps: &mut dyn ConcreteParserState, mlhs: &MLhs) {
                 // TODO(penelopezone) is something missing here?
             }
             MLhsInner::RestParam(v) => match v.1 {
-                Some(IdentOrVarField::Ident(ref i)) => bind_ident(ps, &i),
-                Some(IdentOrVarField::VarField(ref v)) => bind_var_field(ps, &v),
+                Some(IdentOrVarField::Ident(ref i)) => bind_ident(ps, i),
+                Some(IdentOrVarField::VarField(ref v)) => bind_var_field(ps, v),
                 _ => {}
             },
             MLhsInner::Ident(i) => bind_ident(ps, i),
@@ -656,7 +656,7 @@ pub fn use_parens_for_method_call(
         //
         //   private def foo
         //   end
-        if args_has_single_def_expression(&args) {
+        if args_has_single_def_expression(args) {
             return false;
         }
     }

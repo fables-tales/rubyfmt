@@ -36,7 +36,7 @@ fn rubyfmt_file(file_path: &Path) -> Result<(), FileError> {
         Err(rubyfmt::RichFormatError::SyntaxError) => Err(FileError::SyntaxError),
         Err(e) => {
             // we're in a formatting loop, so print, and OK
-            handle_error_from(e, &file_path, ErrorExit::NoExit);
+            handle_error_from(e, file_path, ErrorExit::NoExit);
             Ok(())
         }
     }

@@ -109,7 +109,7 @@ impl Intermediary {
 
                 if let Some(prev) = &mut self.previous_line_metadata {
                     if LineMetadata::indent_level_increases_between(
-                        &prev,
+                        prev,
                         &self.current_line_metadata,
                     ) {
                         prev.set_gets_indented()
