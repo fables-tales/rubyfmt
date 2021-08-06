@@ -19,11 +19,11 @@ pwd
 cp target/debug/rubyfmt-main "${RELEASE_DIR}/rubyfmt-debug"
 pwd
 # shellcheck disable=2012
-RELEASE_LIB=$(ls -t target/release/librubyfmt*.a | head -1)
+RELEASE_LIB=$(find target/release/ | grep -i 'librubyfmt-.*\.a$')
 cp "$RELEASE_LIB" "${RELEASE_DIR}/lib/librubyfmt.a"
 pwd
 # shellcheck disable=2012
-DEBUG_LIB=$(ls -t target/debug/librubyfmt*.a | head -1)
+DEBUG_LIB=$(find target/debug/ | grep -i 'librubyfmt-.*\.a$')
 cp "$DEBUG_LIB" "${RELEASE_DIR}/lib/librubyfmt-debug.a"
 pwd
 cp librubyfmt/include/rubyfmt.h "${RELEASE_DIR}/include/rubyfmt.h"

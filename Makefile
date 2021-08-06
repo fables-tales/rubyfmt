@@ -14,9 +14,11 @@ LDFLAGS +=  -lz
 all: release debug
 
 debug:
+	find target/debug | grep -i 'librubyfm-*\.a' | xargs rm
 	cargo build
 
 release:
+	find target/releasdebug | grep -i 'librubyfm-*\.a' | xargs rm
 	cargo build --release
 
 target/c_main_debug: target/debug/deps/librubyfmt-*.a src/main.c
