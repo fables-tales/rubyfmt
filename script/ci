@@ -1,6 +1,0 @@
-#!/bin/bash
-set -euxo pipefail
-source ./script/functions.sh
-rm -rf tmp/
-make lint
-./script/test.sh

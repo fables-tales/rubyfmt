@@ -38,7 +38,6 @@ ubuntu_shell:
 lint: clippy
 	./script/lints/lint_fixtures.sh
 	./script/lints/lint_scripts.sh
-	./script/lints/lint_rust.sh
 
 clean:
 	rm -rf target/

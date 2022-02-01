@@ -14,7 +14,43 @@ env:
     RUSTC_WRAPPER: sccache
 
 jobs:
-  CI:
+  rustfmt:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v1
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          components: rustfmt
+          override: true
+          profile: minimal
+      - uses: actions-rs/cargo@v1
+        with:
+          command: fmt
+          args: --all -- --check
+
+  clippy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v1
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: 1.51.0
+          components: clippy
+          override: true
+          profile: minimal
+      - run: cargo clippy --all --all-features -- -D warnings
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v1
+      - run: |
+          sudo apt-get install -y shellcheck
+          ./script/lints/lint_fixtures.sh
+          ./script/lints/lint_scripts.sh
+
+  test:
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -24,6 +60,11 @@ jobs:
     - uses: actions/checkout@v2
       with:
         submodules: true
+    - uses: actions-rs/toolchain@v1
+      with:
+        toolchain: 1.51.0
+        override: true
+        profile: minimal
     - uses: actions/cache@v2
       with:
         path: |
@@ -42,7 +83,7 @@ jobs:
         key: ${{ runner.os }}-ruby-v1-${{ hashFiles('.git/modules/librubyfmt/ruby_checkout/HEAD') }}
     - if: runner.os == 'Linux'
       run: |
-        sudo apt-get install -y shellcheck build-essential ruby-dev bison
+        sudo apt-get install -y build-essential ruby-dev bison
 
         SCCACHE_VERSION=0.2.15
         SCCACHE_FILE=sccache-v$SCCACHE_VERSION-x86_64-unknown-linux-musl
@@ -53,7 +94,5 @@ jobs:
         echo "$HOME/.local/bin" >> $GITHUB_PATH
     - if: runner.os == 'macOS'
       run: |
-        rustup component add clippy --toolchain stable-x86_64-apple-darwin
-        rustup component add rustfmt --toolchain stable-x86_64-apple-darwin
-        brew install shellcheck sccache automake
-    - run: ./script/ci
+        brew install sccache automake
+    - run: ./script/test.sh

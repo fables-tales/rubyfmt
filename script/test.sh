@@ -1,5 +1,8 @@
 #!/bin/bash
-set -ex
+set -euxo pipefail
+
+rm -rf tmp/
+source ./script/functions.sh
 
 cargo build --release
 
