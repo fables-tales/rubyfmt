@@ -36,6 +36,7 @@ fn main() -> Output {
         .file("src/rubyfmt.c")
         .object(ruby_checkout_path.join(&ripper))
         .include(ruby_checkout_path.join("include"))
+        .include(ruby_checkout_path.join(".ext/include/x86_64-darwin21"))
         .include(ruby_checkout_path.join(".ext/include/x86_64-darwin20"))
         .include(ruby_checkout_path.join(".ext/include/x86_64-darwin19"))
         .include(ruby_checkout_path.join(".ext/include/x86_64-darwin18"))
