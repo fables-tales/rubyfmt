@@ -263,13 +263,17 @@ pub fn format_rest_param(
                         false,
                         Box::new(|ps| {
                             match rp.1 {
-                                Some(IdentOrVarField::Ident(i)) => {
+                                Some(RestParamAssignable::Ident(i)) => {
                                     bind_ident(ps, &i);
                                     format_ident(ps, i);
                                 }
-                                Some(IdentOrVarField::VarField(vf)) => {
+                                Some(RestParamAssignable::VarField(vf)) => {
                                     bind_var_field(ps, &vf);
                                     format_var_field(ps, vf);
+                                }
+                                Some(RestParamAssignable::ArefField(aref_field)) => {
+                                    // No need to bind, hash value must have been previously bound
+                                    format_aref_field(ps, aref_field);
                                 }
                                 None => {
                                     // deliberately do nothing
@@ -361,9 +365,9 @@ fn bind_mlhs(ps: &mut dyn ConcreteParserState, mlhs: &MLhs) {
                 // TODO(penelopezone) is something missing here?
             }
             MLhsInner::RestParam(v) => match v.1 {
-                Some(IdentOrVarField::Ident(ref i)) => bind_ident(ps, i),
-                Some(IdentOrVarField::VarField(ref v)) => bind_var_field(ps, v),
-                _ => {}
+                Some(RestParamAssignable::Ident(ref i)) => bind_ident(ps, i),
+                Some(RestParamAssignable::VarField(ref v)) => bind_var_field(ps, v),
+                Some(RestParamAssignable::ArefField(..)) | None => {}
             },
             MLhsInner::Ident(i) => bind_ident(ps, i),
             MLhsInner::MLhs(m) => bind_mlhs(ps, m),
@@ -1629,6 +1633,9 @@ pub fn format_assignable(ps: &mut dyn ConcreteParserState, v: Assignable) {
         }
         Assignable::Field(field) => {
             format_field(ps, field);
+        }
+        Assignable::MLhs(mlhs) => {
+            format_mlhs(ps, mlhs);
         }
         Assignable::Ident(ident) => {
             bind_ident(ps, &ident);

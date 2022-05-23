@@ -391,9 +391,10 @@ pub enum MRHSOrArray {
 }
 
 #[derive(RipperDeserialize, Debug, Clone)]
-pub enum IdentOrVarField {
+pub enum RestParamAssignable {
     Ident(Ident),
     VarField(VarField),
+    ArefField(ArefField),
 }
 
 #[derive(RipperDeserialize, Debug, Clone)]
@@ -404,6 +405,7 @@ pub enum Assignable {
     TopConstField(TopConstField),
     ArefField(ArefField),
     Field(Field),
+    MLhs(MLhs),
     // 2.6+
     Ident(Ident),
 }
@@ -954,7 +956,7 @@ pub enum ExpressionOrFalse {
 
 def_tag!(rest_param_tag, "rest_param");
 #[derive(Deserialize, Debug, Clone)]
-pub struct RestParam(pub rest_param_tag, pub Option<IdentOrVarField>);
+pub struct RestParam(pub rest_param_tag, pub Option<RestParamAssignable>);
 
 def_tag!(kw_rest_param_tag, "kwrest_param");
 #[derive(Deserialize, Debug, Clone)]
