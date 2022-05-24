@@ -60,6 +60,7 @@ where
     fn emit_colon_colon(&mut self);
     fn emit_lonely_operator(&mut self);
     fn emit_dot(&mut self);
+    fn emit_ellipsis(&mut self);
     fn emit_else(&mut self);
     fn emit_begin_block(&mut self);
     fn emit_begin(&mut self);
@@ -608,6 +609,10 @@ impl ConcreteParserState for BaseParserState {
 
     fn emit_dot(&mut self) {
         self.push_concrete_token(ConcreteLineToken::Dot);
+    }
+
+    fn emit_ellipsis(&mut self) {
+        self.push_concrete_token(ConcreteLineToken::Ellipsis)
     }
 
     fn emit_lonely_operator(&mut self) {

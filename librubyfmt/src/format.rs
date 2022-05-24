@@ -243,7 +243,7 @@ pub fn format_kwargs(
 
 pub fn format_rest_param(
     ps: &mut dyn ConcreteParserState,
-    rest_param: Option<RestParamOr0OrExcessedComma>,
+    rest_param: Option<RestParamOr0OrExcessedCommaOrArgsForward>,
     special_case: SpecialCase,
 ) -> bool {
     let mut res = false;
@@ -252,9 +252,12 @@ pub fn format_rest_param(
         Box::new(|ps| {
             match rest_param {
                 None => {}
-                Some(RestParamOr0OrExcessedComma::ExcessedComma(_)) => {}
-                Some(RestParamOr0OrExcessedComma::Zero(_)) => {}
-                Some(RestParamOr0OrExcessedComma::RestParam(rp)) => {
+                Some(RestParamOr0OrExcessedCommaOrArgsForward::ExcessedComma(_)) => {}
+                Some(RestParamOr0OrExcessedCommaOrArgsForward::Zero(_)) => {}
+                Some(RestParamOr0OrExcessedCommaOrArgsForward::ArgsForward(_)) => {
+                    ps.emit_ellipsis();
+                }
+                Some(RestParamOr0OrExcessedCommaOrArgsForward::RestParam(rp)) => {
                     if special_case != SpecialCase::RestParamOutsideOfParamDef {
                         ps.emit_soft_indent();
                     }
@@ -335,7 +338,7 @@ pub fn format_mlhs(ps: &mut dyn ConcreteParserState, mlhs: MLhs) {
                     MLhsInner::RestParam(rp) => {
                         format_rest_param(
                             ps,
-                            Some(RestParamOr0OrExcessedComma::RestParam(rp)),
+                            Some(RestParamOr0OrExcessedCommaOrArgsForward::RestParam(rp)),
                             SpecialCase::NoSpecialCase,
                         );
                     }
@@ -593,8 +596,8 @@ pub fn format_ensure(ps: &mut dyn ConcreteParserState, ensure_part: Option<Ensur
     }
 }
 
-pub fn args_has_single_def_expression(args: &ArgsAddStarOrExpressionList) -> bool {
-    if let ArgsAddStarOrExpressionList::ExpressionList(el) = args {
+pub fn args_has_single_def_expression(args: &ArgsAddStarOrExpressionListOrArgsForward) -> bool {
+    if let ArgsAddStarOrExpressionListOrArgsForward::ExpressionList(el) = args {
         if el.len() != 1 {
             return false;
         }
@@ -611,7 +614,7 @@ pub fn use_parens_for_method_call(
     ps: &dyn ConcreteParserState,
     chain: &[CallChainElement],
     method: &IdentOrOpOrKeywordOrConst,
-    args: &ArgsAddStarOrExpressionList,
+    args: &ArgsAddStarOrExpressionListOrArgsForward,
     original_used_parens: bool,
     context: FormattingContext,
 ) -> bool {
@@ -643,7 +646,7 @@ pub fn use_parens_for_method_call(
             return true;
         }
         match args {
-            ArgsAddStarOrExpressionList::ArgsAddStar(_) => return true,
+            ArgsAddStarOrExpressionListOrArgsForward::ArgsAddStar(_) => return true,
             _ => return false,
         }
     }
@@ -743,7 +746,7 @@ pub fn format_method_call(ps: &mut dyn ConcreteParserState, method_call: MethodC
                     // emit it without any delimiters.
                     ps.emit_space();
 
-                    if let ArgsAddStarOrExpressionList::ExpressionList(mut el) = args {
+                    if let ArgsAddStarOrExpressionListOrArgsForward::ExpressionList(mut el) = args {
                         let expr = el.pop().expect("checked the list is not empty");
 
                         if let Expression::Def(def_expression) = expr {
@@ -1294,7 +1297,7 @@ pub fn format_array(ps: &mut dyn ConcreteParserState, array: Array) {
 
 pub fn format_array_fast_path(
     ps: &mut dyn ConcreteParserState,
-    a: Option<ArgsAddStarOrExpressionList>,
+    a: Option<ArgsAddStarOrExpressionListOrArgsForward>,
 ) {
     match a {
         None => {
@@ -1317,11 +1320,11 @@ pub fn format_array_fast_path(
 
 pub fn format_list_like_thing(
     ps: &mut dyn ConcreteParserState,
-    a: ArgsAddStarOrExpressionList,
+    a: ArgsAddStarOrExpressionListOrArgsForward,
     single_line: bool,
 ) -> bool {
     match a {
-        ArgsAddStarOrExpressionList::ArgsAddStar(aas) => {
+        ArgsAddStarOrExpressionListOrArgsForward::ArgsAddStar(aas) => {
             let left = aas.1;
             let star = aas.2;
             let right = aas.3;
@@ -1375,8 +1378,12 @@ pub fn format_list_like_thing(
 
             emitted_args
         }
-        ArgsAddStarOrExpressionList::ExpressionList(el) => {
+        ArgsAddStarOrExpressionListOrArgsForward::ExpressionList(el) => {
             format_list_like_thing_items(ps, el, single_line)
+        }
+        ArgsAddStarOrExpressionListOrArgsForward::ArgsForward(_) => {
+            ps.emit_ellipsis();
+            false
         }
     }
 }
@@ -1621,7 +1628,7 @@ pub fn format_assignable(ps: &mut dyn ConcreteParserState, v: Assignable) {
         Assignable::RestParam(rp) => {
             format_rest_param(
                 ps,
-                Some(RestParamOr0OrExcessedComma::RestParam(rp)),
+                Some(RestParamOr0OrExcessedCommaOrArgsForward::RestParam(rp)),
                 SpecialCase::RestParamOutsideOfParamDef,
             );
         }
@@ -2464,7 +2471,7 @@ fn format_call_chain(ps: &mut dyn ConcreteParserState, cc: Vec<CallChainElement>
                 format_block(ps, b);
             }
             CallChainElement::VarRef(vr) => format_var_ref(ps, vr),
-            CallChainElement::ArgsAddStarOrExpressionList(aas) => {
+            CallChainElement::ArgsAddStarOrExpressionListOrArgsForward(aas) => {
                 if !aas.is_empty() {
                     let cls: Box<dyn FnOnce(&mut dyn ConcreteParserState)> = Box::new(|ps| {
                         format_list_like_thing(ps, aas, elide_parens);
@@ -2620,8 +2627,8 @@ pub fn format_kw_with_args(
             };
             ArgsAddBlock(
                 args_add_block_tag,
-                ArgsAddBlockInner::ArgsAddStarOrExpressionList(
-                    ArgsAddStarOrExpressionList::ExpressionList(vec![]),
+                ArgsAddBlockInner::ArgsAddStarOrExpressionListOrArgsForward(
+                    ArgsAddStarOrExpressionListOrArgsForward::ExpressionList(vec![]),
                 ),
                 ToProcExpr::NotPresent(false),
             )
@@ -3170,10 +3177,19 @@ pub fn format_return(ps: &mut dyn ConcreteParserState, ret: Return) {
         Box::new(|ps| {
             if !args.is_empty() {
                 match args {
-                    ArgsAddStarOrExpressionList::ArgsAddStar(aas) => {
-                        format_bare_return_args(ps, ArgsAddStarOrExpressionList::ArgsAddStar(aas));
+                    ArgsAddStarOrExpressionListOrArgsForward::ArgsAddStar(aas) => {
+                        format_bare_return_args(
+                            ps,
+                            ArgsAddStarOrExpressionListOrArgsForward::ArgsAddStar(aas),
+                        );
                     }
-                    ArgsAddStarOrExpressionList::ExpressionList(mut el) => {
+                    ArgsAddStarOrExpressionListOrArgsForward::ArgsForward(af) => {
+                        format_bare_return_args(
+                            ps,
+                            ArgsAddStarOrExpressionListOrArgsForward::ArgsForward(af),
+                        );
+                    }
+                    ArgsAddStarOrExpressionListOrArgsForward::ExpressionList(mut el) => {
                         if el.len() == 1 {
                             let element = el.remove(0);
                             match element {
@@ -3189,7 +3205,7 @@ pub fn format_return(ps: &mut dyn ConcreteParserState, ret: Return) {
                         } else {
                             format_bare_return_args(
                                 ps,
-                                ArgsAddStarOrExpressionList::ExpressionList(el),
+                                ArgsAddStarOrExpressionListOrArgsForward::ExpressionList(el),
                             );
                         }
                     }
@@ -3205,7 +3221,7 @@ pub fn format_return(ps: &mut dyn ConcreteParserState, ret: Return) {
 
 pub fn format_bare_return_args(
     ps: &mut dyn ConcreteParserState,
-    args: ArgsAddStarOrExpressionList,
+    args: ArgsAddStarOrExpressionListOrArgsForward,
 ) {
     ps.breakable_of(
         BreakableDelims::for_return_kw(),

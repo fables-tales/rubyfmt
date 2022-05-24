@@ -12,7 +12,7 @@ fn ident_as_cc(i: String, lc: LineCol) -> CallChainElement {
 }
 
 fn args_as_cc(an: ArgNode) -> CallChainElement {
-    CallChainElement::ArgsAddStarOrExpressionList(normalize_args(an))
+    CallChainElement::ArgsAddStarOrExpressionListOrArgsForward(normalize_args(an))
 }
 
 macro_rules! def_tag {
@@ -291,7 +291,7 @@ def_tag!(mrhs_new_from_args_tag, "mrhs_new_from_args");
 #[derive(Deserialize, Debug, Clone)]
 pub struct MRHSNewFromArgs(
     pub mrhs_new_from_args_tag,
-    pub ArgsAddStarOrExpressionList,
+    pub ArgsAddStarOrExpressionListOrArgsForward,
     #[serde(default)]
     /// This will be none if only two expressions are given and the last is a
     /// splat. For example, `rescue A, *B`
@@ -336,7 +336,7 @@ impl Command {
         let (s, lc) = io.to_def_parts();
         vec![
             ident_as_cc(s, lc),
-            CallChainElement::ArgsAddStarOrExpressionList(
+            CallChainElement::ArgsAddStarOrExpressionListOrArgsForward(
                 normalize_args_add_block_or_expression_list(self.2),
             ),
         ]
@@ -583,20 +583,21 @@ pub struct Array(
 
 #[derive(RipperDeserialize, Debug, Clone)]
 pub enum SimpleArrayOrPercentArray {
-    SimpleArray(Option<ArgsAddStarOrExpressionList>),
+    SimpleArray(Option<ArgsAddStarOrExpressionListOrArgsForward>),
     LowerPercentArray((String, Vec<TStringContent>, LineCol)),
     UpperPercentArray((String, Vec<Vec<StringContentPart>>, LineCol)),
 }
 
 #[derive(RipperDeserialize, Debug, Clone)]
-pub enum ArgsAddStarOrExpressionList {
+pub enum ArgsAddStarOrExpressionListOrArgsForward {
     ExpressionList(Vec<Expression>),
     ArgsAddStar(ArgsAddStar),
+    ArgsForward(ArgsForward),
 }
 
-impl ArgsAddStarOrExpressionList {
+impl ArgsAddStarOrExpressionListOrArgsForward {
     pub fn is_empty(&self) -> bool {
-        if let ArgsAddStarOrExpressionList::ExpressionList(el) = self {
+        if let ArgsAddStarOrExpressionListOrArgsForward::ExpressionList(el) = self {
             if el.is_empty() {
                 return true;
             }
@@ -606,7 +607,7 @@ impl ArgsAddStarOrExpressionList {
     }
 
     pub fn empty() -> Self {
-        ArgsAddStarOrExpressionList::ExpressionList(vec![])
+        ArgsAddStarOrExpressionListOrArgsForward::ExpressionList(vec![])
     }
 }
 
@@ -614,7 +615,7 @@ def_tag!(args_add_star_tag, "args_add_star");
 #[derive(Debug, Clone)]
 pub struct ArgsAddStar(
     pub args_add_star_tag,
-    pub Box<ArgsAddStarOrExpressionList>,
+    pub Box<ArgsAddStarOrExpressionListOrArgsForward>,
     pub Box<Expression>,
     pub Vec<Expression>,
 );
@@ -850,7 +851,7 @@ pub struct Params(
     pub params_tag,
     pub Option<Vec<IdentOrMLhs>>,
     pub Option<Vec<(Ident, Expression)>>,
-    pub Option<RestParamOr0OrExcessedComma>,
+    pub Option<RestParamOr0OrExcessedCommaOrArgsForward>,
     pub Option<Vec<IdentOrMLhs>>,
     pub Option<Vec<(Label, ExpressionOrFalse)>>,
     pub Option<KwRestParam>,
@@ -924,15 +925,20 @@ impl Params {
 //   a single representative node, but that didn't work with the serde setup
 //   we have for some reason.
 #[derive(RipperDeserialize, Debug, Clone)]
-pub enum RestParamOr0OrExcessedComma {
+pub enum RestParamOr0OrExcessedCommaOrArgsForward {
     Zero(i64),
     RestParam(RestParam),
     ExcessedComma(ExcessedComma),
+    ArgsForward(ArgsForward),
 }
 
 def_tag!(excessed_comma_tag, "excessed_comma");
 #[derive(Deserialize, Debug, Clone)]
 pub struct ExcessedComma(excessed_comma_tag);
+
+def_tag!(args_forward_tag, "args_forward");
+#[derive(Deserialize, Debug, Clone)]
+pub struct ArgsForward(args_forward_tag);
 
 impl Params {
     pub fn non_null_positions(&self) -> Vec<bool> {
@@ -975,24 +981,24 @@ impl LineCol {
     }
 }
 
-pub fn normalize_arg_paren(ap: ArgParen) -> ArgsAddStarOrExpressionList {
+pub fn normalize_arg_paren(ap: ArgParen) -> ArgsAddStarOrExpressionListOrArgsForward {
     match *ap.1 {
-        ArgNode::Null(_) => ArgsAddStarOrExpressionList::ExpressionList(vec![]),
+        ArgNode::Null(_) => ArgsAddStarOrExpressionListOrArgsForward::ExpressionList(vec![]),
         ae => normalize_args(ae),
     }
 }
 
 pub fn normalize_args_add_block_or_expression_list(
     aab: ArgsAddBlockOrExpressionList,
-) -> ArgsAddStarOrExpressionList {
+) -> ArgsAddStarOrExpressionListOrArgsForward {
     match aab {
         ArgsAddBlockOrExpressionList::ExpressionList(el) => {
-            ArgsAddStarOrExpressionList::ExpressionList(el)
+            ArgsAddStarOrExpressionListOrArgsForward::ExpressionList(el)
         }
         ArgsAddBlockOrExpressionList::ArgsAddBlock(aab) => normalize_args_add_block(aab),
     }
 }
-pub fn normalize_args_add_block(aab: ArgsAddBlock) -> ArgsAddStarOrExpressionList {
+pub fn normalize_args_add_block(aab: ArgsAddBlock) -> ArgsAddStarOrExpressionListOrArgsForward {
     // .1 is expression list
     // .2 is block
     match aab.2 {
@@ -1001,33 +1007,37 @@ pub fn normalize_args_add_block(aab: ArgsAddBlock) -> ArgsAddStarOrExpressionLis
             let trailing_expr_as_vec = vec![Expression::ToProc(ToProc(undeserializable, e))];
 
             match (aab.1).into_args_add_star_or_expression_list() {
-                ArgsAddStarOrExpressionList::ExpressionList(items) => {
-                    ArgsAddStarOrExpressionList::ExpressionList(
+                ArgsAddStarOrExpressionListOrArgsForward::ExpressionList(items) => {
+                    ArgsAddStarOrExpressionListOrArgsForward::ExpressionList(
                         vec![items, trailing_expr_as_vec].concat(),
                     )
                 }
-                ArgsAddStarOrExpressionList::ArgsAddStar(aas) => {
+                ArgsAddStarOrExpressionListOrArgsForward::ArgsAddStar(aas) => {
                     let mut new_aas = aas;
                     new_aas.3 = vec![new_aas.3, trailing_expr_as_vec].concat();
-                    ArgsAddStarOrExpressionList::ArgsAddStar(new_aas)
+                    ArgsAddStarOrExpressionListOrArgsForward::ArgsAddStar(new_aas)
+                }
+                ArgsAddStarOrExpressionListOrArgsForward::ArgsForward(af) => {
+                    ArgsAddStarOrExpressionListOrArgsForward::ArgsForward(af)
                 }
             }
         }
     }
 }
 
-pub fn normalize_args(arg_node: ArgNode) -> ArgsAddStarOrExpressionList {
+pub fn normalize_args(arg_node: ArgNode) -> ArgsAddStarOrExpressionListOrArgsForward {
     match arg_node {
         ArgNode::ArgParen(ap) => normalize_arg_paren(ap),
         ArgNode::ArgsAddBlock(aab) => normalize_args_add_block(aab),
-        ArgNode::ArgsAddStar(aas) => ArgsAddStarOrExpressionList::ArgsAddStar(aas),
-        ArgNode::Exprs(exprs) => ArgsAddStarOrExpressionList::ExpressionList(exprs),
+        ArgNode::ArgsAddStar(aas) => ArgsAddStarOrExpressionListOrArgsForward::ArgsAddStar(aas),
+        ArgNode::Exprs(exprs) => ArgsAddStarOrExpressionListOrArgsForward::ExpressionList(exprs),
         ArgNode::Const(c) => {
-            ArgsAddStarOrExpressionList::ExpressionList(vec![Expression::Const(c)])
+            ArgsAddStarOrExpressionListOrArgsForward::ExpressionList(vec![Expression::Const(c)])
         }
         ArgNode::Ident(c) => {
-            ArgsAddStarOrExpressionList::ExpressionList(vec![Expression::Ident(c)])
+            ArgsAddStarOrExpressionListOrArgsForward::ExpressionList(vec![Expression::Ident(c)])
         }
+        ArgNode::ArgsForward(af) => ArgsAddStarOrExpressionListOrArgsForward::ArgsForward(af),
         ArgNode::Null(_) => panic!("should never be called with null"),
     }
 }
@@ -1037,6 +1047,7 @@ pub enum ArgNode {
     ArgParen(ArgParen),
     ArgsAddBlock(ArgsAddBlock),
     ArgsAddStar(ArgsAddStar),
+    ArgsForward(ArgsForward),
     Exprs(Vec<Expression>),
     Const(Const),
     Ident(Ident),
@@ -1072,13 +1083,13 @@ pub enum AABParen {
 #[derive(RipperDeserialize, Debug, Clone)]
 pub enum ArgsAddBlockInner {
     Parens(Vec<AABParen>),
-    ArgsAddStarOrExpressionList(ArgsAddStarOrExpressionList),
+    ArgsAddStarOrExpressionListOrArgsForward(ArgsAddStarOrExpressionListOrArgsForward),
 }
 
 impl ArgsAddBlockInner {
-    pub fn into_args_add_star_or_expression_list(self) -> ArgsAddStarOrExpressionList {
+    pub fn into_args_add_star_or_expression_list(self) -> ArgsAddStarOrExpressionListOrArgsForward {
         match self {
-            ArgsAddBlockInner::ArgsAddStarOrExpressionList(a) => a,
+            ArgsAddBlockInner::ArgsAddStarOrExpressionListOrArgsForward(a) => a,
             ArgsAddBlockInner::Parens(ps) => {
                 let el = ps
                     .into_iter()
@@ -1087,7 +1098,7 @@ impl ArgsAddBlockInner {
                         AABParen::Expression(e) => e,
                     })
                     .collect();
-                ArgsAddStarOrExpressionList::ExpressionList(el)
+                ArgsAddStarOrExpressionListOrArgsForward::ExpressionList(el)
             }
         }
     }
@@ -1251,7 +1262,7 @@ pub enum CallChainElement {
     IdentOrOpOrKeywordOrConst(IdentOrOpOrKeywordOrConst),
     Block(Block),
     VarRef(VarRef),
-    ArgsAddStarOrExpressionList(ArgsAddStarOrExpressionList),
+    ArgsAddStarOrExpressionListOrArgsForward(ArgsAddStarOrExpressionListOrArgsForward),
     DotTypeOrOp(DotTypeOrOp),
     Paren(ParenExpr),
     Expression(Box<Expression>),
@@ -1304,7 +1315,7 @@ impl ToMethodCall for VCall {
             vec![],
             (self.1).into_ident_or_op_or_keyword_or_const(),
             false,
-            ArgsAddStarOrExpressionList::ExpressionList(vec![]),
+            ArgsAddStarOrExpressionListOrArgsForward::ExpressionList(vec![]),
         )
     }
 }
@@ -1321,7 +1332,7 @@ pub struct MethodCall(
     // original used parens
     pub bool,
     // args
-    pub ArgsAddStarOrExpressionList,
+    pub ArgsAddStarOrExpressionListOrArgsForward,
 );
 
 impl MethodCall {
@@ -1329,7 +1340,7 @@ impl MethodCall {
         chain: Vec<CallChainElement>,
         name: IdentOrOpOrKeywordOrConst,
         use_parens: bool,
-        args: ArgsAddStarOrExpressionList,
+        args: ArgsAddStarOrExpressionListOrArgsForward,
     ) -> Self {
         MethodCall(method_call_tag, chain, name, use_parens, args)
     }
@@ -1364,7 +1375,7 @@ impl ToMethodCall for Call {
             chain,
             method_name,
             false,
-            ArgsAddStarOrExpressionList::empty(),
+            ArgsAddStarOrExpressionListOrArgsForward::empty(),
         )
     }
 }
@@ -1462,7 +1473,7 @@ impl Next {
     pub fn into_call_chain(self) -> Vec<CallChainElement> {
         vec![
             ident_as_cc("next".to_string(), LineCol::unknown()),
-            CallChainElement::ArgsAddStarOrExpressionList(
+            CallChainElement::ArgsAddStarOrExpressionListOrArgsForward(
                 normalize_args_add_block_or_expression_list(self.1),
             ),
         ]
@@ -1760,7 +1771,7 @@ def_tag!(when_tag, "when");
 #[derive(Deserialize, Debug, Clone)]
 pub struct When(
     when_tag,
-    pub ArgsAddStarOrExpressionList,
+    pub ArgsAddStarOrExpressionListOrArgsForward,
     pub Vec<Expression>,
     pub Option<Box<WhenOrElse>>,
     pub LineCol,
