@@ -74,9 +74,10 @@ fn format_parts(parts: &[OsString]) {
 
 fn handle_error_from(err: rubyfmt::RichFormatError, source: &Path, error_exit: ErrorExit) {
     use rubyfmt::RichFormatError::*;
+    let exit_code = err.as_exit_code();
     let e = || {
         if error_exit == ErrorExit::Exit {
-            exit(1);
+            exit(exit_code);
         }
     };
     match err {
@@ -107,7 +108,7 @@ fn handle_error_from(err: rubyfmt::RichFormatError, source: &Path, error_exit: E
         }
         rubyfmt::RichFormatError::OtherRubyError(s) => {
             eprintln!("A ruby error occurred: {}, please file a bug report at https://github.com/penelopezone/rubyfmt/issues/new", s);
-            exit(1);
+            exit(exit_code);
         }
     }
 }
@@ -143,7 +144,7 @@ fn main() {
         // (Some("--help" | "-h"), _) => {
         (Some("--help"), _) | (Some("-h"), _) => {
             eprintln!("{}", include_str!("../README.md"));
-            exit(1);
+            exit(0);
         }
         (Some("--internal-fetch-latest-version"), _) => {
             updates::fetch_latest_version().unwrap();
@@ -166,7 +167,7 @@ fn main() {
                 }
             } else {
                 eprintln!("{} does not exist", Path::new(&filename).display());
-                exit(1)
+                exit(rubyfmt::FormatError::IOError as i32)
             }
         }
         // Multiple files

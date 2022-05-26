@@ -61,7 +61,11 @@ pub enum RichFormatError {
 }
 
 impl RichFormatError {
-    fn into_format_error(self) -> FormatError {
+    pub fn as_exit_code(&self) -> i32 {
+        self.as_format_error() as i32
+    }
+
+    fn as_format_error(&self) -> FormatError {
         match self {
             RichFormatError::SyntaxError => FormatError::SyntaxError,
             RichFormatError::RipperParseFailure(_) => FormatError::RipperParseFailure,
@@ -129,7 +133,7 @@ pub unsafe extern "C" fn rubyfmt_format_buffer(
             Box::into_raw(Box::new(RubyfmtString(o.into_boxed_str())))
         }
         Err(e) => {
-            *err = e.into_format_error() as i64;
+            *err = e.as_format_error() as i64;
             std::ptr::null::<RubyfmtString>() as _
         }
     }
