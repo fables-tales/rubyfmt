@@ -70,7 +70,50 @@ test_i_flag() {
     )
 }
 
+test_check_flag_with_changes() {
+    (
+    cd "$(mktemp -d)"
+
+    echo "a 1,2,3" > a_ruby_file_1.rb
+
+    # --check returns non-zero when there are no changes
+    set +e
+    f_rubyfmt --check a_ruby_file_1.rb > fmt.diff
+    set -e
+
+    cat > expected.diff <<- DIFF
+--- a_ruby_file_1.rb
++++ a_ruby_file_1.rb
+@@ -1 +1 @@
+-a 1,2,3
++a(1, 2, 3)
+DIFF
+
+    cat expected.diff
+    cat fmt.diff
+
+    diff_files o expected.diff fmt.diff 
+    )
+}
+
+test_check_flag_without_changes() {
+    (
+    cd "$(mktemp -d)"
+
+    echo "a(1, 2, 3)" > a_ruby_file_1.rb
+
+    f_rubyfmt --check a_ruby_file_1.rb > fmt.diff
+
+    # printf instead of echo so we don't get a newline
+    printf "" > expected.diff
+
+    diff_files o expected.diff fmt.diff 
+    )
+}
+
 test_single_file_stdout
 test_stdin_stdout
 test_dir_no_i_flag
 test_i_flag
+test_check_flag_with_changes
+test_check_flag_without_changes

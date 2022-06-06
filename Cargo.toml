@@ -20,4 +20,5 @@ libc = "0.2.71"
 rubyfmt = { path = "./librubyfmt" }
 semver = "1.0.1"
 serde = { version = "1.0", features = ["derive"] }
+similar = "2.1.0"
 ureq = { version = "2.1.1", features = ["json"] }
