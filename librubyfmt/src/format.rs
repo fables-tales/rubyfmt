@@ -2578,6 +2578,7 @@ pub fn format_do_block(ps: &mut dyn ConcreteParserState, do_block: DoBlock) {
 
     let bv = do_block.1;
     let body = do_block.2;
+    let body_is_empty = (*body).is_empty();
 
     if let Some(bv) = bv {
         format_blockvar(ps, bv)
@@ -2594,7 +2595,15 @@ pub fn format_do_block(ps: &mut dyn ConcreteParserState, do_block: DoBlock) {
         );
     }));
 
-    ps.with_start_of_line(true, Box::new(|ps| ps.emit_end()));
+    ps.with_start_of_line(
+        true,
+        Box::new(|ps| {
+            if !body_is_empty {
+                ps.wind_dumping_comments();
+            }
+            ps.emit_end()
+        }),
+    );
 }
 
 pub fn format_kw_with_args(
