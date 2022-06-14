@@ -280,6 +280,7 @@ impl ConcreteParserState for BaseParserState {
         self.new_block(Box::new(|ps| {
             ps.emit_collapsing_newline();
             f(ps);
+            ps.emit_collapsing_newline();
         }));
 
         self.emit_soft_indent();
