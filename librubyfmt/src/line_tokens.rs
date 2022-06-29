@@ -51,6 +51,7 @@ pub enum ConcreteLineToken {
     SingleSlash,
     Comment { contents: String },
     Delim { contents: String },
+    EndWithoutTrailingNewline,
     End,
     HeredocClose { symbol: String },
 }
@@ -87,6 +88,10 @@ impl ConcreteLineToken {
             Self::SingleSlash => "\\".to_string(),
             Self::Comment { contents } => contents,
             Self::Delim { contents } => contents,
+            // Note that `End` and `EndWithoutTrailingNewline` produce
+            // the same raw token, but they're treated differently
+            // by the RenderQueueWriter
+            Self::EndWithoutTrailingNewline => "end".to_string(),
             Self::End => "end".to_string(),
             Self::HeredocClose { symbol } => symbol,
         }

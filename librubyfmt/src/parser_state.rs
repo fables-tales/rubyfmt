@@ -82,6 +82,8 @@ where
     fn emit_space(&mut self);
     fn emit_comma(&mut self);
     fn emit_end(&mut self);
+    fn emit_end_without_trailing_newline(&mut self);
+    fn emit_end_token(&mut self, token: ConcreteLineToken);
     fn emit_newline(&mut self);
     fn emit_ident(&mut self, ident: String);
     fn emit_string_content(&mut self, s: String);
@@ -463,13 +465,21 @@ impl ConcreteParserState for BaseParserState {
     }
 
     fn emit_end(&mut self) {
+        self.emit_end_token(ConcreteLineToken::End);
+    }
+
+    fn emit_end_without_trailing_newline(&mut self) {
+        self.emit_end_token(ConcreteLineToken::EndWithoutTrailingNewline);
+    }
+
+    fn emit_end_token(&mut self, token: ConcreteLineToken) {
         if !self.last_token_is_a_newline() {
             self.emit_newline();
         }
         if self.at_start_of_line() {
             self.emit_indent();
         }
-        self.push_concrete_token(ConcreteLineToken::End);
+        self.push_concrete_token(token);
     }
 
     fn emit_comma(&mut self) {
