@@ -82,8 +82,6 @@ where
     fn emit_space(&mut self);
     fn emit_comma(&mut self);
     fn emit_end(&mut self);
-    fn emit_end_without_trailing_newline(&mut self);
-    fn emit_end_token(&mut self, token: ConcreteLineToken);
     fn emit_newline(&mut self);
     fn emit_ident(&mut self, ident: String);
     fn emit_string_content(&mut self, s: String);
@@ -92,6 +90,7 @@ where
     fn emit_def(&mut self, def_name: String);
     fn emit_indent(&mut self);
     fn emit_heredoc_start(&mut self, hd_type: String, symbol: String);
+    fn emit_after_call_chain(&mut self);
 
     // other state changers
     fn bind_variable(&mut self, s: String);
@@ -465,21 +464,13 @@ impl ConcreteParserState for BaseParserState {
     }
 
     fn emit_end(&mut self) {
-        self.emit_end_token(ConcreteLineToken::End);
-    }
-
-    fn emit_end_without_trailing_newline(&mut self) {
-        self.emit_end_token(ConcreteLineToken::EndWithoutTrailingNewline);
-    }
-
-    fn emit_end_token(&mut self, token: ConcreteLineToken) {
         if !self.last_token_is_a_newline() {
             self.emit_newline();
         }
         if self.at_start_of_line() {
             self.emit_indent();
         }
-        self.push_concrete_token(token);
+        self.push_concrete_token(ConcreteLineToken::End);
     }
 
     fn emit_comma(&mut self) {
@@ -519,6 +510,10 @@ impl ConcreteParserState for BaseParserState {
             self.push_abstract_token(AbstractLineToken::CollapsingNewLine(hd));
         }
         self.spaces_after_last_newline = self.current_spaces();
+    }
+
+    fn emit_after_call_chain(&mut self) {
+        self.push_concrete_token(ConcreteLineToken::AfterCallChain)
     }
 
     fn emit_space(&mut self) {

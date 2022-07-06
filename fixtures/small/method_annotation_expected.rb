@@ -20,3 +20,13 @@ sig(:final) do
 end
 def example(a, b)
 end
+
+arbitrary_method_annotation("for science") do
+  :no_exception
+end
+def another_one
+end
+
+_annotation(color: "green", size: "large")
+def m1
+end

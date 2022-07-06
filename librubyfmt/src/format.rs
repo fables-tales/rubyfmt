@@ -2435,15 +2435,6 @@ pub fn format_backref(ps: &mut dyn ConcreteParserState, backref: Backref) {
     }
 }
 
-fn can_elide_padding_newline_for_sorbet_sig(cc: &[CallChainElement]) -> bool {
-    match cc.get(0) {
-        Some(CallChainElement::IdentOrOpOrKeywordOrConst(IdentOrOpOrKeywordOrConst::Ident(
-            Ident(_, ident, _),
-        ))) => ident == "sig",
-        _ => false,
-    }
-}
-
 fn can_elide_parens_for_rspec_dsl_call(cc: &[CallChainElement]) -> bool {
     if let Some(CallChainElement::Block(Block::BraceBlock(_))) = cc.last() {
         return false;
@@ -2471,14 +2462,13 @@ fn can_elide_parens_for_rspec_dsl_call(cc: &[CallChainElement]) -> bool {
 
 fn format_call_chain(ps: &mut dyn ConcreteParserState, cc: Vec<CallChainElement>) {
     let elide_parens = can_elide_parens_for_rspec_dsl_call(&cc);
-    let elide_block_padding = can_elide_padding_newline_for_sorbet_sig(&cc);
     for cc_elem in cc.into_iter() {
         match cc_elem {
             CallChainElement::Paren(p) => format_paren(ps, p),
             CallChainElement::IdentOrOpOrKeywordOrConst(i) => format_ident(ps, i.into_ident()),
             CallChainElement::Block(b) => {
                 ps.emit_space();
-                format_block(ps, b, elide_block_padding);
+                format_block(ps, b);
             }
             CallChainElement::VarRef(vr) => format_var_ref(ps, vr),
             CallChainElement::ArgsAddStarOrExpressionListOrArgsForward(aas) => {
@@ -2499,16 +2489,13 @@ fn format_call_chain(ps: &mut dyn ConcreteParserState, cc: Vec<CallChainElement>
             CallChainElement::Expression(e) => format_expression(ps, *e),
         }
     }
+    ps.emit_after_call_chain();
 }
 
-pub fn format_block(
-    ps: &mut dyn ConcreteParserState,
-    b: Block,
-    elide_multiline_block_padding: bool,
-) {
+pub fn format_block(ps: &mut dyn ConcreteParserState, b: Block) {
     match b {
         Block::BraceBlock(bb) => format_brace_block(ps, bb),
-        Block::DoBlock(db) => format_do_block(ps, db, elide_multiline_block_padding),
+        Block::DoBlock(db) => format_do_block(ps, db),
     }
 }
 
@@ -2587,7 +2574,7 @@ pub fn format_brace_block(ps: &mut dyn ConcreteParserState, brace_block: BraceBl
     ps.emit_ident("}".to_string());
 }
 
-pub fn format_do_block(ps: &mut dyn ConcreteParserState, do_block: DoBlock, elide_padding: bool) {
+pub fn format_do_block(ps: &mut dyn ConcreteParserState, do_block: DoBlock) {
     ps.emit_do_keyword();
 
     let bv = do_block.1;
@@ -2615,11 +2602,7 @@ pub fn format_do_block(ps: &mut dyn ConcreteParserState, do_block: DoBlock, elid
             if !body_is_empty {
                 ps.wind_dumping_comments();
             }
-            if elide_padding {
-                ps.emit_end_without_trailing_newline()
-            } else {
-                ps.emit_end()
-            }
+            ps.emit_end()
         }),
     );
 }

@@ -58,6 +58,26 @@ impl RenderQueueWriter {
                     }
                 }
             }
+
+            if accum.len() >= 5 {
+                if let (
+                    &ConcreteLineToken::End,
+                    &ConcreteLineToken::AfterCallChain,
+                    &ConcreteLineToken::HardNewLine,
+                    &ConcreteLineToken::Indent { .. },
+                    x,
+                ) = accum.last_5().expect("we checked length")
+                {
+                    match x {
+                        ConcreteLineToken::DefKeyword => {}
+                        _ => {
+                            if x.is_in_need_of_a_trailing_blankline() {
+                                accum.insert_trailing_blankline(BlanklineReason::ComesAfterEnd);
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 

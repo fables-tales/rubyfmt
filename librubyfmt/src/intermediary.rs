@@ -61,6 +61,28 @@ impl Intermediary {
         ))
     }
 
+    pub fn last_5(
+        &self,
+    ) -> Option<(
+        &ConcreteLineToken,
+        &ConcreteLineToken,
+        &ConcreteLineToken,
+        &ConcreteLineToken,
+        &ConcreteLineToken,
+    )> {
+        if self.len() < 5 {
+            return None;
+        }
+
+        Some((
+            &self.tokens[self.len() - 5],
+            &self.tokens[self.len() - 4],
+            &self.tokens[self.len() - 3],
+            &self.tokens[self.len() - 2],
+            &self.tokens[self.len() - 1],
+        ))
+    }
+
     pub fn into_tokens(self) -> Vec<ConcreteLineToken> {
         self.tokens
     }
@@ -117,7 +139,14 @@ impl Intermediary {
                 }
             }
             ConcreteLineToken::DirectPart { part } => {
-                if part == "require" && self.tokens.last().map(|t| t.is_indent()).unwrap_or(false) {
+                // Read second-to-last token, the last token will be `AfterCallChain`
+                if part == "require"
+                    && self
+                        .tokens
+                        .get(self.tokens.len() - 2)
+                        .map(|t| t.is_indent())
+                        .unwrap_or(false)
+                {
                     self.current_line_metadata.set_has_require();
                 }
             }
