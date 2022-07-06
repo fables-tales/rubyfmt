@@ -2560,6 +2560,12 @@ pub fn format_brace_block(ps: &mut dyn ConcreteParserState, brace_block: BraceBl
                 }
                 for expr in body.into_iter() {
                     format_expression(ps, expr);
+                    // Multiline blocks will put all of these on separate
+                    // lines, so we need to ensure the current line number
+                    // is properly tracked
+                    if is_multiline {
+                        ps.wind_line_forward();
+                    }
                 }
             }),
         );
