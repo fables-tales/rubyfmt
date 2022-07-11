@@ -2079,6 +2079,37 @@ pub fn format_paren_or_params(ps: &mut dyn ConcreteParserState, pp: ParenOrParam
     format_params(ps, params, BreakableDelims::for_method_call());
 }
 
+// Modules and classes bodies should be treated the same,
+// the only real difference is in the module/class name and inheritance
+fn format_constant_body(ps: &mut dyn ConcreteParserState, bodystmt: Box<BodyStmt>) {
+    let is_empty = bodystmt.is_empty();
+
+    ps.new_block(Box::new(|ps| {
+        ps.with_start_of_line(
+            true,
+            Box::new(|ps| {
+                ps.with_formatting_context(
+                    FormattingContext::ClassOrModule,
+                    Box::new(|ps| {
+                        ps.emit_newline();
+                        format_bodystmt(ps, bodystmt);
+                    }),
+                );
+            }),
+        );
+    }));
+
+    if !is_empty {
+        ps.wind_dumping_comments();
+    } else {
+        ps.wind_line_forward();
+    }
+    ps.emit_end();
+    if ps.at_start_of_line() {
+        ps.emit_newline();
+    }
+}
+
 pub fn format_class(ps: &mut dyn ConcreteParserState, class: Class) {
     if ps.at_start_of_line() {
         ps.emit_indent();
@@ -2087,7 +2118,6 @@ pub fn format_class(ps: &mut dyn ConcreteParserState, class: Class) {
     let class_name = class.1;
     let inherit = class.2;
     let bodystmt = class.3;
-    let empty = bodystmt.is_empty();
 
     ps.emit_class_keyword();
     ps.with_start_of_line(
@@ -2115,31 +2145,7 @@ pub fn format_class(ps: &mut dyn ConcreteParserState, class: Class) {
         }),
     );
 
-    ps.new_block(Box::new(|ps| {
-        ps.with_start_of_line(
-            true,
-            Box::new(|ps| {
-                ps.with_formatting_context(
-                    FormattingContext::ClassOrModule,
-                    Box::new(|ps| {
-                        ps.emit_newline();
-                        format_bodystmt(ps, bodystmt);
-                    }),
-                );
-            }),
-        );
-    }));
-
-    debug!("empty? {}", empty);
-    if !empty {
-        ps.wind_dumping_comments();
-    } else {
-        ps.wind_line_forward();
-    }
-    ps.emit_end();
-    if ps.at_start_of_line() {
-        ps.emit_newline();
-    }
+    format_constant_body(ps, bodystmt);
 }
 
 pub fn format_module(ps: &mut dyn ConcreteParserState, module: Module) {
@@ -2170,32 +2176,7 @@ pub fn format_module(ps: &mut dyn ConcreteParserState, module: Module) {
         }),
     );
 
-    ps.new_block(Box::new(|ps| {
-        ps.with_start_of_line(
-            true,
-            Box::new(|ps| {
-                ps.with_formatting_context(
-                    FormattingContext::ClassOrModule,
-                    Box::new(|ps| {
-                        ps.emit_newline();
-                        format_bodystmt(ps, bodystmt);
-                    }),
-                );
-            }),
-        );
-    }));
-
-    ps.wind_dumping_comments();
-
-    ps.with_start_of_line(
-        true,
-        Box::new(|ps| {
-            ps.emit_end();
-        }),
-    );
-    if ps.at_start_of_line() {
-        ps.emit_newline();
-    }
+    format_constant_body(ps, bodystmt);
 }
 
 pub fn format_conditional(
