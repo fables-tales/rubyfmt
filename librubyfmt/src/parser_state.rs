@@ -132,7 +132,7 @@ where
         &mut self,
         delims: BreakableDelims,
         f: Box<dyn FnOnce(&mut dyn ConcreteParserState) + 'a>,
-    );
+    ) -> bool;
     fn dedent<'a>(&mut self, f: Box<dyn FnOnce(&mut dyn ConcreteParserState) + 'a>);
     fn with_absorbing_indent_block<'a>(
         &mut self,
@@ -272,7 +272,7 @@ impl ConcreteParserState for BaseParserState {
         &mut self,
         delims: BreakableDelims,
         f: Box<dyn FnOnce(&mut dyn ConcreteParserState) + 'a>,
-    ) {
+    ) -> bool {
         self.shift_comments();
         let mut be = BreakableEntry::new(self.current_spaces(), delims);
         be.push_line_number(self.current_orig_line_number);
@@ -291,7 +291,9 @@ impl ConcreteParserState for BaseParserState {
             .pop()
             .expect("cannot have empty here because we just pushed")
             .to_breakable_entry();
+        let is_multiline = insert_be.is_multiline();
         self.push_target(ConcreteLineTokenAndTargets::BreakableEntry(insert_be));
+        is_multiline
     }
 
     fn with_suppress_comments<'a>(

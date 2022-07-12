@@ -208,7 +208,7 @@ impl Intermediary {
     fn handle_do_keyword(&mut self) {
         self.current_line_metadata.set_has_do_keyword();
         if let Some(prev) = &self.previous_line_metadata {
-            if prev.wants_spacer_for_conditional() {
+            if prev.wants_spacer_for_conditional() && !self.is_block_after_method_call() {
                 self.insert_trailing_blankline(BlanklineReason::DoKeyword);
             }
         }
@@ -265,6 +265,15 @@ impl Intermediary {
                 self.index_of_last_hard_newline += 1;
                 self.debug_assert_newlines();
             }
+        }
+    }
+
+    fn is_block_after_method_call(&self) -> bool {
+        match &self.tokens[self.tokens.len() - 4..] {
+            [ConcreteLineToken::HardNewLine, ConcreteLineToken::Indent { .. }, ConcreteLineToken::Delim { contents }, ConcreteLineToken::Space] => {
+                contents == ")"
+            }
+            _ => false,
         }
     }
 

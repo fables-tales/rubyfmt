@@ -2469,7 +2469,10 @@ fn format_call_chain(ps: &mut dyn ConcreteParserState, cc: Vec<CallChainElement>
                         ps.emit_space();
                         cls(ps);
                     } else {
-                        ps.breakable_of(BreakableDelims::for_method_call(), cls);
+                        let is_multiline = ps.breakable_of(BreakableDelims::for_method_call(), cls);
+                        if is_multiline {
+                            ps.wind_line_forward();
+                        }
                     }
                 }
             }
