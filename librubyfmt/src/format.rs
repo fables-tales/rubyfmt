@@ -602,7 +602,7 @@ pub fn args_has_single_def_expression(args: &ArgsAddStarOrExpressionListOrArgsFo
             return false;
         }
 
-        if let Some(Expression::Def(_)) = el.first() {
+        if let Some(Expression::Def(_) | Expression::Defs(_)) = el.first() {
             return true;
         }
     }
@@ -751,6 +751,8 @@ pub fn format_method_call(ps: &mut dyn ConcreteParserState, method_call: MethodC
 
                         if let Expression::Def(def_expression) = expr {
                             format_def(ps, def_expression);
+                        } else if let Expression::Defs(defs_expression) = expr {
+                            format_defs(ps, defs_expression);
                         }
                     }
                 } else {
@@ -2064,7 +2066,12 @@ pub fn format_defs(ps: &mut dyn ConcreteParserState, defs: Defs) {
     );
 
     ps.wind_dumping_comments();
-    ps.emit_end();
+    ps.with_start_of_line(
+        true,
+        Box::new(|ps| {
+            ps.emit_end();
+        }),
+    );
 
     if ps.at_start_of_line() {
         ps.emit_newline();
