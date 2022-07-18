@@ -2,6 +2,7 @@ use crate::line_metadata::LineMetadata;
 use crate::line_tokens::*;
 #[cfg(debug_assertions)]
 use log::debug;
+use std::convert::TryInto;
 use std::mem;
 
 #[derive(Debug)]
@@ -41,46 +42,32 @@ impl Intermediary {
         self.index_of_last_hard_newline = self.tokens.len() - 1;
     }
 
-    pub fn last_4(
-        &self,
-    ) -> Option<(
-        &ConcreteLineToken,
-        &ConcreteLineToken,
-        &ConcreteLineToken,
-        &ConcreteLineToken,
-    )> {
-        if self.len() < 4 {
-            return None;
-        }
-
-        Some((
-            &self.tokens[self.len() - 4],
-            &self.tokens[self.len() - 3],
-            &self.tokens[self.len() - 2],
-            &self.tokens[self.len() - 1],
-        ))
+    pub fn fix_heredoc_indent_mistake(&mut self) {
+        // Remove duplicate indent
+        self.tokens.remove(self.tokens.len() - 2);
     }
 
-    pub fn last_5(
-        &self,
-    ) -> Option<(
-        &ConcreteLineToken,
-        &ConcreteLineToken,
-        &ConcreteLineToken,
-        &ConcreteLineToken,
-        &ConcreteLineToken,
-    )> {
-        if self.len() < 5 {
+    pub fn fix_heredoc_arg_newline_mistake(&mut self) {
+        // Remove duplicate newline
+        self.tokens.remove(self.tokens.len() - 1);
+        self.index_of_last_hard_newline = self.tokens.len() - 1;
+    }
+
+    pub fn last<const N: usize>(&self) -> Option<[&ConcreteLineToken; N]> {
+        if self.len() < N {
             return None;
         }
 
-        Some((
-            &self.tokens[self.len() - 5],
-            &self.tokens[self.len() - 4],
-            &self.tokens[self.len() - 3],
-            &self.tokens[self.len() - 2],
-            &self.tokens[self.len() - 1],
-        ))
+        let mut values = Vec::with_capacity(N);
+        for index in (0..N).rev() {
+            values.push(&self.tokens[self.len() - index - 1]);
+        }
+
+        Some(
+            values
+                .try_into()
+                .expect("checked the length when constructing this"),
+        )
     }
 
     pub fn into_tokens(self) -> Vec<ConcreteLineToken> {
@@ -152,18 +139,18 @@ impl Intermediary {
             }
             ConcreteLineToken::Comment { .. } => {
                 if matches!(
-                    self.last_4(),
-                    Some((_, _, ConcreteLineToken::End, ConcreteLineToken::HardNewLine))
+                    self.last::<4>(),
+                    Some([_, _, ConcreteLineToken::End, ConcreteLineToken::HardNewLine])
                 ) {
                     self.insert_trailing_blankline(BlanklineReason::CommentAfterEnd);
                 } else if matches!(
-                    self.last_4(),
-                    Some((
+                    self.last::<4>(),
+                    Some([
                         _,
                         _,
                         ConcreteLineToken::HardNewLine,
                         ConcreteLineToken::HardNewLine
-                    ))
+                    ])
                 ) {
                     let mut module_or_class_before_newline = false;
                     let mut past_first_two_newlines = 0;

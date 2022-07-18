@@ -24,7 +24,7 @@ def foo
     3
     4
     TXT
-    )
+  )
 
   puts(
     1,
@@ -33,7 +33,7 @@ def foo
       3
       4
 TXT
-    )
+  )
 end
 
 foo

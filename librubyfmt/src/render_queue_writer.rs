@@ -35,48 +35,48 @@ impl RenderQueueWriter {
                 ConcreteLineTokenAndTargets::ConcreteLineToken(x) => accum.push(x),
             }
 
-            if accum.len() >= 4 {
-                if let (
-                    &ConcreteLineToken::HeredocClose { .. },
-                    &ConcreteLineToken::HardNewLine,
-                    &ConcreteLineToken::Indent { .. },
-                    &ConcreteLineToken::HardNewLine,
-                ) = accum.last_4().expect("we checked length")
-                {
-                    accum.pop_heredoc_mistake();
-                }
+            if let Some(
+                [&ConcreteLineToken::HeredocClose { .. }, &ConcreteLineToken::HardNewLine, &ConcreteLineToken::Indent { .. }, &ConcreteLineToken::HardNewLine],
+            ) = accum.last::<4>()
+            {
+                accum.pop_heredoc_mistake();
+            }
 
-                if let (
-                    &ConcreteLineToken::End,
-                    &ConcreteLineToken::HardNewLine,
-                    &ConcreteLineToken::Indent { .. },
-                    x,
-                ) = accum.last_4().expect("we checked length")
-                {
-                    if x.is_in_need_of_a_trailing_blankline() {
-                        accum.insert_trailing_blankline(BlanklineReason::ComesAfterEnd);
+            if let Some(
+                [&ConcreteLineToken::End, &ConcreteLineToken::HardNewLine, &ConcreteLineToken::Indent { .. }, x],
+            ) = accum.last::<4>()
+            {
+                if x.is_in_need_of_a_trailing_blankline() {
+                    accum.insert_trailing_blankline(BlanklineReason::ComesAfterEnd);
+                }
+            }
+
+            if let Some(
+                [&ConcreteLineToken::End, &ConcreteLineToken::AfterCallChain, &ConcreteLineToken::HardNewLine, &ConcreteLineToken::Indent { .. }, x],
+            ) = accum.last::<5>()
+            {
+                match x {
+                    ConcreteLineToken::DefKeyword => {}
+                    _ => {
+                        if x.is_in_need_of_a_trailing_blankline() {
+                            accum.insert_trailing_blankline(BlanklineReason::ComesAfterEnd);
+                        }
                     }
                 }
             }
 
-            if accum.len() >= 5 {
-                if let (
-                    &ConcreteLineToken::End,
-                    &ConcreteLineToken::AfterCallChain,
-                    &ConcreteLineToken::HardNewLine,
-                    &ConcreteLineToken::Indent { .. },
-                    x,
-                ) = accum.last_5().expect("we checked length")
-                {
-                    match x {
-                        ConcreteLineToken::DefKeyword => {}
-                        _ => {
-                            if x.is_in_need_of_a_trailing_blankline() {
-                                accum.insert_trailing_blankline(BlanklineReason::ComesAfterEnd);
-                            }
-                        }
-                    }
-                }
+            if let Some(
+                [&ConcreteLineToken::HeredocClose { .. }, &ConcreteLineToken::HardNewLine, &ConcreteLineToken::Indent { .. }, &ConcreteLineToken::Indent { .. }, &ConcreteLineToken::Delim { .. }],
+            ) = accum.last::<5>()
+            {
+                accum.fix_heredoc_indent_mistake();
+            }
+
+            if let Some(
+                [&ConcreteLineToken::HeredocClose { .. }, &ConcreteLineToken::HardNewLine, &ConcreteLineToken::Indent { .. }, &ConcreteLineToken::Delim { .. }, &ConcreteLineToken::Comma, &ConcreteLineToken::HardNewLine, &ConcreteLineToken::HardNewLine],
+            ) = accum.last::<7>()
+            {
+                accum.fix_heredoc_arg_newline_mistake();
             }
         }
     }
