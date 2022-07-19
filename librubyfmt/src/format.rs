@@ -1057,7 +1057,7 @@ pub fn format_begin(ps: &mut dyn ConcreteParserState, begin: Begin) {
         ps.emit_indent()
     }
 
-    ps.wind_line_forward();
+    ps.wind_dumping_comments_until_next_expression();
     ps.emit_begin();
     ps.emit_newline();
     ps.new_block(Box::new(|ps| {
