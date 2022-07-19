@@ -18,3 +18,16 @@ else
   # d
   # e
 end
+
+def bad?; end
+
+# Is this good?
+def good?; end
+
+class GoodOrEvil
+  # Are we the baddies?
+  def self.bad?; end
+
+  # Is this good?
+  def self.good?; end
+end

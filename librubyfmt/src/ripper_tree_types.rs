@@ -710,6 +710,7 @@ pub struct Def(
     pub IdentOrOpOrKeywordOrConst,
     pub ParenOrParams,
     pub Box<BodyStmt>,
+    pub StartEnd,
 );
 
 #[derive(RipperDeserialize, Debug, Clone)]
@@ -974,6 +975,9 @@ pub struct BlockArg(pub blockarg_tag, pub Ident);
 
 #[derive(Deserialize, Debug, Clone)]
 pub struct LineCol(pub LineNumber, pub u64);
+
+#[derive(Deserialize, Debug, Clone)]
+pub struct StartEnd(pub LineNumber, pub LineNumber);
 
 impl LineCol {
     fn unknown() -> Self {
@@ -1559,6 +1563,7 @@ pub struct Class(
     pub ConstPathRefOrConstRefOrTopConstRef,
     pub Option<Box<Expression>>,
     pub Box<BodyStmt>,
+    pub StartEnd,
 );
 
 def_tag!(module_tag, "module");
@@ -1567,6 +1572,7 @@ pub struct Module(
     pub module_tag,
     pub ConstPathRefOrConstRefOrTopConstRef,
     pub Box<BodyStmt>,
+    pub StartEnd,
 );
 
 def_tag!(defs_tag, "defs");
@@ -1578,6 +1584,7 @@ pub struct Defs(
     pub IdentOrOpOrKeywordOrConst,
     pub ParenOrParams,
     pub Box<BodyStmt>,
+    pub StartEnd,
 );
 
 #[derive(RipperDeserialize, Debug, Clone)]

@@ -98,7 +98,9 @@ where
     fn insert_comment_collection(&mut self, comments: CommentBlock);
     fn wind_line_if_needed_for_array(&mut self);
     fn on_line(&mut self, line_number: LineNumber);
-    fn wind_dumping_comments(&mut self);
+    fn wind_dumping_comments_until_line(&mut self, line_number: LineNumber);
+    fn wind_dumping_comments_until_next_expression(&mut self);
+    fn wind_dumping_comments(&mut self, maybe_max_line_number: Option<LineNumber>);
     fn shift_comments(&mut self);
     fn wind_line_forward(&mut self);
     fn render_heredocs(&mut self, skip: bool);
@@ -431,13 +433,24 @@ impl ConcreteParserState for BaseParserState {
         self.spaces_after_last_newline = self.current_spaces();
     }
 
-    fn wind_dumping_comments(&mut self) {
+    fn wind_dumping_comments_until_line(&mut self, line_number: LineNumber) {
+        self.wind_dumping_comments(Some(line_number))
+    }
+
+    fn wind_dumping_comments_until_next_expression(&mut self) {
+        self.wind_dumping_comments(None)
+    }
+
+    fn wind_dumping_comments(&mut self, maybe_max_line_number: Option<LineNumber>) {
         self.on_line(self.current_orig_line_number + 1);
         let mut did_wind = false;
         let should_iter = |ps: &BaseParserState, ln| {
             debug!("{}", ln);
             ps.comments_hash.still_in_file(ln + 1)
                 && (ps.comments_hash.has_line(ln + 1) || ps.comments_hash.is_empty_line(ln + 1))
+                && maybe_max_line_number
+                    .map(|max_line| ln + 1 < max_line)
+                    .unwrap_or(true)
         };
         while should_iter(self, self.current_orig_line_number) {
             if !self

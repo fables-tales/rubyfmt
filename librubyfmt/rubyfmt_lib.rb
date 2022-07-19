@@ -184,6 +184,22 @@ class Parser < Ripper::SexpBuilderPP
     super
   end
 
+  def on_def(*args)
+    with_lineno { super }
+  end
+
+  def on_defs(*args)
+    with_lineno { super }
+  end
+
+  def on_class(*args)
+    with_lineno { super }
+  end
+
+  def on_module(*args)
+    with_lineno { super }
+  end
+
   def on_heredoc_beg(*args, &blk)
     heredoc_parts = @heredoc_regex.match(args[0]).captures
     raise "bad heredoc" unless heredoc_parts.select { |x| x != nil }.count == 2
@@ -273,6 +289,13 @@ class Parser < Ripper::SexpBuilderPP
 
   def on_comment(comment)
     @comments[lineno] = comment
+  end
+
+  private def with_lineno(&blk)
+    start_line = lineno
+    res = yield
+    end_line = lineno
+    res + [[start_line, end_line]]
   end
 end
 

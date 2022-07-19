@@ -8,6 +8,7 @@ pub fn format_def(ps: &mut dyn ConcreteParserState, def: Def) {
 
     let body = def.3;
     let pp = def.2;
+    let end_line = (def.4).1;
     ps.on_line((def_expression.1).0);
     if ps.at_start_of_line() {
         ps.emit_indent();
@@ -35,7 +36,7 @@ pub fn format_def(ps: &mut dyn ConcreteParserState, def: Def) {
     ps.with_start_of_line(
         true,
         Box::new(|ps| {
-            ps.wind_dumping_comments();
+            ps.wind_dumping_comments_until_line(end_line);
             ps.emit_end();
         }),
     );
@@ -530,7 +531,7 @@ pub fn format_else(
             ps.dedent(Box::new(|ps| {
                 ps.emit_indent();
                 ps.emit_else();
-                ps.wind_dumping_comments();
+                ps.wind_dumping_comments_until_next_expression();
             }));
             ps.emit_newline();
             ps.with_start_of_line(
@@ -2024,6 +2025,7 @@ pub fn format_defs(ps: &mut dyn ConcreteParserState, defs: Defs) {
     let ident_or_kw = defs.3;
     let paren_or_params = defs.4;
     let bodystmt = defs.5;
+    let end_line = (defs.6).1;
 
     ps.emit_def_keyword();
     ps.emit_space();
@@ -2065,7 +2067,7 @@ pub fn format_defs(ps: &mut dyn ConcreteParserState, defs: Defs) {
         }),
     );
 
-    ps.wind_dumping_comments();
+    ps.wind_dumping_comments_until_line(end_line);
     ps.with_start_of_line(
         true,
         Box::new(|ps| {
@@ -2088,7 +2090,7 @@ pub fn format_paren_or_params(ps: &mut dyn ConcreteParserState, pp: ParenOrParam
 
 // Modules and classes bodies should be treated the same,
 // the only real difference is in the module/class name and inheritance
-fn format_constant_body(ps: &mut dyn ConcreteParserState, bodystmt: Box<BodyStmt>) {
+fn format_constant_body(ps: &mut dyn ConcreteParserState, bodystmt: Box<BodyStmt>, end_line: u64) {
     let is_empty = bodystmt.is_empty();
 
     ps.new_block(Box::new(|ps| {
@@ -2107,7 +2109,7 @@ fn format_constant_body(ps: &mut dyn ConcreteParserState, bodystmt: Box<BodyStmt
     }));
 
     if !is_empty {
-        ps.wind_dumping_comments();
+        ps.wind_dumping_comments_until_line(end_line);
     } else {
         ps.wind_line_forward();
     }
@@ -2125,6 +2127,7 @@ pub fn format_class(ps: &mut dyn ConcreteParserState, class: Class) {
     let class_name = class.1;
     let inherit = class.2;
     let bodystmt = class.3;
+    let end_line = (class.4).1;
 
     ps.emit_class_keyword();
     ps.with_start_of_line(
@@ -2152,7 +2155,7 @@ pub fn format_class(ps: &mut dyn ConcreteParserState, class: Class) {
         }),
     );
 
-    format_constant_body(ps, bodystmt);
+    format_constant_body(ps, bodystmt, end_line);
 }
 
 pub fn format_module(ps: &mut dyn ConcreteParserState, module: Module) {
@@ -2162,6 +2165,7 @@ pub fn format_module(ps: &mut dyn ConcreteParserState, module: Module) {
 
     let module_name = module.1;
     let bodystmt = module.2;
+    let end_line = (module.3).1;
 
     ps.emit_module_keyword();
     ps.with_start_of_line(
@@ -2183,7 +2187,7 @@ pub fn format_module(ps: &mut dyn ConcreteParserState, module: Module) {
         }),
     );
 
-    format_constant_body(ps, bodystmt);
+    format_constant_body(ps, bodystmt, end_line);
 }
 
 pub fn format_conditional(
@@ -2233,7 +2237,7 @@ pub fn format_conditional(
                 ps.emit_indent();
                 ps.emit_else();
                 ps.new_block(Box::new(|ps| {
-                    ps.wind_dumping_comments();
+                    ps.wind_dumping_comments_until_next_expression();
                     ps.emit_newline();
                 }));
                 ps.with_start_of_line(
@@ -2256,7 +2260,7 @@ pub fn format_if(ps: &mut dyn ConcreteParserState, ifs: If) {
     ps.with_start_of_line(
         true,
         Box::new(|ps| {
-            ps.wind_dumping_comments();
+            ps.wind_dumping_comments_until_next_expression();
             ps.emit_end();
         }),
     );
@@ -2597,7 +2601,7 @@ pub fn format_do_block(ps: &mut dyn ConcreteParserState, do_block: DoBlock) {
         true,
         Box::new(|ps| {
             if !body_is_empty {
-                ps.wind_dumping_comments();
+                ps.wind_dumping_comments_until_next_expression();
             }
             ps.emit_end()
         }),
