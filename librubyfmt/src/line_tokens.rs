@@ -274,7 +274,7 @@ impl AbstractLineToken {
                     s.pop();
                 }
 
-                if hds.squiggly {
+                if hds.kind.is_squiggly() {
                     s = s
                         .split('\n')
                         .map(|l| format!("{}{}", " ".repeat(hds.indent as usize), l))
@@ -283,7 +283,7 @@ impl AbstractLineToken {
                 }
                 res.push(clats_direct_part(s));
                 res.push(cltats_hard_newline());
-                if hds.squiggly {
+                if !hds.kind.is_bare() {
                     res.push(clats_indent(hds.indent));
                 }
                 res.push(clats_heredoc_close(hds.symbol));

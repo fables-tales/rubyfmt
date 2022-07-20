@@ -12,7 +12,7 @@ raise(
               |
               |  #{RESERVED_KEYS.join("\n  ")}
               |#{"*" * 50}
-EOM
+  EOM
     /^\s+\|/,
     ""
   )

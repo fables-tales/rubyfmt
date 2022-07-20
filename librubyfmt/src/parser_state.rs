@@ -2,7 +2,7 @@ use crate::comment_block::{CommentBlock, Merge};
 use crate::delimiters::BreakableDelims;
 use crate::file_comments::FileComments;
 use crate::format::{format_inner_string, StringType};
-use crate::heredoc_string::HeredocString;
+use crate::heredoc_string::{HeredocKind, HeredocString};
 use crate::line_tokens::*;
 use crate::render_queue_writer::RenderQueueWriter;
 use crate::render_targets::{AbstractTokenTarget, BaseQueue, BreakableEntry};
@@ -107,7 +107,7 @@ where
     fn push_heredoc_content(
         &mut self,
         symbol: String,
-        is_squiggly: bool,
+        kind: HeredocKind,
         parts: Vec<StringContentPart>,
     );
 
@@ -196,7 +196,7 @@ impl ConcreteParserState for BaseParserState {
     fn push_heredoc_content(
         &mut self,
         symbol: String,
-        is_squiggly: bool,
+        kind: HeredocKind,
         parts: Vec<StringContentPart>,
     ) {
         let mut next_ps = BaseParserState::render_with_blank_state(self, |n| {
@@ -212,7 +212,7 @@ impl ConcreteParserState for BaseParserState {
         let data = next_ps.render_to_buffer();
         self.heredoc_strings.push(HeredocString::new(
             symbol,
-            is_squiggly,
+            kind,
             data,
             self.current_spaces(),
         ));
@@ -677,7 +677,7 @@ impl ConcreteParserState for BaseParserState {
                 part: String::from_utf8(next_heredoc.buf).expect("heredoc is utf8"),
             });
             self.emit_newline();
-            if next_heredoc.squiggly {
+            if !next_heredoc.kind.is_bare() {
                 self.emit_indent();
             } else {
                 self.push_concrete_token(ConcreteLineToken::Indent { depth: 0 });

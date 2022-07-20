@@ -1,4 +1,5 @@
 use crate::delimiters::BreakableDelims;
+use crate::heredoc_string::HeredocKind;
 use crate::parser_state::{BaseParserState, ConcreteParserState, FormattingContext};
 use crate::ripper_tree_types::*;
 use log::debug;
@@ -1477,7 +1478,11 @@ pub fn format_heredoc_string_literal(
             let heredoc_symbol = (hd.1).1;
             ps.emit_heredoc_start(heredoc_type.clone(), heredoc_symbol.clone());
 
-            ps.push_heredoc_content(heredoc_symbol, heredoc_type.contains('~'), parts);
+            ps.push_heredoc_content(
+                heredoc_symbol,
+                HeredocKind::from_string(heredoc_type),
+                parts,
+            );
         }),
     );
 
