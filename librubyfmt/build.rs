@@ -18,20 +18,36 @@ fn main() -> Output {
     #[cfg(all(target_env = "gnu", windows))]
     compile_error!("rubyfmt on Windows is currently only supported with msvc");
 
+    #[cfg(unix)]
+    let ripper = "ext/ripper/ripper.o";
+    #[cfg(windows)]
+    let ripper = "ext/ripper/ripper.obj";
+
     let path = std::env::current_dir()?;
     let ruby_checkout_path = path.join("ruby_checkout");
+
+    let old_checkout_sha = if ruby_checkout_path.join(ripper).exists() {
+        Some(get_ruby_checkout_sha())
+    } else {
+        None
+    };
 
     let _ = Command::new("git")
         .args(&["submodule", "update", "--init"])
         .status();
 
-    make_configure(&ruby_checkout_path)?;
-    run_configure(&ruby_checkout_path)?;
-    build_ruby(&ruby_checkout_path)?;
-    #[cfg(unix)]
-    let ripper = "ext/ripper/ripper.o";
-    #[cfg(windows)]
-    let ripper = "ext/ripper/ripper.obj";
+    let new_checkout_sha = get_ruby_checkout_sha();
+
+    // Only rerun this build if the ruby_checkout has changed
+    match old_checkout_sha {
+        Some(old_sha) if old_sha == new_checkout_sha => {}
+        _ => {
+            make_configure(&ruby_checkout_path)?;
+            run_configure(&ruby_checkout_path)?;
+            build_ruby(&ruby_checkout_path)?;
+        }
+    }
+
     cc::Build::new()
         .file("src/rubyfmt.c")
         .object(ruby_checkout_path.join(&ripper))
@@ -132,4 +148,16 @@ fn check_process_success(command: &str, code: ExitStatus) -> Output {
     } else {
         Err(format!("Command {} failed with: {}", command, code).into())
     }
+}
+
+fn get_ruby_checkout_sha() -> String {
+    String::from_utf8(
+        Command::new("git")
+            .args(&["rev-parse", "HEAD"])
+            .current_dir("./ruby_checkout")
+            .output()
+            .expect("git rev-parse shouldn't fail")
+            .stdout,
+    )
+    .expect("output should be valid utf8")
 }
