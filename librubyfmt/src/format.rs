@@ -2613,7 +2613,7 @@ pub fn format_do_block(ps: &mut dyn ConcreteParserState, do_block: DoBlock) {
     );
 }
 
-pub fn format_kw_with_args(
+pub fn format_keyword(
     ps: &mut dyn ConcreteParserState,
     args: ParenOrArgsAddBlock,
     kw: String,
@@ -2858,28 +2858,22 @@ pub fn format_case(ps: &mut dyn ConcreteParserState, case: Case) {
     }
 }
 
-pub fn format_retry(ps: &mut dyn ConcreteParserState, _r: Retry) {
-    if ps.at_start_of_line() {
-        ps.emit_indent();
-    }
-
-    ps.emit_keyword("retry".to_string());
-
-    if ps.at_start_of_line() {
-        ps.emit_newline();
-    }
+pub fn format_retry(ps: &mut dyn ConcreteParserState, r: Retry) {
+    format_keyword(
+        ps,
+        ParenOrArgsAddBlock::Empty(Vec::new()),
+        "retry".to_string(),
+        r.1,
+    );
 }
 
-pub fn format_redo(ps: &mut dyn ConcreteParserState, _r: Redo) {
-    if ps.at_start_of_line() {
-        ps.emit_indent();
-    }
-
-    ps.emit_keyword("redo".to_string());
-
-    if ps.at_start_of_line() {
-        ps.emit_newline();
-    }
+pub fn format_redo(ps: &mut dyn ConcreteParserState, r: Redo) {
+    format_keyword(
+        ps,
+        ParenOrArgsAddBlock::Empty(Vec::new()),
+        "redo".to_string(),
+        r.1,
+    );
 }
 
 pub fn format_sclass(ps: &mut dyn ConcreteParserState, sc: SClass) {
@@ -3148,28 +3142,21 @@ pub fn format_to_proc(ps: &mut dyn ConcreteParserState, e: Box<Expression>) {
 }
 
 pub fn format_zsuper(ps: &mut dyn ConcreteParserState, lc: LineCol) {
-    if ps.at_start_of_line() {
-        ps.emit_indent();
-    }
-
-    ps.on_line(lc.0);
-    ps.emit_keyword("super".to_string());
-
-    if ps.at_start_of_line() {
-        ps.emit_newline();
-    }
+    format_keyword(
+        ps,
+        ParenOrArgsAddBlock::Empty(Vec::new()),
+        "super".to_string(),
+        lc,
+    )
 }
 
-pub fn format_yield0(ps: &mut dyn ConcreteParserState) {
-    if ps.at_start_of_line() {
-        ps.emit_indent();
-    }
-
-    ps.emit_keyword("yield".to_string());
-
-    if ps.at_start_of_line() {
-        ps.emit_newline();
-    }
+pub fn format_yield0(ps: &mut dyn ConcreteParserState, lc: LineCol) {
+    format_keyword(
+        ps,
+        ParenOrArgsAddBlock::Empty(Vec::new()),
+        "yield".to_string(),
+        lc,
+    )
 }
 
 pub fn format_yield(ps: &mut dyn ConcreteParserState, y: Yield) {
@@ -3296,7 +3283,7 @@ pub fn format_expression(ps: &mut dyn ConcreteParserState, expression: Expressio
         Expression::RegexpLiteral(regexp) => format_regexp_literal(ps, regexp),
         Expression::Backref(backref) => format_backref(ps, backref),
         Expression::Yield(y) => format_yield(ps, y),
-        Expression::Break(b) => format_kw_with_args(ps, b.1, "break".to_string(), b.2),
+        Expression::Break(b) => format_keyword(ps, b.1, "break".to_string(), b.2),
         Expression::MethodAddBlock(mab) => format_method_add_block(ps, mab),
         Expression::While(w) => format_while(ps, w.1, w.2, "while".to_string()),
         Expression::Until(u) => format_while(ps, u.1, u.2, "until".to_string()),
@@ -3319,7 +3306,7 @@ pub fn format_expression(ps: &mut dyn ConcreteParserState, expression: Expressio
         Expression::Unless(u) => format_unless(ps, u),
         Expression::ToProc(ToProc(_, e)) => format_to_proc(ps, e),
         Expression::ZSuper(ZSuper(_, lc)) => format_zsuper(ps, lc),
-        Expression::Yield0(..) => format_yield0(ps),
+        Expression::Yield0(Yield0(_, lc)) => format_yield0(ps, lc),
         Expression::Return(ret) => format_return(ps, ret),
         Expression::BeginBlock(begin) => format_begin_block(ps, begin),
         Expression::EndBlock(end) => format_end_block(ps, end),

@@ -44,6 +44,8 @@ class Parser < Ripper::SexpBuilderPP
       "yield" => [],
       "break" => [],
       "super" => [],
+      "retry" => [],
+      "redo" => []
     }
     @tlambda_stack = []
     @array_location_stacks = []
@@ -134,7 +136,27 @@ class Parser < Ripper::SexpBuilderPP
   end
 
   def on_zsuper
-    [:zsuper, [lineno, column]]
+    # ripper doesn't handle on_zsuper correctly.
+    # however `on_kw` catches zsuper, so use that!
+    [:zsuper, @kw_stacks["super"].pop]
+  end
+
+  def on_yield0
+    # ripper doesn't handle on_yield0 correctly.
+    # however `on_kw` catches yield0, so use that!
+    [:yield0, @kw_stacks["yield"].pop]
+  end
+
+  def on_redo
+    # ripper doesn't handle on_redo correctly.
+    # however `on_kw` catches redo, so use that!
+    [:redo, @kw_stacks["redo"].pop]
+  end
+
+  def on_retry
+    # ripper doesn't handle on_retry correctly.
+    # however `on_kw` catches retry, so use that!
+    [:retry, @kw_stacks["retry"].pop]
   end
 
   def on_lbracket(*args)

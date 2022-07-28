@@ -210,11 +210,11 @@ impl ZSuper {
 
 def_tag!(yield0_tag, "yield0");
 #[derive(Deserialize, Debug, Clone)]
-pub struct Yield0(yield0_tag);
+pub struct Yield0(pub yield0_tag, pub LineCol);
 
 impl Yield0 {
     fn into_call_chain(self) -> Vec<CallChainElement> {
-        vec![ident_as_cc("yield".to_string(), LineCol::unknown())]
+        vec![ident_as_cc("yield".to_string(), self.1)]
     }
 }
 
@@ -1796,11 +1796,11 @@ pub struct CaseElse(case_else_tag, pub Vec<Expression>);
 
 def_tag!(retry_tag, "retry");
 #[derive(Deserialize, Debug, Clone)]
-pub struct Retry(retry_tag);
+pub struct Retry(pub retry_tag, pub LineCol);
 
 def_tag!(redo_tag, "redo");
 #[derive(Deserialize, Debug, Clone)]
-pub struct Redo(redo_tag);
+pub struct Redo(pub redo_tag, pub LineCol);
 
 def_tag!(sclass_tag, "sclass");
 #[derive(Deserialize, Debug, Clone)]
