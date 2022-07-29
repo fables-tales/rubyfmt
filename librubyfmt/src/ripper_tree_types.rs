@@ -739,7 +739,7 @@ impl IdentOrOpOrKeywordOrConst {
 
 def_tag!(begin_tag, "begin");
 #[derive(Deserialize, Debug, Clone)]
-pub struct Begin(pub begin_tag, pub Box<BodyStmt>);
+pub struct Begin(pub begin_tag, pub LineCol, pub Box<BodyStmt>);
 
 def_tag!(bodystmt_tag, "bodystmt");
 #[derive(Deserialize, Debug, Clone)]

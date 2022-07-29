@@ -1058,11 +1058,12 @@ pub fn format_begin(ps: &mut dyn ConcreteParserState, begin: Begin) {
         ps.emit_indent()
     }
 
-    ps.wind_dumping_comments_until_next_expression();
+    ps.wind_dumping_comments_until_line(begin.1 .0);
     ps.emit_begin();
-    ps.emit_newline();
+
     ps.new_block(Box::new(|ps| {
-        ps.with_start_of_line(true, Box::new(|ps| format_bodystmt(ps, begin.1)));
+        ps.emit_newline();
+        ps.with_start_of_line(true, Box::new(|ps| format_bodystmt(ps, begin.2)));
     }));
 
     ps.with_start_of_line(

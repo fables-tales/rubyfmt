@@ -45,7 +45,8 @@ class Parser < Ripper::SexpBuilderPP
       "break" => [],
       "super" => [],
       "retry" => [],
-      "redo" => []
+      "redo" => [],
+      "begin" => [],
     }
     @tlambda_stack = []
     @array_location_stacks = []
@@ -152,6 +153,11 @@ class Parser < Ripper::SexpBuilderPP
     # ripper doesn't handle on_redo correctly.
     # however `on_kw` catches redo, so use that!
     [:redo, @kw_stacks["redo"].pop]
+  end
+
+  def on_begin(*args)
+    beg, statements = super
+    [beg, @kw_stacks["begin"].pop, statements]
   end
 
   def on_retry
