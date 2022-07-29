@@ -1272,9 +1272,7 @@ pub fn format_array(ps: &mut dyn ConcreteParserState, array: Array) {
         ps.emit_indent();
     }
 
-    if let Some(location) = array.2 {
-        ps.on_line(location.0);
-    }
+    ps.on_line((array.2).0);
 
     match array.1 {
         SimpleArrayOrPercentArray::SimpleArray(a) => format_array_fast_path(ps, a),
@@ -1297,6 +1295,8 @@ pub fn format_array(ps: &mut dyn ConcreteParserState, array: Array) {
     if ps.at_start_of_line() {
         ps.emit_newline();
     }
+
+    ps.wind_dumping_comments_until_line((array.2).1);
 }
 
 pub fn format_array_fast_path(
@@ -2400,6 +2400,8 @@ pub fn format_hash(ps: &mut dyn ConcreteParserState, hash: Hash) {
     if ps.at_start_of_line() {
         ps.emit_newline();
     }
+
+    ps.wind_dumping_comments_until_line((hash.2).1);
 }
 
 pub fn format_regexp_literal(ps: &mut dyn ConcreteParserState, regexp: RegexpLiteral) {

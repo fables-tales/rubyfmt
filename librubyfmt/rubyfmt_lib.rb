@@ -94,6 +94,7 @@ class Parser < Ripper::SexpBuilderPP
     end
 
     define_method(:"on_#{event}_beg") do |delim|
+      @array_location_stacks << lineno
       @percent_array_stack = delim
     end
 
@@ -123,7 +124,7 @@ class Parser < Ripper::SexpBuilderPP
   end
 
   def on_lbrace(*args)
-    @lbrace_stack << [lineno, column]
+    @lbrace_stack << lineno
   end
 
   def on_brace_block(params, body)
@@ -132,7 +133,7 @@ class Parser < Ripper::SexpBuilderPP
   end
 
   def on_hash(assocs)
-    [:hash, assocs, @lbrace_stack.pop]
+    [:hash, assocs, [@lbrace_stack.pop, lineno]]
   end
 
   def on_zsuper
@@ -160,13 +161,13 @@ class Parser < Ripper::SexpBuilderPP
   end
 
   def on_lbracket(*args)
-    @array_location_stacks << [lineno, column]
+    @array_location_stacks << lineno
   end
 
   def on_array(*args)
     res = super
     res[1][1].shift if (ary = res.dig(1, 1, 0)) && ary.is_a?(Array) && ary[0] == :_rubyfmt_delim # it's done its job
-    res << @array_location_stacks.pop
+    res << [@array_location_stacks.pop, lineno]
     res
   end
 

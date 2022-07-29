@@ -30,3 +30,39 @@ def another_one; end
 
 _annotation color: "green", size: "large"
 def m1; end
+
+fake_annotation(
+  {
+    a: b
+  }
+)
+def self.long_boi
+end
+
+long_annotation(
+  [
+    1,
+    2,
+    3
+  ]
+)
+def self.multiline_boi
+end
+
+boop(
+  %w[
+    a
+    b
+  ]
+)
+def example
+end
+
+boop(
+  %W[
+    a
+    b
+  ]
+)
+def example
+end

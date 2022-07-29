@@ -442,6 +442,15 @@ impl ConcreteParserState for BaseParserState {
     }
 
     fn wind_dumping_comments(&mut self, maybe_max_line_number: Option<LineNumber>) {
+        // Return early if we're already at/past
+        // the max line number
+        if maybe_max_line_number
+            .map(|ln| ln <= self.current_orig_line_number)
+            .unwrap_or(false)
+        {
+            return;
+        }
+
         self.on_line(self.current_orig_line_number + 1);
         let mut did_wind = false;
         let should_iter = |ps: &BaseParserState, ln| {

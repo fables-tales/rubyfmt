@@ -575,11 +575,7 @@ impl<'de> Deserialize<'de> for StringContent {
 
 def_tag!(array_tag, "array");
 #[derive(Deserialize, Debug, Clone)]
-pub struct Array(
-    pub array_tag,
-    pub SimpleArrayOrPercentArray,
-    pub Option<LineCol>,
-);
+pub struct Array(pub array_tag, pub SimpleArrayOrPercentArray, pub StartEnd);
 
 #[derive(RipperDeserialize, Debug, Clone)]
 pub enum SimpleArrayOrPercentArray {
@@ -1118,7 +1114,7 @@ pub struct BareAssocHash(pub bare_assoc_hash_tag, pub Vec<AssocNewOrAssocSplat>)
 
 def_tag!(hash_tag, "hash");
 #[derive(Deserialize, Debug, Clone)]
-pub struct Hash(pub hash_tag, pub Option<AssocListFromArgs>, pub LineCol);
+pub struct Hash(pub hash_tag, pub Option<AssocListFromArgs>, pub StartEnd);
 
 def_tag!(assoclist_from_args_tag, "assoclist_from_args");
 #[derive(Deserialize, Debug, Clone)]
