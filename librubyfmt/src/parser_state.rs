@@ -682,16 +682,19 @@ impl ConcreteParserState for BaseParserState {
                 next_heredoc.buf.pop();
             };
 
+            let kind = next_heredoc.kind.clone();
+            let symbol = next_heredoc.symbol.clone();
+
             self.push_concrete_token(ConcreteLineToken::DirectPart {
-                part: String::from_utf8(next_heredoc.buf).expect("heredoc is utf8"),
+                part: next_heredoc.render_as_string(),
             });
             self.emit_newline();
-            if !next_heredoc.kind.is_bare() {
+            if !kind.is_bare() {
                 self.emit_indent();
             } else {
                 self.push_concrete_token(ConcreteLineToken::Indent { depth: 0 });
             }
-            self.emit_heredoc_close(next_heredoc.symbol.replace("'", ""));
+            self.emit_heredoc_close(symbol.replace('\'', ""));
             if !skip {
                 self.emit_newline();
             }

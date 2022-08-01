@@ -9,7 +9,7 @@ EOD
 
 def foo
   c = <<~EOD
-part 1 of heredoc
+  part 1 of heredoc
   EOD
 
   d = <<-DASH

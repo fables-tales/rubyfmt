@@ -11,7 +11,7 @@ EOD
 
 def foo
   c = <<~EOD
-oqweijfoqwiejf
+  oqweijfoqwiejf
   EOD
 
   puts(c)

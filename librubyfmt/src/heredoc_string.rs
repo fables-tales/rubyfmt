@@ -44,4 +44,24 @@ impl HeredocString {
             indent,
         }
     }
+
+    pub fn render_as_string(&self) -> String {
+        let indent = self.indent;
+        let kind = self.kind.clone();
+        let mut string = String::from_utf8(self.buf.clone()).expect("heredoc is utf8");
+
+        while string.ends_with('\n') {
+            string.pop();
+        }
+
+        if kind.is_squiggly() {
+            string = string
+                .split('\n')
+                .map(|l| format!("{}{}", " ".repeat(indent as usize), l))
+                .collect::<Vec<String>>()
+                .join("\n")
+        }
+
+        string
+    }
 }

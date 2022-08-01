@@ -267,33 +267,20 @@ impl AbstractLineToken {
         let mut res = vec![];
         if let Some(values) = heredoc_strings {
             for hds in values {
-                let mut s = std::str::from_utf8(&hds.buf)
-                    .expect("it's utf8")
-                    .to_string();
-                while s.ends_with('\n') {
-                    s.pop();
-                }
+                let indent = hds.indent;
+                let kind = hds.kind.clone();
+                let symbol = hds.symbol.clone();
 
-                if hds.kind.is_squiggly() {
-                    s = s
-                        .split('\n')
-                        .map(|l| format!("{}{}", " ".repeat(hds.indent as usize), l))
-                        .collect::<Vec<String>>()
-                        .join("\n")
-                }
+                let s = hds.render_as_string();
                 res.push(clats_direct_part(s));
                 res.push(cltats_hard_newline());
-                if !hds.kind.is_bare() {
-                    res.push(clats_indent(hds.indent));
+                if !kind.is_bare() {
+                    res.push(clats_indent(indent));
                 }
-                res.push(clats_heredoc_close(hds.symbol));
+                res.push(clats_heredoc_close(symbol));
                 res.push(cltats_hard_newline());
-                let indent = if hds.indent != 0 {
-                    hds.indent - 2
-                } else {
-                    hds.indent
-                };
-                res.push(clats_indent(indent));
+                let indent_depth = if indent != 0 { indent - 2 } else { indent };
+                res.push(clats_indent(indent_depth));
             }
         }
         res

@@ -60,6 +60,25 @@ class Parser < Ripper::SexpBuilderPP
     super(*args)
   end
 
+  # This method has incorrect behavior inside Ripper,
+  # so we patch it for now
+  # original: https://github.com/ruby/ruby/blob/118368c1dd9304c0c21a4437016af235bd9b8438/ext/ripper/lib/ripper/sexp.rb#L144-L155
+  def on_heredoc_dedent(val, width)
+    dedented_lines = []
+    val.map! do |e|
+      next e if e.is_a?(Symbol) && /_content\z/ =~ e
+
+      if e.is_a?(Array) && e[0] == :@tstring_content && !dedented_lines.include?(e[2][0])
+        e = dedent_element(e, width)
+        dedented_lines << e[2][0]
+      elsif String === e
+        dedent_string(e, width)
+      end
+      e
+    end
+    val
+  end
+
   def parse
     res = super
 
