@@ -2525,9 +2525,12 @@ pub fn format_method_add_block(ps: &mut dyn ConcreteParserState, mab: MethodAddB
 pub fn format_brace_block(ps: &mut dyn ConcreteParserState, brace_block: BraceBlock) {
     let bv = brace_block.1;
     let body = brace_block.2;
+    let StartEnd(start_line, end_line) = brace_block.3;
+    let body_is_empty = body.len() == 1 && matches!(body[0], Expression::VoidStmt(..));
 
     let new_body = body.clone();
 
+    let is_empty_with_comments = body_is_empty && ps.has_comments_in_line(start_line, end_line);
     let is_multiline = ps.will_render_as_multiline(Box::new(|next_ps| {
         next_ps.new_block(Box::new(|next_ps| {
             next_ps.with_start_of_line(
@@ -2552,34 +2555,30 @@ pub fn format_brace_block(ps: &mut dyn ConcreteParserState, brace_block: BraceBl
         format_blockvar(ps, bv);
     }
 
+    let will_render_multiline = is_multiline || is_empty_with_comments;
     ps.new_block(Box::new(|ps| {
         ps.with_start_of_line(
             is_multiline,
             Box::new(|ps| {
-                if is_multiline {
+                if will_render_multiline {
                     ps.emit_newline();
                 } else {
                     ps.emit_space();
                 }
                 for expr in body.into_iter() {
                     format_expression(ps, expr);
-                    // Multiline blocks will put all of these on separate
-                    // lines, so we need to ensure the current line number
-                    // is properly tracked
-                    if is_multiline {
-                        ps.wind_line_forward();
-                    }
                 }
             }),
         );
     }));
 
-    if is_multiline {
+    if will_render_multiline {
         ps.emit_indent();
     } else {
         ps.emit_space();
     }
 
+    ps.wind_dumping_comments_until_line(end_line);
     ps.emit_ident("}".to_string());
 }
 
@@ -2588,7 +2587,7 @@ pub fn format_do_block(ps: &mut dyn ConcreteParserState, do_block: DoBlock) {
 
     let bv = do_block.1;
     let body = do_block.2;
-    let body_is_empty = (*body).is_empty();
+    let end_line = do_block.3.end_line();
 
     if let Some(bv) = bv {
         format_blockvar(ps, bv)
@@ -2608,9 +2607,7 @@ pub fn format_do_block(ps: &mut dyn ConcreteParserState, do_block: DoBlock) {
     ps.with_start_of_line(
         true,
         Box::new(|ps| {
-            if !body_is_empty {
-                ps.wind_dumping_comments_until_next_expression();
-            }
+            ps.wind_dumping_comments_until_line(end_line);
             ps.emit_end()
         }),
     );

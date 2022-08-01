@@ -38,6 +38,7 @@ class Parser < Ripper::SexpBuilderPP
     @regexp_stack = []
     @string_stack = []
     @kw_stacks = {
+      "do" => [],
       "return" => [],
       "when" => [],
       "case" => [],
@@ -148,8 +149,15 @@ class Parser < Ripper::SexpBuilderPP
   end
 
   def on_brace_block(params, body)
-    @lbrace_stack.pop
-    super
+    start_line = @lbrace_stack.pop
+    end_line = lineno
+    super + [[start_line, end_line]]
+  end
+
+  def on_do_block(*args)
+    start_line = @kw_stacks["do"].pop.first
+    end_line = lineno
+    super + [[start_line, end_line]]
   end
 
   def on_hash(assocs)

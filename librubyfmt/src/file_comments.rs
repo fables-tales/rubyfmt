@@ -93,6 +93,13 @@ impl FileComments {
         self.start_of_file_contiguous_comment_lines.take()
     }
 
+    pub fn has_comments_in_lines(&self, start_line: LineNumber, end_line: LineNumber) -> bool {
+        let line_range = start_line..end_line;
+        self.other_comments
+            .keys()
+            .any(|key| line_range.contains(key))
+    }
+
     pub fn extract_comments_to_line(&mut self, line_number: LineNumber) -> Option<CommentBlock> {
         self.other_comments
             .keys()

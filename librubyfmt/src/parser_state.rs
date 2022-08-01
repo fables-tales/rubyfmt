@@ -116,6 +116,7 @@ where
     fn current_formatting_context_requires_parens(&self) -> bool;
     fn current_formatting_context(&self) -> FormattingContext;
     fn is_absorbing_indents(&self) -> bool;
+    fn has_comments_in_line(&self, start_line: LineNumber, end_line: LineNumber) -> bool;
 
     // blocks
     fn with_formatting_context<'a>(
@@ -376,6 +377,11 @@ impl ConcreteParserState for BaseParserState {
             .start_of_line
             .last()
             .expect("start of line is never_empty")
+    }
+
+    fn has_comments_in_line(&self, start_line: LineNumber, end_line: LineNumber) -> bool {
+        self.comments_hash
+            .has_comments_in_lines(start_line, end_line)
     }
 
     fn emit_def(&mut self, def_name: String) {

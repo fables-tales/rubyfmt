@@ -975,6 +975,12 @@ pub struct LineCol(pub LineNumber, pub u64);
 #[derive(Deserialize, Debug, Clone)]
 pub struct StartEnd(pub LineNumber, pub LineNumber);
 
+impl StartEnd {
+    pub fn end_line(&self) -> LineNumber {
+        self.1
+    }
+}
+
 impl LineCol {
     fn unknown() -> Self {
         LineCol(0, 0)
@@ -1744,11 +1750,21 @@ pub struct BlockVar(
 
 def_tag!(do_block_tag, "do_block");
 #[derive(Deserialize, Debug, Clone)]
-pub struct DoBlock(do_block_tag, pub Option<BlockVar>, pub Box<BodyStmt>);
+pub struct DoBlock(
+    do_block_tag,
+    pub Option<BlockVar>,
+    pub Box<BodyStmt>,
+    pub StartEnd,
+);
 
 def_tag!(brace_block_tag, "brace_block");
 #[derive(Deserialize, Debug, Clone)]
-pub struct BraceBlock(brace_block_tag, pub Option<BlockVar>, pub Vec<Expression>);
+pub struct BraceBlock(
+    brace_block_tag,
+    pub Option<BlockVar>,
+    pub Vec<Expression>,
+    pub StartEnd,
+);
 
 def_tag!(while_tag, "while");
 #[derive(Deserialize, Debug, Clone)]
