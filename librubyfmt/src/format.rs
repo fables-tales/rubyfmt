@@ -1472,6 +1472,8 @@ pub fn format_heredoc_string_literal(
         ps.emit_indent();
     }
 
+    ps.on_line(hd.2 .0);
+
     ps.with_suppress_comments(
         true,
         Box::new(|ps| {

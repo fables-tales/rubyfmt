@@ -483,7 +483,11 @@ pub struct CVar(pub cvar_tag, pub String, pub LineCol);
 
 def_tag!(heredoc_string_literal_tag, "heredoc_string_literal");
 #[derive(Deserialize, Debug, Clone)]
-pub struct HeredocStringLiteral(pub heredoc_string_literal_tag, pub (String, String));
+pub struct HeredocStringLiteral(
+    pub heredoc_string_literal_tag,
+    pub (String, String),
+    pub LineCol,
+);
 
 def_tag!(string_literal_tag, "string_literal");
 #[derive(RipperDeserialize, Debug, Clone)]
@@ -955,6 +959,7 @@ impl Params {
 }
 
 #[derive(RipperDeserialize, Debug, Clone)]
+#[allow(clippy::large_enum_variant)]
 pub enum ExpressionOrFalse {
     Expression(Expression),
     False(bool),

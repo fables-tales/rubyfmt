@@ -288,7 +288,7 @@ class Parser < Ripper::SexpBuilderPP
   def on_heredoc_beg(*args, &blk)
     heredoc_parts = @heredoc_regex.match(args[0]).captures
     raise "bad heredoc" unless heredoc_parts.select { |x| x != nil }.count == 2
-    @next_heredoc_stack.push(heredoc_parts)
+    @next_heredoc_stack.push([heredoc_parts, [lineno, column]])
     super
   end
 
@@ -300,7 +300,7 @@ class Parser < Ripper::SexpBuilderPP
   def on_string_literal(*args, &blk)
     if @heredoc_stack.last
       heredoc_parts = @heredoc_stack.pop
-      args.insert(0, [:heredoc_string_literal, heredoc_parts])
+      args.insert(0, [:heredoc_string_literal] + heredoc_parts)
     else
       end_delim = @string_stack.pop
       start_delim = @string_stack.pop
