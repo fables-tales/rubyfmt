@@ -532,7 +532,7 @@ pub fn format_else(
             ps.dedent(Box::new(|ps| {
                 ps.emit_indent();
                 ps.emit_else();
-                ps.wind_dumping_comments_until_next_expression();
+                ps.wind_dumping_comments(None);
             }));
             ps.emit_newline();
             ps.with_start_of_line(
@@ -2243,7 +2243,7 @@ pub fn format_conditional(
                 ps.emit_indent();
                 ps.emit_else();
                 ps.new_block(Box::new(|ps| {
-                    ps.wind_dumping_comments_until_next_expression();
+                    ps.wind_dumping_comments_until_line(els.2 .1);
                     ps.emit_newline();
                 }));
                 ps.with_start_of_line(
@@ -2262,11 +2262,13 @@ pub fn format_conditional(
 }
 
 pub fn format_if(ps: &mut dyn ConcreteParserState, ifs: If) {
+    let vifs = ifs.clone();
     format_conditional(ps, *ifs.1, ifs.2, "if".to_string(), ifs.3);
+
     ps.with_start_of_line(
         true,
         Box::new(|ps| {
-            ps.wind_dumping_comments_until_next_expression();
+            ps.wind_dumping_comments_until_line(vifs.4 .1);
             ps.emit_end();
         }),
     );

@@ -48,6 +48,10 @@ class Parser < Ripper::SexpBuilderPP
       "retry" => [],
       "redo" => [],
       "begin" => [],
+      "else" => [],
+      "if" => [],
+      "unless" => [],
+      "elsif" => [],
     }
     @tlambda_stack = []
     @array_location_stacks = []
@@ -142,6 +146,31 @@ class Parser < Ripper::SexpBuilderPP
       end
       super(parts, part)
     end
+  end
+
+
+  def on_if(*_args)
+    start_line = @kw_stacks['if'].pop.first
+    end_line = lineno
+    super + [[start_line, end_line]]
+  end
+
+  def on_unless(*_args)
+    start_line = @kw_stacks['unless'].pop.first
+    end_line = lineno
+    super + [[start_line, end_line]]
+  end
+
+  def on_else(*_args)
+    start_line = @kw_stacks['else'].pop.first
+    end_line = lineno
+    super + [[start_line, end_line]]
+  end
+
+  def on_elsif(*_args)
+    start_line = @kw_stacks['elsif'].pop.first
+    end_line = lineno
+    super + [[start_line, end_line]]
   end
 
   def on_lbrace(*args)

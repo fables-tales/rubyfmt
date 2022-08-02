@@ -99,7 +99,6 @@ where
     fn wind_line_if_needed_for_array(&mut self);
     fn on_line(&mut self, line_number: LineNumber);
     fn wind_dumping_comments_until_line(&mut self, line_number: LineNumber);
-    fn wind_dumping_comments_until_next_expression(&mut self);
     fn wind_dumping_comments(&mut self, maybe_max_line_number: Option<LineNumber>);
     fn shift_comments(&mut self);
     fn wind_line_forward(&mut self);
@@ -441,10 +440,6 @@ impl ConcreteParserState for BaseParserState {
 
     fn wind_dumping_comments_until_line(&mut self, line_number: LineNumber) {
         self.wind_dumping_comments(Some(line_number))
-    }
-
-    fn wind_dumping_comments_until_next_expression(&mut self) {
-        self.wind_dumping_comments(None)
     }
 
     fn wind_dumping_comments(&mut self, maybe_max_line_number: Option<LineNumber>) {

@@ -225,6 +225,7 @@ pub struct If(
     pub Box<Expression>,
     pub Vec<Expression>,
     pub Option<ElsifOrElse>,
+    pub StartEnd,
 );
 
 def_tag!(unless_tag, "unless");
@@ -234,6 +235,7 @@ pub struct Unless(
     pub Box<Expression>,
     pub Vec<Expression>,
     pub Option<Else>,
+    pub StartEnd,
 );
 
 #[derive(RipperDeserialize, Debug, Clone)]
@@ -249,11 +251,12 @@ pub struct Elsif(
     pub Box<Expression>,
     pub Vec<Expression>,
     pub Option<Box<ElsifOrElse>>,
+    pub StartEnd,
 );
 
 def_tag!(else_tag, "else");
 #[derive(Deserialize, Debug, Clone)]
-pub struct Else(pub else_tag, pub Vec<Expression>);
+pub struct Else(pub else_tag, pub Vec<Expression>, pub StartEnd);
 
 def_tag!(undef_tag, "undef");
 #[derive(Deserialize, Debug, Clone)]
