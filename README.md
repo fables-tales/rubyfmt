@@ -16,10 +16,9 @@ Build it:
 Rubyfmt supports the following CLI invocations:
 
 * `<whatever> | rubyfmt` pipe from standard in
-* `rubyfmt filename` to format a file to
-  stdout
-* `rubyfmt -i files or directories` format files and directories in place
-* `rubyfmt directory` to format all ruby files in that directory in place
+* `rubyfmt -i -- files or directories` to format files and directories in place
+* `rubyfmt -- files or directories` output rubyfmtted code to STDOUT.
+* `rubyfmt -c -- files or directories` output a diff of input and rubyformatted input.
 
 ## Useful environment variables:
 

@@ -12,7 +12,7 @@ do
     git clone "https://github.com/$REPO" "$REPO"
     cd "$REPO"
     git checkout "$HEAD"
-    f_rubyfmt -i lib/
+    f_rubyfmt -i -- lib/
     for FILE in $FILES
     do
         fn=$(echo "$FILE" | cut -f1 -d,)

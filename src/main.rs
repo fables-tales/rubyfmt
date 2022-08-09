@@ -1,128 +1,110 @@
 #![deny(warnings, missing_copy_implementations)]
 
 mod updates;
-
+use clap::Parser;
+use ignore::WalkBuilder;
+use regex::Regex;
 use similar::TextDiff;
-
-use std::ffi::{OsStr, OsString};
-use std::fs::{self, metadata, read_to_string, OpenOptions};
-use std::io::{self, Read, Write};
-use std::path::{Path, PathBuf};
+use std::ffi::OsStr;
+use std::fs::{read_to_string, File, OpenOptions};
+use std::io::{self, BufRead, BufReader, Read, Write};
+use std::path::Path;
 use std::process::exit;
+use std::sync::{Arc, Mutex};
 
-#[derive(Debug)]
-enum FileError {
-    Io(io::Error),
-    SyntaxError,
+#[macro_use]
+extern crate lazy_static;
+
+lazy_static! {
+    static ref MAGIC_COMMENT_REGEX: Regex =
+        Regex::new(r"(?m)^#\s*rubyfmt:\s*(?P<enabled>true|false)\s*$").unwrap();
 }
 
+/// Simple Enum to exit on errors or not
 #[derive(Debug, PartialEq, Copy, Clone)]
 enum ErrorExit {
     NoExit,
     Exit,
 }
 
-fn rubyfmt_file(file_path: &Path) -> Result<(), FileError> {
-    let buffer = read_to_string(&file_path).map_err(FileError::Io)?;
-    let res = rubyfmt::format_buffer(&buffer);
-    match res {
-        Ok(res) => {
-            let mut file = OpenOptions::new()
-                .write(true)
-                .truncate(true)
-                .open(file_path)
-                .expect("file");
-            write!(file, "{}", res).map_err(FileError::Io)?;
-            Ok(())
-        }
-        Err(rubyfmt::RichFormatError::SyntaxError) => Err(FileError::SyntaxError),
-        Err(e) => {
-            // we're in a formatting loop, so print, and OK
-            handle_error_from(e, file_path, ErrorExit::NoExit);
-            Ok(())
-        }
+/// Error enum representing errors in the cli.
+#[derive(Debug)]
+enum ExecutionError {
+    // Errors seen when rubyfmt is executing
+    RubyfmtError(rubyfmt::RichFormatError, String),
+    // Errors seen when performing IO s
+    IOError(io::Error, String),
+    // Errors seen when grepping for files
+    FileSearchFailure(ignore::Error),
+}
+
+/// Rubyfmt CLI
+#[derive(Debug, Parser)]
+#[clap(author, version, about, long_about = None)]
+struct CommandlineOpts {
+    /// Fetch current latest version
+    #[clap(long)]
+    internal_fetch_latest_version: bool,
+
+    /// Disables hints to update rubyfmt
+    #[clap(long, name = "silence-update-messages")]
+    silence_update_message: bool,
+
+    /// Turn on check mode. This outputs diffs of inputs to STDOUT. Will exit non-zero when differences are detected.
+    #[clap(short, long)]
+    check: bool,
+
+    /// Turn on to ignore gitignored files. Gitignored files are not considered by rubyfmt by default.
+    #[clap(long, name = "include-gitignored", conflicts_with = "stdin")]
+    include_gitignored: bool,
+
+    /// Only format ruby files containing the magic `# rubyfmt: true` header
+    #[clap(long, name = "header-opt-in")]
+    header_opt_in: bool,
+
+    /// Do not format ruby files containing the magic `# rubyfmt: false` header
+    #[clap(long, name = "header-opt-out")]
+    header_opt_out: bool,
+
+    /// Fail on all syntax and io errors early. Warnings otherwise.
+    #[clap(long, name = "fail-fast")]
+    fail_fast: bool,
+
+    /// Write files back in place, do not write output to STDOUT.
+    #[clap(short, long, name = "in-place")]
+    in_place: bool,
+
+    /// Paths for rubyfmt to analyze. By default the output will be printed to STDOUT. See `--in-place` to write files back in-place.
+    /// Acceptable paths are:{n}
+    /// - File paths (i.e lib/foo/bar.rb){n}
+    /// - Directories (i.e. lib/foo/){n}
+    /// - Input files (i.e. @/tmp/files.txt). These files must contain one file path or directory per line
+    /// rubyfmt will use these as input.{n}
+    #[clap(name = "include-paths", last = true)]
+    include_paths: Vec<String>,
+}
+
+/******************************************************/
+/* Error handling                                     */
+/******************************************************/
+
+fn handle_io_error(err: io::Error, source: &String, error_exit: ErrorExit) {
+    eprintln!("IO Error ({}): {}", source, err);
+    let exit_code = 1;
+    if error_exit == ErrorExit::Exit {
+        exit(exit_code);
     }
 }
 
-fn rubyfmt_dir(path: &Path) -> io::Result<()> {
-    for entry in fs::read_dir(path)? {
-        let path = entry?.path();
-        if path.is_dir() {
-            rubyfmt_dir(&path)?;
-        } else if path.extension() == Some(OsStr::new("rb")) {
-            let res = rubyfmt_file(&path);
-            if let Err(FileError::SyntaxError) = res {
-                eprintln!(
-                    "warning: {} contains syntax errors, ignoring for now",
-                    path.display()
-                );
-            }
-        }
-    }
-    Ok(())
-}
-
-fn format_parts(parts: &[OsString]) {
-    for part in parts {
-        if let Ok(md) = metadata(part) {
-            if md.is_dir() {
-                rubyfmt_dir(part.as_ref()).expect("failed to format directory");
-            } else if md.is_file() {
-                rubyfmt_file(part.as_ref()).expect("failed to format file");
-            }
-        }
+fn handle_ignore_error(err: ignore::Error, error_exit: ErrorExit) {
+    eprintln!("Error searching for files: {}", err);
+    let exit_code = 1;
+    if error_exit == ErrorExit::Exit {
+        exit(exit_code);
     }
 }
 
-fn diff_file(path: &Path) -> String {
-    let buffer = read_to_string(&path).expect("Failed to read file");
-    let res = rubyfmt::format_buffer(&buffer);
-    match res {
-        Ok(res) => {
-            let diff = TextDiff::from_lines(&buffer, &res);
-            let path = path.to_str().unwrap();
-            format!("{}", diff.unified_diff().header(path, path))
-        }
-        Err(e) => {
-            // Since this is check and not a formatting loop,
-            // we can exit on invalid input
-            handle_error_from(e, path, ErrorExit::Exit);
-            // We should be exiting in `handle_error_from`,
-            // this is just to make the compiler happy
-            unreachable!();
-        }
-    }
-}
-
-fn diff_parts(parts: Vec<&Path>) -> Vec<String> {
-    let mut diffs = Vec::new();
-    for part in parts {
-        match metadata(part) {
-            Ok(md) => {
-                if md.is_dir() {
-                    let path_bufs: Vec<PathBuf> = fs::read_dir(part)
-                        .expect("Failed to read directory")
-                        .into_iter()
-                        .map(|entry| entry.expect("Failed to get directory entry").path())
-                        .collect();
-                    let paths = path_bufs.iter().map(|p| p.as_path()).collect();
-                    diffs.append(&mut diff_parts(paths));
-                } else if part.extension() == Some(OsStr::new("rb")) {
-                    diffs.push(diff_file(part));
-                }
-            }
-            Err(e) => {
-                handle_error_from(rubyfmt::RichFormatError::IOError(e), part, ErrorExit::Exit);
-            }
-        }
-    }
-
-    // Remove any blank diffs -- these are no-ops
-    diffs.retain(|diff| !diff.is_empty());
-    diffs
-}
-
-fn handle_error_from(err: rubyfmt::RichFormatError, source: &Path, error_exit: ErrorExit) {
+fn handle_rubyfmt_error(err: rubyfmt::RichFormatError, source: &String, error_exit: ErrorExit) {
     use rubyfmt::RichFormatError::*;
     let exit_code = err.as_exit_code();
     let e = || {
@@ -132,7 +114,7 @@ fn handle_error_from(err: rubyfmt::RichFormatError, source: &Path, error_exit: E
     };
     match err {
         SyntaxError => {
-            eprintln!("{} contained invalid ruby syntax", source.display());
+            eprintln!("{} contained invalid ruby syntax", source);
             e();
         }
         rubyfmt::RichFormatError::RipperParseFailure(_) => {
@@ -149,7 +131,7 @@ fn handle_error_from(err: rubyfmt::RichFormatError, source: &Path, error_exit: E
 🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛
             ";
             eprintln!("{}", bug_report);
-            eprintln!("file was: {}", source.display());
+            eprintln!("file was: {}", source);
             e();
         }
         IOError(ioe) => {
@@ -163,8 +145,62 @@ fn handle_error_from(err: rubyfmt::RichFormatError, source: &Path, error_exit: E
     }
 }
 
-fn main() {
-    updates::begin_checking_for_updates();
+fn handle_execution_error(opts: &CommandlineOpts, err: ExecutionError) {
+    let mut exit_type = ErrorExit::NoExit;
+    // If include_paths are empty, this is operating on STDIN which should always exit
+    if opts.fail_fast || opts.include_paths.is_empty() {
+        exit_type = ErrorExit::Exit;
+    }
+
+    match err {
+        ExecutionError::RubyfmtError(e, path) => handle_rubyfmt_error(e, &path, exit_type),
+        ExecutionError::IOError(e, path) => handle_io_error(e, &path, exit_type),
+        ExecutionError::FileSearchFailure(e) => handle_ignore_error(e, exit_type),
+    }
+}
+
+/******************************************************/
+/* Rubyfmt Integration                                */
+/******************************************************/
+
+fn rubyfmt_string(
+    &CommandlineOpts {
+        header_opt_in,
+        header_opt_out,
+        ..
+    }: &CommandlineOpts,
+    buffer: &str,
+) -> Result<Option<String>, rubyfmt::RichFormatError> {
+    if header_opt_in || header_opt_out {
+        // Only look at the first 500 bytes for the magic header.
+        // This is for performance
+        let mut slice = buffer;
+        if buffer.len() > 500 {
+            slice = &buffer[..500]
+        }
+
+        let matched = MAGIC_COMMENT_REGEX
+            .captures(slice)
+            .and_then(|c| c.name("enabled"))
+            .map(|s| s.as_str());
+
+        // If opted in to magic "# rubyfmt: true" header and true is not
+        // in the file, return early
+        if header_opt_in && Some("true") != matched {
+            return Ok(None);
+        }
+
+        // If opted in to magic "# rubyfmt: false" header and false is
+        // in the file, return early
+        if header_opt_out && Some("false") == matched {
+            return Ok(None);
+        }
+    }
+
+    rubyfmt::format_buffer(buffer).map(Some)
+}
+
+fn initialize_rubyfmt() {
     let res = rubyfmt::rubyfmt_init();
     if res != rubyfmt::InitStatus::OK as libc::c_int {
         panic!(
@@ -172,72 +208,195 @@ fn main() {
             rubyfmt::ruby::current_exception_as_rust_string()
         );
     }
-    let args: Vec<OsString> = std::env::args_os().skip(1).collect();
-    let command = args.get(0).and_then(|x| x.to_str());
-    match (command, &*args) {
-        // Read from stdin
-        (_, []) => {
-            let mut buffer = String::new();
-            io::stdin()
-                .read_to_string(&mut buffer)
-                .expect("reading from stdin to not fail");
-            let res = rubyfmt::format_buffer(&buffer);
-            match res {
-                Ok(res) => {
-                    write!(io::stdout(), "{}", res).expect("write works");
-                    io::stdout().flush().expect("flush works");
-                }
-                Err(e) => handle_error_from(e, Path::new("stdin"), ErrorExit::Exit),
-            }
-        }
-        // In Rust 1.53
-        // (Some("--help" | "-h"), _) => {
-        (Some("--help"), _) | (Some("-h"), _) => {
-            eprintln!("{}", include_str!("../README.md"));
-            exit(0);
-        }
-        (Some("--internal-fetch-latest-version"), _) => {
-            updates::fetch_latest_version().unwrap();
-        }
-        // Single file
-        (_, [filename]) => {
-            if let Ok(md) = metadata(&filename) {
-                if md.is_dir() {
-                    format_parts(&[filename.clone()])
-                } else {
-                    let buffer = read_to_string(&filename).expect("file exists");
-                    let res = rubyfmt::format_buffer(&buffer);
-                    match res {
-                        Ok(res) => {
-                            write!(io::stdout(), "{}", res).expect("write works");
-                            io::stdout().flush().expect("flush works");
-                        }
-                        Err(e) => handle_error_from(e, filename.as_ref(), ErrorExit::Exit),
+}
+
+/******************************************************/
+/* Helpers                                            */
+/******************************************************/
+
+fn file_walker_builder(
+    CommandlineOpts {
+        include_paths,
+        include_gitignored,
+        ..
+    }: &CommandlineOpts,
+) -> WalkBuilder {
+    // WalkBuilder does not have an API for adding multiple inputs.
+    // Must pass the first input to the constructor, and the tail afterwards.
+    // Safe to unwrap here.
+    let (include_head, include_tail) = include_paths.split_first().unwrap();
+    let mut builder = WalkBuilder::new(include_head);
+
+    for path in include_tail {
+        builder.add(path);
+    }
+
+    builder.git_ignore(!*include_gitignored);
+    builder.add_custom_ignore_filename(".rubyfmtignore");
+    builder
+}
+
+// Parse command line arguments. Expand any input files.
+fn get_command_line_options() -> CommandlineOpts {
+    let opts = CommandlineOpts::parse();
+
+    let mut expanded_paths: Vec<String> = Vec::new();
+
+    for path in opts.include_paths {
+        // Expand input files
+        if let Some(file_name) = path.strip_prefix('@') {
+            match File::open(file_name) {
+                Ok(file) => {
+                    let buf = BufReader::new(file);
+                    let lines: Vec<String> = buf
+                        .lines()
+                        .map(|l| l.expect("Could not parse line"))
+                        .collect();
+                    for line in lines {
+                        expanded_paths.push(line);
                     }
                 }
-            } else {
-                eprintln!("{} does not exist", Path::new(&filename).display());
-                exit(rubyfmt::FormatError::IOError as i32)
+                Err(e) => handle_io_error(e, &path, ErrorExit::Exit),
             }
-        }
-        (Some("-c" | "--check"), [_, parts @ ..]) => {
-            let paths = parts.iter().map(|part| part.as_ref()).collect();
-            let text_diffs = diff_parts(paths);
-            if text_diffs.is_empty() {
-                // All good! No changes to make
-                exit(0);
-            } else {
-                for diff in text_diffs {
-                    write!(io::stdout(), "{}", diff).expect("Could not write to stdout");
-                    io::stdout().flush().expect("flush works");
-                }
-                exit(1);
-            }
-        }
-        // Multiple files
-        (Some("-i"), [_, parts @ ..]) | (_, parts) => {
-            format_parts(parts);
+        } else {
+            expanded_paths.push(path);
         }
     }
-    updates::report_if_update_available();
+
+    CommandlineOpts {
+        include_paths: expanded_paths,
+        ..opts
+    }
+}
+
+fn iterate_input_files(opts: &CommandlineOpts, f: &dyn Fn((&Path, &String))) {
+    if opts.include_paths.is_empty() {
+        // If not include paths are present, assume user is passing via STDIN
+        let mut buffer = String::new();
+        io::stdin()
+            .read_to_string(&mut buffer)
+            .expect("reading from stdin to not fail");
+        f((Path::new("stdin"), &buffer))
+    } else {
+        for result in file_walker_builder(opts).build() {
+            match result {
+                Ok(pp) => {
+                    let file_path = pp.path();
+
+                    if file_path.is_file()
+                        && file_path.extension().and_then(OsStr::to_str) == Some("rb")
+                    {
+                        let buffer_res = read_to_string(file_path);
+
+                        match buffer_res {
+                            Ok(buffer) => f((file_path, &buffer)),
+                            Err(e) => handle_execution_error(
+                                opts,
+                                ExecutionError::IOError(e, file_path.display().to_string()),
+                            ),
+                        }
+                    }
+                }
+                Err(e) => handle_execution_error(opts, ExecutionError::FileSearchFailure(e)),
+            }
+        }
+    }
+}
+
+fn iterate_formatted(opts: &CommandlineOpts, f: &dyn Fn((&Path, &String, Option<String>))) {
+    iterate_input_files(
+        opts,
+        &|(file_path, before)| match rubyfmt_string(opts, before) {
+            Ok(r) => f((file_path, before, r)),
+            Err(e) => handle_execution_error(
+                opts,
+                ExecutionError::RubyfmtError(e, file_path.display().to_string()),
+            ),
+        },
+    );
+}
+
+fn puts_stdout(input: &String) {
+    write!(io::stdout(), "{}", input).expect("Could not write to stdout");
+    io::stdout().flush().expect("flush works");
+}
+
+fn main() {
+    updates::begin_checking_for_updates();
+
+    let opts = get_command_line_options();
+
+    match opts {
+        CommandlineOpts {
+            internal_fetch_latest_version: true,
+            ..
+        } => updates::fetch_latest_version().unwrap(),
+
+        CommandlineOpts { check: true, .. } => {
+            initialize_rubyfmt();
+            let text_diffs: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(Vec::new()));
+
+            iterate_formatted(&opts, &|(file_path, before, after)| match after {
+                None => {}
+                Some(fmtted) => {
+                    let diff = TextDiff::from_lines(before, &fmtted);
+                    let path_string = file_path.to_str().unwrap();
+                    text_diffs.lock().unwrap().push(format!(
+                        "{}",
+                        diff.unified_diff().header(path_string, path_string)
+                    ));
+                }
+            });
+
+            let all_diffs = text_diffs.lock().unwrap();
+
+            let mut diffs_reported = 0;
+
+            for diff in all_diffs.iter() {
+                if !diff.is_empty() {
+                    puts_stdout(diff);
+                    diffs_reported += 1
+                }
+            }
+            if diffs_reported > 0 {
+                exit(1);
+            } else {
+                exit(0)
+            }
+        }
+
+        CommandlineOpts { in_place: true, .. } => {
+            initialize_rubyfmt();
+            iterate_formatted(&opts, &|(file_path, _before, after)| match after {
+                None => {}
+                Some(fmtted) => {
+                    let file_write = OpenOptions::new()
+                        .write(true)
+                        .truncate(true)
+                        .open(file_path)
+                        .and_then(|mut file| write!(file, "{}", fmtted));
+
+                    match file_write {
+                        Ok(_) => {}
+                        Err(e) => handle_execution_error(
+                            &opts,
+                            ExecutionError::IOError(e, file_path.display().to_string()),
+                        ),
+                    }
+                }
+            })
+        }
+
+        _ => {
+            initialize_rubyfmt();
+            iterate_formatted(&opts, &|(_, before, after)| match after {
+                Some(fmtted) => puts_stdout(&fmtted),
+                None => puts_stdout(before),
+            })
+        }
+    }
+
+    if !opts.silence_update_message {
+        updates::report_if_update_available();
+    }
 }
