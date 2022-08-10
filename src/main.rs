@@ -175,8 +175,14 @@ fn rubyfmt_string(
         // Only look at the first 500 bytes for the magic header.
         // This is for performance
         let mut slice = buffer;
-        if buffer.len() > 500 {
-            slice = &buffer[..500]
+        let mut slice_size = 500;
+        let blength = buffer.len();
+
+        if blength > slice_size {
+            while !buffer.is_char_boundary(slice_size) && slice_size < blength {
+                slice_size += 1;
+            }
+            slice = &buffer[..slice_size]
         }
 
         let matched = MAGIC_COMMENT_REGEX
