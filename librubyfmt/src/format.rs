@@ -1,6 +1,6 @@
 use crate::delimiters::BreakableDelims;
 use crate::heredoc_string::HeredocKind;
-use crate::parser_state::{BaseParserState, ConcreteParserState, FormattingContext};
+use crate::parser_state::{BaseParserState, ConcreteParserState, FormattingContext, RenderFunc};
 use crate::ripper_tree_types::*;
 use log::debug;
 
@@ -47,6 +47,8 @@ pub fn format_def(ps: &mut dyn ConcreteParserState, def: Def) {
     }
 }
 
+type ParamFormattingFunc = Box<dyn FnOnce(&mut dyn ConcreteParserState) -> bool>;
+
 pub fn inner_format_params(ps: &mut dyn ConcreteParserState, params: Box<Params>) {
     let non_null_positions = params.non_null_positions();
     //def foo(a, b=nil, *args, d, e:, **kwargs, &blk)
@@ -73,7 +75,7 @@ pub fn inner_format_params(ps: &mut dyn ConcreteParserState, params: Box<Params>
     let kwrest_params = params.6;
     let block_arg = params.7;
 
-    let formats: Vec<Box<dyn FnOnce(&mut dyn ConcreteParserState) -> bool>> = vec![
+    let formats: Vec<ParamFormattingFunc> = vec![
         Box::new(move |ps: &mut dyn ConcreteParserState| {
             format_required_params(ps, required_params)
         }),
@@ -809,7 +811,7 @@ pub fn format_list_like_thing_items(
         .iter()
         .any(|i| matches!(i, Expression::StringConcat(..)));
     let args_count = args.len();
-    let cls: Box<dyn FnOnce(&mut dyn ConcreteParserState)> = Box::new(|ps| {
+    let cls: RenderFunc = Box::new(|ps| {
         for (idx, expr) in args.into_iter().enumerate() {
             if single_line {
                 match expr {
@@ -1410,7 +1412,7 @@ pub fn emit_intermediate_array_separator(ps: &mut dyn ConcreteParserState, singl
     }
 }
 
-#[derive(PartialEq, Debug)]
+#[derive(PartialEq, Eq, Debug)]
 pub enum StringType {
     Quoted,
     Heredoc,
@@ -2503,7 +2505,7 @@ fn format_call_chain_elements(
             CallChainElement::VarRef(vr) => format_var_ref(ps, vr),
             CallChainElement::ArgsAddStarOrExpressionListOrArgsForward(aas) => {
                 if !aas.is_empty() {
-                    let cls: Box<dyn FnOnce(&mut dyn ConcreteParserState)> = Box::new(|ps| {
+                    let cls: RenderFunc = Box::new(|ps| {
                         format_list_like_thing(ps, aas, elide_parens);
                     });
 

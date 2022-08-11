@@ -12,7 +12,9 @@ use log::debug;
 use std::io::{self, Cursor, Write};
 use std::str;
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+pub type RenderFunc<'a> = Box<dyn FnOnce(&mut dyn ConcreteParserState) + 'a>;
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum FormattingContext {
     Main,
     Assign,
@@ -120,46 +122,18 @@ where
     // blocks
     fn start_indent(&mut self);
     fn end_indent(&mut self);
-    fn with_formatting_context<'a>(
-        &mut self,
-        fc: FormattingContext,
-        f: Box<dyn FnOnce(&mut dyn ConcreteParserState) + 'a>,
-    );
-    fn new_scope<'a>(&mut self, f: Box<dyn FnOnce(&mut dyn ConcreteParserState) + 'a>);
-    fn new_block<'a>(&mut self, f: Box<dyn FnOnce(&mut dyn ConcreteParserState) + 'a>);
-    fn with_start_of_line<'a>(
-        &mut self,
-        start_of_line: bool,
-        f: Box<dyn FnOnce(&mut dyn ConcreteParserState) + 'a>,
-    );
-    fn breakable_of<'a>(
-        &mut self,
-        delims: BreakableDelims,
-        f: Box<dyn FnOnce(&mut dyn ConcreteParserState) + 'a>,
-    ) -> bool;
-    fn dedent<'a>(&mut self, f: Box<dyn FnOnce(&mut dyn ConcreteParserState) + 'a>);
-    fn with_absorbing_indent_block<'a>(
-        &mut self,
-        f: Box<dyn FnOnce(&mut dyn ConcreteParserState) + 'a>,
-    );
-    fn magic_handle_comments_for_multiline_arrays<'a>(
-        &mut self,
-        f: Box<dyn FnOnce(&mut dyn ConcreteParserState) + 'a>,
-    );
-    fn with_suppress_comments<'a>(
-        &mut self,
-        suppress: bool,
-        f: Box<dyn FnOnce(&mut dyn ConcreteParserState) + 'a>,
-    );
-    fn will_render_as_multiline<'a>(
-        &mut self,
-        f: Box<dyn FnOnce(&mut dyn ConcreteParserState) + 'a>,
-    ) -> bool;
+    fn with_formatting_context(&mut self, fc: FormattingContext, f: RenderFunc);
+    fn new_scope(&mut self, f: RenderFunc);
+    fn new_block(&mut self, f: RenderFunc);
+    fn with_start_of_line(&mut self, start_of_line: bool, f: RenderFunc);
+    fn breakable_of(&mut self, delims: BreakableDelims, f: RenderFunc) -> bool;
+    fn dedent(&mut self, f: RenderFunc);
+    fn with_absorbing_indent_block(&mut self, f: RenderFunc);
+    fn magic_handle_comments_for_multiline_arrays(&mut self, f: RenderFunc);
+    fn with_suppress_comments(&mut self, suppress: bool, f: RenderFunc);
+    fn will_render_as_multiline(&mut self, f: RenderFunc) -> bool;
 
-    fn will_render_beyond_max_line_length<'a>(
-        &mut self,
-        f: Box<dyn FnOnce(&mut dyn ConcreteParserState) + 'a>,
-    ) -> bool;
+    fn will_render_beyond_max_line_length(&mut self, f: RenderFunc) -> bool;
 
     // stuff to remove from this enum
     fn emit_soft_newline(&mut self);
@@ -192,7 +166,7 @@ impl ConcreteParserState for BaseParserState {
             .expect("it's never empty")
             .contains(&s.to_string())
     }
-    fn new_scope<'a>(&mut self, f: Box<dyn FnOnce(&mut dyn ConcreteParserState) + 'a>) {
+    fn new_scope<'a>(&mut self, f: RenderFunc) {
         self.scopes.push(vec![]);
         f(self);
         self.scopes.pop();
@@ -230,10 +204,7 @@ impl ConcreteParserState for BaseParserState {
         self.push_concrete_token(ConcreteLineToken::DirectPart { part: symbol });
     }
 
-    fn magic_handle_comments_for_multiline_arrays<'a>(
-        &mut self,
-        f: Box<dyn FnOnce(&mut dyn ConcreteParserState) + 'a>,
-    ) {
+    fn magic_handle_comments_for_multiline_arrays<'a>(&mut self, f: RenderFunc) {
         let current_line_number = self.current_orig_line_number;
         self.new_block(Box::new(|ps| {
             ps.shift_comments();
@@ -248,10 +219,7 @@ impl ConcreteParserState for BaseParserState {
         debug!("coln: {}", new_line_number);
     }
 
-    fn will_render_as_multiline<'a>(
-        &mut self,
-        f: Box<dyn FnOnce(&mut dyn ConcreteParserState) + 'a>,
-    ) -> bool {
+    fn will_render_as_multiline<'a>(&mut self, f: RenderFunc) -> bool {
         let mut next_ps = BaseParserState::new_with_depth_stack_from(self);
         f(&mut next_ps);
         let data = next_ps.render_to_buffer();
@@ -260,10 +228,7 @@ impl ConcreteParserState for BaseParserState {
         s.trim().contains('\n')
     }
 
-    fn will_render_beyond_max_line_length<'a>(
-        &mut self,
-        f: Box<dyn FnOnce(&mut dyn ConcreteParserState) + 'a>,
-    ) -> bool {
+    fn will_render_beyond_max_line_length<'a>(&mut self, f: RenderFunc) -> bool {
         let mut next_ps = BaseParserState::new_with_depth_stack_from(self);
         f(&mut next_ps);
         let data = next_ps.render_to_buffer();
@@ -273,7 +238,7 @@ impl ConcreteParserState for BaseParserState {
         s.len() > MAX_LINE_LENGTH
     }
 
-    fn dedent<'a>(&mut self, f: Box<dyn FnOnce(&mut dyn ConcreteParserState) + 'a>) {
+    fn dedent<'a>(&mut self, f: RenderFunc) {
         let ds_length = self.depth_stack.len();
         self.depth_stack[ds_length - 1].decrement();
         f(self);
@@ -290,21 +255,13 @@ impl ConcreteParserState for BaseParserState {
         self.depth_stack[ds_length - 1].decrement();
     }
 
-    fn with_start_of_line<'a>(
-        &mut self,
-        start_of_line: bool,
-        f: Box<dyn FnOnce(&mut dyn ConcreteParserState) + 'a>,
-    ) {
+    fn with_start_of_line<'a>(&mut self, start_of_line: bool, f: RenderFunc) {
         self.start_of_line.push(start_of_line);
         f(self);
         self.start_of_line.pop();
     }
 
-    fn breakable_of<'a>(
-        &mut self,
-        delims: BreakableDelims,
-        f: Box<dyn FnOnce(&mut dyn ConcreteParserState) + 'a>,
-    ) -> bool {
+    fn breakable_of<'a>(&mut self, delims: BreakableDelims, f: RenderFunc) -> bool {
         self.shift_comments();
         let mut be = BreakableEntry::new(self.current_spaces(), delims);
         be.push_line_number(self.current_orig_line_number);
@@ -328,20 +285,13 @@ impl ConcreteParserState for BaseParserState {
         is_multiline
     }
 
-    fn with_suppress_comments<'a>(
-        &mut self,
-        suppress: bool,
-        f: Box<dyn FnOnce(&mut dyn ConcreteParserState) + 'a>,
-    ) {
+    fn with_suppress_comments<'a>(&mut self, suppress: bool, f: RenderFunc) {
         self.suppress_comments_stack.push(suppress);
         f(self);
         self.suppress_comments_stack.pop();
     }
 
-    fn with_absorbing_indent_block<'a>(
-        &mut self,
-        f: Box<dyn FnOnce(&mut dyn ConcreteParserState) + 'a>,
-    ) {
+    fn with_absorbing_indent_block<'a>(&mut self, f: RenderFunc) {
         let was_absorbing = self.absorbing_indents != 0;
         self.absorbing_indents += 1;
         if was_absorbing {
@@ -352,18 +302,14 @@ impl ConcreteParserState for BaseParserState {
         self.absorbing_indents -= 1;
     }
 
-    fn new_block<'a>(&mut self, f: Box<dyn FnOnce(&mut dyn ConcreteParserState) + 'a>) {
+    fn new_block<'a>(&mut self, f: RenderFunc) {
         let ds_length = self.depth_stack.len();
         self.depth_stack[ds_length - 1].increment();
         f(self);
         self.depth_stack[ds_length - 1].decrement();
     }
 
-    fn with_formatting_context<'a>(
-        &mut self,
-        fc: FormattingContext,
-        f: Box<dyn FnOnce(&mut dyn ConcreteParserState) + 'a>,
-    ) {
+    fn with_formatting_context<'a>(&mut self, fc: FormattingContext, f: RenderFunc) {
         self.formatting_context.push(fc);
         f(self);
         self.formatting_context.pop();

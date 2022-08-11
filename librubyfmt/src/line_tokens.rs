@@ -20,7 +20,7 @@ pub fn clats_indent(depth: ColNumber) -> ConcreteLineTokenAndTargets {
 
 // represents something that will actually end up as a ruby token, as opposed to
 // something that has to be transformed to become a ruby token
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ConcreteLineToken {
     HardNewLine,
     Indent { depth: u32 },
