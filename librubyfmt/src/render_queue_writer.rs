@@ -5,7 +5,7 @@ use crate::render_targets::{AbstractTokenTarget, BreakableEntry, ConvertType};
 use log::debug;
 use std::io::{self, Write};
 
-const MAX_LINE_LENGTH: usize = 120;
+pub const MAX_LINE_LENGTH: usize = 120;
 
 pub struct RenderQueueWriter {
     tokens: Vec<ConcreteLineTokenAndTargets>,

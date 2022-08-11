@@ -368,9 +368,11 @@ module RSpec::Core
       #                          specific colors.
       # @return [String] A colorized summary line.
       def colorized_rerun_commands(colorizer = ::RSpec::Core::Formatters::ConsoleCodes)
-        "\nFailed examples:\n\n" + failed_examples.map do |example|
-          colorizer.wrap("rspec #{rerun_argument_for(example)}", RSpec.configuration.failure_color) + " " + colorizer.wrap("# #{example.full_description}", RSpec.configuration.detail_color)
-        end.join("\n")
+        "\nFailed examples:\n\n" + failed_examples
+          .map do |example|
+            colorizer.wrap("rspec #{rerun_argument_for(example)}", RSpec.configuration.failure_color) + " " + colorizer.wrap("# #{example.full_description}", RSpec.configuration.detail_color)
+          end
+          .join("\n")
       end
 
       # @return [String] a formatted version of the time it took to run the
@@ -442,9 +444,11 @@ module RSpec::Core
 
       # @return [Array<RSpec::Core::Example>] the slowest examples
       def slowest_examples
-        @slowest_examples ||= examples.sort_by do |example|
-          -example.execution_result.run_time
-        end.first(number_of_examples)
+        @slowest_examples ||= examples
+          .sort_by do |example|
+            -example.execution_result.run_time
+          end
+          .first(number_of_examples)
       end
 
       # @return [Float] the time taken (in seconds) to run the slowest examples

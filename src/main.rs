@@ -309,7 +309,9 @@ fn iterate_input_files(opts: &CommandlineOpts, f: &dyn Fn((&Path, &String))) {
     }
 }
 
-fn iterate_formatted(opts: &CommandlineOpts, f: &dyn Fn((&Path, &String, Option<String>))) {
+type FormattingFunc<'a> = &'a dyn Fn((&Path, &String, Option<String>));
+
+fn iterate_formatted(opts: &CommandlineOpts, f: FormattingFunc) {
     iterate_input_files(
         opts,
         &|(file_path, before)| match rubyfmt_string(opts, before) {

@@ -4,7 +4,7 @@ use crate::file_comments::FileComments;
 use crate::format::{format_inner_string, StringType};
 use crate::heredoc_string::{HeredocKind, HeredocString};
 use crate::line_tokens::*;
-use crate::render_queue_writer::RenderQueueWriter;
+use crate::render_queue_writer::{RenderQueueWriter, MAX_LINE_LENGTH};
 use crate::render_targets::{AbstractTokenTarget, BaseQueue, BreakableEntry};
 use crate::ripper_tree_types::StringContentPart;
 use crate::types::{ColNumber, LineNumber};
@@ -118,6 +118,8 @@ where
     fn has_comments_in_line(&self, start_line: LineNumber, end_line: LineNumber) -> bool;
 
     // blocks
+    fn start_indent(&mut self);
+    fn end_indent(&mut self);
     fn with_formatting_context<'a>(
         &mut self,
         fc: FormattingContext,
@@ -150,6 +152,11 @@ where
         f: Box<dyn FnOnce(&mut dyn ConcreteParserState) + 'a>,
     );
     fn will_render_as_multiline<'a>(
+        &mut self,
+        f: Box<dyn FnOnce(&mut dyn ConcreteParserState) + 'a>,
+    ) -> bool;
+
+    fn will_render_beyond_max_line_length<'a>(
         &mut self,
         f: Box<dyn FnOnce(&mut dyn ConcreteParserState) + 'a>,
     ) -> bool;
@@ -253,11 +260,34 @@ impl ConcreteParserState for BaseParserState {
         s.trim().contains('\n')
     }
 
+    fn will_render_beyond_max_line_length<'a>(
+        &mut self,
+        f: Box<dyn FnOnce(&mut dyn ConcreteParserState) + 'a>,
+    ) -> bool {
+        let mut next_ps = BaseParserState::new_with_depth_stack_from(self);
+        f(&mut next_ps);
+        let data = next_ps.render_to_buffer();
+
+        let s = str::from_utf8(&data).expect("string is utf8").to_string();
+
+        s.len() > MAX_LINE_LENGTH
+    }
+
     fn dedent<'a>(&mut self, f: Box<dyn FnOnce(&mut dyn ConcreteParserState) + 'a>) {
         let ds_length = self.depth_stack.len();
         self.depth_stack[ds_length - 1].decrement();
         f(self);
         self.depth_stack[ds_length - 1].increment();
+    }
+
+    fn start_indent(&mut self) {
+        let ds_length = self.depth_stack.len();
+        self.depth_stack[ds_length - 1].increment();
+    }
+
+    fn end_indent(&mut self) {
+        let ds_length = self.depth_stack.len();
+        self.depth_stack[ds_length - 1].decrement();
     }
 
     fn with_start_of_line<'a>(
@@ -822,6 +852,7 @@ impl BaseParserState {
 
     fn new_with_depth_stack_from(ps: &BaseParserState) -> Self {
         let mut next_ps = BaseParserState::new(FileComments::default());
+        next_ps.start_of_line = ps.start_of_line.clone();
         next_ps.depth_stack = ps.depth_stack.clone();
         next_ps.current_orig_line_number = ps.current_orig_line_number;
         next_ps

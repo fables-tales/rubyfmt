@@ -733,7 +733,10 @@ pub fn format_method_call(ps: &mut dyn ConcreteParserState, method_call: MethodC
     ps.with_start_of_line(
         false,
         Box::new(|ps| {
-            format_call_chain(ps, chain);
+            let is_indented = format_call_chain(ps, chain);
+            if is_indented {
+                ps.start_indent();
+            }
             format_ident(ps, method.into_ident());
 
             let delims = if use_parens {
@@ -776,6 +779,10 @@ pub fn format_method_call(ps: &mut dyn ConcreteParserState, method_call: MethodC
             } else if use_parens {
                 ps.emit_open_paren();
                 ps.emit_close_paren();
+            }
+
+            if is_indented {
+                ps.end_indent();
             }
         }),
     );
@@ -2464,15 +2471,34 @@ fn can_elide_parens_for_rspec_dsl_call(cc: &[CallChainElement]) -> bool {
     is_bare_it_or_describe || is_rspec_describe
 }
 
-fn format_call_chain(ps: &mut dyn ConcreteParserState, cc: Vec<CallChainElement>) {
+/// Returns `true` if the call chain is indented, `false` if not
+fn format_call_chain(ps: &mut dyn ConcreteParserState, cc: Vec<CallChainElement>) -> bool {
+    if cc.is_empty() {
+        return false;
+    }
+
+    let should_multiline_call_chain = should_multiline_call_chain(ps, &cc);
+
+    format_call_chain_elements(ps, cc, should_multiline_call_chain);
+
+    ps.emit_after_call_chain();
+    should_multiline_call_chain
+}
+
+fn format_call_chain_elements(
+    ps: &mut dyn ConcreteParserState,
+    cc: Vec<CallChainElement>,
+    render_multiline_chain: bool,
+) {
     let elide_parens = can_elide_parens_for_rspec_dsl_call(&cc);
-    for cc_elem in cc.into_iter() {
+    let mut has_indented = false;
+    for cc_elem in cc {
         match cc_elem {
             CallChainElement::Paren(p) => format_paren(ps, p),
             CallChainElement::IdentOrOpOrKeywordOrConst(i) => format_ident(ps, i.into_ident()),
             CallChainElement::Block(b) => {
                 ps.emit_space();
-                format_block(ps, b);
+                format_block(ps, b)
             }
             CallChainElement::VarRef(vr) => format_var_ref(ps, vr),
             CallChainElement::ArgsAddStarOrExpressionListOrArgsForward(aas) => {
@@ -2492,11 +2518,75 @@ fn format_call_chain(ps: &mut dyn ConcreteParserState, cc: Vec<CallChainElement>
                     }
                 }
             }
-            CallChainElement::DotTypeOrOp(d) => format_dot(ps, d),
+            CallChainElement::DotTypeOrOp(d) => {
+                if render_multiline_chain && !has_indented {
+                    ps.start_indent();
+                    has_indented = true;
+                }
+                if render_multiline_chain {
+                    ps.emit_newline();
+                    ps.emit_indent();
+                }
+                format_dot(ps, d);
+            }
             CallChainElement::Expression(e) => format_expression(ps, *e),
         }
     }
-    ps.emit_after_call_chain();
+
+    if has_indented {
+        ps.end_indent();
+    }
+}
+
+fn should_multiline_call_chain(ps: &mut dyn ConcreteParserState, cc: &[CallChainElement]) -> bool {
+    let mut call_chain_to_check = cc.to_owned();
+
+    // If the first item in the chain is a multiline expression (like a hash or array),
+    // ignore it when checking line length
+    if let Some(CallChainElement::Expression(expr)) = call_chain_to_check.first() {
+        let is_multiline_expression = ps.will_render_as_multiline(Box::new(|ps| {
+            format_expression(ps, expr.as_ref().clone());
+        }));
+
+        if is_multiline_expression {
+            call_chain_to_check.remove(0);
+        }
+    }
+
+    // We don't always want to multiline blocks if their only usage
+    // is at the end of a chain, since it's common to have chains
+    // that end with long blocks, but those blocks don't mean we should
+    // multiline the rest of the chain.
+    //
+    // example:
+    // ```
+    // items.get_all.each do
+    // end
+    // ```
+    if let Some(CallChainElement::Block(..)) = call_chain_to_check.last() {
+        call_chain_to_check.pop();
+    }
+
+    let chain_is_too_long = ps.will_render_beyond_max_line_length(Box::new(|ps| {
+        format_call_chain_elements(ps, call_chain_to_check.clone(), false);
+    }));
+    if chain_is_too_long {
+        return true;
+    }
+
+    let chain_blocks_are_multilined = call_chain_to_check
+        .iter()
+        .filter_map(|elem| match elem {
+            CallChainElement::Block(block) => Some(block.clone()),
+            _ => None,
+        })
+        .any(|block| {
+            ps.will_render_as_multiline(Box::new(|ps| {
+                format_block(ps, block);
+            }))
+        });
+
+    chain_blocks_are_multilined
 }
 
 pub fn format_block(ps: &mut dyn ConcreteParserState, b: Block) {
@@ -2531,6 +2621,8 @@ pub fn format_brace_block(ps: &mut dyn ConcreteParserState, brace_block: BraceBl
     let body = brace_block.2;
     let StartEnd(start_line, end_line) = brace_block.3;
     let body_is_empty = body.len() == 1 && matches!(body[0], Expression::VoidStmt(..));
+
+    ps.on_line(start_line);
 
     let new_body = body.clone();
 

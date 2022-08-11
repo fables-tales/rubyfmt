@@ -1,6 +1,10 @@
 #![deny(warnings, missing_copy_implementations)]
-#![allow(clippy::upper_case_acronyms)]
-#![allow(clippy::enum_variant_names)]
+#![allow(
+    clippy::upper_case_acronyms,
+    clippy::enum_variant_names,
+    clippy::type_complexity,
+    clippy::derive_partial_eq_without_eq
+)]
 
 use serde::de::value;
 use std::io::{Cursor, Write};

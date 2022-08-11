@@ -126,14 +126,7 @@ impl Intermediary {
                 }
             }
             ConcreteLineToken::DirectPart { part } => {
-                // Read second-to-last token, the last token will be `AfterCallChain`
-                if part == "require"
-                    && self
-                        .tokens
-                        .get(self.tokens.len() - 2)
-                        .map(|t| t.is_indent())
-                        .unwrap_or(false)
-                {
+                if part == "require" && self.tokens.last().map(|t| t.is_indent()).unwrap_or(false) {
                     self.current_line_metadata.set_has_require();
                 }
             }
@@ -229,6 +222,15 @@ impl Intermediary {
     }
 
     pub fn insert_trailing_blankline(&mut self, _bl: BlanklineReason) {
+        if self.index_of_last_hard_newline <= 2 {
+            self.tokens.insert(
+                self.index_of_last_hard_newline,
+                ConcreteLineToken::HardNewLine,
+            );
+            self.index_of_last_hard_newline += 1;
+            self.debug_assert_newlines();
+            return;
+        }
         match (
             self.tokens.get(self.index_of_last_hard_newline - 2),
             self.tokens.get(self.index_of_last_hard_newline - 1),
@@ -256,10 +258,19 @@ impl Intermediary {
     }
 
     fn is_block_after_method_call(&self) -> bool {
+        use ConcreteLineToken::*;
+
+        if self.tokens.len() < 4 {
+            return false;
+        }
+
         match &self.tokens[self.tokens.len() - 4..] {
-            [ConcreteLineToken::HardNewLine, ConcreteLineToken::Indent { .. }, ConcreteLineToken::Delim { contents }, ConcreteLineToken::Space] => {
-                contents == ")"
+            [_, _, Delim { contents }, Space]
+            | [DirectPart { part: contents }, Dot, DirectPart { .. }, Space]
+            | [Delim { contents }, Dot, DirectPart { .. }, Space] => {
+                contents == ")" || contents == "}" || contents == "]"
             }
+            [Indent { .. }, Dot, DirectPart { .. }, Space] => true,
             _ => false,
         }
     }

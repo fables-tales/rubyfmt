@@ -108,6 +108,7 @@ impl ConcreteLineToken {
     fn is_conditional_spaced_token(&self) -> bool {
         match self {
             Self::ConditionalKeyword { contents } => !(contents == "else" || contents == "elsif"),
+            Self::Dot => false,
             _ => true,
         }
     }
