@@ -362,6 +362,15 @@ class Parser < Ripper::SexpBuilderPP
     super
   end
 
+  def on_dyna_symbol(*args)
+    # dyna_symbol expressions still end up calling
+    # on_tstring_end, which will append the closing
+    # quote to @string_stack. We want to ignore this,
+    # so remove it from the stack.
+    @string_stack.pop
+    super
+  end
+
   def on_regexp_beg(re_part)
     @regexp_stack << re_part
   end
