@@ -55,7 +55,7 @@ struct CommandlineOpts {
     check: bool,
 
     /// Turn on to ignore gitignored files. Gitignored files are not considered by rubyfmt by default.
-    #[clap(long, name = "include-gitignored", conflicts_with = "stdin")]
+    #[clap(long, name = "include-gitignored")]
     include_gitignored: bool,
 
     /// Only format ruby files containing the magic `# rubyfmt: true` header
