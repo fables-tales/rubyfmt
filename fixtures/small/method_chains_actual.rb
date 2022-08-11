@@ -13,6 +13,19 @@ returns_array.map { |foo|
   b: ""
 )
 
+def example
+  things
+    .map do |thing|
+      case thing
+      when Paul
+        thing.call
+      when Blart
+        thing.also_call
+      end
+    end
+    .uniq
+end
+
 foo.items.each { |item| item.call! }
 
 foo.items.map { p(_1) }.each { _1.call! }

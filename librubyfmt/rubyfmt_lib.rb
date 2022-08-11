@@ -253,7 +253,8 @@ class Parser < Ripper::SexpBuilderPP
   end
 
   def on_case(cond, body)
-    [:case, cond, body, @kw_stacks["case"].pop]
+    current_line = lineno
+    [:case, cond, body, [@kw_stacks["case"].pop.first, current_line]]
   end
 
   def on_yield(arg)

@@ -2925,6 +2925,7 @@ pub fn format_case(ps: &mut dyn ConcreteParserState, case: Case) {
     if ps.at_start_of_line() {
         ps.emit_indent();
     }
+    let end_line = case.3.end_line();
     ps.on_line((case.3).0);
 
     ps.emit_case_keyword();
@@ -2952,6 +2953,7 @@ pub fn format_case(ps: &mut dyn ConcreteParserState, case: Case) {
     );
 
     if ps.at_start_of_line() {
+        ps.wind_dumping_comments_until_line(end_line);
         ps.emit_newline();
     }
 }
