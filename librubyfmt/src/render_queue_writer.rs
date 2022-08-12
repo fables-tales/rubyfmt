@@ -58,7 +58,9 @@ impl RenderQueueWriter {
                 match x {
                     ConcreteLineToken::DefKeyword => {}
                     _ => {
-                        if x.is_in_need_of_a_trailing_blankline() {
+                        if x.is_in_need_of_a_trailing_blankline()
+                            && !x.is_method_visibility_modifier()
+                        {
                             accum.insert_trailing_blankline(BlanklineReason::ComesAfterEnd);
                         }
                     }

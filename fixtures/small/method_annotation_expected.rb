@@ -66,3 +66,8 @@ boop(
 )
 def example
 end
+
+my_annotation do
+end
+private def my_method
+end
