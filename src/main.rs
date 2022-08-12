@@ -373,21 +373,23 @@ fn main() {
 
         CommandlineOpts { in_place: true, .. } => {
             initialize_rubyfmt();
-            iterate_formatted(&opts, &|(file_path, _before, after)| match after {
+            iterate_formatted(&opts, &|(file_path, before, after)| match after {
                 None => {}
                 Some(fmtted) => {
-                    let file_write = OpenOptions::new()
-                        .write(true)
-                        .truncate(true)
-                        .open(file_path)
-                        .and_then(|mut file| write!(file, "{}", fmtted));
+                    if fmtted.ne(before) {
+                        let file_write = OpenOptions::new()
+                            .write(true)
+                            .truncate(true)
+                            .open(file_path)
+                            .and_then(|mut file| write!(file, "{}", fmtted));
 
-                    match file_write {
-                        Ok(_) => {}
-                        Err(e) => handle_execution_error(
-                            &opts,
-                            ExecutionError::IOError(e, file_path.display().to_string()),
-                        ),
+                        match file_write {
+                            Ok(_) => {}
+                            Err(e) => handle_execution_error(
+                                &opts,
+                                ExecutionError::IOError(e, file_path.display().to_string()),
+                            ),
+                        }
                     }
                 }
             })
