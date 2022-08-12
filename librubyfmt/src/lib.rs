@@ -81,6 +81,8 @@ pub enum FormatError {
     RipperParseFailure = 2,
     IOError = 3,
     OtherRubyError = 4,
+    // Diffs are only necessary in --check mode
+    DiffDetected = 5,
 }
 
 pub fn format_buffer(buf: &str) -> Result<String, RichFormatError> {

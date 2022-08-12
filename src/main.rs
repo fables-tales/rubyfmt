@@ -90,17 +90,15 @@ struct CommandlineOpts {
 
 fn handle_io_error(err: io::Error, source: &String, error_exit: ErrorExit) {
     eprintln!("IO Error ({}): {}", source, err);
-    let exit_code = 1;
     if error_exit == ErrorExit::Exit {
-        exit(exit_code);
+        exit(rubyfmt::FormatError::IOError as i32);
     }
 }
 
 fn handle_ignore_error(err: ignore::Error, error_exit: ErrorExit) {
     eprintln!("Error searching for files: {}", err);
-    let exit_code = 1;
     if error_exit == ErrorExit::Exit {
-        exit(exit_code);
+        exit(rubyfmt::FormatError::IOError as i32);
     }
 }
 
@@ -367,7 +365,7 @@ fn main() {
                 }
             }
             if diffs_reported > 0 {
-                exit(1);
+                exit(rubyfmt::FormatError::DiffDetected as i32);
             } else {
                 exit(0)
             }
