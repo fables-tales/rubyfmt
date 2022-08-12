@@ -3204,16 +3204,13 @@ pub fn format_ifop(ps: &mut dyn ConcreteParserState, ifop: IfOp) {
     }
 }
 
-pub fn format_return0(ps: &mut dyn ConcreteParserState, _r0: Return0) {
-    if ps.at_start_of_line() {
-        ps.emit_indent();
-    }
-
-    ps.emit_keyword("return".to_string());
-
-    if ps.at_start_of_line() {
-        ps.emit_newline();
-    }
+pub fn format_return0(ps: &mut dyn ConcreteParserState, r: Return0) {
+    format_keyword(
+        ps,
+        ParenOrArgsAddBlock::Empty(Vec::new()),
+        "return".to_string(),
+        r.1,
+    );
 }
 
 pub fn format_opassign(ps: &mut dyn ConcreteParserState, opassign: OpAssign) {

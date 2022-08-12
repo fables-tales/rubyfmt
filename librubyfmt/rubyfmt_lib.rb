@@ -248,6 +248,10 @@ class Parser < Ripper::SexpBuilderPP
     [:return, args, @kw_stacks["return"].pop]
   end
 
+  def on_return0
+    [:return0, @kw_stacks["return"].pop]
+  end
+
   def on_when(cond, body, tail)
     [:when, cond, body, tail, @kw_stacks["when"].pop]
   end

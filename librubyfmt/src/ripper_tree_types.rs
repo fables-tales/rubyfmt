@@ -1644,7 +1644,7 @@ pub struct Return(return_tag, pub ArgNode, pub LineCol);
 
 def_tag!(return0_tag, "return0");
 #[derive(Deserialize, Debug, Clone)]
-pub struct Return0(return0_tag);
+pub struct Return0(return0_tag, pub LineCol);
 
 def_tag!(regexp_literal_tag, "regexp_literal");
 #[derive(Deserialize, Debug, Clone)]
