@@ -5,7 +5,7 @@
 ./lib/concurrent-ruby/concurrent/atom.rb,083289235a44d967b96bb2a0bc31dd09
 ./lib/concurrent-ruby/concurrent/collection/ruby_non_concurrent_priority_queue.rb,bb4883cf91d80be8ff0bfc49f476514c
 ./lib/concurrent-ruby/concurrent/collection/non_concurrent_priority_queue.rb,e8176bf8a4f874a0e6128b3c09466266
-./lib/concurrent-ruby/concurrent/collection/java_non_concurrent_priority_queue.rb,b785688f283cb958569b49b4bd521976
+./lib/concurrent-ruby/concurrent/collection/java_non_concurrent_priority_queue.rb,c511581f6ddb18c58fc13976fa9f7b3c
 ./lib/concurrent-ruby/concurrent/collection/copy_on_notify_observer_set.rb,8f66025b704828fb0105d5cc983e4b7c
 ./lib/concurrent-ruby/concurrent/collection/map/truffleruby_map_backend.rb,e13fe7f9707411726b57136120d3eec9
 ./lib/concurrent-ruby/concurrent/collection/map/synchronized_map_backend.rb,71734308245a3edb0d0ea6ea3d327200
