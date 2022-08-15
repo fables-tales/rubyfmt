@@ -2238,7 +2238,9 @@ pub fn format_conditional(
     ps.with_start_of_line(
         false,
         Box::new(|ps| {
-            format_expression(ps, cond_expr);
+            ps.new_block(Box::new(|ps| {
+                format_expression(ps, cond_expr);
+            }))
         }),
     );
 
