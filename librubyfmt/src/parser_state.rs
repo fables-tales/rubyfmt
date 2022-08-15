@@ -24,6 +24,7 @@ pub enum FormattingContext {
     CurlyBlock,
     ArgsList,
     IfOp,
+    StringEmbexpr,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -263,7 +264,11 @@ impl ConcreteParserState for BaseParserState {
 
     fn breakable_of<'a>(&mut self, delims: BreakableDelims, f: RenderFunc) -> bool {
         self.shift_comments();
-        let mut be = BreakableEntry::new(self.current_spaces(), delims);
+        let mut be = BreakableEntry::new(
+            self.current_spaces(),
+            delims,
+            self.current_formatting_context(),
+        );
         be.push_line_number(self.current_orig_line_number);
         self.breakable_entry_stack.push(Box::new(be));
 

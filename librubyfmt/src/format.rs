@@ -1448,28 +1448,31 @@ pub fn format_inner_string(
                 }
                 ps.emit_string_content(t.1);
             }
-            StringContentPart::StringEmbexpr(e) => {
-                ps.emit_string_content("#{".to_string());
-                ps.with_start_of_line(
-                    false,
-                    Box::new(|ps| {
-                        let expr = ((e.1).into_iter()).next().expect("should not be empty");
-                        format_expression(ps, expr);
-                    }),
-                );
-                ps.emit_string_content("}".to_string());
+            StringContentPart::StringEmbexpr(e) => ps.with_formatting_context(
+                FormattingContext::StringEmbexpr,
+                Box::new(|ps| {
+                    ps.emit_string_content("#{".to_string());
+                    ps.with_start_of_line(
+                        false,
+                        Box::new(|ps| {
+                            let expr = ((e.1).into_iter()).next().expect("should not be empty");
+                            format_expression(ps, expr);
+                        }),
+                    );
+                    ps.emit_string_content("}".to_string());
 
-                let on_line_skip = tipe == StringType::Heredoc
-                    && match peekable.peek() {
-                        Some(StringContentPart::TStringContent(TStringContent(_, s, _))) => {
-                            s.starts_with('\n')
-                        }
-                        _ => false,
-                    };
-                if on_line_skip {
-                    ps.render_heredocs(true)
-                }
-            }
+                    let on_line_skip = tipe == StringType::Heredoc
+                        && match peekable.peek() {
+                            Some(StringContentPart::TStringContent(TStringContent(_, s, _))) => {
+                                s.starts_with('\n')
+                            }
+                            _ => false,
+                        };
+                    if on_line_skip {
+                        ps.render_heredocs(true)
+                    }
+                }),
+            ),
             StringContentPart::StringDVar(dv) => {
                 ps.emit_string_content("#{".to_string());
                 ps.with_start_of_line(
@@ -2492,7 +2495,8 @@ fn format_call_chain(ps: &mut dyn ConcreteParserState, cc: Vec<CallChainElement>
         return false;
     }
 
-    let should_multiline_call_chain = should_multiline_call_chain(ps, &cc);
+    let is_in_string_embexpr = ps.current_formatting_context() == FormattingContext::StringEmbexpr;
+    let should_multiline_call_chain = !is_in_string_embexpr && should_multiline_call_chain(ps, &cc);
 
     format_call_chain_elements(ps, cc, should_multiline_call_chain);
 

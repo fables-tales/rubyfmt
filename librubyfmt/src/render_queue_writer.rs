@@ -1,5 +1,6 @@
 use crate::intermediary::{BlanklineReason, Intermediary};
 use crate::line_tokens::*;
+use crate::parser_state::FormattingContext;
 use crate::render_targets::{AbstractTokenTarget, BreakableEntry, ConvertType};
 #[cfg(debug_assertions)]
 use log::debug;
@@ -86,7 +87,9 @@ impl RenderQueueWriter {
     fn format_breakable_entry(accum: &mut Intermediary, be: BreakableEntry) {
         let length = be.single_line_string_length();
 
-        if length > MAX_LINE_LENGTH || be.is_multiline() {
+        if (length > MAX_LINE_LENGTH || be.is_multiline())
+            && be.entry_formatting_context() != FormattingContext::StringEmbexpr
+        {
             Self::render_as(accum, be.into_tokens(ConvertType::MultiLine));
         } else {
             Self::render_as(accum, be.into_tokens(ConvertType::SingleLine));
