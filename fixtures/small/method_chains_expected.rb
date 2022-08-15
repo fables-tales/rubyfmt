@@ -30,25 +30,16 @@ end
 
 foo.items.each { |item| item.call! }
 
-foo
-  .items
-  .map { p(_1) }
-  .each { _1.call! }
+foo.items.map { p(_1) }.each { _1.call! }
 
-foo
-  .items
-  .map { p(_1) }
-  .last
+foo.items.map { p(_1) }.last
 
 hashes.sort_by { |hsh| hsh[:start_time] }.reverse
 
 params(
   route: String,
   config: T.nilable(Some::Really::Long::Type::Name),
-  block: T
-    .proc
-    .bind(Some::Really::Long::Type::Name::In::This::Proc)
-    .void
+  block: T.proc.bind(Some::Really::Long::Type::Name::In::This::Proc).void
 )
   .void
 
@@ -56,10 +47,7 @@ Opus::Foo
   .params(
     route: String,
     config: T.nilable(Some::Really::Long::Type::Name),
-    block: T
-      .proc
-      .bind(Some::Really::Long::Type::Name::In::This::Proc)
-      .void
+    block: T.proc.bind(Some::Really::Long::Type::Name::In::This::Proc).void
   )
   .void
 

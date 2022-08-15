@@ -2543,15 +2543,6 @@ fn format_call_chain_elements(
 fn should_multiline_call_chain(ps: &mut dyn ConcreteParserState, cc: &[CallChainElement]) -> bool {
     let mut call_chain_to_check = cc.to_owned();
 
-    let call_count = cc
-        .iter()
-        .filter(|elem| matches!(elem, CallChainElement::DotTypeOrOp(..)))
-        .count();
-
-    if call_count >= 3 {
-        return true;
-    }
-
     // If the first item in the chain is a multiline expression (like a hash or array),
     // ignore it when checking line length
     if let Some(CallChainElement::Expression(expr)) = call_chain_to_check.first() {

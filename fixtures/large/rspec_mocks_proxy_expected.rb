@@ -307,10 +307,7 @@ module RSpec
     class PartialDoubleProxy < Proxy
       def original_method_handle_for(message)
         if any_instance_class_recorder_observing_method?(@object.class, message)
-          message = ::RSpec::Mocks
-            .space
-            .any_instance_recorder_for(@object.class)
-            .build_alias_method_name(message)
+          message = ::RSpec::Mocks.space.any_instance_recorder_for(@object.class).build_alias_method_name(message)
         end
 
         ::RSpec::Support.method_handle_for(@object, message)
@@ -343,12 +340,9 @@ module RSpec
       end
 
       def message_received(message, *args, &block)
-        RSpec::Mocks
-          .space
-          .any_instance_recorders_from_ancestry_of(object)
-          .each do |subscriber|
-            subscriber.notify_received_message(object, message, args, block)
-          end
+        RSpec::Mocks.space.any_instance_recorders_from_ancestry_of(object).each do |subscriber|
+          subscriber.notify_received_message(object, message, args, block)
+        end
 
         super
       end
@@ -406,10 +400,7 @@ module RSpec
       rescue TypeError
         if RUBY_VERSION == "1.8.7"
           # In MRI 1.8.7, a singleton method on a class cannot be rebound to its subclass
-          if unbound_method && unbound_method
-            .owner
-            .ancestors
-            .first != unbound_method.owner
+          if unbound_method && unbound_method.owner.ancestors.first != unbound_method.owner
             # This is a singleton method; we can't do anything with it
             # But we can work around this using a different implementation
             double = method_double_from_ancestor_for(message)

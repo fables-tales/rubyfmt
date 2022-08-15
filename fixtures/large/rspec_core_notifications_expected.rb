@@ -234,10 +234,7 @@ module RSpec::Core
       # @return [String] The pending detail fully formatted in the way that
       #   RSpec's built-in formatters emit.
       def fully_formatted(pending_number, colorizer = ::RSpec::Core::Formatters::ConsoleCodes)
-        formatted_caller = RSpec
-          .configuration
-          .backtrace_formatter
-          .backtrace_line(example.location)
+        formatted_caller = RSpec.configuration.backtrace_formatter.backtrace_line(example.location)
 
         [
           colorizer.wrap("\n  #{pending_number}) #{example.full_description}", :pending),
@@ -416,10 +413,7 @@ module RSpec::Core
 
       def duplicate_rerun_locations
         @duplicate_rerun_locations ||= begin
-          locations = RSpec
-            .world
-            .all_examples
-            .map(&:location_rerun_argument)
+          locations = RSpec.world.all_examples.map(&:location_rerun_argument)
 
           Set.new.tap do |s|
             locations.group_by { |l| l }.each do |l, ls|
