@@ -486,16 +486,23 @@ pub fn format_rescue_capture(
 pub fn format_rescue(ps: &mut dyn ConcreteParserState, rescue_part: Option<Rescue>) {
     match rescue_part {
         None => {}
-        Some(Rescue(_, class, capture, expressions, more_rescue)) => {
+        Some(Rescue(_, class, capture, expressions, more_rescue, start_end)) => {
+            ps.on_line(start_end.start_line());
+
             ps.dedent(Box::new(|ps| {
                 ps.emit_indent();
                 ps.emit_rescue();
                 ps.with_start_of_line(
                     false,
                     Box::new(|ps| {
-                        if class.is_none() && capture.is_none() {
-                            ps.wind_line_forward();
-                            ps.wind_line_forward();
+                        if class.is_none()
+                            && capture.is_none()
+                            && expressions
+                                .as_ref()
+                                .map(|expr| !is_empty_bodystmt(expr))
+                                .unwrap_or(false)
+                        {
+                            ps.wind_dumping_comments(None);
                             return;
                         }
                         let cs = class.is_some();
@@ -520,6 +527,8 @@ pub fn format_rescue(ps: &mut dyn ConcreteParserState, rescue_part: Option<Rescu
             }
 
             format_rescue(ps, more_rescue.map(|v| *v));
+
+            ps.wind_dumping_comments_until_line(start_end.end_line());
         }
     }
 }
@@ -547,6 +556,8 @@ pub fn format_else(
             );
         }
         Some(RescueElseOrExpressionList::RescueElse(re)) => {
+            ps.on_line(re.2.start_line());
+
             ps.dedent(Box::new(|ps| {
                 ps.emit_indent();
                 ps.emit_else();
@@ -555,9 +566,7 @@ pub fn format_else(
             match re.1 {
                 None => {}
                 Some(exprs) => {
-                    ps.wind_line_forward();
                     ps.emit_newline();
-                    ps.wind_line_forward();
                     ps.with_start_of_line(
                         true,
                         Box::new(|ps| {
@@ -568,6 +577,8 @@ pub fn format_else(
                     );
                 }
             }
+
+            ps.wind_dumping_comments_until_line(re.2.end_line());
         }
     }
 }
@@ -576,8 +587,9 @@ pub fn format_ensure(ps: &mut dyn ConcreteParserState, ensure_part: Option<Ensur
     match ensure_part {
         None => {}
         Some(e) => {
+            ps.on_line(e.2.start_line());
+
             ps.dedent(Box::new(|ps| {
-                ps.wind_line_forward();
                 ps.emit_indent();
                 ps.emit_ensure();
             }));
@@ -596,6 +608,7 @@ pub fn format_ensure(ps: &mut dyn ConcreteParserState, ensure_part: Option<Ensur
                     );
                 }
             }
+            ps.wind_dumping_comments_until_line(e.2.end_line());
         }
     }
 }
@@ -1067,7 +1080,7 @@ pub fn format_begin(ps: &mut dyn ConcreteParserState, begin: Begin) {
         ps.emit_indent()
     }
 
-    ps.wind_dumping_comments_until_line(begin.1 .0);
+    ps.on_line(begin.1 .0);
     ps.emit_begin();
 
     ps.new_block(Box::new(|ps| {
@@ -2618,11 +2631,15 @@ pub fn format_method_add_block(ps: &mut dyn ConcreteParserState, mab: MethodAddB
     }
 }
 
+pub fn is_empty_bodystmt(bodystmt: &Vec<Expression>) -> bool {
+    bodystmt.len() == 1 && matches!(bodystmt[0], Expression::VoidStmt(..))
+}
+
 pub fn format_brace_block(ps: &mut dyn ConcreteParserState, brace_block: BraceBlock) {
     let bv = brace_block.1;
     let body = brace_block.2;
     let StartEnd(start_line, end_line) = brace_block.3;
-    let body_is_empty = body.len() == 1 && matches!(body[0], Expression::VoidStmt(..));
+    let body_is_empty = is_empty_bodystmt(&body);
 
     ps.on_line(start_line);
 

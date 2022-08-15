@@ -39,6 +39,7 @@ class Parser < Ripper::SexpBuilderPP
     @string_stack = []
     @kw_stacks = {
       "do" => [],
+      "ensure" => [],
       "return" => [],
       "when" => [],
       "case" => [],
@@ -47,6 +48,7 @@ class Parser < Ripper::SexpBuilderPP
       "super" => [],
       "retry" => [],
       "redo" => [],
+      "rescue" => [],
       "begin" => [],
       "else" => [],
       "if" => [],
@@ -213,7 +215,15 @@ class Parser < Ripper::SexpBuilderPP
 
   def on_begin(*args)
     beg, statements = super
-    [beg, @kw_stacks["begin"].pop, statements]
+    [beg, [@kw_stacks["begin"].pop.first, lineno], statements]
+  end
+
+  def on_rescue(*args)
+    super + [[@kw_stacks["rescue"].pop.first, lineno]]
+  end
+
+  def on_ensure(*args)
+    super + [[@kw_stacks["ensure"].pop.first, lineno]]
   end
 
   def on_retry

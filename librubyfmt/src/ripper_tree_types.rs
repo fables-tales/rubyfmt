@@ -785,6 +785,7 @@ pub struct Rescue(
     pub Option<Assignable>,
     pub Option<Vec<Expression>>,
     pub Option<Box<Rescue>>,
+    pub StartEnd,
 );
 
 #[derive(RipperDeserialize, Debug, Clone)]
@@ -798,11 +799,15 @@ pub enum MRHS {
 
 def_tag!(rescue_else_tag, "else");
 #[derive(Deserialize, Debug, Clone)]
-pub struct RescueElse(pub rescue_else_tag, pub Option<Vec<Expression>>);
+pub struct RescueElse(
+    pub rescue_else_tag,
+    pub Option<Vec<Expression>>,
+    pub StartEnd,
+);
 
 def_tag!(ensure_tag, "ensure");
 #[derive(Deserialize, Debug, Clone)]
-pub struct Ensure(pub ensure_tag, pub Option<Vec<Expression>>);
+pub struct Ensure(pub ensure_tag, pub Option<Vec<Expression>>, pub StartEnd);
 
 def_tag!(const_tag, "@const");
 #[derive(Deserialize, Debug, Clone)]
@@ -984,6 +989,10 @@ pub struct LineCol(pub LineNumber, pub u64);
 pub struct StartEnd(pub LineNumber, pub LineNumber);
 
 impl StartEnd {
+    pub fn start_line(&self) -> LineNumber {
+        self.0
+    }
+
     pub fn end_line(&self) -> LineNumber {
         self.1
     }
@@ -1817,7 +1826,7 @@ pub enum WhenOrElse {
 
 def_tag!(case_else_tag, "else");
 #[derive(Deserialize, Debug, Clone)]
-pub struct CaseElse(case_else_tag, pub Vec<Expression>);
+pub struct CaseElse(case_else_tag, pub Vec<Expression>, pub StartEnd);
 
 def_tag!(retry_tag, "retry");
 #[derive(Deserialize, Debug, Clone)]
