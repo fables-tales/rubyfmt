@@ -16,7 +16,11 @@ pub fn format_def(ps: &mut dyn ConcreteParserState, def: Def) {
     }
     ps.emit_def(def_expression.0);
     ps.new_scope(Box::new(|ps| {
-        format_paren_or_params(ps, pp);
+        let params_are_multiline = format_paren_or_params(ps, pp);
+
+        if params_are_multiline {
+            ps.wind_line_forward();
+        }
 
         ps.with_formatting_context(
             FormattingContext::Def,
@@ -152,14 +156,15 @@ pub fn format_blockvar(ps: &mut dyn ConcreteParserState, bv: BlockVar) {
     );
 }
 
+/// Returns `true` if params render on multiple lines, `false` if not
 pub fn format_params(
     ps: &mut dyn ConcreteParserState,
     params: Box<Params>,
     delims: BreakableDelims,
-) {
+) -> bool {
     let have_any_params = params.non_null_positions().iter().any(|&x| x);
     if !have_any_params {
-        return;
+        return false;
     }
 
     ps.breakable_of(
@@ -168,7 +173,7 @@ pub fn format_params(
             inner_format_params(ps, params);
             ps.emit_collapsing_newline();
         }),
-    );
+    )
 }
 
 pub fn format_kwrest_params(
@@ -2081,7 +2086,10 @@ pub fn format_defs(ps: &mut dyn ConcreteParserState, defs: Defs) {
             ps.emit_dot();
             let (ident, linecol) = ident_or_kw.to_def_parts();
             handle_string_and_linecol(ps, ident, linecol);
-            format_paren_or_params(ps, paren_or_params);
+            let params_are_multiline = format_paren_or_params(ps, paren_or_params);
+            if params_are_multiline {
+                ps.wind_line_forward();
+            }
         }),
     );
 
@@ -2113,12 +2121,13 @@ pub fn format_defs(ps: &mut dyn ConcreteParserState, defs: Defs) {
     }
 }
 
-pub fn format_paren_or_params(ps: &mut dyn ConcreteParserState, pp: ParenOrParams) {
+/// Returns `true` if params render to multiple lines, `false` if not
+pub fn format_paren_or_params(ps: &mut dyn ConcreteParserState, pp: ParenOrParams) -> bool {
     let params = match pp {
         ParenOrParams::Paren(p) => p.1,
         ParenOrParams::Params(p) => p,
     };
-    format_params(ps, params, BreakableDelims::for_method_call());
+    format_params(ps, params, BreakableDelims::for_method_call())
 }
 
 // Modules and classes bodies should be treated the same,
