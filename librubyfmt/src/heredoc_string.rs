@@ -55,13 +55,17 @@ impl HeredocString {
         }
 
         if kind.is_squiggly() {
-            string = string
+            string
                 .split('\n')
-                .map(|l| format!("{}{}", " ".repeat(indent as usize), l))
+                .map(|l| String::from(format!("{}{}", " ".repeat(indent as usize), l).trim_end()))
                 .collect::<Vec<String>>()
                 .join("\n")
+        } else {
+            string
+                .split('\n')
+                .map(|l| l.trim_end())
+                .collect::<Vec<&str>>()
+                .join("\n")
         }
-
-        string
     }
 }
