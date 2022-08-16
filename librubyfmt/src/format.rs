@@ -2229,9 +2229,13 @@ pub fn format_conditional(
     body: Vec<Expression>,
     kw: String,
     tail: Option<ElsifOrElse>,
+    start_end: Option<StartEnd>,
 ) {
     if ps.at_start_of_line() {
         ps.emit_indent();
+    }
+    if let Some(StartEnd(start_line, ..)) = start_end {
+        ps.on_line(start_line);
     }
     ps.emit_conditional_keyword(kw);
     ps.emit_space();
@@ -2266,13 +2270,14 @@ pub fn format_conditional(
                     elsif.2,
                     "elsif".to_string(),
                     (elsif.3).map(|v| *v),
+                    Some(elsif.4),
                 );
             }
             Some(ElsifOrElse::Else(els)) => {
                 ps.emit_indent();
                 ps.emit_else();
                 ps.new_block(Box::new(|ps| {
-                    ps.wind_dumping_comments_until_line(els.2 .1);
+                    ps.on_line(els.2.start_line());
                     ps.emit_newline();
                 }));
                 ps.with_start_of_line(
@@ -2282,17 +2287,22 @@ pub fn format_conditional(
                             for expr in els.1 {
                                 format_expression(ps, expr);
                             }
+                            ps.wind_dumping_comments_until_line(els.2.end_line());
                         }));
                     }),
                 );
             }
         }),
     );
+
+    if let Some(StartEnd(_, end_line)) = start_end {
+        ps.wind_dumping_comments_until_line(end_line);
+    }
 }
 
 pub fn format_if(ps: &mut dyn ConcreteParserState, ifs: If) {
     let vifs = ifs.clone();
-    format_conditional(ps, *ifs.1, ifs.2, "if".to_string(), ifs.3);
+    format_conditional(ps, *ifs.1, ifs.2, "if".to_string(), ifs.3, Some(ifs.4));
 
     ps.with_start_of_line(
         true,
@@ -2314,6 +2324,7 @@ pub fn format_unless(ps: &mut dyn ConcreteParserState, unless: Unless) {
         unless.2,
         "unless".to_string(),
         (unless.3).map(ElsifOrElse::Else),
+        Some(unless.4),
     );
     ps.with_start_of_line(
         true,
@@ -2794,10 +2805,13 @@ pub fn format_while(
     conditional: Box<Expression>,
     exprs: Vec<Expression>,
     kw: String,
+    start_end: StartEnd,
 ) {
     if ps.at_start_of_line() {
         ps.emit_indent();
     }
+
+    ps.on_line(start_end.start_line());
 
     ps.with_start_of_line(
         false,
@@ -2819,6 +2833,7 @@ pub fn format_while(
         }),
     );
 
+    ps.wind_dumping_comments_until_line(start_end.end_line());
     ps.emit_end();
 
     if ps.at_start_of_line() {
@@ -2856,7 +2871,7 @@ pub fn format_mod_statement(
             },
             x => vec![x],
         };
-        format_conditional(ps, *conditional, exps, name, None);
+        format_conditional(ps, *conditional, exps, name, None, None);
 
         ps.with_start_of_line(
             true,
@@ -3405,8 +3420,8 @@ pub fn format_expression(ps: &mut dyn ConcreteParserState, expression: Expressio
         Expression::Yield(y) => format_yield(ps, y),
         Expression::Break(b) => format_keyword(ps, b.1, "break".to_string(), b.2),
         Expression::MethodAddBlock(mab) => format_method_add_block(ps, mab),
-        Expression::While(w) => format_while(ps, w.1, w.2, "while".to_string()),
-        Expression::Until(u) => format_while(ps, u.1, u.2, "until".to_string()),
+        Expression::While(w) => format_while(ps, w.1, w.2, "while".to_string(), w.3),
+        Expression::Until(u) => format_while(ps, u.1, u.2, "until".to_string(), u.3),
         Expression::WhileMod(wm) => format_mod_statement(ps, wm.1, wm.2, "while".to_string()),
         Expression::UntilMod(um) => format_mod_statement(ps, um.1, um.2, "until".to_string()),
         Expression::IfMod(wm) => format_mod_statement(ps, wm.1, wm.2, "if".to_string()),

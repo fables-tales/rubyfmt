@@ -54,6 +54,8 @@ class Parser < Ripper::SexpBuilderPP
       "if" => [],
       "unless" => [],
       "elsif" => [],
+      "while" => [],
+      "until" => [],
     }
     @tlambda_stack = []
     @array_location_stacks = []
@@ -189,6 +191,40 @@ class Parser < Ripper::SexpBuilderPP
     start_line = @kw_stacks["do"].pop.first
     end_line = lineno
     super + [[start_line, end_line]]
+  end
+
+  # In the case of mod statements, we've previously
+  # pushed their lines onto the stack but now
+  # don't need them, so we pop them off and ignore them
+
+  def on_if_mod(*_args)
+    # In this case, we don't use the line here, so just remove it
+    @kw_stacks['if'].pop
+    super
+  end
+
+  def on_unless_mod(*_args)
+    # In this case, we don't use the line here, so just remove it
+    @kw_stacks['unless'].pop
+    super
+  end
+
+  def on_while_mod(*_args)
+    @kw_stacks['while'].pop
+    super
+  end
+
+  def on_until_mod(*_args)
+    @kw_stacks['until'].pop
+    super
+  end
+
+  def on_while(*args)
+    super + [[@kw_stacks["while"].pop.first, lineno]]
+  end
+
+  def on_until(*args)
+    super + [[@kw_stacks["until"].pop.first, lineno]]
   end
 
   def on_hash(assocs)
