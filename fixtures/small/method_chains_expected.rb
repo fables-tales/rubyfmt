@@ -118,3 +118,14 @@ def gather_thanes!
 
   grendel
 end
+
+x = [
+  1,
+  2
+]
+  .map do |x|
+    # hi
+    x.do_something
+    # there
+  end
+  .flatten

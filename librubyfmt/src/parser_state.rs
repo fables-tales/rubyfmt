@@ -434,9 +434,18 @@ impl ConcreteParserState for BaseParserState {
         }
 
         self.on_line(self.current_orig_line_number + 1);
-        let mut did_wind = false;
         let should_iter = |ps: &BaseParserState, ln| {
             debug!("{}", ln);
+            // If we have a max line number, it will be the last token
+            // of an expression (e.g. the `end` of a `do`/`end` block), so it's
+            // fine if we wind forward to that line
+            if maybe_max_line_number
+                .map(|max| ln + 1 == max)
+                .unwrap_or(false)
+            {
+                return true;
+            }
+
             ps.comments_hash.still_in_file(ln + 1)
                 && (ps.comments_hash.has_line(ln + 1) || ps.comments_hash.is_empty_line(ln + 1))
                 && maybe_max_line_number
@@ -459,11 +468,6 @@ impl ConcreteParserState for BaseParserState {
                 }
                 mr.add_line("".to_string());
             }
-            self.on_line(self.current_orig_line_number + 1);
-            did_wind = true;
-            debug!("{}", self.current_orig_line_number);
-        }
-        if did_wind {
             self.on_line(self.current_orig_line_number + 1);
             debug!("{}", self.current_orig_line_number);
         }
