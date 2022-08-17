@@ -2347,26 +2347,48 @@ pub fn format_unless(ps: &mut dyn ConcreteParserState, unless: Unless) {
     }
 }
 
-pub fn format_binary(ps: &mut dyn ConcreteParserState, binary: Binary) {
+pub fn format_binary(ps: &mut dyn ConcreteParserState, binary: Binary, must_be_multiline: bool) {
     if ps.at_start_of_line() {
         ps.emit_indent();
     }
 
-    ps.with_formatting_context(
-        FormattingContext::Binary,
-        Box::new(|ps| {
-            ps.with_start_of_line(
-                false,
-                Box::new(|ps| {
-                    format_expression(ps, *binary.1);
-                    ps.emit_space();
-                    ps.emit_ident(binary.2);
-                    ps.emit_space();
-                    format_expression(ps, *binary.3);
-                }),
-            );
-        }),
-    );
+    let format_func = |ps: &mut dyn ConcreteParserState, render_multiline: bool| {
+        ps.with_formatting_context(
+            FormattingContext::Binary,
+            Box::new(|ps| {
+                ps.with_start_of_line(
+                    false,
+                    Box::new(|ps| {
+                        if let Expression::Binary(b) = *binary.1 {
+                            format_binary(ps, b, render_multiline);
+                        } else {
+                            format_expression(ps, *binary.1);
+                        }
+
+                        ps.emit_space();
+                        ps.emit_ident(binary.2);
+
+                        let next_expr = *binary.3;
+                        if render_multiline {
+                            ps.new_block(Box::new(|ps| {
+                                ps.emit_newline();
+                                ps.emit_indent();
+
+                                format_expression(ps, next_expr);
+                            }));
+                        } else {
+                            ps.emit_space();
+                            format_expression(ps, next_expr);
+                        }
+                    }),
+                );
+            }),
+        );
+    };
+
+    let is_multiline = must_be_multiline
+        || ps.will_render_beyond_max_line_length(Box::new(|ps| format_func.clone()(ps, false)));
+    format_func(ps, is_multiline);
 
     if ps.at_start_of_line() {
         ps.emit_newline();
@@ -3418,7 +3440,7 @@ pub fn format_expression(ps: &mut dyn ConcreteParserState, expression: Expressio
         Expression::Class(class) => format_class(ps, class),
         Expression::Defs(defs) => format_defs(ps, defs),
         Expression::If(ifs) => format_if(ps, ifs),
-        Expression::Binary(binary) => format_binary(ps, binary),
+        Expression::Binary(binary) => format_binary(ps, binary, false),
         Expression::Float(float) => format_float(ps, float),
         Expression::Aref(aref) => format_aref(ps, aref),
         Expression::Char(c) => format_char(ps, c),
