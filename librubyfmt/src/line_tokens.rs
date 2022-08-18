@@ -109,6 +109,7 @@ impl ConcreteLineToken {
         match self {
             Self::ConditionalKeyword { contents } => !(contents == "else" || contents == "elsif"),
             Self::Dot => false,
+            Self::DirectPart { part } => part != "&.",
             _ => true,
         }
     }

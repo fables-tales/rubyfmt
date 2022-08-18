@@ -100,3 +100,8 @@ x = [
     # there
   end
   .flatten
+
+x.hello_there&.map do |x|
+  puts "h"
+  end
+  &.foo

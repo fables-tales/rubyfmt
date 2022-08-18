@@ -271,6 +271,12 @@ impl Intermediary {
                 contents == ")" || contents == "}" || contents == "]"
             }
             [Indent { .. }, Dot, DirectPart { .. }, Space] => true,
+            // Duplicating the above to handle lonely operators
+            [DirectPart { part: contents }, DirectPart { part }, DirectPart { .. }, Space]
+            | [Delim { contents }, DirectPart { part }, DirectPart { .. }, Space] => {
+                part == "&." && (contents == ")" || contents == "}" || contents == "]")
+            }
+            [Indent { .. }, DirectPart { part }, DirectPart { .. }, Space] => part == "&.",
             _ => false,
         }
     }
