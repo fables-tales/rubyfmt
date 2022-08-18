@@ -57,7 +57,9 @@ impl HeredocString {
         if kind.is_squiggly() {
             string
                 .split('\n')
-                .map(|l| String::from(format!("{}{}", " ".repeat(indent as usize), l).trim_end()))
+                .map(|l| {
+                    String::from(format!("{}{}", " ".repeat(indent as usize + 2), l).trim_end())
+                })
                 .collect::<Vec<String>>()
                 .join("\n")
         } else {

@@ -5,7 +5,7 @@ def cool_message
   # it's really cool
   # I don't know, I need many lines of comments.
   <<~TEXT
-  cool message here
-  share it
+    cool message here
+    share it
   TEXT
 end

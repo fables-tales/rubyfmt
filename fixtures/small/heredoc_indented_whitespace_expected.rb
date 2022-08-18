@@ -1,11 +1,11 @@
 def foo
   <<~THING
-  awfweaf
-    awefawef
+    awfweaf
+      awefawef
 
 
 
-  hi there
+    hi there
   THING
 
   <<-THING

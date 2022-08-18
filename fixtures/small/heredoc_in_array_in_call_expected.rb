@@ -4,7 +4,7 @@ module UI
       run_thing(
         [
           <<~CMD
-          print("hello world")
+            print("hello world")
           CMD
         ]
       )
