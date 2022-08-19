@@ -1916,6 +1916,7 @@ pub fn format_next(ps: &mut dyn ConcreteParserState, next: Next) {
     ps.with_start_of_line(
         false,
         Box::new(|ps| {
+            ps.on_line((next.2).0);
             ps.emit_ident("next".to_string());
             match next.1 {
                 ArgsAddBlockOrExpressionList::ExpressionList(e) => {

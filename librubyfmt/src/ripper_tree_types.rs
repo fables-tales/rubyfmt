@@ -1490,7 +1490,7 @@ pub struct OpAssign(
 
 def_tag!(next_tag, "next");
 #[derive(Deserialize, Debug, Clone)]
-pub struct Next(pub next_tag, pub ArgsAddBlockOrExpressionList);
+pub struct Next(pub next_tag, pub ArgsAddBlockOrExpressionList, pub LineCol);
 
 impl Next {
     pub fn into_call_chain(self) -> Vec<CallChainElement> {

@@ -40,6 +40,7 @@ class Parser < Ripper::SexpBuilderPP
     @kw_stacks = {
       "do" => [],
       "ensure" => [],
+      "next" => [],
       "return" => [],
       "when" => [],
       "case" => [],
@@ -152,6 +153,9 @@ class Parser < Ripper::SexpBuilderPP
     end
   end
 
+  def on_next(*_args)
+    super + [@kw_stacks['next'].pop]
+  end
 
   def on_if(*_args)
     start_line = @kw_stacks['if'].pop.first
