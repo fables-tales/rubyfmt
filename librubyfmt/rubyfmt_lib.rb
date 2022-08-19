@@ -357,8 +357,10 @@ class Parser < Ripper::SexpBuilderPP
       heredoc_parts = @heredoc_stack.pop
       args.insert(0, [:heredoc_string_literal] + heredoc_parts)
     else
-      end_delim = @string_stack.pop
-      start_delim = @string_stack.pop
+      end_delim, end_line = @string_stack.pop
+      start_delim, start_line = @string_stack.pop
+
+      args << [start_line, end_line]
 
       if start_delim && end_delim && start_delim != "\""
         if start_delim == "'" || start_delim.start_with?("%q")
@@ -408,12 +410,12 @@ class Parser < Ripper::SexpBuilderPP
   end
 
   def on_tstring_beg(*args, &blk)
-    @string_stack << args[0]
+    @string_stack << [args[0], lineno]
     super
   end
 
   def on_tstring_end(*args, &blk)
-    @string_stack << args[0]
+    @string_stack << [args[0], lineno]
     super
   end
 
@@ -422,8 +424,8 @@ class Parser < Ripper::SexpBuilderPP
     # on_tstring_end, which will append the closing
     # quote to @string_stack. We want to ignore this,
     # so remove it from the stack.
-    @string_stack.pop
-    super
+    start_line = @string_stack.pop[1]
+    super + [[start_line, lineno]]
   end
 
   def on_regexp_beg(re_part)

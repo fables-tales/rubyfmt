@@ -492,7 +492,7 @@ pub struct HeredocStringLiteral(
 def_tag!(string_literal_tag, "string_literal");
 #[derive(RipperDeserialize, Debug, Clone)]
 pub enum StringLiteral {
-    Normal(string_literal_tag, StringContent),
+    Normal(string_literal_tag, StringContent, StartEnd),
     Heredoc(string_literal_tag, HeredocStringLiteral, StringContent),
 }
 
@@ -502,17 +502,23 @@ pub struct XStringLiteral(pub xstring_literal_tag, pub Vec<StringContentPart>);
 
 def_tag!(dyna_symbol_tag, "dyna_symbol");
 #[derive(Deserialize, Debug, Clone)]
-pub struct DynaSymbol(pub dyna_symbol_tag, pub StringContentOrStringContentParts);
+pub struct DynaSymbol(
+    pub dyna_symbol_tag,
+    pub StringContentOrStringContentParts,
+    StartEnd,
+);
 
 impl DynaSymbol {
     pub fn to_string_literal(self) -> StringLiteral {
         match self.1 {
             StringContentOrStringContentParts::StringContent(sc) => {
-                StringLiteral::Normal(string_literal_tag, sc)
+                StringLiteral::Normal(string_literal_tag, sc, self.2)
             }
-            StringContentOrStringContentParts::StringContentParts(scp) => {
-                StringLiteral::Normal(string_literal_tag, StringContent(string_content_tag, scp))
-            }
+            StringContentOrStringContentParts::StringContentParts(scp) => StringLiteral::Normal(
+                string_literal_tag,
+                StringContent(string_content_tag, scp),
+                self.2,
+            ),
         }
     }
 }

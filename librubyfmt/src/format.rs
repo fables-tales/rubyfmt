@@ -1527,10 +1527,12 @@ pub fn format_string_literal(ps: &mut dyn ConcreteParserState, sl: StringLiteral
         StringLiteral::Heredoc(_, hd, StringContent(_, parts)) => {
             format_heredoc_string_literal(ps, hd, parts)
         }
-        StringLiteral::Normal(_, StringContent(_, parts)) => {
+        StringLiteral::Normal(_, StringContent(_, parts), start_end) => {
             if ps.at_start_of_line() {
                 ps.emit_indent();
             }
+
+            ps.on_line(start_end.start_line());
 
             ps.emit_double_quote();
             format_inner_string(ps, parts, StringType::Quoted);
