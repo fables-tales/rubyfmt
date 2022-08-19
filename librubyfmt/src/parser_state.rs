@@ -254,7 +254,8 @@ impl ConcreteParserState for BaseParserState {
 
         let s = str::from_utf8(&data).expect("string is utf8").to_string();
 
-        s.len() > MAX_LINE_LENGTH
+        // Add current spaces to account for current indentation level
+        (s.len() + (self.current_spaces() as usize)) > MAX_LINE_LENGTH
     }
 
     fn dedent<'a>(&mut self, f: RenderFunc) {
