@@ -1342,8 +1342,6 @@ pub fn format_array_fast_path(
                 Box::new(|ps| {
                     format_list_like_thing(ps, a, false);
                     ps.emit_collapsing_newline();
-
-                    ps.wind_line_if_needed_for_array();
                 }),
             );
         }

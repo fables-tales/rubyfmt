@@ -104,6 +104,7 @@ where
     fn wind_dumping_comments_until_line(&mut self, line_number: LineNumber);
     fn wind_dumping_comments(&mut self, maybe_max_line_number: Option<LineNumber>);
     fn shift_comments(&mut self);
+    fn shift_comments_at_index(&mut self, index: usize);
     fn wind_line_forward(&mut self);
     fn render_heredocs(&mut self, skip: bool);
     fn push_heredoc_content(
@@ -213,11 +214,28 @@ impl ConcreteParserState for BaseParserState {
         f(self);
         let new_line_number = self.current_orig_line_number;
         if new_line_number > current_line_number {
-            self.wind_line_forward();
-            self.shift_comments();
+            // Only wind forward if the next line is empty or a comment
+            if self.comments_hash.is_empty_line(new_line_number + 1) {
+                self.wind_dumping_comments(None);
+                if self
+                    .comments_to_insert
+                    .as_ref()
+                    .map(|comments| comments.has_comments())
+                    .unwrap_or(false)
+                    .to_owned()
+                {
+                    self.push_concrete_token(ConcreteLineToken::HardNewLine);
+                }
+                let index = if let Some(be) = self.breakable_entry_stack.last() {
+                    be.len()
+                } else {
+                    self.index_of_prev_hard_newline().unwrap_or(0)
+                };
+                self.shift_comments_at_index(index);
+            } else {
+                self.shift_comments();
+            }
         }
-        self.current_orig_line_number = new_line_number;
-        debug!("coln: {}", new_line_number);
     }
 
     fn will_render_as_multiline<'a>(&mut self, f: RenderFunc) -> bool {
@@ -489,11 +507,13 @@ impl ConcreteParserState for BaseParserState {
 
     fn shift_comments(&mut self) {
         let idx_of_prev_hard_newline = self.index_of_prev_hard_newline();
-        if let Some(new_comments) = self.comments_to_insert.take() {
-            let insert_index = idx_of_prev_hard_newline.unwrap_or(0);
+        self.shift_comments_at_index(idx_of_prev_hard_newline.unwrap_or(0));
+    }
 
+    fn shift_comments_at_index(&mut self, index: usize) {
+        if let Some(new_comments) = self.comments_to_insert.take() {
             self.insert_concrete_tokens(
-                insert_index,
+                index,
                 new_comments.into_line_tokens().into_iter().collect(),
             );
         }
@@ -835,10 +855,6 @@ impl BaseParserState {
             }
             _ => panic!("failed to convert"),
         }
-    }
-
-    pub fn wind_line_forward(&mut self) {
-        self.on_line(self.current_orig_line_number + 1);
     }
 
     pub fn flush_start_of_file_comments(&mut self) {

@@ -55,6 +55,7 @@ pub trait AbstractTokenTarget: std::fmt::Debug {
     fn index_of_prev_newline(&self) -> Option<usize>;
     fn last_token_is_a_newline(&self) -> bool;
     fn to_breakable_entry(self: Box<Self>) -> BreakableEntry;
+    fn len(&self) -> usize;
 }
 
 #[derive(Debug, Clone)]
@@ -143,6 +144,10 @@ impl AbstractTokenTarget for BreakableEntry {
 
     fn is_multiline(&self) -> bool {
         self.line_numbers.len() > 1 || self.any_collapsing_newline_has_heredoc_content()
+    }
+
+    fn len(&self) -> usize {
+        self.tokens.len()
     }
 }
 
