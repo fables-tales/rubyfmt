@@ -1445,12 +1445,20 @@ pub fn format_inner_string(
     while peekable.peek().is_some() {
         let part = peekable.next().expect("we peeked");
         match part {
-            StringContentPart::TStringContent(t) => {
-                if tipe != StringType::Heredoc {
-                    ps.on_line((t.2).0);
+            StringContentPart::TStringContent(t) => match tipe {
+                StringType::Heredoc => {
+                    let mut contents = t.1;
+
+                    if peekable.peek().is_none() && contents.ends_with('\n') {
+                        contents.pop();
+                    }
+                    ps.emit_string_content(contents);
                 }
-                ps.emit_string_content(t.1);
-            }
+                _ => {
+                    ps.on_line((t.2).0);
+                    ps.emit_string_content(t.1);
+                }
+            },
             StringContentPart::StringEmbexpr(e) => ps.with_formatting_context(
                 FormattingContext::StringEmbexpr,
                 Box::new(|ps| {

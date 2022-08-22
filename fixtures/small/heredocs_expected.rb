@@ -23,6 +23,24 @@ BARE
   puts(c)
 end
 
+<<~FOO
+  some stuff
+  with a empty last line
+
+FOO
+
+<<-FOO
+  some stuff
+  with a empty last line
+
+FOO
+
+<<FOO
+  some stuff
+  with a empty last line
+
+FOO
+
 puts(a)
 puts(b)
 foo

@@ -185,7 +185,6 @@ impl ConcreteParserState for BaseParserState {
         let mut next_ps = BaseParserState::render_with_blank_state(self, |n| {
             n.insert_user_newlines = false;
             format_inner_string(n, parts, StringType::Heredoc);
-            n.emit_newline();
         });
 
         for hs in next_ps.heredoc_strings.drain(0..) {
@@ -675,19 +674,11 @@ impl ConcreteParserState for BaseParserState {
 
     fn render_heredocs(&mut self, skip: bool) {
         while !self.heredoc_strings.is_empty() {
-            let mut next_heredoc = self.heredoc_strings.pop().expect("we checked it's there");
+            let next_heredoc = self.heredoc_strings.pop().expect("we checked it's there");
             let want_newline = !self.last_token_is_a_newline();
             if want_newline {
                 self.push_concrete_token(ConcreteLineToken::HardNewLine);
             }
-
-            if let Some(b'\n') = next_heredoc.buf.last() {
-                next_heredoc.buf.pop();
-            };
-
-            if let Some(b'\n') = next_heredoc.buf.last() {
-                next_heredoc.buf.pop();
-            };
 
             let kind = next_heredoc.kind.clone();
             let symbol = next_heredoc.symbol.clone();

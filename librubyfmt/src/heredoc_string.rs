@@ -45,14 +45,10 @@ impl HeredocString {
         }
     }
 
-    pub fn render_as_string(&self) -> String {
+    pub fn render_as_string(self) -> String {
         let indent = self.indent;
         let kind = self.kind.clone();
-        let mut string = String::from_utf8(self.buf.clone()).expect("heredoc is utf8");
-
-        while string.ends_with('\n') {
-            string.pop();
-        }
+        let string = String::from_utf8(self.buf).expect("heredoc is utf8");
 
         if kind.is_squiggly() {
             string
