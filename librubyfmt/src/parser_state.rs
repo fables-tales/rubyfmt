@@ -792,7 +792,22 @@ impl BaseParserState {
         let idx = self.index_of_prev_hard_newline();
         let insert_idx = idx.unwrap_or(0);
 
-        self.insert_concrete_tokens(insert_idx, vec![ConcreteLineToken::HardNewLine]);
+        // Insert SoftNewlines in breakable entries instead of
+        // HardNewlines. They're functionally the same (since at
+        // this point we know that the breakable will be multiline),
+        // but inserting newlines for comments is special-cased
+        // for soft newlines inside of breakables (and this special casing
+        // is sometimes broken by mixing newline types), so we should
+        // use SoftNewlines here instead.
+        if self.breakable_entry_stack.last().is_some() {
+            let hd = self.gather_heredocs();
+            self.breakable_entry_stack
+                .last_mut()
+                .unwrap()
+                .insert_at(insert_idx, &mut vec![AbstractLineToken::SoftNewline(hd)]);
+        } else {
+            self.insert_concrete_tokens(insert_idx, vec![ConcreteLineToken::HardNewLine]);
+        }
     }
 
     fn current_spaces(&self) -> ColNumber {
