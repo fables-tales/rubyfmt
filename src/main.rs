@@ -89,14 +89,17 @@ struct CommandlineOpts {
 /******************************************************/
 
 fn handle_io_error(err: io::Error, source: &String, error_exit: ErrorExit) {
-    eprintln!("IO Error ({}): {}", source, err);
+    let msg = format!("Rubyfmt experienced an IO error: {}", err);
+    print_error(&msg, Some(source));
+
     if error_exit == ErrorExit::Exit {
         exit(rubyfmt::FormatError::IOError as i32);
     }
 }
 
 fn handle_ignore_error(err: ignore::Error, error_exit: ErrorExit) {
-    eprintln!("Error searching for files: {}", err);
+    let msg = format!("Rubyfmt experienced an error searching for files: {}", err);
+    print_error(&msg, None);
     if error_exit == ErrorExit::Exit {
         exit(rubyfmt::FormatError::IOError as i32);
     }
@@ -112,35 +115,44 @@ fn handle_rubyfmt_error(err: rubyfmt::RichFormatError, source: &String, error_ex
     };
     match err {
         SyntaxError => {
-            eprintln!("{} contained invalid ruby syntax", source);
+            let msg = "Rubyfmt detected a syntax error in the ruby code being executed";
+            print_error(msg, Some(source));
             e();
         }
         rubyfmt::RichFormatError::RipperParseFailure(_) => {
             let bug_report = "
-🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛
-🐛                                                                                              🐛
-🐛  Rubyfmt failed to correctly deserialize a tree from ripper. This is absolutely a bug        🐛
-🐛  and you should send us a bug report at https://github.com/penelopezone/rubyfmt/issues/new.  🐛
-🐛  Ideally you would include the full source code of the program you ran rubyfmt with.         🐛
-🐛  If you can't do that for some reason, the best thing you can do is                          🐛
-🐛  rerun rubyfmt on this program with the debug binary with `2>log_file` on the end            🐛
-🐛  and then send us the log file that gets generated.                                          🐛
-🐛                                                                                              🐛
-🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛
-            ";
-            eprintln!("{}", bug_report);
-            eprintln!("file was: {}", source);
+!!! Ruby Tree Deserialization Error !!!
+
+Rubyfmt failed to correctly deserialize a tree from ripper. This is a bug that needs to be reported.
+File a bug report at https://github.com/penelopezone/rubyfmt/issues/new.
+Ideally you would include the full source code of the program you ran rubyfmt with.
+If you can't do that for some reason, the best thing you can do is rerun rubyfmt on this program 
+with the debug binary with `2>log_file` on the end and then send us the log file that gets generated.
+";
+            print_error(bug_report, Some(source));
             e();
         }
         IOError(ioe) => {
-            eprintln!("IO error occurred while running rubyfmt: {:?}, this may indicate a programming error, please file a bug report at https://github.com/penelopezone/rubyfmt/issues/new", ioe);
+            let msg = format!("Rubyfmt experienced an IO error: {}", ioe);
+            print_error(&msg, Some(source));
             e();
         }
         rubyfmt::RichFormatError::OtherRubyError(s) => {
-            eprintln!("A ruby error occurred: {}, please file a bug report at https://github.com/penelopezone/rubyfmt/issues/new", s);
+            let msg = format!("Rubyfmt experienced an unexpected ruby error: {}", s);
+            print_error(&msg, Some(source));
             exit(exit_code);
         }
     }
+}
+
+fn print_error(msg: &str, file_path: Option<&str>) {
+    let mut first_line: String = "Error!".to_string();
+
+    if let Some(line) = file_path {
+        first_line = format!("Error! source: {}", line);
+    }
+
+    eprintln!("{}\n{}", first_line, msg);
 }
 
 fn handle_execution_error(opts: &CommandlineOpts, err: ExecutionError) {
