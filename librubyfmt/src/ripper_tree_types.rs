@@ -423,7 +423,12 @@ pub struct EndBlock(pub end_block, pub Vec<Expression>);
 
 def_tag!(aref_field_tag, "aref_field");
 #[derive(Deserialize, Debug, Clone)]
-pub struct ArefField(pub aref_field_tag, pub Box<Expression>, pub ArgsAddBlock);
+pub struct ArefField(
+    pub aref_field_tag,
+    pub Box<Expression>,
+    pub ArgsAddBlock,
+    pub LineCol,
+);
 
 def_tag!(const_path_field_tag, "const_path_field");
 #[derive(Deserialize, Debug, Clone)]
@@ -1647,7 +1652,12 @@ pub struct Float(float_tag, pub String, pub LineCol);
 
 def_tag!(aref_tag, "aref");
 #[derive(Deserialize, Debug, Clone)]
-pub struct Aref(aref_tag, pub Box<Expression>, pub Option<ArgNode>);
+pub struct Aref(
+    aref_tag,
+    pub Box<Expression>,
+    pub Option<ArgNode>,
+    pub LineCol,
+);
 
 def_tag!(char_tag, "@CHAR");
 #[derive(Deserialize, Debug, Clone)]

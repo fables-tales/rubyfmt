@@ -1616,27 +1616,28 @@ pub fn format_aref_field(ps: &mut dyn ConcreteParserState, af: ArefField) {
         ps.emit_indent();
     }
 
+    let end_line = (af.3).0;
+
     ps.with_start_of_line(
         false,
         Box::new(|ps| {
             format_expression(ps, *af.1);
-            ps.emit_open_square_bracket();
             let aab = af.2;
             match aab.2 {
                 ToProcExpr::Present(_) => {
                     panic!("got a to_proc in an aref_field, should be impossible");
                 }
                 ToProcExpr::NotPresent(_) => {
-                    format_list_like_thing(
+                    format_array_fast_path(
                         ps,
-                        (aab.1).into_args_add_star_or_expression_list(),
-                        true,
+                        Some((aab.1).into_args_add_star_or_expression_list()),
                     );
                 }
             }
-            ps.emit_close_square_bracket();
         }),
     );
+
+    ps.wind_dumping_comments_until_line(end_line);
 
     if ps.at_start_of_line() {
         ps.emit_newline();
@@ -2421,26 +2422,26 @@ pub fn format_aref(ps: &mut dyn ConcreteParserState, aref: Aref) {
         ps.emit_indent();
     }
 
+    let end_line = (aref.3).0;
+
     ps.with_start_of_line(
         false,
         Box::new(|ps| {
             format_expression(ps, *aref.1);
-            ps.emit_open_square_bracket();
             match aref.2 {
-                None => {}
+                None => {
+                    ps.emit_open_square_bracket();
+                    ps.emit_close_square_bracket();
+                }
                 Some(arg_node) => {
                     let args_list = normalize_args(arg_node);
-                    ps.with_formatting_context(
-                        FormattingContext::ArgsList,
-                        Box::new(|ps| {
-                            format_list_like_thing(ps, args_list, true);
-                        }),
-                    );
+                    format_array_fast_path(ps, Some(args_list));
                 }
             }
-            ps.emit_close_square_bracket();
         }),
     );
+
+    ps.wind_dumping_comments_until_line(end_line);
 
     if ps.at_start_of_line() {
         ps.emit_newline();

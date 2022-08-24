@@ -283,6 +283,14 @@ class Parser < Ripper::SexpBuilderPP
     res
   end
 
+  def on_aref(*_args)
+    super + [[lineno, column]]
+  end
+
+  def on_aref_field(*_args)
+    super + [[lineno, column]]
+  end
+
   def on_kw(kw)
     if stack = @kw_stacks[kw]
       stack << [lineno, column]
