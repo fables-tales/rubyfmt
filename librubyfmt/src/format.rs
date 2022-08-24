@@ -2847,34 +2847,14 @@ pub fn format_while(
     kw: String,
     start_end: StartEnd,
 ) {
-    if ps.at_start_of_line() {
-        ps.emit_indent();
-    }
-
-    ps.on_line(start_end.start_line());
+    format_conditional(ps, *conditional, exprs, kw, None, Some(start_end));
 
     ps.with_start_of_line(
-        false,
+        true,
         Box::new(|ps| {
-            ps.emit_keyword(kw);
-            ps.emit_space();
-            format_expression(ps, *conditional);
-            ps.emit_newline();
-            ps.new_block(Box::new(|ps| {
-                ps.with_start_of_line(
-                    true,
-                    Box::new(|ps| {
-                        for expr in exprs {
-                            format_expression(ps, expr);
-                        }
-                    }),
-                );
-            }));
+            ps.emit_end();
         }),
     );
-
-    ps.wind_dumping_comments_until_line(start_end.end_line());
-    ps.emit_end();
 
     if ps.at_start_of_line() {
         ps.emit_newline();
