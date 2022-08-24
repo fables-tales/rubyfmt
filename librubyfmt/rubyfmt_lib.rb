@@ -351,12 +351,15 @@ class Parser < Ripper::SexpBuilderPP
   def on_heredoc_beg(*args, &blk)
     heredoc_parts = @heredoc_regex.match(args[0]).captures
     raise "bad heredoc" unless heredoc_parts.select { |x| x != nil }.count == 2
-    @next_heredoc_stack.push([heredoc_parts, [lineno, column]])
+    @next_heredoc_stack.push([heredoc_parts, [lineno]])
     super
   end
 
   def on_heredoc_end(*args, &blk)
-    @heredoc_stack.push(@next_heredoc_stack.pop)
+    # Append current lineno to the current heredoc
+    heredoc = @next_heredoc_stack.pop
+    heredoc.last.push(lineno)
+    @heredoc_stack.push(heredoc)
     super
   end
 

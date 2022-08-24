@@ -491,7 +491,7 @@ def_tag!(heredoc_string_literal_tag, "heredoc_string_literal");
 pub struct HeredocStringLiteral(
     pub heredoc_string_literal_tag,
     pub (String, String),
-    pub LineCol,
+    pub StartEnd,
 );
 
 def_tag!(string_literal_tag, "string_literal");

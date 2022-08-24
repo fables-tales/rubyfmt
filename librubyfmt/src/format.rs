@@ -156,7 +156,7 @@ pub fn format_blockvar(ps: &mut dyn ConcreteParserState, bv: BlockVar) {
     );
 }
 
-/// Returns `true` if params render on multiple lines, `false` if not
+/// Returns `true` if params are spread across multiple lines in the source, `false` if not
 pub fn format_params(
     ps: &mut dyn ConcreteParserState,
     params: Box<Params>,
@@ -167,13 +167,17 @@ pub fn format_params(
         return false;
     }
 
+    let starting_line_number = ps.current_line_number();
+
     ps.breakable_of(
         delims,
         Box::new(|ps| {
             inner_format_params(ps, params);
             ps.emit_collapsing_newline();
         }),
-    )
+    );
+
+    ps.current_line_number() != starting_line_number
 }
 
 pub fn format_kwrest_params(
@@ -784,6 +788,7 @@ pub fn format_method_call(ps: &mut dyn ConcreteParserState, method_call: MethodC
                     ps.breakable_of(
                         delims,
                         Box::new(|ps| {
+                            let starting_line_number = ps.current_line_number();
                             ps.with_formatting_context(
                                 FormattingContext::ArgsList,
                                 Box::new(|ps| {
@@ -792,7 +797,9 @@ pub fn format_method_call(ps: &mut dyn ConcreteParserState, method_call: MethodC
                                 }),
                             );
                             debug!("end of format method call");
-                            ps.wind_line_if_needed_for_array();
+                            if starting_line_number != ps.current_line_number() {
+                                ps.wind_line_forward();
+                            }
                         }),
                     );
                 }
@@ -1508,7 +1515,8 @@ pub fn format_heredoc_string_literal(
         ps.emit_indent();
     }
 
-    ps.on_line(hd.2 .0);
+    let end_line = hd.2.end_line();
+    ps.on_line(hd.2.start_line());
 
     ps.with_suppress_comments(
         true,
@@ -1524,6 +1532,8 @@ pub fn format_heredoc_string_literal(
             );
         }),
     );
+
+    ps.wind_dumping_comments_until_line(end_line);
 
     if ps.at_start_of_line() && !ps.is_absorbing_indents() {
         ps.emit_newline();
@@ -2131,7 +2141,7 @@ pub fn format_defs(ps: &mut dyn ConcreteParserState, defs: Defs) {
     }
 }
 
-/// Returns `true` if params render to multiple lines, `false` if not
+/// Returns `true` if params are spread across multiple lines in the source, `false` if not
 pub fn format_paren_or_params(ps: &mut dyn ConcreteParserState, pp: ParenOrParams) -> bool {
     let params = match pp {
         ParenOrParams::Paren(p) => p.1,
@@ -2584,8 +2594,9 @@ fn format_call_chain_elements(
                         ps.emit_space();
                         cls(ps);
                     } else {
-                        let is_multiline = ps.breakable_of(BreakableDelims::for_method_call(), cls);
-                        if is_multiline {
+                        let starting_line = ps.current_line_number();
+                        ps.breakable_of(BreakableDelims::for_method_call(), cls);
+                        if starting_line != ps.current_line_number() {
                             ps.wind_line_forward();
                         }
                     }

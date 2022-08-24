@@ -99,7 +99,6 @@ where
     fn bind_variable(&mut self, s: String);
     fn scope_has_variable(&self, s: &str) -> bool;
     fn insert_comment_collection(&mut self, comments: CommentBlock);
-    fn wind_line_if_needed_for_array(&mut self);
     fn on_line(&mut self, line_number: LineNumber);
     fn wind_dumping_comments_until_line(&mut self, line_number: LineNumber);
     fn wind_dumping_comments(&mut self, maybe_max_line_number: Option<LineNumber>);
@@ -120,6 +119,7 @@ where
     fn current_formatting_context(&self) -> FormattingContext;
     fn is_absorbing_indents(&self) -> bool;
     fn has_comments_in_line(&self, start_line: LineNumber, end_line: LineNumber) -> bool;
+    fn current_line_number(&self) -> u64;
 
     // blocks
     fn start_indent(&mut self);
@@ -382,19 +382,15 @@ impl ConcreteParserState for BaseParserState {
             .has_comments_in_lines(start_line, end_line)
     }
 
+    fn current_line_number(&self) -> u64 {
+        self.current_orig_line_number
+    }
+
     fn emit_def(&mut self, def_name: String) {
         self.emit_def_keyword();
         self.push_concrete_token(ConcreteLineToken::DirectPart {
             part: format!(" {}", def_name),
         });
-    }
-
-    fn wind_line_if_needed_for_array(&mut self) {
-        debug!("bestack {:?}", self.breakable_entry_stack);
-        debug!("lbimul {}", self.last_breakable_is_multiline());
-        if self.last_breakable_is_multiline() {
-            self.wind_line_forward()
-        }
     }
 
     fn insert_comment_collection(&mut self, comments: CommentBlock) {
@@ -758,13 +754,6 @@ impl BaseParserState {
             }
             Some(hds)
         }
-    }
-
-    fn last_breakable_is_multiline(&self) -> bool {
-        self.breakable_entry_stack
-            .last()
-            .map(|o| o.is_multiline())
-            .unwrap_or(false)
     }
 
     fn push_comments(&mut self, comments: Option<CommentBlock>) {

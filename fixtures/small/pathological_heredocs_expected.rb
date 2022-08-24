@@ -13,7 +13,6 @@ def foo
   c = <<~EOD
     oqweijfoqwiejf
   EOD
-
   puts(c)
 end
 
