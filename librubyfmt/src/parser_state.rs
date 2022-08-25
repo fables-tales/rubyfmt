@@ -211,6 +211,9 @@ impl ConcreteParserState for BaseParserState {
             ps.shift_comments();
         }));
         f(self);
+        // Reset here -- this resets when we emit newlines, but this may be out of date
+        // if the most recent array didn't emit a newline
+        self.spaces_after_last_newline = self.current_spaces();
         let new_line_number = self.current_orig_line_number;
         if new_line_number > current_line_number {
             // Only wind forward if the next line is empty or a comment

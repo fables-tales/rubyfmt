@@ -60,6 +60,7 @@ class Parser < Ripper::SexpBuilderPP
     }
     @tlambda_stack = []
     @array_location_stacks = []
+    @rbracket_stack = []
     @lbrace_stack = []
     @comments = {}
     @last_ln = 0
@@ -185,6 +186,11 @@ class Parser < Ripper::SexpBuilderPP
     @lbrace_stack << lineno
   end
 
+  def on_rbracket(*_args)
+    @rbracket_stack << lineno
+    super
+  end
+
   def on_brace_block(params, body)
     start_line = @lbrace_stack.pop
     end_line = lineno
@@ -284,11 +290,17 @@ class Parser < Ripper::SexpBuilderPP
   end
 
   def on_aref(*_args)
-    super + [[lineno, column]]
+    # The lineno here is actually one line *after*
+    # the line of the bracket, so we manually trace
+    # the line of the rbracket instead
+    super + [[@rbracket_stack.pop, column]]
   end
 
   def on_aref_field(*_args)
-    super + [[lineno, column]]
+    # The lineno here is actually one line *after*
+    # the line of the bracket, so we manually trace
+    # the line of the rbracket instead
+    super + [[@rbracket_stack.pop, column]]
   end
 
   def on_kw(kw)
