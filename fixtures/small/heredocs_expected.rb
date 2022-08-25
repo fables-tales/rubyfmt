@@ -39,6 +39,15 @@ FOO
 
 FOO
 
+class Foo
+  ERROR_MESSAGE = T.let(
+    <<~MESSAGE,
+      Something bad happened! Aaahhh!
+    MESSAGE
+    String
+  )
+end
+
 puts(a)
 puts(b)
 foo

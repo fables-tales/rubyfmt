@@ -72,7 +72,14 @@ impl RenderQueueWriter {
                 [&ConcreteLineToken::HeredocClose { .. }, &ConcreteLineToken::HardNewLine, &ConcreteLineToken::Indent { .. }, &ConcreteLineToken::Indent { .. }, &ConcreteLineToken::Delim { .. }],
             ) = accum.last::<5>()
             {
-                accum.fix_heredoc_indent_mistake();
+                accum.fix_heredoc_delim_indent_mistake();
+            }
+
+            if let Some(
+                [&ConcreteLineToken::HeredocClose { .. }, &ConcreteLineToken::HardNewLine, &ConcreteLineToken::Indent { .. }, &ConcreteLineToken::Indent { .. }, &ConcreteLineToken::DirectPart { .. }],
+            ) = accum.last::<5>()
+            {
+                accum.fix_heredoc_direct_part_indent_mistake();
             }
 
             if let Some(
