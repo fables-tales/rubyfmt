@@ -2,6 +2,7 @@ use crate::delimiters::BreakableDelims;
 use crate::heredoc_string::HeredocKind;
 use crate::parser_state::{BaseParserState, ConcreteParserState, FormattingContext, RenderFunc};
 use crate::ripper_tree_types::*;
+use crate::types::LineNumber;
 use log::debug;
 
 pub fn format_def(ps: &mut dyn ConcreteParserState, def: Def) {
@@ -144,6 +145,7 @@ pub fn format_blockvar(ps: &mut dyn ConcreteParserState, bv: BlockVar) {
                                 format_list_like_thing_items(
                                     ps,
                                     f_params.into_iter().map(Expression::Ident).collect(),
+                                    None,
                                     true,
                                 );
                             }),
@@ -789,20 +791,27 @@ pub fn format_method_call(ps: &mut dyn ConcreteParserState, method_call: MethodC
                         ArgsAddStarOrExpressionListOrArgsForward::ArgsForward(..)
                     );
 
+                    let maybe_end_line = start_end.map(|se| se.1);
+
                     ps.breakable_of(
                         delims,
                         Box::new(|ps| {
                             ps.with_formatting_context(
                                 FormattingContext::ArgsList,
                                 Box::new(|ps| {
-                                    format_list_like_thing(ps, args, force_single_line);
+                                    format_list_like_thing(
+                                        ps,
+                                        args,
+                                        maybe_end_line,
+                                        force_single_line,
+                                    );
                                     ps.emit_collapsing_newline();
                                 }),
                             );
                             debug!("end of format method call");
                         }),
                     );
-                    if let Some(StartEnd(_, end_line)) = start_end {
+                    if let Some(end_line) = maybe_end_line {
                         ps.wind_dumping_comments_until_line(end_line);
                     }
                 }
@@ -832,6 +841,7 @@ pub enum SpecialCase {
 pub fn format_list_like_thing_items(
     ps: &mut dyn ConcreteParserState,
     args: Vec<Expression>,
+    end_line: Option<LineNumber>,
     single_line: bool,
 ) -> bool {
     let mut emitted_args = false;
@@ -878,7 +888,7 @@ pub fn format_list_like_thing_items(
     if skip_magic_comments {
         cls(ps)
     } else {
-        ps.magic_handle_comments_for_multiline_arrays(cls);
+        ps.magic_handle_comments_for_multiline_arrays(end_line, cls);
     }
     emitted_args
 }
@@ -1350,7 +1360,7 @@ pub fn format_array_fast_path(
             ps.breakable_of(
                 BreakableDelims::for_array(),
                 Box::new(|ps| {
-                    format_list_like_thing(ps, a, false);
+                    format_list_like_thing(ps, a, None, false);
                     ps.emit_collapsing_newline();
                 }),
             );
@@ -1361,6 +1371,7 @@ pub fn format_array_fast_path(
 pub fn format_list_like_thing(
     ps: &mut dyn ConcreteParserState,
     a: ArgsAddStarOrExpressionListOrArgsForward,
+    end_line: Option<LineNumber>,
     single_line: bool,
 ) -> bool {
     match a {
@@ -1368,7 +1379,7 @@ pub fn format_list_like_thing(
             let left = aas.1;
             let star = aas.2;
             let right = aas.3;
-            let mut emitted_args = format_list_like_thing(ps, *left, single_line);
+            let mut emitted_args = format_list_like_thing(ps, *left, end_line, single_line);
 
             if single_line {
                 // if we're single line, our predecessor didn't emit a trailing comma
@@ -1419,7 +1430,7 @@ pub fn format_list_like_thing(
             emitted_args
         }
         ArgsAddStarOrExpressionListOrArgsForward::ExpressionList(el) => {
-            format_list_like_thing_items(ps, el, single_line)
+            format_list_like_thing_items(ps, el, end_line, single_line)
         }
         ArgsAddStarOrExpressionListOrArgsForward::ArgsForward(_) => {
             ps.emit_ellipsis();
@@ -1896,7 +1907,7 @@ pub fn format_rescue_mod(ps: &mut dyn ConcreteParserState, rescue_mod: RescueMod
 }
 
 pub fn format_mrhs_new_from_args(ps: &mut dyn ConcreteParserState, mnfa: MRHSNewFromArgs) {
-    format_list_like_thing(ps, mnfa.1, true);
+    format_list_like_thing(ps, mnfa.1, None, true);
 
     if let Some(expr) = mnfa.2 {
         ps.emit_comma_space();
@@ -1946,7 +1957,7 @@ pub fn format_next(ps: &mut dyn ConcreteParserState, next: Next) {
                 ArgsAddBlockOrExpressionList::ExpressionList(e) => {
                     if !e.is_empty() {
                         ps.emit_space();
-                        format_list_like_thing_items(ps, e, true);
+                        format_list_like_thing_items(ps, e, Some((next.2).1), true);
                     }
                 }
                 ArgsAddBlockOrExpressionList::ArgsAddBlock(aab) => match aab.2 {
@@ -1958,6 +1969,7 @@ pub fn format_next(ps: &mut dyn ConcreteParserState, next: Next) {
                         format_list_like_thing(
                             ps,
                             (aab.1).into_args_add_star_or_expression_list(),
+                            Some((next.2).1),
                             true,
                         );
                     }
@@ -2598,7 +2610,7 @@ fn format_call_chain_elements(
                     ps.breakable_of(
                         delims,
                         Box::new(|ps| {
-                            format_list_like_thing(ps, aas, false);
+                            format_list_like_thing(ps, aas, None, false);
                         }),
                     );
                     if let Some(StartEnd(_, end_line)) = start_end {
@@ -2846,6 +2858,7 @@ pub fn format_keyword(
             format_list_like_thing(
                 ps,
                 (yield_args.1).into_args_add_star_or_expression_list(),
+                Some(start_end.1),
                 true,
             );
         }),
@@ -2942,8 +2955,8 @@ pub fn format_when_or_else(ps: &mut dyn ConcreteParserState, tail: WhenOrElse) {
             let conditionals = when.1;
             let body = when.2;
             let tail = when.3;
-            let linecol = when.4;
-            ps.on_line(linecol.0);
+            let start_end = when.4;
+            ps.on_line(start_end.0);
             ps.emit_indent();
             ps.emit_when_keyword();
 
@@ -2953,7 +2966,7 @@ pub fn format_when_or_else(ps: &mut dyn ConcreteParserState, tail: WhenOrElse) {
                     ps.breakable_of(
                         BreakableDelims::for_when(),
                         Box::new(|ps| {
-                            format_list_like_thing(ps, conditionals, false);
+                            format_list_like_thing(ps, conditionals, Some(start_end.1), false);
                         }),
                     );
                 }),
@@ -3403,7 +3416,7 @@ pub fn format_bare_return_args(
             ps.with_formatting_context(
                 FormattingContext::ArgsList,
                 Box::new(|ps| {
-                    format_list_like_thing(ps, args, false);
+                    format_list_like_thing(ps, args, None, false);
                     ps.emit_collapsing_newline();
                 }),
             );

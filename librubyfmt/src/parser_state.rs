@@ -131,7 +131,11 @@ where
     fn breakable_of(&mut self, delims: BreakableDelims, f: RenderFunc) -> bool;
     fn dedent(&mut self, f: RenderFunc);
     fn with_absorbing_indent_block(&mut self, f: RenderFunc);
-    fn magic_handle_comments_for_multiline_arrays(&mut self, f: RenderFunc);
+    fn magic_handle_comments_for_multiline_arrays(
+        &mut self,
+        end_line: Option<LineNumber>,
+        f: RenderFunc,
+    );
     fn with_suppress_comments(&mut self, suppress: bool, f: RenderFunc);
     fn will_render_as_multiline(&mut self, f: RenderFunc) -> bool;
 
@@ -205,7 +209,11 @@ impl ConcreteParserState for BaseParserState {
         self.push_concrete_token(ConcreteLineToken::DirectPart { part: symbol });
     }
 
-    fn magic_handle_comments_for_multiline_arrays<'a>(&mut self, f: RenderFunc) {
+    fn magic_handle_comments_for_multiline_arrays<'a>(
+        &mut self,
+        end_line: Option<LineNumber>,
+        f: RenderFunc,
+    ) {
         let current_line_number = self.current_orig_line_number;
         self.new_block(Box::new(|ps| {
             ps.shift_comments();
@@ -218,7 +226,7 @@ impl ConcreteParserState for BaseParserState {
         if new_line_number > current_line_number {
             // Only wind forward if the next line is empty or a comment
             if self.comments_hash.is_empty_line(new_line_number + 1) {
-                self.wind_dumping_comments(None);
+                self.wind_dumping_comments(end_line);
                 if self
                     .comments_to_insert
                     .as_ref()
@@ -680,7 +688,7 @@ impl ConcreteParserState for BaseParserState {
             }
 
             let kind = next_heredoc.kind.clone();
-            let symbol = next_heredoc.symbol.clone();
+            let symbol = next_heredoc.closing_symbol();
 
             self.push_concrete_token(ConcreteLineToken::DirectPart {
                 part: next_heredoc.render_as_string(),

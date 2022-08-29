@@ -284,7 +284,7 @@ impl AbstractLineToken {
             for hds in values {
                 let indent = hds.indent;
                 let kind = hds.kind.clone();
-                let symbol = hds.symbol.clone();
+                let symbol = hds.closing_symbol();
 
                 let s = hds.render_as_string();
                 res.push(clats_direct_part(s));

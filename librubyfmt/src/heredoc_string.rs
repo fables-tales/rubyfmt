@@ -29,7 +29,7 @@ impl HeredocKind {
 
 #[derive(Debug, Clone)]
 pub struct HeredocString {
-    pub symbol: String,
+    symbol: String,
     pub kind: HeredocKind,
     pub buf: Vec<u8>,
     pub indent: ColNumber,
@@ -65,5 +65,23 @@ impl HeredocString {
                 .collect::<Vec<&str>>()
                 .join("\n")
         }
+    }
+
+    /// The symbol with any quotes stripped. We only
+    /// store the opening symbol for heredocs, but this
+    /// opening symbol can be surrounded with single quotes,
+    /// for example:
+    ///
+    /// ```ruby
+    /// <<~'RUBY'
+    ///   puts "Hello, World!"
+    /// RUBY
+    /// ```
+    ///
+    /// However, the closing symbol should *not* have
+    /// quotes, so we must strip them from the symbol when
+    /// rendering the closing symbol.
+    pub fn closing_symbol(&self) -> String {
+        self.symbol.replace('\'', "").replace('"', "")
     }
 }
