@@ -741,8 +741,7 @@ pub fn format_method_call(ps: &mut dyn ConcreteParserState, method_call: MethodC
         ps.emit_indent();
     }
 
-    let (chain, method, original_used_parens, args) =
-        (method_call.1, method_call.2, method_call.3, method_call.4);
+    let MethodCall(_, chain, method, original_used_parens, args, start_end) = method_call;
 
     debug!("method call!!");
     let use_parens = use_parens_for_method_call(
@@ -785,23 +784,27 @@ pub fn format_method_call(ps: &mut dyn ConcreteParserState, method_call: MethodC
                         }
                     }
                 } else {
+                    let force_single_line = matches!(
+                        args,
+                        ArgsAddStarOrExpressionListOrArgsForward::ArgsForward(..)
+                    );
+
                     ps.breakable_of(
                         delims,
                         Box::new(|ps| {
-                            let starting_line_number = ps.current_line_number();
                             ps.with_formatting_context(
                                 FormattingContext::ArgsList,
                                 Box::new(|ps| {
-                                    format_list_like_thing(ps, args, false);
+                                    format_list_like_thing(ps, args, force_single_line);
                                     ps.emit_collapsing_newline();
                                 }),
                             );
                             debug!("end of format method call");
-                            if starting_line_number != ps.current_line_number() {
-                                ps.wind_line_forward();
-                            }
                         }),
                     );
+                    if let Some(StartEnd(_, end_line)) = start_end {
+                        ps.wind_dumping_comments_until_line(end_line);
+                    }
                 }
             } else if use_parens {
                 ps.emit_open_paren();
@@ -2584,21 +2587,22 @@ fn format_call_chain_elements(
                 format_block(ps, b)
             }
             CallChainElement::VarRef(vr) => format_var_ref(ps, vr),
-            CallChainElement::ArgsAddStarOrExpressionListOrArgsForward(aas) => {
+            CallChainElement::ArgsAddStarOrExpressionListOrArgsForward(aas, start_end) => {
                 if !aas.is_empty() {
-                    let cls: RenderFunc = Box::new(|ps| {
-                        format_list_like_thing(ps, aas, elide_parens);
-                    });
-
-                    if elide_parens {
-                        ps.emit_space();
-                        cls(ps);
+                    let delims = if elide_parens {
+                        BreakableDelims::for_kw()
                     } else {
-                        let starting_line = ps.current_line_number();
-                        ps.breakable_of(BreakableDelims::for_method_call(), cls);
-                        if starting_line != ps.current_line_number() {
-                            ps.wind_line_forward();
-                        }
+                        BreakableDelims::for_method_call()
+                    };
+
+                    ps.breakable_of(
+                        delims,
+                        Box::new(|ps| {
+                            format_list_like_thing(ps, aas, false);
+                        }),
+                    );
+                    if let Some(StartEnd(_, end_line)) = start_end {
+                        ps.wind_dumping_comments_until_line(end_line);
                     }
                 }
             }
@@ -2782,7 +2786,6 @@ pub fn format_do_block(ps: &mut dyn ConcreteParserState, do_block: DoBlock) {
             true,
             Box::new(|ps| {
                 ps.emit_newline();
-                ps.wind_line_forward();
                 format_bodystmt(ps, body);
             }),
         );
@@ -2801,7 +2804,7 @@ pub fn format_keyword(
     ps: &mut dyn ConcreteParserState,
     args: ParenOrArgsAddBlock,
     kw: String,
-    linecol: LineCol,
+    start_end: StartEnd,
 ) {
     if ps.at_start_of_line() {
         ps.emit_indent();
@@ -2831,10 +2834,11 @@ pub fn format_keyword(
                     ArgsAddStarOrExpressionListOrArgsForward::ExpressionList(vec![]),
                 ),
                 ToProcExpr::NotPresent(false),
+                start_end.clone(),
             )
         }
     };
-    ps.on_line(linecol.0);
+    ps.on_line(start_end.0);
 
     ps.with_start_of_line(
         false,
@@ -3308,21 +3312,21 @@ pub fn format_to_proc(ps: &mut dyn ConcreteParserState, e: Box<Expression>) {
     ps.with_start_of_line(false, Box::new(|ps| format_expression(ps, *e)));
 }
 
-pub fn format_zsuper(ps: &mut dyn ConcreteParserState, lc: LineCol) {
+pub fn format_zsuper(ps: &mut dyn ConcreteParserState, start_end: StartEnd) {
     format_keyword(
         ps,
         ParenOrArgsAddBlock::Empty(Vec::new()),
         "super".to_string(),
-        lc,
+        start_end,
     )
 }
 
-pub fn format_yield0(ps: &mut dyn ConcreteParserState, lc: LineCol) {
+pub fn format_yield0(ps: &mut dyn ConcreteParserState, start_end: StartEnd) {
     format_keyword(
         ps,
         ParenOrArgsAddBlock::Empty(Vec::new()),
         "yield".to_string(),
-        lc,
+        start_end,
     )
 }
 
@@ -3472,8 +3476,8 @@ pub fn format_expression(ps: &mut dyn ConcreteParserState, expression: Expressio
         Expression::OpAssign(op) => format_opassign(ps, op),
         Expression::Unless(u) => format_unless(ps, u),
         Expression::ToProc(ToProc(_, e)) => format_to_proc(ps, e),
-        Expression::ZSuper(ZSuper(_, lc)) => format_zsuper(ps, lc),
-        Expression::Yield0(Yield0(_, lc)) => format_yield0(ps, lc),
+        Expression::ZSuper(ZSuper(_, se)) => format_zsuper(ps, se),
+        Expression::Yield0(Yield0(_, se)) => format_yield0(ps, se),
         Expression::Return(ret) => format_return(ps, ret),
         Expression::BeginBlock(begin) => format_begin_block(ps, begin),
         Expression::EndBlock(end) => format_end_block(ps, end),

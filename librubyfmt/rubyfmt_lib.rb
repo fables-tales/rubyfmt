@@ -155,31 +155,23 @@ class Parser < Ripper::SexpBuilderPP
   end
 
   def on_next(*_args)
-    super + [@kw_stacks['next'].pop]
+    super + [start_end_for_keyword('next')]
   end
 
   def on_if(*_args)
-    start_line = @kw_stacks['if'].pop.first
-    end_line = lineno
-    super + [[start_line, end_line]]
+    super + [start_end_for_keyword('if')]
   end
 
   def on_unless(*_args)
-    start_line = @kw_stacks['unless'].pop.first
-    end_line = lineno
-    super + [[start_line, end_line]]
+    super + [start_end_for_keyword('unless')]
   end
 
   def on_else(*_args)
-    start_line = @kw_stacks['else'].pop.first
-    end_line = lineno
-    super + [[start_line, end_line]]
+    super + [start_end_for_keyword('else')]
   end
 
   def on_elsif(*_args)
-    start_line = @kw_stacks['elsif'].pop.first
-    end_line = lineno
-    super + [[start_line, end_line]]
+    super + [start_end_for_keyword('elsif')]
   end
 
   def on_lbrace(*args)
@@ -198,9 +190,7 @@ class Parser < Ripper::SexpBuilderPP
   end
 
   def on_do_block(*args)
-    start_line = @kw_stacks["do"].pop.first
-    end_line = lineno
-    super + [[start_line, end_line]]
+    super + [start_end_for_keyword('do')]
   end
 
   # In the case of mod statements, we've previously
@@ -230,11 +220,11 @@ class Parser < Ripper::SexpBuilderPP
   end
 
   def on_while(*args)
-    super + [[@kw_stacks["while"].pop.first, lineno]]
+    super + [start_end_for_keyword('while')]
   end
 
   def on_until(*args)
-    super + [[@kw_stacks["until"].pop.first, lineno]]
+    super + [start_end_for_keyword('until')]
   end
 
   def on_hash(assocs)
@@ -244,38 +234,62 @@ class Parser < Ripper::SexpBuilderPP
   def on_zsuper
     # ripper doesn't handle on_zsuper correctly.
     # however `on_kw` catches zsuper, so use that!
-    [:zsuper, @kw_stacks["super"].pop]
+    [:zsuper, start_end_for_keyword('super')]
   end
 
   def on_yield0
     # ripper doesn't handle on_yield0 correctly.
     # however `on_kw` catches yield0, so use that!
-    [:yield0, @kw_stacks["yield"].pop]
+    [:yield0, start_end_for_keyword('yield')]
   end
 
   def on_redo
     # ripper doesn't handle on_redo correctly.
     # however `on_kw` catches redo, so use that!
-    [:redo, @kw_stacks["redo"].pop]
+    [:redo, start_end_for_keyword('redo')]
   end
 
   def on_begin(*args)
     beg, statements = super
-    [beg, [@kw_stacks["begin"].pop.first, lineno], statements]
+    [beg, start_end_for_keyword('begin'), statements]
   end
 
   def on_rescue(*args)
-    super + [[@kw_stacks["rescue"].pop.first, lineno]]
+    super + [start_end_for_keyword('rescue')]
   end
 
   def on_ensure(*args)
-    super + [[@kw_stacks["ensure"].pop.first, lineno]]
+    super + [start_end_for_keyword('ensure')]
   end
 
   def on_retry
     # ripper doesn't handle on_retry correctly.
     # however `on_kw` catches retry, so use that!
-    [:retry, @kw_stacks["retry"].pop]
+    [:retry, start_end_for_keyword('retry')]
+  end
+
+  def on_arg_paren(args_node)
+    with_lineno { super }
+  end
+
+  def on_call(*_args)
+    with_lineno { super }
+  end
+
+  def on_method_add_arg(*_args)
+    with_lineno { super }
+  end
+
+  def on_paren(*_args)
+    with_lineno { super }
+  end
+
+  def on_args_add_block(*_args)
+    with_lineno { super }
+  end
+
+  def on_vcall(*_args)
+    with_lineno { super }
   end
 
   def on_lbracket(*args)
@@ -305,38 +319,37 @@ class Parser < Ripper::SexpBuilderPP
 
   def on_kw(kw)
     if stack = @kw_stacks[kw]
-      stack << [lineno, column]
+      stack << lineno
     end
     super
   end
 
   def on_super(args)
-    [:super, args, @kw_stacks["super"].pop]
+    [:super, args, start_end_for_keyword('super')]
   end
 
   def on_return(args)
-    [:return, args, @kw_stacks["return"].pop]
+    [:return, args, start_end_for_keyword('return')]
   end
 
   def on_return0
-    [:return0, @kw_stacks["return"].pop]
+    [:return0, start_end_for_keyword('return')]
   end
 
   def on_when(cond, body, tail)
-    [:when, cond, body, tail, @kw_stacks["when"].pop]
+    [:when, cond, body, tail, start_end_for_keyword('when')]
   end
 
   def on_case(cond, body)
-    current_line = lineno
-    [:case, cond, body, [@kw_stacks["case"].pop.first, current_line]]
+    [:case, cond, body, start_end_for_keyword('case')]
   end
 
   def on_yield(arg)
-    [:yield, arg, @kw_stacks["yield"].pop]
+    [:yield, arg, start_end_for_keyword('yield')]
   end
 
   def on_break(arg)
-    [:break, arg, @kw_stacks["break"].pop]
+    [:break, arg, start_end_for_keyword('break')]
   end
 
   def on_tlambda(*args)
@@ -463,6 +476,10 @@ class Parser < Ripper::SexpBuilderPP
 
   def on_comment(comment)
     @comments[lineno] = comment
+  end
+
+  private def start_end_for_keyword(keyword)
+    [@kw_stacks[keyword].pop, lineno]
   end
 
   private def with_lineno(&blk)
