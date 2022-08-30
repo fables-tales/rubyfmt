@@ -48,6 +48,17 @@ class Foo
   )
 end
 
+class Foo
+  description(
+    <<~DESC
+      thing
+    DESC
+  )
+
+  # namespace
+  stable_id "really_stable_id"
+end
+
 puts(a)
 puts(b)
 foo

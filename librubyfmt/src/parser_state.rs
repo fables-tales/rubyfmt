@@ -226,7 +226,9 @@ impl ConcreteParserState for BaseParserState {
         if new_line_number > current_line_number {
             // Only wind forward if the next line is empty or a comment
             if self.comments_hash.is_empty_line(new_line_number + 1) {
-                self.wind_dumping_comments(end_line);
+                if let Some(end_line) = end_line {
+                    self.wind_dumping_comments_until_line(end_line);
+                }
                 if self
                     .comments_to_insert
                     .as_ref()

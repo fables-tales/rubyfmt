@@ -1323,7 +1323,9 @@ pub fn format_array(ps: &mut dyn ConcreteParserState, array: Array) {
     ps.on_line((array.2).0);
 
     match array.1 {
-        SimpleArrayOrPercentArray::SimpleArray(a) => format_array_fast_path(ps, a),
+        SimpleArrayOrPercentArray::SimpleArray(a) => {
+            format_array_fast_path(ps, array.2.end_line(), a)
+        }
         SimpleArrayOrPercentArray::LowerPercentArray(pa) => {
             ps.on_line((pa.2).0);
             format_percent_array(
@@ -1349,6 +1351,7 @@ pub fn format_array(ps: &mut dyn ConcreteParserState, array: Array) {
 
 pub fn format_array_fast_path(
     ps: &mut dyn ConcreteParserState,
+    end_line: LineNumber,
     a: Option<ArgsAddStarOrExpressionListOrArgsForward>,
 ) {
     match a {
@@ -1360,7 +1363,7 @@ pub fn format_array_fast_path(
             ps.breakable_of(
                 BreakableDelims::for_array(),
                 Box::new(|ps| {
-                    format_list_like_thing(ps, a, None, false);
+                    format_list_like_thing(ps, a, Some(end_line), false);
                     ps.emit_collapsing_newline();
                 }),
             );
@@ -1654,6 +1657,7 @@ pub fn format_aref_field(ps: &mut dyn ConcreteParserState, af: ArefField) {
                 ToProcExpr::NotPresent(_) => {
                     format_array_fast_path(
                         ps,
+                        end_line,
                         Some((aab.1).into_args_add_star_or_expression_list()),
                     );
                 }
@@ -2460,7 +2464,7 @@ pub fn format_aref(ps: &mut dyn ConcreteParserState, aref: Aref) {
                 }
                 Some(arg_node) => {
                     let args_list = normalize_args(arg_node);
-                    format_array_fast_path(ps, Some(args_list));
+                    format_array_fast_path(ps, end_line, Some(args_list));
                 }
             }
         }),
@@ -2607,13 +2611,15 @@ fn format_call_chain_elements(
                         BreakableDelims::for_method_call()
                     };
 
+                    let end_line = start_end.map(|se| se.1);
+
                     ps.breakable_of(
                         delims,
                         Box::new(|ps| {
-                            format_list_like_thing(ps, aas, None, false);
+                            format_list_like_thing(ps, aas, end_line, false);
                         }),
                     );
-                    if let Some(StartEnd(_, end_line)) = start_end {
+                    if let Some(end_line) = end_line {
                         ps.wind_dumping_comments_until_line(end_line);
                     }
                 }
