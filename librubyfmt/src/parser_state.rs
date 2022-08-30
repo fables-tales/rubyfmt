@@ -111,6 +111,7 @@ where
         symbol: String,
         kind: HeredocKind,
         parts: Vec<StringContentPart>,
+        end_line: LineNumber,
     );
 
     // queries
@@ -185,6 +186,7 @@ impl ConcreteParserState for BaseParserState {
         symbol: String,
         kind: HeredocKind,
         parts: Vec<StringContentPart>,
+        end_line: LineNumber,
     ) {
         let mut next_ps = BaseParserState::render_with_blank_state(self, |n| {
             n.insert_user_newlines = false;
@@ -194,6 +196,8 @@ impl ConcreteParserState for BaseParserState {
         for hs in next_ps.heredoc_strings.drain(0..) {
             self.heredoc_strings.push(hs);
         }
+
+        self.current_orig_line_number = end_line;
 
         let data = next_ps.render_to_buffer();
         self.heredoc_strings.push(HeredocString::new(

@@ -1546,11 +1546,10 @@ pub fn format_heredoc_string_literal(
                 heredoc_symbol,
                 HeredocKind::from_string(heredoc_type),
                 parts,
+                end_line,
             );
         }),
     );
-
-    ps.wind_dumping_comments_until_line(end_line);
 
     if ps.at_start_of_line() && !ps.is_absorbing_indents() {
         ps.emit_newline();

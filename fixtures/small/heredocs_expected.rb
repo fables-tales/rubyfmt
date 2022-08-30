@@ -59,6 +59,16 @@ class Foo
   stable_id "really_stable_id"
 end
 
+add_offense(
+  node,
+  message: <<~RB
+    Oh no you did something bad to rubocop.
+    rubocop SMASH
+  RB
+) do |bad_thing|
+  rubocop.smash(bad_thing)
+end
+
 puts(a)
 puts(b)
 foo
