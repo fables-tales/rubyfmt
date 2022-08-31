@@ -1235,6 +1235,15 @@ pub struct Symbol(
     pub IdentOrConstOrKwOrOpOrIvarOrGvarOrCvarOrBacktick,
 );
 
+impl Symbol {
+    pub fn from_string(s: String, l: LineCol) -> Self {
+        Symbol(
+            symbol_tag,
+            IdentOrConstOrKwOrOpOrIvarOrGvarOrCvarOrBacktick::Ident(Ident::new(s, l)),
+        )
+    }
+}
+
 #[derive(RipperDeserialize, Debug, Clone)]
 pub enum CallLeft {
     Paren(ParenExpr),

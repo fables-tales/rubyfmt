@@ -1042,15 +1042,26 @@ pub fn format_symbol_literal(ps: &mut dyn ConcreteParserState, symbol_literal: S
     }
 }
 
+fn all_labelish(assocs: &[AssocNewOrAssocSplat]) -> bool {
+    assocs.iter().all(|assoc| match assoc {
+        AssocNewOrAssocSplat::AssocNew(new) => match new.1 {
+            AssocKey::Label(_) => true,
+            AssocKey::Expression(_) => false,
+        },
+        AssocNewOrAssocSplat::AssocSplat(_) => true,
+    })
+}
+
 pub fn format_assocs(
     ps: &mut dyn ConcreteParserState,
     assocs: Vec<AssocNewOrAssocSplat>,
     sc: SpecialCase,
 ) {
     let len = assocs.len();
+    let all_labelish = all_labelish(&assocs);
     for (idx, assoc) in assocs.into_iter().enumerate() {
         ps.emit_soft_indent();
-        format_assoc(ps, assoc);
+        format_assoc(ps, assoc, all_labelish);
         if idx != len - 1 {
             ps.emit_comma();
         }
@@ -1065,22 +1076,38 @@ pub fn format_assocs_single_line(
     assocs: Vec<AssocNewOrAssocSplat>,
 ) {
     let len = assocs.len();
+    let all_labelish = all_labelish(&assocs);
     for (idx, assoc) in assocs.into_iter().enumerate() {
-        format_assoc(ps, assoc);
+        format_assoc(ps, assoc, all_labelish);
         if idx != len - 1 {
             ps.emit_comma_space();
         }
     }
 }
 
-pub fn format_assoc(ps: &mut dyn ConcreteParserState, assoc: AssocNewOrAssocSplat) {
+pub fn format_assoc(
+    ps: &mut dyn ConcreteParserState,
+    assoc: AssocNewOrAssocSplat,
+    all_labelish: bool,
+) {
     ps.with_start_of_line(
         false,
         Box::new(|ps| match assoc {
             AssocNewOrAssocSplat::AssocNew(new) => {
                 match new.1 {
                     AssocKey::Label(label) => {
-                        handle_string_and_linecol(ps, label.1, label.2);
+                        if all_labelish {
+                            handle_string_and_linecol(ps, label.1, label.2);
+                        } else {
+                            let colonless_label = label
+                                .1
+                                .strip_suffix(':')
+                                .expect("labels end with a colon")
+                                .to_owned();
+                            format_symbol(ps, Symbol::from_string(colonless_label, label.2));
+                            ps.emit_space();
+                            ps.emit_ident("=>".to_string());
+                        }
                         ps.emit_space();
                     }
                     AssocKey::Expression(expression) => {
