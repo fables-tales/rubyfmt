@@ -654,7 +654,7 @@ pub fn use_parens_for_method_call(
 
     if ps.scope_has_variable(&name) {
         match chain.first() {
-            None => return true,
+            None => return original_used_parens,
             Some(CallChainElement::VarRef(VarRef(_, VarRefType::Kw(Kw(_, x, _))))) => {
                 if x == "self" {
                     return true;
