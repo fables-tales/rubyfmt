@@ -763,7 +763,12 @@ pub fn format_method_call(ps: &mut dyn ConcreteParserState, method_call: MethodC
             if is_indented {
                 ps.start_indent();
             }
-            format_ident(ps, method.into_ident());
+
+            if use_parens && method.get_name() == ".()" {
+                ps.emit_ident(".".to_string());
+            } else {
+                format_ident(ps, method.into_ident());
+            }
 
             let delims = if use_parens {
                 BreakableDelims::for_method_call()
