@@ -726,7 +726,8 @@ pub fn format_dot(ps: &mut dyn ConcreteParserState, dot: DotTypeOrOp) {
                 ),
             }
         }
-        DotTypeOrOp::Period(_) => {
+        DotTypeOrOp::Period(p) => {
+            ps.on_line(p.2 .0);
             ps.emit_dot();
         }
         DotTypeOrOp::ColonColon(_) => {
