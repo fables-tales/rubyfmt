@@ -37,7 +37,7 @@ use ruby_ops::{load_rubyfmt, ParseError, Parser, RipperTree};
 #[cfg(debug_assertions)]
 use log::debug;
 #[cfg(debug_assertions)]
-use simplelog::{Config, LevelFilter, TermLogger, TerminalMode};
+use simplelog::{ConfigBuilder, LevelFilter, TermLogger, TerminalMode};
 
 extern "C" {
     pub fn Init_ripper();
@@ -219,8 +219,14 @@ fn run_parser_on(buf: &str) -> Result<(RipperTree, FileComments), RichFormatErro
 fn init_logger() {
     #[cfg(debug_assertions)]
     {
-        TermLogger::init(LevelFilter::Debug, Config::default(), TerminalMode::Stderr)
-            .expect("making a term logger");
+        TermLogger::init(
+            LevelFilter::Debug,
+            ConfigBuilder::new()
+                .set_time_level(LevelFilter::Off)
+                .build(),
+            TerminalMode::Stderr,
+        )
+        .expect("making a term logger");
         debug!("logger works");
     }
 }
