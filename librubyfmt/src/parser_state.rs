@@ -131,6 +131,7 @@ where
     fn with_start_of_line(&mut self, start_of_line: bool, f: RenderFunc);
     fn breakable_of(&mut self, delims: BreakableDelims, f: RenderFunc) -> bool;
     fn dedent(&mut self, f: RenderFunc);
+    fn reset_space_count(&mut self);
     fn with_absorbing_indent_block(&mut self, f: RenderFunc);
     fn magic_handle_comments_for_multiline_arrays(
         &mut self,
@@ -225,7 +226,7 @@ impl ConcreteParserState for BaseParserState {
         f(self);
         // Reset here -- this resets when we emit newlines, but this may be out of date
         // if the most recent array didn't emit a newline
-        self.spaces_after_last_newline = self.current_spaces();
+        self.reset_space_count();
         let new_line_number = self.current_orig_line_number;
         if new_line_number > current_line_number {
             // Only wind forward if the next line is empty or a comment
@@ -274,6 +275,10 @@ impl ConcreteParserState for BaseParserState {
         (s.len() + (self.current_spaces() as usize)) > MAX_LINE_LENGTH
     }
 
+    fn reset_space_count(&mut self) {
+        self.spaces_after_last_newline = self.current_spaces();
+    }
+
     fn dedent<'a>(&mut self, f: RenderFunc) {
         let ds_length = self.depth_stack.len();
         self.depth_stack[ds_length - 1].decrement();
@@ -313,6 +318,10 @@ impl ConcreteParserState for BaseParserState {
             ps.emit_collapsing_newline();
         }));
 
+        // The last newline is in the old block, so we need
+        // to reset to ensure that any comments between now and the
+        // next newline are at the right indentation level
+        self.reset_space_count();
         self.emit_soft_indent();
 
         let insert_be = self

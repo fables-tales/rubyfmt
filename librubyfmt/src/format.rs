@@ -2435,6 +2435,12 @@ pub fn format_binary(ps: &mut dyn ConcreteParserState, binary: Binary, must_be_m
                         ps.emit_ident(binary.2);
 
                         let next_expr = *binary.3;
+
+                        // In some cases, previous expressions changed the space
+                        // count but haven't reset it, so we force a reset here in
+                        // case we shift comments during the _next_ expression
+                        ps.reset_space_count();
+
                         if render_multiline {
                             ps.new_block(Box::new(|ps| {
                                 ps.emit_newline();
@@ -2647,6 +2653,11 @@ fn format_call_chain_elements(
                         }),
                     );
                     if let Some(end_line) = end_line {
+                        // If we're rendering a single-line chain, force a reset so
+                        // that comments end up at the current indentation level
+                        if !render_multiline_chain {
+                            ps.reset_space_count();
+                        }
                         ps.wind_dumping_comments_until_line(end_line);
                     }
                 }
