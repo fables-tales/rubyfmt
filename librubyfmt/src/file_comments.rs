@@ -106,12 +106,22 @@ impl FileComments {
             .next()
             .copied()
             .map(|lowest_line| {
-                let remaining_comments = self.other_comments.split_off(&(line_number + 1));
+                let remaining_comments = self.other_comments.split_off(&(&line_number + 1));
                 let comments = mem::replace(&mut self.other_comments, remaining_comments)
                     .into_iter()
-                    .map(|(_, v)| v)
-                    .collect();
-                CommentBlock::new(lowest_line..line_number + 1, comments)
+                    .collect::<Vec<(_, _)>>();
+                let mut comment_block_with_spaces: Vec<String> = Vec::new();
+
+                let mut last_line = comments.first().map(|(l, _)| *l).unwrap_or(0);
+                for (index, comment_contents) in comments {
+                    if index - last_line > 1 {
+                        comment_block_with_spaces.push(String::new());
+                    }
+                    last_line = index;
+                    comment_block_with_spaces.push(comment_contents);
+                }
+
+                CommentBlock::new(lowest_line..line_number + 1, comment_block_with_spaces)
             })
     }
 }

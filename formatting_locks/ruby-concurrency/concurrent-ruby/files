@@ -2,7 +2,7 @@
 ./lib/concurrent-ruby/concurrent/ivar.rb,53a4331cbf82c37165c67c5e3d555e91
 ./lib/concurrent-ruby/concurrent/atomic_reference/numeric_cas_wrapper.rb,b68397053894c058c76a082af1a4ca3f
 ./lib/concurrent-ruby/concurrent/atomic_reference/mutex_atomic.rb,5bdea5429c1d3a5271394fc693c4cdca
-./lib/concurrent-ruby/concurrent/atom.rb,083289235a44d967b96bb2a0bc31dd09
+./lib/concurrent-ruby/concurrent/atom.rb,af6d7ce4f120c32fb0190c09a9da8c25
 ./lib/concurrent-ruby/concurrent/collection/ruby_non_concurrent_priority_queue.rb,bb4883cf91d80be8ff0bfc49f476514c
 ./lib/concurrent-ruby/concurrent/collection/non_concurrent_priority_queue.rb,e8176bf8a4f874a0e6128b3c09466266
 ./lib/concurrent-ruby/concurrent/collection/java_non_concurrent_priority_queue.rb,b785688f283cb958569b49b4bd521976
