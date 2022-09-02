@@ -883,6 +883,8 @@ pub fn format_list_like_thing_items(
                         if idx != args_count - 1 {
                             ps.emit_comma();
                             ps.emit_soft_newline();
+                        } else {
+                            ps.shift_comments();
                         }
                     }),
                 );
