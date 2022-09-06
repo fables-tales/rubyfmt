@@ -130,6 +130,7 @@ where
     fn new_block(&mut self, f: RenderFunc);
     fn with_start_of_line(&mut self, start_of_line: bool, f: RenderFunc);
     fn breakable_of(&mut self, delims: BreakableDelims, f: RenderFunc) -> bool;
+    fn inline_breakable_of(&mut self, delims: BreakableDelims, f: RenderFunc);
     fn dedent(&mut self, f: RenderFunc);
     fn reset_space_count(&mut self);
     fn with_absorbing_indent_block(&mut self, f: RenderFunc);
@@ -332,6 +333,36 @@ impl ConcreteParserState for BaseParserState {
         let is_multiline = insert_be.is_multiline();
         self.push_target(ConcreteLineTokenAndTargets::BreakableEntry(insert_be));
         is_multiline
+    }
+
+    /// A version of `breakable_of` for list-like things that use whitespace delimiters.
+    /// At the moment, this is only for conditions in a `when` clause
+    fn inline_breakable_of<'a>(&mut self, delims: BreakableDelims, f: RenderFunc) {
+        self.shift_comments();
+        let mut be = BreakableEntry::new(
+            self.current_spaces(),
+            delims,
+            self.current_formatting_context(),
+        );
+        be.push_line_number(self.current_orig_line_number);
+        self.breakable_entry_stack.push(Box::new(be));
+
+        self.new_block(Box::new(|ps| {
+            ps.emit_collapsing_newline();
+            f(ps);
+        }));
+
+        // The last newline is in the old block, so we need
+        // to reset to ensure that any comments between now and the
+        // next newline are at the right indentation level
+        self.reset_space_count();
+
+        let insert_be = self
+            .breakable_entry_stack
+            .pop()
+            .expect("cannot have empty here because we just pushed")
+            .to_breakable_entry();
+        self.push_target(ConcreteLineTokenAndTargets::BreakableEntry(insert_be));
     }
 
     fn with_suppress_comments<'a>(&mut self, suppress: bool, f: RenderFunc) {

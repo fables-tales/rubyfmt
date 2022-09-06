@@ -3014,20 +3014,22 @@ pub fn format_when_or_else(ps: &mut dyn ConcreteParserState, tail: WhenOrElse) {
             ps.with_start_of_line(
                 false,
                 Box::new(|ps| {
-                    ps.breakable_of(
-                        BreakableDelims::for_when(),
-                        Box::new(|ps| {
-                            format_list_like_thing(ps, conditionals, Some(start_end.1), false);
-                        }),
-                    );
+                    ps.new_block(Box::new(|ps| {
+                        ps.inline_breakable_of(
+                            BreakableDelims::for_when(),
+                            Box::new(|ps| {
+                                format_list_like_thing(ps, conditionals, None, false);
+                            }),
+                        );
+                    }));
                 }),
             );
 
-            ps.emit_newline();
             ps.new_block(Box::new(|ps| {
                 ps.with_start_of_line(
                     true,
                     Box::new(|ps| {
+                        ps.emit_newline();
                         for expr in body {
                             format_expression(ps, expr);
                         }
