@@ -8,9 +8,7 @@ use std::mem;
 #[derive(Debug)]
 pub enum BlanklineReason {
     ComesAfterEnd,
-    Conditional,
     ClassOrModule,
-    DoKeyword,
     EndOfRequireBlock,
     CommentAfterEnd,
 }
@@ -115,7 +113,7 @@ impl Intermediary {
             ConcreteLineToken::DoKeyword => {
                 self.handle_do_keyword();
             }
-            ConcreteLineToken::ConditionalKeyword { contents } => self.handle_conditional(contents),
+            ConcreteLineToken::ConditionalKeyword { contents: _ } => self.handle_conditional(),
             ConcreteLineToken::End => self.handle_end(),
             ConcreteLineToken::DefKeyword => self.handle_def(),
             ConcreteLineToken::Indent { depth } => {
@@ -192,11 +190,6 @@ impl Intermediary {
 
     fn handle_do_keyword(&mut self) {
         self.current_line_metadata.set_has_do_keyword();
-        if let Some(prev) = &self.previous_line_metadata {
-            if prev.wants_spacer_for_conditional() && !self.is_block_after_method_call() {
-                self.insert_trailing_blankline(BlanklineReason::DoKeyword);
-            }
-        }
     }
 
     fn handle_class_or_module(&mut self) {
@@ -207,13 +200,8 @@ impl Intermediary {
         }
     }
 
-    fn handle_conditional(&mut self, cond: &str) {
+    fn handle_conditional(&mut self) {
         self.current_line_metadata.set_has_conditional();
-        if let Some(prev) = &self.previous_line_metadata {
-            if prev.wants_spacer_for_conditional() && cond == "if" {
-                self.insert_trailing_blankline(BlanklineReason::Conditional);
-            }
-        }
     }
 
     pub fn clear_breakable_garbage(&mut self) {
@@ -259,30 +247,6 @@ impl Intermediary {
                 self.index_of_last_hard_newline += 1;
                 self.debug_assert_newlines();
             }
-        }
-    }
-
-    fn is_block_after_method_call(&self) -> bool {
-        use ConcreteLineToken::*;
-
-        if self.tokens.len() < 4 {
-            return false;
-        }
-
-        match &self.tokens[self.tokens.len() - 4..] {
-            [_, _, Delim { contents }, Space]
-            | [DirectPart { part: contents }, Dot, DirectPart { .. }, Space]
-            | [Delim { contents }, Dot, DirectPart { .. }, Space] => {
-                contents == ")" || contents == "}" || contents == "]"
-            }
-            [Indent { .. }, Dot, DirectPart { .. }, Space] => true,
-            // Duplicating the above to handle lonely operators
-            [DirectPart { part: contents }, DirectPart { part }, DirectPart { .. }, Space]
-            | [Delim { contents }, DirectPart { part }, DirectPart { .. }, Space] => {
-                part == "&." && (contents == ")" || contents == "}" || contents == "]")
-            }
-            [Indent { .. }, DirectPart { part }, DirectPart { .. }, Space] => part == "&.",
-            _ => false,
         }
     }
 

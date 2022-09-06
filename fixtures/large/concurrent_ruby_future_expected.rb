@@ -77,7 +77,6 @@ module Concurrent
     # @!macro ivar_set_method
     def set(value = NULL, &block)
       check_for_block_or_value!(block_given?, value)
-
       synchronize do
         if @state != :unscheduled
           raise MultipleAssignmentError
@@ -118,7 +117,6 @@ module Concurrent
     #   else false
     def wait_or_cancel(timeout)
       wait(timeout)
-
       if complete?
         true
       else

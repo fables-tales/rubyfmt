@@ -1,0 +1,11 @@
+#!/bin/bash
+set -euo pipefail
+
+cd "$(dirname "$0")/.."
+
+cargo build --release
+
+find fixtures -type f -name '*_actual.rb' -print0 | while IFS= read -r -d '' f
+do
+  target/release/rubyfmt-main -- "$f"  > "${f//_actual.rb/_expected.rb}"
+done
