@@ -117,17 +117,27 @@ impl RenderQueueWriter {
             debug!("final tokens: {:?}", tokens);
         }
 
-        let len = tokens.len();
-        if len > 2 {
-            let delete = matches!(
-                (tokens.get(len - 2), tokens.get(len - 1)),
+        loop {
+            let len = tokens.len();
+            if len < 2 {
+                break;
+            }
+
+            let delete = match (tokens.get(len - 2), tokens.get(len - 1)) {
                 (
+                    Some(ConcreteLineToken::Comment { contents }),
                     Some(ConcreteLineToken::HardNewLine),
-                    Some(ConcreteLineToken::HardNewLine)
-                )
-            );
+                ) => contents.is_empty(),
+                (Some(ConcreteLineToken::HardNewLine), Some(ConcreteLineToken::HardNewLine)) => {
+                    true
+                }
+                _ => false,
+            };
+
             if delete {
                 tokens.pop();
+            } else {
+                break;
             }
         }
 

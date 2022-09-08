@@ -774,18 +774,6 @@ pub struct BodyStmt(
     pub Option<Ensure>,
 );
 
-impl BodyStmt {
-    pub fn is_empty(&self) -> bool {
-        let length = (self.1).len();
-        let expressions_empty = match (self.1).get(0) {
-            Some(Expression::VoidStmt(VoidStmt(_))) => length == 1,
-            None => true,
-            _ => false,
-        };
-        expressions_empty && (self.2).is_none() && (self.3).is_none() && (self.4).is_none()
-    }
-}
-
 // deals with 2.6, where else is a vec expression and not an else
 #[derive(RipperDeserialize, Debug, Clone)]
 pub enum RescueElseOrExpressionList {
@@ -1914,7 +1902,12 @@ pub struct Redo(pub redo_tag, pub StartEnd);
 
 def_tag!(sclass_tag, "sclass");
 #[derive(Deserialize, Debug, Clone)]
-pub struct SClass(sclass_tag, pub Box<Expression>, pub Box<BodyStmt>);
+pub struct SClass(
+    sclass_tag,
+    pub Box<Expression>,
+    pub Box<BodyStmt>,
+    pub StartEnd,
+);
 
 // some constructs were expressionlist in 2.5 and bodystmt in 2.6 so this
 // deals with both cases

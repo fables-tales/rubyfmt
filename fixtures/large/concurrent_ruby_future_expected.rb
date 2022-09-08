@@ -6,8 +6,11 @@ require "concurrent/executor/safe_task_executor"
 
 require "concurrent/options"
 
+
 # TODO (pitr-ch 14-Mar-2017): deprecate, Future, Promise, etc.
+
 module Concurrent
+
   # {include:file:docs-source/future.md}
   #
   # @!macro copy_options
@@ -16,6 +19,7 @@ module Concurrent
   # @see http://clojuredocs.org/clojure_core/clojure.core/future Clojure's future function
   # @see http://docs.oracle.com/javase/7/docs/api/java/util/concurrent/Future.html java.util.concurrent.Future
   class Future < IVar
+
     # Create a new `Future` in the `:unscheduled` state.
     #
     # @yield the asynchronous operation to perform

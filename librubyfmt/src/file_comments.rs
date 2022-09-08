@@ -4,6 +4,7 @@ use std::mem;
 use log::debug;
 
 use crate::comment_block::CommentBlock;
+use crate::parser_state::line_difference_requires_newline;
 use crate::ruby::*;
 use crate::types::LineNumber;
 
@@ -100,7 +101,11 @@ impl FileComments {
             .any(|key| line_range.contains(key))
     }
 
-    pub fn extract_comments_to_line(&mut self, line_number: LineNumber) -> Option<CommentBlock> {
+    pub fn extract_comments_to_line(
+        &mut self,
+        starting_line_number: LineNumber,
+        line_number: LineNumber,
+    ) -> Option<(CommentBlock, LineNumber)> {
         self.other_comments
             .keys()
             .next()
@@ -110,18 +115,42 @@ impl FileComments {
                 let comments = mem::replace(&mut self.other_comments, remaining_comments)
                     .into_iter()
                     .collect::<Vec<(_, _)>>();
-                let mut comment_block_with_spaces: Vec<String> = Vec::new();
+                if comments.is_empty() {
+                    return (
+                        CommentBlock::new(lowest_line..line_number + 1, Vec::new()),
+                        starting_line_number,
+                    );
+                }
 
-                let mut last_line = comments.first().map(|(l, _)| *l).unwrap_or(0);
+                let mut comment_block_with_spaces: Vec<String> = Vec::new();
+                let mut last_line = None;
+
+                if line_difference_requires_newline(
+                    comments.first().unwrap().0,
+                    starting_line_number,
+                ) {
+                    comment_block_with_spaces.push(String::new());
+                }
+
                 for (index, comment_contents) in comments {
-                    if index - last_line > 1 {
+                    if last_line.is_some()
+                        && line_difference_requires_newline(index, last_line.unwrap())
+                    {
                         comment_block_with_spaces.push(String::new());
                     }
-                    last_line = index;
+                    last_line = Some(index);
                     comment_block_with_spaces.push(comment_contents);
                 }
 
-                CommentBlock::new(lowest_line..line_number + 1, comment_block_with_spaces)
+                if line_number > last_line.unwrap() + 1 {
+                    last_line = Some(line_number);
+                    comment_block_with_spaces.push(String::new());
+                }
+
+                (
+                    CommentBlock::new(lowest_line..line_number + 1, comment_block_with_spaces),
+                    last_line.unwrap(),
+                )
             })
     }
 }

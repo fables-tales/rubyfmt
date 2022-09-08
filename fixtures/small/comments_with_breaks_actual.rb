@@ -57,3 +57,17 @@ def get_world_record_on!
 
     self.get_record_on_level("You already know")
 end
+
+# BEGIN: generated stuff
+
+class GeneratedClass
+  # These comments shouldn't collapse, otherwise they'll
+  # look like documentation comments
+
+  def thing
+  end
+
+  # See, this stuff shouldn't change
+  # Please work!
+
+end

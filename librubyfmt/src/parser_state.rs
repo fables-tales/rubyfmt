@@ -405,11 +405,19 @@ impl ConcreteParserState for BaseParserState {
             be.push_line_number(line_number);
         }
 
-        let comments = self.comments_hash.extract_comments_to_line(line_number);
-        self.push_comments(comments);
+        if let Some((comments, last_comment_line)) = self
+            .comments_hash
+            .extract_comments_to_line(self.current_orig_line_number, line_number)
+        {
+            self.push_comments(comments);
+            self.current_orig_line_number =
+                std::cmp::max(self.current_orig_line_number, last_comment_line);
+        }
 
         debug!("lns: {} {}", line_number, self.current_orig_line_number);
-        if line_number - self.current_orig_line_number >= 2 && self.insert_user_newlines {
+        if line_difference_requires_newline(line_number, self.current_orig_line_number)
+            && self.insert_user_newlines
+        {
             debug!("extra line");
             self.insert_extra_newline_at_last_newline();
         }
@@ -813,23 +821,18 @@ impl BaseParserState {
         }
     }
 
-    fn push_comments(&mut self, comments: Option<CommentBlock>) {
-        match comments {
-            None => {}
-            Some(comments) => {
-                if !self
-                    .suppress_comments_stack
-                    .last()
-                    .expect("comments stack is never empty")
-                {
-                    let len = comments.len();
-                    let trailing_comment = comments.is_trailing();
-                    self.insert_comment_collection(comments);
-                    if !trailing_comment {
-                        self.current_orig_line_number += len as u64;
-                        debug!("pe coln: {}", len);
-                    }
-                }
+    fn push_comments(&mut self, comments: CommentBlock) {
+        if !self
+            .suppress_comments_stack
+            .last()
+            .expect("comments stack is never empty")
+        {
+            let len = comments.len();
+            let trailing_comment = comments.is_trailing();
+            self.insert_comment_collection(comments);
+            if !trailing_comment {
+                self.current_orig_line_number += len as u64;
+                debug!("pe coln: {}", len);
             }
         }
     }
@@ -984,4 +987,8 @@ impl BaseParserState {
         f(&mut next_ps);
         next_ps
     }
+}
+
+pub fn line_difference_requires_newline(to_line: LineNumber, from_line: LineNumber) -> bool {
+    to_line - from_line >= 2
 }

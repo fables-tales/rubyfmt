@@ -2206,8 +2206,6 @@ pub fn format_paren_or_params(ps: &mut dyn ConcreteParserState, pp: ParenOrParam
 // Modules and classes bodies should be treated the same,
 // the only real difference is in the module/class name and inheritance
 fn format_constant_body(ps: &mut dyn ConcreteParserState, bodystmt: Box<BodyStmt>, end_line: u64) {
-    let is_empty = bodystmt.is_empty();
-
     ps.new_block(Box::new(|ps| {
         ps.with_start_of_line(
             true,
@@ -2223,11 +2221,7 @@ fn format_constant_body(ps: &mut dyn ConcreteParserState, bodystmt: Box<BodyStmt
         );
     }));
 
-    if !is_empty {
-        ps.wind_dumping_comments_until_line(end_line);
-    } else {
-        ps.wind_line_forward();
-    }
+    ps.on_line(end_line);
     ps.emit_end();
     if ps.at_start_of_line() {
         ps.emit_newline();
@@ -3123,6 +3117,7 @@ pub fn format_sclass(ps: &mut dyn ConcreteParserState, sc: SClass) {
 
     let expr = sc.1;
     let body = sc.2;
+    let end_line = sc.3.end_line();
 
     ps.with_start_of_line(
         false,
@@ -3149,6 +3144,8 @@ pub fn format_sclass(ps: &mut dyn ConcreteParserState, sc: SClass) {
             ps.emit_end();
         }),
     );
+
+    ps.on_line(end_line);
 
     if ps.at_start_of_line() {
         ps.emit_newline();
@@ -3559,6 +3556,7 @@ pub fn format_program(ps: &mut BaseParserState, program: Program) {
     for expression in program.1 {
         format_expression(ps, expression);
     }
+    ps.emit_newline();
     ps.on_line(10_000_000_000_000_000_000);
     ps.shift_comments();
 }

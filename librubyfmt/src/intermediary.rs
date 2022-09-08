@@ -10,7 +10,6 @@ pub enum BlanklineReason {
     ComesAfterEnd,
     ClassOrModule,
     EndOfRequireBlock,
-    CommentAfterEnd,
 }
 
 pub struct Intermediary {
@@ -135,11 +134,6 @@ impl Intermediary {
             }
             ConcreteLineToken::Comment { .. } => {
                 if matches!(
-                    self.last::<4>(),
-                    Some([_, _, ConcreteLineToken::End, ConcreteLineToken::HardNewLine])
-                ) {
-                    self.insert_trailing_blankline(BlanklineReason::CommentAfterEnd);
-                } else if matches!(
                     self.last::<4>(),
                     Some([
                         _,
