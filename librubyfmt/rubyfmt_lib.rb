@@ -304,6 +304,8 @@ class Parser < Ripper::SexpBuilderPP
   end
 
   def on_aref(*_args)
+    # This isn't needed, so we just remove it for tracking
+    @array_location_stacks.pop
     # The lineno here is actually one line *after*
     # the line of the bracket, so we manually trace
     # the line of the rbracket instead
@@ -311,6 +313,8 @@ class Parser < Ripper::SexpBuilderPP
   end
 
   def on_aref_field(*_args)
+    # This isn't needed, so we just remove it for tracking
+    @array_location_stacks.pop
     # The lineno here is actually one line *after*
     # the line of the bracket, so we manually trace
     # the line of the rbracket instead

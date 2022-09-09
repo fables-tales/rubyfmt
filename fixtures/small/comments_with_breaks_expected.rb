@@ -1,3 +1,9 @@
+require "really_cool_gem"
+
+# Thing!
+class Thing
+end
+
 # yo
 foo!
 
@@ -44,3 +50,12 @@ class GeneratedClass
   # Please work!
 
 end
+
+T.let(
+
+  # Things!
+  [
+    T::Hash[Stuff]
+  ],
+  T::Hash[Stuff]
+)

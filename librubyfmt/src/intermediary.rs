@@ -33,6 +33,20 @@ impl Intermediary {
         self.tokens.len()
     }
 
+    // Pops off excessive whitespace for `require` calls followed
+    // by comments. In the intermediary, this looks like
+    // a `require` call followed by
+    // - HardNewline
+    // - HardNewline
+    // - Comment { contents: "" }
+    // - HardNewline
+    // so this method actually pops off the extra empty comment whitespace
+    pub fn pop_require_comment_whitespace(&mut self) {
+        self.tokens.pop();
+        self.tokens.pop();
+        self.index_of_last_hard_newline = self.tokens.len() - 1;
+    }
+
     pub fn pop_heredoc_mistake(&mut self) {
         self.tokens.remove(self.tokens.len() - 1);
         self.tokens.remove(self.tokens.len() - 1);

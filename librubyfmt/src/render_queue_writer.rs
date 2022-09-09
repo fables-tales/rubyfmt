@@ -28,6 +28,8 @@ impl RenderQueueWriter {
     }
 
     fn render_as(accum: &mut Intermediary, tokens: Vec<ConcreteLineTokenAndTargets>) {
+        use ConcreteLineToken::*;
+
         for next_token in tokens.into_iter() {
             match next_token {
                 ConcreteLineTokenAndTargets::BreakableEntry(be) => {
@@ -49,6 +51,14 @@ impl RenderQueueWriter {
             {
                 if x.is_in_need_of_a_trailing_blankline() {
                     accum.insert_trailing_blankline(BlanklineReason::ComesAfterEnd);
+                }
+            }
+
+            if let Some([HardNewLine, HardNewLine, Comment { contents }, HardNewLine]) =
+                accum.last::<4>()
+            {
+                if contents.is_empty() {
+                    accum.pop_require_comment_whitespace();
                 }
             }
 

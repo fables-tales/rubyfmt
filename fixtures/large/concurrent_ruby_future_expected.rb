@@ -6,7 +6,6 @@ require "concurrent/executor/safe_task_executor"
 
 require "concurrent/options"
 
-
 # TODO (pitr-ch 14-Mar-2017): deprecate, Future, Promise, etc.
 
 module Concurrent
