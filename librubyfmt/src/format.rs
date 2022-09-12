@@ -1467,6 +1467,10 @@ pub fn format_list_like_thing(
                             }
                         }
                     }
+                    if let Some(end_line) = end_line {
+                        ps.wind_dumping_comments_until_line(end_line);
+                        ps.shift_comments();
+                    }
                 }),
             );
 
