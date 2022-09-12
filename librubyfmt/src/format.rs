@@ -110,6 +110,7 @@ pub fn inner_format_params(ps: &mut dyn ConcreteParserState, params: Box<Params>
 }
 
 pub fn format_blockvar(ps: &mut dyn ConcreteParserState, bv: BlockVar) {
+    let start_end = bv.3;
     let f_params = match bv.2 {
         BlockLocalVariables::Present(v) => Some(v),
         _ => None,
@@ -126,36 +127,40 @@ pub fn format_blockvar(ps: &mut dyn ConcreteParserState, bv: BlockVar) {
         return;
     }
 
-    ps.breakable_of(
-        BreakableDelims::for_block_params(),
-        Box::new(|ps| {
-            if let Some(params) = params {
-                inner_format_params(ps, params);
-            }
+    ps.new_block(Box::new(|ps| {
+        ps.breakable_of(
+            BreakableDelims::for_block_params(),
+            Box::new(|ps| {
+                if let Some(params) = params {
+                    inner_format_params(ps, params);
+                }
 
-            match f_params {
-                None => {}
-                Some(f_params) => {
-                    if !f_params.is_empty() {
-                        ps.emit_ident(";".to_string());
+                match f_params {
+                    None => {}
+                    Some(f_params) => {
+                        if !f_params.is_empty() {
+                            ps.emit_ident(";".to_string());
 
-                        ps.with_start_of_line(
-                            false,
-                            Box::new(|ps| {
-                                format_list_like_thing_items(
-                                    ps,
-                                    f_params.into_iter().map(Expression::Ident).collect(),
-                                    None,
-                                    true,
-                                );
-                            }),
-                        );
+                            ps.with_start_of_line(
+                                false,
+                                Box::new(|ps| {
+                                    format_list_like_thing_items(
+                                        ps,
+                                        f_params.into_iter().map(Expression::Ident).collect(),
+                                        None,
+                                        true,
+                                    );
+                                }),
+                            );
+                        }
                     }
                 }
-            }
-            ps.emit_collapsing_newline();
-        }),
-    );
+                ps.emit_collapsing_newline();
+            }),
+        );
+    }));
+
+    ps.on_line(start_end.end_line());
 }
 
 /// Returns `true` if params are spread across multiple lines in the source, `false` if not

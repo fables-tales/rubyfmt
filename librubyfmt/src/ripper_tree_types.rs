@@ -1817,6 +1817,7 @@ pub struct BlockVar(
     block_var_tag,
     pub Option<Box<Params>>,
     pub BlockLocalVariables,
+    pub StartEnd,
 );
 
 def_tag!(do_block_tag, "do_block");

@@ -17,7 +17,7 @@ end
 
 a do |
 ;qwioefijqwoiefjoqiwefjoqwiejfqwe, qwoiefjqowiejfoiqwejfoiqwjfoiqwejfiowqejfqwieqwoeifjoqwiejfiowqefjoijf
-|
+  |
 end
 
 a = [

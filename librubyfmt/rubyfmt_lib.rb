@@ -193,6 +193,10 @@ class Parser < Ripper::SexpBuilderPP
     super + [start_end_for_keyword('do')]
   end
 
+  def on_block_var(*_args)
+    with_lineno { super }
+  end
+
   # In the case of mod statements, we've previously
   # pushed their lines onto the stack but now
   # don't need them, so we pop them off and ignore them
