@@ -654,7 +654,7 @@ pub fn use_parens_for_method_call(
     let name = method.get_name();
     debug!("name: {:?}", name);
     if name.starts_with("attr_") && context == FormattingContext::ClassOrModule {
-        return false;
+        return original_used_parens;
     }
 
     if ps.scope_has_variable(&name) {
