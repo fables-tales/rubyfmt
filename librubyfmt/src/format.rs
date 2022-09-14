@@ -2548,7 +2548,10 @@ pub fn format_hash(ps: &mut dyn ConcreteParserState, hash: Hash) {
     ps.on_line((hash.2).0);
 
     match hash.1 {
-        None => ps.emit_ident("{}".to_string()),
+        None => {
+            ps.emit_ident("{}".to_string());
+            ps.wind_dumping_comments_until_line(end_line);
+        }
         Some(assoc_list_from_args) => {
             ps.breakable_of(
                 BreakableDelims::for_hash(),
