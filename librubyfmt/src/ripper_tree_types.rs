@@ -700,7 +700,11 @@ pub enum ParenExpressionOrExpressions {
 
 def_tag!(paren_expr_tag, "paren");
 #[derive(Deserialize, Debug, Clone)]
-pub struct ParenExpr(pub paren_expr_tag, pub ParenExpressionOrExpressions);
+pub struct ParenExpr(
+    pub paren_expr_tag,
+    pub ParenExpressionOrExpressions,
+    pub StartEnd,
+);
 
 def_tag!(dot2_tag, "dot2");
 #[derive(Deserialize, Debug, Clone)]
@@ -1000,6 +1004,10 @@ impl StartEnd {
     pub fn end_line(&self) -> LineNumber {
         self.1
     }
+
+    pub fn unknown() -> Self {
+        StartEnd(0, 0)
+    }
 }
 
 impl LineCol {
@@ -1259,6 +1267,7 @@ impl CallLeft {
             CallLeft::SingleParen(_, e) => vec![CallChainElement::Paren(ParenExpr(
                 paren_expr_tag,
                 ParenExpressionOrExpressions::Expressions(vec![*e]),
+                StartEnd::unknown(),
             ))],
             CallLeft::FCall(FCall(_, ic)) => vec![CallChainElement::IdentOrOpOrKeywordOrConst(
                 ic.into_ident_or_op_or_keyword_or_const(),

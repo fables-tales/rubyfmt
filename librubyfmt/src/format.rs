@@ -1249,6 +1249,7 @@ pub fn format_paren(ps: &mut dyn ConcreteParserState, paren: ParenExpr) {
     if ps.at_start_of_line() {
         ps.emit_indent();
     }
+    let start_end = paren.2;
     ps.emit_open_paren();
 
     match paren.1 {
@@ -1257,6 +1258,8 @@ pub fn format_paren(ps: &mut dyn ConcreteParserState, paren: ParenExpr) {
                 let p = exps.into_iter().next().expect("we know this isn't empty");
                 ps.with_start_of_line(false, Box::new(|ps| format_expression(ps, p)));
             } else {
+                // We don't have a line for the opening paren, so just wind until we see an expression
+                ps.wind_dumping_comments(None);
                 ps.emit_newline();
                 ps.new_block(Box::new(|ps| {
                     ps.with_start_of_line(
@@ -1268,6 +1271,7 @@ pub fn format_paren(ps: &mut dyn ConcreteParserState, paren: ParenExpr) {
                         }),
                     );
                 }));
+                ps.emit_indent();
             }
         }
         ParenExpressionOrExpressions::Expression(expr) => {
@@ -1275,6 +1279,7 @@ pub fn format_paren(ps: &mut dyn ConcreteParserState, paren: ParenExpr) {
         }
     }
     ps.emit_close_paren();
+    ps.wind_dumping_comments_until_line(start_end.end_line());
     if ps.at_start_of_line() {
         ps.emit_newline();
     }
@@ -2944,7 +2949,50 @@ pub fn format_while(
     }
 }
 
-pub fn format_mod_statement(
+/// Some mod statements should _always_ be inlined, specifically `while` and `until` blocks,
+/// since multilining them has different semantics. For example:
+///
+/// ```ruby
+/// # Will always run at least once
+/// begin
+///   puts "thing"
+/// end while should_run?
+///
+/// # Won't always run the block
+/// while should_run?
+///   begin
+///     puts "thing"
+///   end
+/// end
+/// ```
+pub fn format_inline_mod(
+    ps: &mut dyn ConcreteParserState,
+    conditional: Box<Expression>,
+    body: Box<Expression>,
+    name: String,
+) {
+    if ps.at_start_of_line() {
+        ps.emit_indent();
+    }
+
+    ps.with_start_of_line(
+        false,
+        Box::new(|ps| {
+            format_expression(ps, *body);
+
+            ps.emit_mod_keyword(format!(" {} ", name));
+            format_expression(ps, *conditional);
+        }),
+    );
+
+    if ps.at_start_of_line() {
+        ps.emit_newline();
+    }
+}
+
+/// Some mod statements can be safely converted to their equivalent
+/// multiline forms, specifically `if` and `unless` mod statements.
+pub fn format_multilinable_mod(
     ps: &mut dyn ConcreteParserState,
     conditional: Box<Expression>,
     body: Box<Expression>,
@@ -2968,7 +3016,7 @@ pub fn format_mod_statement(
 
     if is_multiline {
         let exps = match *body {
-            Expression::Paren(ParenExpr(_, exps)) => match exps {
+            Expression::Paren(ParenExpr(_, exps, _)) => match exps {
                 ParenExpressionOrExpressions::Expressions(exprs) => exprs,
                 ParenExpressionOrExpressions::Expression(e) => vec![*e],
             },
@@ -2982,24 +3030,12 @@ pub fn format_mod_statement(
                 ps.emit_end();
             }),
         );
-    } else {
+
         if ps.at_start_of_line() {
-            ps.emit_indent();
+            ps.emit_newline();
         }
-
-        ps.with_start_of_line(
-            false,
-            Box::new(|ps| {
-                format_expression(ps, *body);
-
-                ps.emit_mod_keyword(format!(" {} ", name));
-                format_expression(ps, *conditional);
-            }),
-        );
-    }
-
-    if ps.at_start_of_line() {
-        ps.emit_newline();
+    } else {
+        format_inline_mod(ps, conditional, body, name)
     }
 }
 
@@ -3530,10 +3566,10 @@ pub fn format_expression(ps: &mut dyn ConcreteParserState, expression: Expressio
         Expression::MethodAddBlock(mab) => format_method_add_block(ps, mab),
         Expression::While(w) => format_while(ps, w.1, w.2, "while".to_string(), w.3),
         Expression::Until(u) => format_while(ps, u.1, u.2, "until".to_string(), u.3),
-        Expression::WhileMod(wm) => format_mod_statement(ps, wm.1, wm.2, "while".to_string()),
-        Expression::UntilMod(um) => format_mod_statement(ps, um.1, um.2, "until".to_string()),
-        Expression::IfMod(wm) => format_mod_statement(ps, wm.1, wm.2, "if".to_string()),
-        Expression::UnlessMod(um) => format_mod_statement(ps, um.1, um.2, "unless".to_string()),
+        Expression::WhileMod(wm) => format_inline_mod(ps, wm.1, wm.2, "while".to_string()),
+        Expression::UntilMod(um) => format_inline_mod(ps, um.1, um.2, "until".to_string()),
+        Expression::IfMod(wm) => format_multilinable_mod(ps, wm.1, wm.2, "if".to_string()),
+        Expression::UnlessMod(um) => format_multilinable_mod(ps, um.1, um.2, "unless".to_string()),
         Expression::Case(c) => format_case(ps, c),
         Expression::Retry(r) => format_retry(ps, r),
         Expression::Redo(r) => format_redo(ps, r),
