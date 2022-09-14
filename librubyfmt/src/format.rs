@@ -2539,6 +2539,7 @@ pub fn format_hash(ps: &mut dyn ConcreteParserState, hash: Hash) {
     if ps.at_start_of_line() {
         ps.emit_indent();
     }
+    let end_line = hash.2.end_line();
     ps.on_line((hash.2).0);
 
     match hash.1 {
@@ -2548,6 +2549,7 @@ pub fn format_hash(ps: &mut dyn ConcreteParserState, hash: Hash) {
                 BreakableDelims::for_hash(),
                 Box::new(|ps| {
                     format_assocs(ps, assoc_list_from_args.1, SpecialCase::NoSpecialCase);
+                    ps.wind_dumping_comments_until_line(end_line);
                 }),
             );
         }
@@ -2556,8 +2558,6 @@ pub fn format_hash(ps: &mut dyn ConcreteParserState, hash: Hash) {
     if ps.at_start_of_line() {
         ps.emit_newline();
     }
-
-    ps.wind_dumping_comments_until_line((hash.2).1);
 }
 
 pub fn format_regexp_literal(ps: &mut dyn ConcreteParserState, regexp: RegexpLiteral) {

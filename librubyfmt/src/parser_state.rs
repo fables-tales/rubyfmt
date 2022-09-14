@@ -323,6 +323,10 @@ impl ConcreteParserState for BaseParserState {
         // to reset to ensure that any comments between now and the
         // next newline are at the right indentation level
         self.reset_space_count();
+        // Make sure we shift comments before ending the breakable.
+        // This ensures that comments inside breakables never end up rendering
+        // outside their delimiters.
+        self.shift_comments();
         self.emit_soft_indent();
 
         let insert_be = self
