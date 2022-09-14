@@ -414,7 +414,18 @@ class Parser < Ripper::SexpBuilderPP
         if start_delim == "'" || start_delim.start_with?("%q")
           # re-evaluate the string with its own quotes to handle escaping.
           if args[0][1]
-            args[0][1][1] = eval("#{start_delim}#{args[0][1][1]}#{end_delim}").inspect[1..-2]
+            es = eval("#{start_delim}#{args[0][1][1]}#{end_delim}")
+            # did the original contain \u's?
+            have_source_slash_u = args[0][1][1].include?("\\u")
+            # if all chars are unicode definitionally none of them are delimiters so we
+            # can skip inspect
+            have_all_unicode = es.chars.all? { |x| x.bytes.first >= 128 }
+
+            if have_all_unicode && !have_source_slash_u
+              "#{start_delim}#{args[0][1][1]}#{end_delim}"
+            else
+              args[0][1][1] = es.inspect[1..-2]
+            end
           end
         else
           # find delimiters after an odd number of backslashes, or quotes after even number.
