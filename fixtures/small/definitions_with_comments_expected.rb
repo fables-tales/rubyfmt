@@ -6,6 +6,8 @@ class Foo
     b:
     # comment
   )
+    # Some comments inside
+    # these are so insightful
   end
 
   def self.example(
@@ -15,5 +17,7 @@ class Foo
     b:
     # comment
   )
+    # Some comments inside
+    # these are so insightful
   end
 end
