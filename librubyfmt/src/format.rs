@@ -106,6 +106,7 @@ pub fn inner_format_params(ps: &mut dyn ConcreteParserState, params: Box<Params>
             ps.emit_comma();
             ps.emit_soft_newline();
         }
+        ps.shift_comments();
     }
 }
 
@@ -175,12 +176,14 @@ pub fn format_params(
     }
 
     let starting_line_number = ps.current_line_number();
+    let end_line = params.8.end_line();
 
     ps.breakable_of(
         delims,
         Box::new(|ps| {
             inner_format_params(ps, params);
             ps.emit_collapsing_newline();
+            ps.wind_dumping_comments_until_line(end_line);
         }),
     );
 

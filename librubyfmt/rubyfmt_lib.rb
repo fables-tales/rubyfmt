@@ -292,6 +292,10 @@ class Parser < Ripper::SexpBuilderPP
     with_lineno { super }
   end
 
+  def on_params(*_args)
+    with_lineno { super }
+  end
+
   def on_vcall(*_args)
     with_lineno { super }
   end

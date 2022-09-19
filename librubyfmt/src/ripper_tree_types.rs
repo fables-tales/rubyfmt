@@ -873,6 +873,7 @@ pub struct Params(
     pub Option<Vec<(Label, ExpressionOrFalse)>>,
     pub Option<KwRestParam>,
     pub Option<BlockArg>,
+    pub StartEnd,
 );
 
 impl Params {
