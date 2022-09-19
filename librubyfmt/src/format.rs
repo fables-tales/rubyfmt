@@ -749,6 +749,7 @@ pub fn format_method_call(ps: &mut dyn ConcreteParserState, method_call: MethodC
         ps.emit_indent();
     }
 
+    let should_multiline_call_chain = should_multiline_call_chain(ps, &method_call);
     let MethodCall(_, chain, method, original_used_parens, args, start_end) = method_call;
 
     debug!("method call!!");
@@ -764,7 +765,7 @@ pub fn format_method_call(ps: &mut dyn ConcreteParserState, method_call: MethodC
     ps.with_start_of_line(
         false,
         Box::new(|ps| {
-            let is_indented = format_call_chain(ps, chain);
+            let is_indented = format_call_chain(ps, chain, should_multiline_call_chain);
             if is_indented {
                 ps.start_indent();
             }
@@ -774,13 +775,11 @@ pub fn format_method_call(ps: &mut dyn ConcreteParserState, method_call: MethodC
             } else {
                 format_ident(ps, method.into_ident());
             }
-
             let delims = if use_parens {
                 BreakableDelims::for_method_call()
             } else {
                 BreakableDelims::for_kw()
             };
-
             if !args.is_empty() {
                 if args_has_single_def_expression(&args) {
                     // If we match `def ...` as the first argument, just
@@ -2624,13 +2623,14 @@ fn can_elide_parens_for_rspec_dsl_call(cc: &[CallChainElement]) -> bool {
 }
 
 /// Returns `true` if the call chain is indented, `false` if not
-fn format_call_chain(ps: &mut dyn ConcreteParserState, cc: Vec<CallChainElement>) -> bool {
+fn format_call_chain(
+    ps: &mut dyn ConcreteParserState,
+    cc: Vec<CallChainElement>,
+    should_multiline_call_chain: bool,
+) -> bool {
     if cc.is_empty() {
         return false;
     }
-
-    let is_in_string_embexpr = ps.current_formatting_context() == FormattingContext::StringEmbexpr;
-    let should_multiline_call_chain = !is_in_string_embexpr && should_multiline_call_chain(ps, &cc);
 
     format_call_chain_elements(ps, cc, should_multiline_call_chain);
 
@@ -2700,8 +2700,44 @@ fn format_call_chain_elements(
     }
 }
 
-fn should_multiline_call_chain(ps: &mut dyn ConcreteParserState, cc: &[CallChainElement]) -> bool {
-    let mut call_chain_to_check = cc.to_owned();
+fn should_multiline_call_chain(ps: &mut dyn ConcreteParserState, method_call: &MethodCall) -> bool {
+    // Never multiline if we're in an embedded expression
+    if ps.current_formatting_context() == FormattingContext::StringEmbexpr {
+        return false;
+    }
+
+    let MethodCall(_, mut call_chain_to_check, ident, _, args, start_end) = method_call.clone();
+
+    // Add the original method as a call chain element purely for the sake of determining multiling
+    call_chain_to_check.append(&mut vec![
+        CallChainElement::IdentOrOpOrKeywordOrConst(ident),
+        CallChainElement::ArgsAddStarOrExpressionListOrArgsForward(args, start_end),
+    ]);
+
+    // Ignore chains that are basically only method calls, e.g.
+    // ````ruby
+    // Thing.foo(args)
+    // Thing.foo(args) { block! }
+    // ```
+    // These should always stay inline
+    match call_chain_to_check.as_slice() {
+        [CallChainElement::VarRef(..) | CallChainElement::IdentOrOpOrKeywordOrConst(..), CallChainElement::DotTypeOrOp(..), CallChainElement::IdentOrOpOrKeywordOrConst(..)]
+        | [CallChainElement::VarRef(..) | CallChainElement::IdentOrOpOrKeywordOrConst(..), CallChainElement::DotTypeOrOp(..), CallChainElement::IdentOrOpOrKeywordOrConst(..), CallChainElement::ArgsAddStarOrExpressionListOrArgsForward(..)]
+        | [CallChainElement::VarRef(..) | CallChainElement::IdentOrOpOrKeywordOrConst(..), CallChainElement::DotTypeOrOp(..), CallChainElement::IdentOrOpOrKeywordOrConst(..), CallChainElement::Block(..)]
+        | [CallChainElement::VarRef(..) | CallChainElement::IdentOrOpOrKeywordOrConst(..), CallChainElement::DotTypeOrOp(..), CallChainElement::IdentOrOpOrKeywordOrConst(..), CallChainElement::ArgsAddStarOrExpressionListOrArgsForward(..), CallChainElement::Block(..)] =>
+        {
+            return false;
+        }
+        [CallChainElement::Expression(maybe_const_ref), CallChainElement::DotTypeOrOp(..), CallChainElement::IdentOrOpOrKeywordOrConst(..)]
+        | [CallChainElement::Expression(maybe_const_ref), CallChainElement::DotTypeOrOp(..), CallChainElement::IdentOrOpOrKeywordOrConst(..), CallChainElement::ArgsAddStarOrExpressionListOrArgsForward(..)]
+        | [CallChainElement::Expression(maybe_const_ref), CallChainElement::DotTypeOrOp(..), CallChainElement::IdentOrOpOrKeywordOrConst(..), CallChainElement::Block(..)]
+        | [CallChainElement::Expression(maybe_const_ref), CallChainElement::DotTypeOrOp(..), CallChainElement::IdentOrOpOrKeywordOrConst(..), CallChainElement::ArgsAddStarOrExpressionListOrArgsForward(..), CallChainElement::Block(..)] => {
+            if matches!(maybe_const_ref.as_ref(), Expression::ConstPathRef(..)) {
+                return false;
+            }
+        }
+        _ => {}
+    }
 
     // If the first item in the chain is a multiline expression (like a hash or array),
     // ignore it when checking line length
@@ -2763,13 +2799,14 @@ pub fn format_method_add_block(ps: &mut dyn ConcreteParserState, mab: MethodAddB
         ps.emit_indent();
     }
 
+    let should_multiline_chain = should_multiline_call_chain(ps, &mab.clone().to_method_call());
     let mut chain = (mab.1).into_call_chain();
     chain.push(CallChainElement::Block(mab.2));
 
     ps.with_start_of_line(
         false,
         Box::new(|ps| {
-            format_call_chain(ps, chain);
+            format_call_chain(ps, chain, should_multiline_chain);
         }),
     );
 

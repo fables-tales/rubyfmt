@@ -273,7 +273,8 @@ impl ConcreteParserState for BaseParserState {
         let s = str::from_utf8(&data).expect("string is utf8").to_string();
 
         // Add current spaces to account for current indentation level
-        (s.len() + (self.current_spaces() as usize)) > MAX_LINE_LENGTH
+        (s.split_whitespace().collect::<String>().len() + (self.current_spaces() as usize))
+            > MAX_LINE_LENGTH
     }
 
     fn reset_space_count(&mut self) {
@@ -747,13 +748,14 @@ impl ConcreteParserState for BaseParserState {
 
             let kind = next_heredoc.kind.clone();
             let symbol = next_heredoc.closing_symbol();
+            let space_count = next_heredoc.indent;
 
             self.push_concrete_token(ConcreteLineToken::DirectPart {
                 part: next_heredoc.render_as_string(),
             });
             self.emit_newline();
             if !kind.is_bare() {
-                self.emit_indent();
+                self.push_concrete_token(ConcreteLineToken::Indent { depth: space_count })
             } else {
                 self.push_concrete_token(ConcreteLineToken::Indent { depth: 0 });
             }

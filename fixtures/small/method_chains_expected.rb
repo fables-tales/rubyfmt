@@ -77,6 +77,10 @@ paul = blart
   .with_a_whole_bunch_of_other_really_long_things_in_here_to_make_super_duper_extra_sure
   .that_this_goes_past_one_hundred_and_twenty_characters_and_goes_to_separate_lines
 
+this_chain = is_long
+  .but_really
+  .only_the_actual_method_chain_part_is_long_but_we_should_still_account_for_that_when_we_consider_whether_or_not_multiline
+
 MyModule::MyClass.foo(
   a: "",
   b: ""

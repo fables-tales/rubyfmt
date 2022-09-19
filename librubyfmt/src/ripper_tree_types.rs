@@ -1356,6 +1356,29 @@ def_tag!(method_add_block_tag, "method_add_block");
 #[derive(Deserialize, Debug, Clone)]
 pub struct MethodAddBlock(method_add_block_tag, pub Box<CallLeft>, pub Block);
 
+impl ToMethodCall for MethodAddBlock {
+    fn to_method_call(self) -> MethodCall {
+        let mut orig_chain = (self.1).into_call_chain();
+        let last = orig_chain.pop().expect("cannot be empty");
+        let (args, start_end) = match last {
+            CallChainElement::ArgsAddStarOrExpressionListOrArgsForward(aas, start_end) => {
+                (aas, start_end)
+            }
+            _ => (
+                ArgsAddStarOrExpressionListOrArgsForward::ExpressionList(Vec::new()),
+                None,
+            ),
+        };
+        MethodCall::new(
+            orig_chain,
+            IdentOrOpOrKeywordOrConst::Ident(Ident::new(".()".to_string(), LineCol::unknown())),
+            true,
+            args,
+            start_end,
+        )
+    }
+}
+
 def_tag!(fcall_tag, "fcall");
 #[derive(Deserialize, Debug, Clone)]
 pub struct FCall(pub fcall_tag, pub IdentOrConst);
