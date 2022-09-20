@@ -2200,11 +2200,20 @@ pub fn format_defs(ps: &mut dyn ConcreteParserState, defs: Defs) {
 }
 
 pub fn format_paren_or_params(ps: &mut dyn ConcreteParserState, pp: ParenOrParams) {
+    let maybe_closing_paren_line = match &pp {
+        ParenOrParams::Paren(p) => Some(p.2.end_line()),
+        _ => None,
+    };
     let params = match pp {
         ParenOrParams::Paren(p) => p.1,
         ParenOrParams::Params(p) => p,
     };
+
     format_params(ps, params, BreakableDelims::for_method_call());
+
+    if let Some(end_line) = maybe_closing_paren_line {
+        ps.wind_dumping_comments_until_line(end_line)
+    }
 }
 
 // Modules and classes bodies should be treated the same,
