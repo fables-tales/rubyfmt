@@ -3114,13 +3114,14 @@ pub fn format_when_or_else(ps: &mut dyn ConcreteParserState, tail: WhenOrElse) {
         WhenOrElse::Else(e) => {
             ps.emit_indent();
             ps.emit_else();
-            ps.emit_newline();
-            ps.wind_line_forward();
 
             ps.new_block(Box::new(|ps| {
                 ps.with_start_of_line(
                     true,
                     Box::new(|ps| {
+                        ps.emit_newline();
+                        ps.wind_line_forward();
+                        ps.shift_comments();
                         for expr in e.1 {
                             format_expression(ps, expr);
                         }
@@ -3552,6 +3553,7 @@ pub fn format_bare_return_args(
 
 pub fn format_expression(ps: &mut dyn ConcreteParserState, expression: Expression) {
     let expression = normalize(expression);
+    debug!("noramlized expression: {:?}", expression);
     match expression {
         Expression::Def(def) => format_def(ps, def),
         Expression::MethodCall(mc) => format_method_call(ps, mc),
