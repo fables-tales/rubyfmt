@@ -1,59 +1,54 @@
-# How do I pronounce `rubyfmt`
-* en: Ruby format
-* jp: ルビーフォーマット
+# rubyfmt
 
-## Does it work right now?
+A Ruby autoformatter!
 
-No, but it's getting really close
+## How do I pronounce "rubyfmt"?
 
-## How do I use it
+- en: Ruby format
+- jp: ルビーフォーマット
 
-Build it:
-1. Make sure you've got cargo installed
+## How do I build it?
+
+1. Make sure you've got [`cargo`](https://rustup.rs) and `make` installed
 2. Run `make all`
-3. Copy target/release/rubyfmt-main to somewhere on your path as `rubyfmt`
+3. Copy `target/release/rubyfmt-main` to somewhere on your `$PATH` as `rubyfmt`
+
+## How do I use it?
 
 Rubyfmt supports the following CLI invocations:
 
-* `<whatever> | rubyfmt` pipe from standard in
-* `rubyfmt filename` to format a file to
-  stdout
-* `rubyfmt -i files or directories` format files and directories in place
-* `rubyfmt directory` to format all ruby files in that directory in place
+- `<stdin> | rubyfmt`: pipe from standard in, write to standard out
+- `rubyfmt <filename>`: format a file to standard out
+- `rubyfmt -i <files or directories>`: format files and directories in place
+- `rubyfmt <directory>`: format all ruby files in that directory in place
 
-## Useful environment variables:
+## Useful environment variables
 
-* `RUBYFMT_DISABLE_SZUSH=1`: disables the backend render queue writer,
-  very useful for debugging, literally useless if you're not developing rubyfmt
-  itself.
+- `RUBYFMT_DISABLE_SZUSH=1`: disables the backend render queue writer, very useful for debugging, literally useless if you're not developing rubyfmt itself.
 
-## Editor Support
+## Editor support
 
 ### Vim
 
-We aren't currently tested with any vim plugin managers, however, adding the
-plugin from a git clone is fairly easy:
+We aren't currently tested with any vim plugin managers, however, adding the plugin from a git clone is fairly easy:
 
-* Run `cargo build --release`
-* Add `source /path/to/rubyfmt.vim` to your `~/.vimrc` (e.g. [my dotfiles](https://github.com/penelopezone/dotfiles/commit/2c0e9c1215de368e64e063021e9523aa349c5454#diff-2152fa38b4d8bb10c75d6339a959650dR253) please note, this line is commented)
-* Add `let g:rubyfmt_path = /path/to/target/release/rubyfmt-main` beneath the source line
+- Run `cargo build --release`
+- Add `source /path/to/rubyfmt.vim` to your `~/.vimrc` (e.g. [my dotfiles](https://github.com/penelopezone/dotfiles/commit/2c0e9c1215de368e64e063021e9523aa349c5454#diff-2152fa38b4d8bb10c75d6339a959650dR253) please note, this line is commented)
+- Add `let g:rubyfmt_path = /path/to/target/release/rubyfmt-main` beneath the source line
 
 ### Visual Studio Code
 
-Rubyfmt is a supported formatter in the popular
-[vscode ruby extension](https://marketplace.visualstudio.com/items?itemName=rebornix.Ruby).
-You should copy `rubyfmt-main` to be called `rubyfmt` on your PATH .
-Once installed, add the following to vscode's `settings.json` file:
+Rubyfmt is a supported formatter in the popular [vscode ruby extension](https://marketplace.visualstudio.com/items?itemName=rebornix.Ruby). You should copy `rubyfmt-main` to be called `rubyfmt` on your PATH . Once installed, add the following to vscode's `settings.json` file:
 
-``` json
+```json
   "ruby.useLanguageServer": true,
   "ruby.format": "rubyfmt",
   "[ruby]": {
-      "editor.formatOnSave": true
+    "editor.formatOnSave": true
   },
 ```
 
-### RubyMine (and similar Jetbrains family IDE)
+### RubyMine (and similar JetBrains family IDE)
 
 [Install](https://www.jetbrains.com/help/ruby/settings-tools-file-watchers.html) the File Watchers plugin and configue it like shown below.
 
@@ -68,15 +63,16 @@ Install the [rubyfmt plugin](https://github.com/toreriklinnerud/sublime-rubyfmt/
 Ruby files are formatted on save or by pressing `Alt + ;` or on macOS: `Cmd + ;`. `rubyfmt` is assumed to be on path.
 
 Overridable default settings:
- ``` json
- {
-   "ruby_executable": "ruby",
-   "rubyfmt_executable": "rubyfmt",
-   "format_on_save": true,
- }
- ```
 
- ### Atom
+```json
+{
+  "ruby_executable": "ruby",
+  "rubyfmt_executable": "rubyfmt",
+  "format_on_save": true
+}
+```
+
+### Atom
 
 Install the [rubyfmt package](https://github.com/toreriklinnerud/atom-rubyfmt/) from Settings > Packages.
 
@@ -84,4 +80,4 @@ Ruby files are formatted on save or by pressing `Alt + ;` or on macOS: `Cmd + ;`
 
 ## Contributing
 
-Please checkout [our contributing guide](./CONTRIBUTING.md)
+Please check out [our contributing guide](./CONTRIBUTING.md).
