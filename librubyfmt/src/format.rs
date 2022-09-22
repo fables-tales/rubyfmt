@@ -3128,12 +3128,14 @@ pub fn format_when_or_else(ps: &mut dyn ConcreteParserState, tail: WhenOrElse) {
                 ps.with_start_of_line(
                     true,
                     Box::new(|ps| {
+                        ps.on_line(e.2.start_line());
                         ps.emit_newline();
-                        ps.wind_line_forward();
-                        ps.shift_comments();
                         for expr in e.1 {
                             format_expression(ps, expr);
                         }
+
+                        ps.wind_dumping_comments_until_line(e.2.end_line());
+                        ps.shift_comments();
                     }),
                 );
             }));
