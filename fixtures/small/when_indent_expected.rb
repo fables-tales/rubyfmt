@@ -15,3 +15,10 @@ else
   # Default for all non-supported attempt types
   T.absurd
 end
+
+case type
+when Thing
+  # Do Nothing
+else
+  # Still do nothing
+end

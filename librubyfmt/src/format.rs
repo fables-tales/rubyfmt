@@ -3135,7 +3135,6 @@ pub fn format_when_or_else(ps: &mut dyn ConcreteParserState, tail: WhenOrElse) {
                         }
 
                         ps.wind_dumping_comments_until_line(e.2.end_line());
-                        ps.shift_comments();
                     }),
                 );
             }));
