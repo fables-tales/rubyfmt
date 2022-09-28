@@ -1187,7 +1187,7 @@ pub struct Label(pub label_tag, pub String, pub LineCol);
 
 def_tag!(symbol_literal_tag, "symbol_literal");
 #[derive(Deserialize, Debug, Clone)]
-pub struct SymbolLiteral(pub symbol_literal_tag, pub SymbolOrBare);
+pub struct SymbolLiteral(pub symbol_literal_tag, pub SymbolOrBare, pub StartEnd);
 
 #[derive(RipperDeserialize, Debug, Clone)]
 pub enum SymbolOrBare {

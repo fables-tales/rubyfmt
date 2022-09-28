@@ -1033,6 +1033,8 @@ pub fn format_symbol_literal(ps: &mut dyn ConcreteParserState, symbol_literal: S
         ps.emit_indent();
     }
 
+    ps.on_line(symbol_literal.2.start_line());
+
     ps.with_start_of_line(
         false,
         Box::new(|ps| match symbol_literal.1 {

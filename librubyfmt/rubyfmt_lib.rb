@@ -404,6 +404,10 @@ class Parser < Ripper::SexpBuilderPP
     super
   end
 
+  def on_symbol_literal(*_args)
+    with_lineno { super }
+  end
+
   def on_string_literal(*args, &blk)
     if @heredoc_stack.last
       heredoc_parts = @heredoc_stack.pop
