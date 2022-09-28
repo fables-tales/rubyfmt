@@ -3179,6 +3179,7 @@ pub fn format_case(ps: &mut dyn ConcreteParserState, case: Case) {
         ps.wind_dumping_comments_until_line(end_line);
         ps.emit_newline();
     }
+    ps.on_line(case.3 .1);
 }
 
 pub fn format_retry(ps: &mut dyn ConcreteParserState, r: Retry) {
@@ -3565,7 +3566,7 @@ pub fn format_bare_return_args(
 
 pub fn format_expression(ps: &mut dyn ConcreteParserState, expression: Expression) {
     let expression = normalize(expression);
-    debug!("noramlized expression: {:?}", expression);
+    debug!("normalized expression: {:?}", expression);
     match expression {
         Expression::Def(def) => format_def(ps, def),
         Expression::MethodCall(mc) => format_method_call(ps, mc),
