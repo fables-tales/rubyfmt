@@ -2825,30 +2825,13 @@ pub fn format_brace_block(ps: &mut dyn ConcreteParserState, brace_block: BraceBl
     let bv = brace_block.1;
     let body = brace_block.2;
     let StartEnd(start_line, end_line) = brace_block.3;
-    let body_is_empty = is_empty_bodystmt(&body);
 
     ps.on_line(start_line);
 
     let new_body = body.clone();
 
-    let is_empty_with_comments = body_is_empty && ps.has_comments_in_line(start_line, end_line);
-    let is_multiline = ps.will_render_as_multiline(Box::new(|next_ps| {
-        next_ps.new_block(Box::new(|next_ps| {
-            next_ps.with_start_of_line(
-                true,
-                Box::new(|next_ps| {
-                    next_ps.with_formatting_context(
-                        FormattingContext::CurlyBlock,
-                        Box::new(|next_ps| {
-                            for expr in new_body.into_iter() {
-                                format_expression(next_ps, expr);
-                            }
-                        }),
-                    );
-                }),
-            );
-        }));
-    }));
+    let will_render_multiline =
+        brace_contents_will_render_multiline(ps, start_line, end_line, new_body);
 
     ps.emit_ident("{".to_string());
 
@@ -2856,10 +2839,19 @@ pub fn format_brace_block(ps: &mut dyn ConcreteParserState, brace_block: BraceBl
         format_blockvar(ps, bv);
     }
 
-    let will_render_multiline = is_multiline || is_empty_with_comments;
+    render_block_contents(ps, will_render_multiline, body, end_line);
+    ps.emit_ident("}".to_string());
+}
+
+fn render_block_contents(
+    ps: &mut dyn ConcreteParserState,
+    will_render_multiline: bool,
+    body: Vec<Expression>,
+    end_line: u64,
+) {
     ps.new_block(Box::new(|ps| {
         ps.with_start_of_line(
-            is_multiline,
+            will_render_multiline,
             Box::new(|ps| {
                 if will_render_multiline {
                     ps.emit_newline();
@@ -2872,15 +2864,40 @@ pub fn format_brace_block(ps: &mut dyn ConcreteParserState, brace_block: BraceBl
             }),
         );
     }));
-
     if will_render_multiline {
         ps.emit_indent();
     } else {
         ps.emit_space();
     }
-
     ps.wind_dumping_comments_until_line(end_line);
-    ps.emit_ident("}".to_string());
+}
+
+fn brace_contents_will_render_multiline(
+    ps: &mut dyn ConcreteParserState,
+    start_line: u64,
+    end_line: u64,
+    body: Vec<Expression>,
+) -> bool {
+    let has_comments = ps.has_comments_in_line(start_line, end_line);
+    let is_multiline = ps.will_render_as_multiline(Box::new(|next_ps| {
+        next_ps.new_block(Box::new(|next_ps| {
+            next_ps.with_start_of_line(
+                true,
+                Box::new(|next_ps| {
+                    next_ps.with_formatting_context(
+                        FormattingContext::CurlyBlock,
+                        Box::new(|next_ps| {
+                            for expr in body.into_iter() {
+                                format_expression(next_ps, expr);
+                            }
+                        }),
+                    );
+                }),
+            );
+        }));
+    }));
+
+    is_multiline || has_comments
 }
 
 pub fn format_do_block(ps: &mut dyn ConcreteParserState, do_block: DoBlock) {
@@ -3247,14 +3264,12 @@ pub fn format_stabby_lambda(ps: &mut dyn ConcreteParserState, sl: StabbyLambda) 
         ps.emit_indent();
     }
 
+    let StartEnd(start_line, end_line) = sl.3;
+    ps.on_line(start_line);
+
     let params = sl.1;
+    let body = sl.2;
 
-    let tpe = sl.2;
-    debug_assert!(tpe == "do" || tpe == "curly");
-
-    let body = sl.3;
-    let linecol = sl.4;
-    ps.on_line(linecol.0);
     ps.with_start_of_line(
         false,
         Box::new(|ps| {
@@ -3264,41 +3279,21 @@ pub fn format_stabby_lambda(ps: &mut dyn ConcreteParserState, sl: StabbyLambda) 
             }
             format_paren_or_params(ps, params);
 
-            let (open_delim, close_delim) = if tpe == "do" {
-                ("do".to_string(), "end".to_string())
-            } else {
-                ("{".to_string(), "}".to_string())
-            };
-
+            // Curly blocks are always represented as ExpressionLists (stmt_add nodes)
+            // while do/end blocks are BodyStmt nodes
             match body {
                 ExpressionListOrBodyStmt::ExpressionList(bud) => {
-                    let mut b = bud;
-                    //lambdas typically are a single statement, so line breaking them would
-                    //be masochistic
-                    if tpe == "curly" && b.len() == 1 {
-                        ps.emit_ident(" { ".to_string());
-                        format_expression(ps, b.remove(0));
-                        ps.emit_ident(" }".to_string());
-                    } else {
-                        ps.emit_space();
-                        ps.emit_ident(open_delim);
-                        ps.emit_newline();
-                        ps.new_block(Box::new(|ps| {
-                            ps.with_start_of_line(
-                                true,
-                                Box::new(|ps| {
-                                    for expr in b.into_iter() {
-                                        format_expression(ps, expr);
-                                    }
-                                }),
-                            );
-                        }));
-                        ps.emit_ident(close_delim);
-                    }
+                    let b = bud;
+                    let will_render_multiline =
+                        brace_contents_will_render_multiline(ps, start_line, end_line, b.clone());
+                    ps.emit_space();
+                    ps.emit_ident("{".to_string());
+                    render_block_contents(ps, will_render_multiline, b, end_line);
+                    ps.emit_ident("}".to_string());
                 }
                 ExpressionListOrBodyStmt::BodyStmt(bs) => {
                     ps.emit_space();
-                    ps.emit_ident(open_delim);
+                    ps.emit_do_keyword();
                     ps.emit_newline();
                     ps.new_block(Box::new(|ps| {
                         ps.with_start_of_line(
@@ -3308,11 +3303,19 @@ pub fn format_stabby_lambda(ps: &mut dyn ConcreteParserState, sl: StabbyLambda) 
                             }),
                         );
                     }));
-                    ps.emit_ident(close_delim);
+                    ps.with_start_of_line(
+                        true,
+                        Box::new(|ps| {
+                            ps.wind_dumping_comments_until_line(end_line);
+                            ps.emit_end()
+                        }),
+                    );
                 }
             }
         }),
     );
+
+    ps.wind_dumping_comments_until_line(end_line);
 
     if ps.at_start_of_line() {
         ps.emit_newline();

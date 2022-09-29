@@ -365,7 +365,7 @@ class Parser < Ripper::SexpBuilderPP
   end
 
   def on_tlambda(*args)
-    @tlambda_stack << [lineno, column]
+    @tlambda_stack << lineno
     super
   end
 
@@ -465,14 +465,7 @@ class Parser < Ripper::SexpBuilderPP
   end
 
   def on_lambda(*args, &blk)
-    terminator = @file_lines[lineno - 1]
-
-    if terminator.include?("}")
-      args.insert(1, :curly)
-    else
-      args.insert(1, :do)
-    end
-    args.insert(args.length, @tlambda_stack.pop)
+    args.insert(args.length, [@tlambda_stack.pop, lineno])
     [:lambda, *args]
   end
 

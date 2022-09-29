@@ -1956,9 +1956,8 @@ def_tag!(stabby_lambda_tag, "lambda");
 pub struct StabbyLambda(
     stabby_lambda_tag,
     pub ParenOrParams,
-    pub String,
     pub ExpressionListOrBodyStmt,
-    pub LineCol,
+    pub StartEnd,
 );
 
 def_tag!(imaginary_tag, "@imaginary");
