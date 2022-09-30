@@ -434,6 +434,14 @@ class Parser < Ripper::SexpBuilderPP
             else
               args[0][1][1] = es.inspect[1..-2]
             end
+            # Match at word boundaries and beginning/end of the string
+            # so that things like `'\n'` correctly become `"\\n"`
+            # instead of rendering as actual whitespace
+            #
+            # About this regex: `(?<!\\)` does a negative lookup for slashes
+            # before the newline escape, which will only match instances
+            # like `\\n` and not `\\\\n`
+            args[0][1][1].gsub!(/(?<!\\)\\n/, "\n")
           end
         else
           # find delimiters after an odd number of backslashes, or quotes after even number.
