@@ -153,7 +153,7 @@ pub extern "C" fn rubyfmt_string_len(s: &RubyfmtString) -> usize {
 #[no_mangle]
 extern "C" fn rubyfmt_string_free(rubyfmt_string: *mut RubyfmtString) {
     unsafe {
-        Box::from_raw(rubyfmt_string);
+        drop(Box::from_raw(rubyfmt_string));
     }
 }
 
