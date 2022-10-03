@@ -2647,17 +2647,27 @@ fn format_call_chain_elements(
 ) {
     let elide_parens = can_elide_parens_for_rspec_dsl_call(&cc);
     let mut has_indented = false;
+    // When set, force all `CallChainElement::ArgsAddStarOrExpressionListOrArgsForward`
+    // to use parens, even when empty. This handles cases like `super()` where parens matter
+    let mut next_args_list_must_use_parens = false;
     for cc_elem in cc {
+        let mut element_is_super_keyword = false;
+
         match cc_elem {
             CallChainElement::Paren(p) => format_paren(ps, p),
-            CallChainElement::IdentOrOpOrKeywordOrConst(i) => format_ident(ps, i.into_ident()),
+            CallChainElement::IdentOrOpOrKeywordOrConst(i) => {
+                let ident = i.into_ident();
+                element_is_super_keyword = ident.1 == "super";
+
+                format_ident(ps, ident)
+            }
             CallChainElement::Block(b) => {
                 ps.emit_space();
                 format_block(ps, b)
             }
             CallChainElement::VarRef(vr) => format_var_ref(ps, vr),
             CallChainElement::ArgsAddStarOrExpressionListOrArgsForward(aas, start_end) => {
-                if !aas.is_empty() {
+                if !aas.is_empty() || next_args_list_must_use_parens {
                     let delims = if elide_parens {
                         BreakableDelims::for_kw()
                     } else {
@@ -2695,6 +2705,7 @@ fn format_call_chain_elements(
             }
             CallChainElement::Expression(e) => format_expression(ps, *e),
         }
+        next_args_list_must_use_parens = element_is_super_keyword;
     }
 
     if has_indented {
