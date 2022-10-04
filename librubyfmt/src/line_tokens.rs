@@ -287,8 +287,10 @@ impl AbstractLineToken {
                 let symbol = hds.closing_symbol();
 
                 let s = hds.render_as_string();
-                res.push(clats_direct_part(s));
-                res.push(cltats_hard_newline());
+                if !s.is_empty() {
+                    res.push(clats_direct_part(s));
+                    res.push(cltats_hard_newline());
+                }
                 if !kind.is_bare() {
                     res.push(clats_indent(indent));
                 }

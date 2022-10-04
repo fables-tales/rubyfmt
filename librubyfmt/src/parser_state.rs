@@ -749,11 +749,14 @@ impl ConcreteParserState for BaseParserState {
             let kind = next_heredoc.kind.clone();
             let symbol = next_heredoc.closing_symbol();
             let space_count = next_heredoc.indent;
+            let string_contents = next_heredoc.render_as_string();
 
-            self.push_concrete_token(ConcreteLineToken::DirectPart {
-                part: next_heredoc.render_as_string(),
-            });
-            self.emit_newline();
+            if !string_contents.is_empty() {
+                self.push_concrete_token(ConcreteLineToken::DirectPart {
+                    part: string_contents,
+                });
+                self.emit_newline();
+            }
             if !kind.is_bare() {
                 self.push_concrete_token(ConcreteLineToken::Indent { depth: space_count })
             } else {
