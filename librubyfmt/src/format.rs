@@ -1423,7 +1423,7 @@ pub fn format_list_like_thing(
             let left = aas.1;
             let star = aas.2;
             let right = aas.3;
-            let mut emitted_args = format_list_like_thing(ps, *left, end_line, single_line);
+            let mut emitted_args = format_list_like_thing(ps, *left, None, single_line);
 
             if single_line {
                 // if we're single line, our predecessor didn't emit a trailing comma

@@ -5,3 +5,10 @@
   # put this at the end
   other_thing
 ]
+
+[
+  "",
+  # Comment one
+  # Comment two
+  *[]
+]
