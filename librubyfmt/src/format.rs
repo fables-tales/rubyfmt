@@ -2447,8 +2447,14 @@ pub fn format_binary(ps: &mut dyn ConcreteParserState, binary: Binary, must_be_m
                             format_expression(ps, *binary.1);
                         }
 
+                        let operator = binary.2;
+                        let comparison_operators =
+                            vec![">", ">=", "===", "==", "<", "<=", "<=>", "!="];
+                        let is_not_comparison =
+                            !comparison_operators.iter().any(|o| o == &operator);
+
                         ps.emit_space();
-                        ps.emit_ident(binary.2);
+                        ps.emit_ident(operator);
 
                         let next_expr = *binary.3;
 
@@ -2457,7 +2463,7 @@ pub fn format_binary(ps: &mut dyn ConcreteParserState, binary: Binary, must_be_m
                         // case we shift comments during the _next_ expression
                         ps.reset_space_count();
 
-                        if render_multiline {
+                        if render_multiline && is_not_comparison {
                             ps.new_block(Box::new(|ps| {
                                 ps.emit_newline();
                                 ps.emit_indent();
