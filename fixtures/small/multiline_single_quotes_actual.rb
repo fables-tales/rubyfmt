@@ -27,5 +27,5 @@ query = '
 
 string_with_slash = '
   example \
-  someone wrote this for some reason
+  someone wrote this for some reason \\
 '

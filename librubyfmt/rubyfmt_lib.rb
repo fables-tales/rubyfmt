@@ -444,7 +444,7 @@ class Parser < Ripper::SexpBuilderPP
             args[0][1][1].gsub!(/(?<!\\)\\n/, "\n")
             # This matches a special edge case where the last character on the line of a
             # single-quoted string is "\".
-            args[0][1][1].gsub!(/\\\\\\n/, "\\\n")
+            args[0][1][1].gsub!(/\\\\\\n/, "\\\\\\\n")
           end
         else
           # find delimiters after an odd number of backslashes, or quotes after even number.
