@@ -2551,13 +2551,29 @@ pub fn format_hash(ps: &mut dyn ConcreteParserState, hash: Hash) {
     if ps.at_start_of_line() {
         ps.emit_indent();
     }
-    let end_line = hash.2.end_line();
-    ps.on_line((hash.2).0);
+    let StartEnd(start_line, end_line) = hash.2;
+    ps.on_line(start_line);
 
     match hash.1 {
         None => {
-            ps.emit_ident("{}".to_string());
-            ps.wind_dumping_comments_until_line(end_line);
+            let is_multiline = start_line != end_line;
+            let has_comments = ps.has_comments_in_line(start_line, end_line);
+
+            if is_multiline && has_comments {
+                // Since we already know this is multiline, we can just use
+                // a breakable and know that it will always be the multiline form
+                // instead of manually inserting all of the newlines/indents for
+                // a multiline hash
+                ps.breakable_of(
+                    BreakableDelims::for_hash(),
+                    Box::new(|ps| {
+                        ps.wind_dumping_comments_until_line(end_line);
+                    }),
+                );
+            } else {
+                ps.emit_ident("{}".to_string());
+                ps.wind_dumping_comments_until_line(end_line);
+            }
         }
         Some(assoc_list_from_args) => {
             ps.breakable_of(
