@@ -20,3 +20,11 @@ def cheese
 end
 
 bees
+
+class Foo < T::Struct
+  prop :name, String
+
+  def has_same_name?(name:)
+    name == name()
+  end
+end

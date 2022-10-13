@@ -238,7 +238,12 @@ pub fn format_kwargs(
             let len = kwargs.len();
             for (idx, (label, expr_or_false)) in kwargs.into_iter().enumerate() {
                 ps.emit_soft_indent();
-                ps.bind_variable((label.1).clone());
+                ps.bind_variable(
+                    (label.1)
+                        .strip_suffix(':')
+                        .expect("Labels are passed through with trailing colons")
+                        .to_string(),
+                );
                 handle_string_and_linecol(ps, label.1, label.2);
 
                 match expr_or_false {
