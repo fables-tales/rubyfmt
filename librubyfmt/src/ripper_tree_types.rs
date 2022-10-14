@@ -1781,6 +1781,16 @@ impl ToMethodCall for Yield {
             }
             x => x.is_paren(),
         };
+
+        // This will be used to determine whether or not to wind to the end of the expression,
+        // but for calls without parens, this will wind _too far_, so we return `None` in those
+        // cases to avoid over-winding
+        let start_end = if use_parens {
+            Some(self.2.clone())
+        } else {
+            None
+        };
+
         MethodCall::new(
             vec![],
             IdentOrOpOrKeywordOrConst::Ident(Ident::new(
@@ -1789,7 +1799,7 @@ impl ToMethodCall for Yield {
             )),
             use_parens,
             normalize_args((self.1).into_arg_node()),
-            Some(self.2),
+            start_end,
         )
     }
 }
