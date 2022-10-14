@@ -518,7 +518,6 @@ pub fn format_rescue(ps: &mut dyn ConcreteParserState, rescue_part: Option<Rescu
                                 .map(|expr| !is_empty_bodystmt(expr))
                                 .unwrap_or(false)
                         {
-                            ps.wind_dumping_comments(None);
                             return;
                         }
                         let cs = class.is_some();
