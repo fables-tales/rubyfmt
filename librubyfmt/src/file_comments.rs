@@ -8,7 +8,7 @@ use crate::parser_state::line_difference_requires_newline;
 use crate::ruby::*;
 use crate::types::LineNumber;
 
-#[derive(Debug, Default)]
+#[derive(Clone, Debug, Default)]
 pub struct FileComments {
     start_of_file_contiguous_comment_lines: Option<CommentBlock>,
     other_comments: BTreeMap<LineNumber, String>,

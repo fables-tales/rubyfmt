@@ -1536,13 +1536,29 @@ pub fn format_inner_string(
                 FormattingContext::StringEmbexpr,
                 Box::new(|ps| {
                     ps.emit_string_content("#{".to_string());
-                    ps.with_start_of_line(
-                        false,
-                        Box::new(|ps| {
-                            let expr = ((e.1).into_iter()).next().expect("should not be empty");
-                            format_expression(ps, expr);
-                        }),
-                    );
+                    // Embexpr must have at least one expression.
+                    // If they have multiple, render them with an expression per line
+                    // just like they are outside of embexprs.
+                    if (e.1).len() == 1 {
+                        ps.with_start_of_line(
+                            false,
+                            Box::new(|ps| {
+                                format_expression(ps, (e.1).first().unwrap().to_owned());
+                            }),
+                        )
+                    } else {
+                        ps.with_start_of_line(
+                            true,
+                            Box::new(|ps| {
+                                ps.new_block(Box::new(|ps| {
+                                    ps.emit_newline();
+                                    for expression in e.1 {
+                                        format_expression(ps, expression);
+                                    }
+                                }));
+                            }),
+                        );
+                    }
                     ps.emit_string_content("}".to_string());
 
                     let on_line_skip = tipe == StringType::Heredoc

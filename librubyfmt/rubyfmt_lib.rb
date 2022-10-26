@@ -36,6 +36,7 @@ class Parser < Ripper::SexpBuilderPP
     @next_heredoc_stack = []
     @heredoc_regex = /(<<[-~]?)(.*$)/
     @regexp_stack = []
+    @embexpr_stack = []
     @string_stack = []
     @kw_stacks = {
       "do" => [],
@@ -82,6 +83,12 @@ class Parser < Ripper::SexpBuilderPP
       if e.is_a?(Array) && e[0] == :@tstring_content && !dedented_lines.include?(e[2][0])
         e = dedent_element(e, width)
         dedented_lines << e[2][0]
+      elsif e.is_a?(Array) && e[0] == :string_embexpr
+        # String embexprs can also span multiple lines, but they don't need
+        # any dedenting since they're not strings, so we should mark
+        # any line they touch as dedented
+        line_start, line_end = e.last
+        (line_start..line_end).each { |line_number| dedented_lines << line_number }
       elsif String === e
         dedent_string(e, width)
       end
@@ -488,6 +495,21 @@ class Parser < Ripper::SexpBuilderPP
   def on_tstring_end(*args, &blk)
     @string_stack << [args[0], lineno]
     super
+  end
+
+  def on_embexpr_beg(*args)
+    @embexpr_stack << [lineno]
+    super
+  end
+
+  def on_embexpr_end(*args)
+    # Append end line to make a StartEnd
+    @embexpr_stack.last << lineno
+    super
+  end
+
+  def on_string_embexpr(*args)
+    super + [@embexpr_stack.pop]
   end
 
   def on_dyna_symbol(*args)

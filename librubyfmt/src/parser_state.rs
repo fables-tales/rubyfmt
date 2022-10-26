@@ -199,6 +199,12 @@ impl ConcreteParserState for BaseParserState {
             self.heredoc_strings.push(hs);
         }
 
+        // Update line number and clear out any comments we might have rendered in e.g. an embexpr
+        //
+        // (Ignore this comment extraction, we've already rendered them elsewhere)
+        let _ = self
+            .comments_hash
+            .extract_comments_to_line(self.current_orig_line_number, end_line);
         self.current_orig_line_number = end_line;
 
         let data = next_ps.render_to_buffer();
@@ -258,7 +264,8 @@ impl ConcreteParserState for BaseParserState {
 
     fn will_render_as_multiline<'a>(&mut self, f: RenderFunc) -> bool {
         let mut next_ps = BaseParserState::new_with_depth_stack_from(self);
-        f(&mut next_ps);
+        // Ignore commments when determining line length
+        next_ps.with_suppress_comments(true, f);
         let data = next_ps.render_to_buffer();
 
         let s = str::from_utf8(&data).expect("string is utf8").to_string();
@@ -267,7 +274,8 @@ impl ConcreteParserState for BaseParserState {
 
     fn will_render_beyond_max_line_length<'a>(&mut self, f: RenderFunc) -> bool {
         let mut next_ps = BaseParserState::new_with_depth_stack_from(self);
-        f(&mut next_ps);
+        // Ignore commments when determining line length
+        next_ps.with_suppress_comments(true, f);
         let data = next_ps.render_to_buffer();
 
         let s = str::from_utf8(&data).expect("string is utf8").to_string();
@@ -892,6 +900,7 @@ impl BaseParserState {
 
     fn new_with_depth_stack_from(ps: &BaseParserState) -> Self {
         let mut next_ps = BaseParserState::new(FileComments::default());
+        next_ps.comments_hash = ps.comments_hash.clone();
         next_ps.start_of_line = ps.start_of_line.clone();
         next_ps.depth_stack = ps.depth_stack.clone();
         next_ps.current_orig_line_number = ps.current_orig_line_number;
@@ -999,5 +1008,5 @@ impl BaseParserState {
 }
 
 pub fn line_difference_requires_newline(to_line: LineNumber, from_line: LineNumber) -> bool {
-    to_line - from_line >= 2
+    (to_line > from_line) && (to_line - from_line >= 2)
 }

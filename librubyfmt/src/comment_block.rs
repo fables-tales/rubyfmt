@@ -3,7 +3,7 @@ use std::ops::Range;
 use crate::line_tokens::ConcreteLineToken;
 use crate::types::{ColNumber, LineNumber};
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct CommentBlock {
     span: Range<LineNumber>,
     comments: Vec<String>,
