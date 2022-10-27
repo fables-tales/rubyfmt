@@ -558,7 +558,6 @@ pub fn format_else(
             ps.dedent(Box::new(|ps| {
                 ps.emit_indent();
                 ps.emit_else();
-                ps.wind_dumping_comments(None);
             }));
             ps.emit_newline();
             ps.with_start_of_line(
@@ -569,6 +568,7 @@ pub fn format_else(
                     }
                 }),
             );
+            ps.wind_dumping_comments(None);
         }
         Some(RescueElseOrExpressionList::RescueElse(re)) => {
             ps.on_line(re.2.start_line());

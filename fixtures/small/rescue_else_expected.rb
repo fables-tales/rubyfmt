@@ -11,3 +11,17 @@ class Foo
 end
 
 Foo.machine
+
+begin
+  # Doing stuff
+  do_things!
+  # Done stuff
+rescue => e
+  # Doing rescue things
+  do_rescue_things!
+  # Done doing rescue things
+else
+  # Doing other stuff
+  do_other_stuff!
+  # Done doing other stuff
+end
