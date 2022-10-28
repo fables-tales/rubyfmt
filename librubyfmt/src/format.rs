@@ -27,7 +27,7 @@ pub fn format_def(ps: &mut dyn ConcreteParserState, def: Def) {
                     ps.with_start_of_line(
                         true,
                         Box::new(|ps| {
-                            format_bodystmt(ps, body);
+                            format_bodystmt(ps, body, end_line);
                         }),
                     );
                 }));
@@ -436,7 +436,11 @@ pub fn emit_params_separator(ps: &mut dyn ConcreteParserState, index: usize, len
     }
 }
 
-pub fn format_bodystmt(ps: &mut dyn ConcreteParserState, bodystmt: Box<BodyStmt>) {
+pub fn format_bodystmt(
+    ps: &mut dyn ConcreteParserState,
+    bodystmt: Box<BodyStmt>,
+    end_line: LineNumber,
+) {
     let expressions = bodystmt.1;
     let rescue_part = bodystmt.2;
     let else_part = bodystmt.3;
@@ -446,8 +450,22 @@ pub fn format_bodystmt(ps: &mut dyn ConcreteParserState, bodystmt: Box<BodyStmt>
         format_expression(ps, expression);
     }
 
+    // Else statements are actually just an array of statements in many cases,
+    // which means we don't get an "end point" from the parser. Instead, we need
+    // to deduce the end point from other nodes. In this case, there are three options
+    // (1) There's no else clause, so what we pass doesn't matter at all
+    // (2) There's an else clause but no ensure clause, so we can assume the end of the
+    //     else clause is the same as the end of the entire body
+    // (3) There's an else clause with an ensure block, in which case the else clause must end
+    //     must end wherever the ensure clause begins
+    let else_end_line = if let Some(ref ensure) = ensure_part {
+        ensure.2.start_line()
+    } else {
+        end_line
+    };
+
     format_rescue(ps, rescue_part);
-    format_else(ps, else_part);
+    format_else(ps, else_part, else_end_line);
     format_ensure(ps, ensure_part);
 }
 
@@ -551,6 +569,7 @@ pub fn format_rescue(ps: &mut dyn ConcreteParserState, rescue_part: Option<Rescu
 pub fn format_else(
     ps: &mut dyn ConcreteParserState,
     else_part: Option<RescueElseOrExpressionList>,
+    end_line: LineNumber,
 ) {
     match else_part {
         None => {}
@@ -568,7 +587,7 @@ pub fn format_else(
                     }
                 }),
             );
-            ps.wind_dumping_comments(None);
+            ps.wind_dumping_comments_until_line(end_line);
         }
         Some(RescueElseOrExpressionList::RescueElse(re)) => {
             ps.on_line(re.2.start_line());
@@ -1146,11 +1165,15 @@ pub fn format_begin(ps: &mut dyn ConcreteParserState, begin: Begin) {
     }
 
     ps.on_line(begin.1 .0);
+
     ps.emit_begin();
 
     ps.new_block(Box::new(|ps| {
         ps.emit_newline();
-        ps.with_start_of_line(true, Box::new(|ps| format_bodystmt(ps, begin.2)));
+        ps.with_start_of_line(
+            true,
+            Box::new(|ps| format_bodystmt(ps, begin.2, begin.1.end_line())),
+        );
     }));
 
     ps.with_start_of_line(
@@ -2201,7 +2224,7 @@ pub fn format_defs(ps: &mut dyn ConcreteParserState, defs: Defs) {
                 ps.with_start_of_line(
                     true,
                     Box::new(|ps| {
-                        format_bodystmt(ps, bodystmt);
+                        format_bodystmt(ps, bodystmt, end_line);
                     }),
                 );
             }));
@@ -2249,7 +2272,7 @@ fn format_constant_body(ps: &mut dyn ConcreteParserState, bodystmt: Box<BodyStmt
                     FormattingContext::ClassOrModule,
                     Box::new(|ps| {
                         ps.emit_newline();
-                        format_bodystmt(ps, bodystmt);
+                        format_bodystmt(ps, bodystmt, end_line);
                     }),
                 );
             }),
@@ -2969,7 +2992,7 @@ pub fn format_do_block(ps: &mut dyn ConcreteParserState, do_block: DoBlock) {
             true,
             Box::new(|ps| {
                 ps.emit_newline();
-                format_bodystmt(ps, body);
+                format_bodystmt(ps, body, end_line);
             }),
         );
     }));
@@ -3292,7 +3315,7 @@ pub fn format_sclass(ps: &mut dyn ConcreteParserState, sc: SClass) {
                 ps.with_start_of_line(
                     true,
                     Box::new(|ps| {
-                        format_bodystmt(ps, body);
+                        format_bodystmt(ps, body, end_line);
                     }),
                 );
             }));
@@ -3352,7 +3375,7 @@ pub fn format_stabby_lambda(ps: &mut dyn ConcreteParserState, sl: StabbyLambda) 
                         ps.with_start_of_line(
                             true,
                             Box::new(|ps| {
-                                format_bodystmt(ps, bs);
+                                format_bodystmt(ps, bs, end_line);
                             }),
                         );
                     }));

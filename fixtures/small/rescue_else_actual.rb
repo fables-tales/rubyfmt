@@ -25,3 +25,5 @@ else
   do_other_stuff!
   # Done doing other stuff
 end
+
+# Some more comments for whatever reason
