@@ -19,3 +19,21 @@ end
 puts(a)
 puts(b)
 foo
+
+ASSIGNED_MESSAGE = lambda do |assignee|
+  <<-END
+    This heredoc chains together in a weird way, talk to [~#{assignee}] about it.
+    Otherwise, it's probably in your best interest not to write things like this.
+  END
+    .lines
+    .map { |line| line.sub("/^[ \\t]+|[ \\t]+$/", "") }
+    .join
+    .strip
+end
+
+ASSIGNED_MESSAGE = lambda do |assignee|
+  <<-END.lines.join.strip
+    This heredoc chains together in a weird way, talk to [~#{assignee}] about it.
+    Otherwise, it's probably in your best interest not to write things like this.
+  END
+end

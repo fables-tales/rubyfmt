@@ -2778,6 +2778,71 @@ fn format_call_chain_elements(
     }
 }
 
+/// Checks whether a call chain both starts with a heredoc expression
+/// *and* contains a call chain element with a breakable.
+///
+/// In practice, this generally means something like the call chain having something
+/// like a method call with args or a block, e.g.
+///
+/// ```ruby
+/// # `|line|` here is the breakable
+/// <<~FOO.lines.map { |line| p(line) }
+/// FOO
+/// ```
+///
+/// Breakables don't play very nicely with heredoc rendering in call chains,
+/// and it would likely be a pretty hefty refactor to properly support this.
+fn is_heredoc_call_chain_with_breakables(cc_elements: &[CallChainElement]) -> bool {
+    if let Some(CallChainElement::Expression(expr)) = cc_elements.first() {
+        if let Expression::StringLiteral(string_literal) = &**expr {
+            if matches!(string_literal, StringLiteral::Heredoc(..)) {
+                let contains_breakables = cc_elements.iter().any(|cc_elem| match cc_elem {
+                    CallChainElement::ArgsAddStarOrExpressionListOrArgsForward(
+                        ArgsAddStarOrExpressionListOrArgsForward::ExpressionList(list),
+                        ..,
+                    ) => !list.is_empty(),
+                    CallChainElement::Block(..) => true,
+                    _ => false,
+                });
+                return dbg!(contains_breakables);
+            }
+        }
+    }
+
+    false
+}
+
+/// When to multiling call chains generally relies on a few broadly-applicable rules, but in practice
+/// it has *many* special-cases, because multilining them ends up colliding with other language features in awkward ways.
+///
+/// ## High-level rules
+///
+/// The two main rules that govern whether or not to multiline a method chain is to split across multiple lines if
+/// (1) the whole chain exceeds the maximum line length or
+/// (2) the chain contains blocks that are split across multiple lines
+///
+/// That said, both of these have some *very large* asterisks, since there are a lot of contexts in which these
+/// have special cases for various reasons (see below).
+///
+/// ## Special conditions
+///
+/// This is a best-effort listing for the exceptional cases and their rationales
+///
+/// * String embedded expressions
+///   * We currently _never_ multiline in string embexprs, mostly because multilining makes it more difficult
+///     to grok the final whitespace of the string.
+/// * Chains consisting only of var/const refs
+///   * It's pretty common to have something of the shape of `Class.method(args)`, and even if it exceeds the max line length,
+///     multilining generally makes this only more confusing at first glance.
+/// * Chains starting with heredocs
+///   * With the current way breakables work, heredocs at the beginning of call chains will will often render really awkwardly
+///     (for example, in the middle of the argument parameters), so we default to multilining if the chain has both a heredoc
+///     and breakables to work around this.
+/// * Long expressions/blocks at the beggining/end
+///   * It's not uncommon to have call chains that start with extremely long expressions (e.g. a long array literal) but
+///     but have very little following it; similarly, it's fairly common to have a short expression but a *very* long
+///     block call following it (e.g. an `each` or `map` call with most of the logic in it). In these cases, we ignore
+///     these long CallChainElements when calculating the length of the final expression to make some common idioms render nicely.
 fn should_multiline_call_chain(ps: &mut dyn ConcreteParserState, method_call: &MethodCall) -> bool {
     // Never multiline if we're in an embedded expression
     if ps.current_formatting_context() == FormattingContext::StringEmbexpr {
@@ -2815,6 +2880,10 @@ fn should_multiline_call_chain(ps: &mut dyn ConcreteParserState, method_call: &M
             }
         }
         _ => {}
+    }
+
+    if is_heredoc_call_chain_with_breakables(&call_chain_to_check) {
+        return true;
     }
 
     // If the first item in the chain is a multiline expression (like a hash or array),

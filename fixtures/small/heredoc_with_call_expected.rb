@@ -1,8 +1,6 @@
-foo = <<EOM.gsub(
+foo = <<EOM
 qoiefjqwoeifjqwe
 EOM
-  ".",
-  "b"
-)
+  .gsub(".", "b")
 
 puts(foo)
