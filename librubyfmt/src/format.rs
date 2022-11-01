@@ -2804,7 +2804,7 @@ fn is_heredoc_call_chain_with_breakables(cc_elements: &[CallChainElement]) -> bo
                     CallChainElement::Block(..) => true,
                     _ => false,
                 });
-                return dbg!(contains_breakables);
+                return contains_breakables;
             }
         }
     }
