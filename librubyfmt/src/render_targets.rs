@@ -60,6 +60,7 @@ pub trait AbstractTokenTarget: std::fmt::Debug {
 
 #[derive(Debug, Clone)]
 pub struct BreakableEntry {
+    #[allow(dead_code)]
     spaces: ColNumber,
     tokens: Vec<AbstractLineToken>,
     line_numbers: HashSet<LineNumber>,
