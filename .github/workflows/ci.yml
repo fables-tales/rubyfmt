@@ -10,8 +10,6 @@ env:
     GEM_HOME: /tmp/.bundle
     GEM_PATH: /tmp/.bundle
     TERM: xterm256
-    SCCACHE_DIR: /tmp/sccache
-    RUSTC_WRAPPER: sccache
 
 jobs:
   rustfmt:
