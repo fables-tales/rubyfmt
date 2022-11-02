@@ -2,10 +2,6 @@
 * en: Ruby format
 * jp: ルビーフォーマット
 
-## Does it work right now?
-
-No, but it's getting really close
-
 ## How do I use it
 
 Build it:
@@ -16,16 +12,11 @@ Build it:
 Rubyfmt supports the following CLI invocations:
 
 * `<whatever> | rubyfmt` pipe from standard in
-* `rubyfmt filename` to format a file to
-  stdout
-* `rubyfmt -i files or directories` format files and directories in place
-* `rubyfmt directory` to format all ruby files in that directory in place
-
-## Useful environment variables:
-
-* `RUBYFMT_DISABLE_SZUSH=1`: disables the backend render queue writer,
-  very useful for debugging, literally useless if you're not developing rubyfmt
-  itself.
+* `rubyfmt -i -- files or directories` to format files and directories in place
+* `rubyfmt -- files or directories` output rubyfmtted code to STDOUT.
+* `rubyfmt -c -- files or directories` output a diff of input and rubyformatted input.
+* `rubyfmt --header-opt-in -- files or directories` to format files only with a `# rubyfmt: true` comment at the top of the file
+* `rubyfmt --header-opt-out -- files or directories` to skip formatting files with a `# rubyfmt: false` comment at the top of the file
 
 ## Editor Support
 

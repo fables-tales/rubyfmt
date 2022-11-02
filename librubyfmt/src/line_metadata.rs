@@ -61,8 +61,4 @@ impl LineMetadata {
     pub fn set_has_do_keyword(&mut self) {
         self.do_keyword = true;
     }
-
-    pub fn wants_spacer_for_conditional(&self) -> bool {
-        !(self.conditional || self.gets_indented || self.end || self.def || self.do_keyword)
-    }
 }

@@ -2,8 +2,8 @@ puts(
   1,
   2,
   <<~TXT
-  3
-  4
+    3
+    4
   TXT
 )
 
@@ -21,10 +21,10 @@ def foo
     1,
     2,
     <<~TXT
-    3
-    4
+      3
+      4
     TXT
-    )
+  )
 
   puts(
     1,
@@ -33,7 +33,7 @@ def foo
       3
       4
 TXT
-    )
+  )
 end
 
 foo

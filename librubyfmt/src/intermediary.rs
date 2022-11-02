@@ -2,16 +2,14 @@ use crate::line_metadata::LineMetadata;
 use crate::line_tokens::*;
 #[cfg(debug_assertions)]
 use log::debug;
+use std::convert::TryInto;
 use std::mem;
 
 #[derive(Debug)]
 pub enum BlanklineReason {
     ComesAfterEnd,
-    Conditional,
     ClassOrModule,
-    DoKeyword,
     EndOfRequireBlock,
-    CommentAfterEnd,
 }
 
 pub struct Intermediary {
@@ -35,30 +33,57 @@ impl Intermediary {
         self.tokens.len()
     }
 
+    // Pops off excessive whitespace for `require` calls followed
+    // by comments. In the intermediary, this looks like
+    // a `require` call followed by
+    // - HardNewline
+    // - HardNewline
+    // - Comment { contents: "" }
+    // - HardNewline
+    // so this method actually pops off the extra empty comment whitespace
+    pub fn pop_require_comment_whitespace(&mut self) {
+        self.tokens.pop();
+        self.tokens.pop();
+        self.index_of_last_hard_newline = self.tokens.len() - 1;
+    }
+
     pub fn pop_heredoc_mistake(&mut self) {
         self.tokens.remove(self.tokens.len() - 1);
         self.tokens.remove(self.tokens.len() - 1);
         self.index_of_last_hard_newline = self.tokens.len() - 1;
     }
 
-    pub fn last_4(
-        &self,
-    ) -> Option<(
-        &ConcreteLineToken,
-        &ConcreteLineToken,
-        &ConcreteLineToken,
-        &ConcreteLineToken,
-    )> {
-        if self.len() < 4 {
+    pub fn fix_heredoc_delim_indent_mistake(&mut self) {
+        // Remove duplicate indent
+        self.tokens.remove(self.tokens.len() - 2);
+    }
+
+    pub fn fix_heredoc_direct_part_indent_mistake(&mut self) {
+        // Remove duplicate indent
+        self.tokens.remove(self.tokens.len() - 3);
+    }
+
+    pub fn fix_heredoc_arg_newline_mistake(&mut self) {
+        // Remove duplicate newline
+        self.tokens.remove(self.tokens.len() - 1);
+        self.index_of_last_hard_newline = self.tokens.len() - 1;
+    }
+
+    pub fn last<const N: usize>(&self) -> Option<[&ConcreteLineToken; N]> {
+        if self.len() < N {
             return None;
         }
 
-        Some((
-            &self.tokens[self.len() - 4],
-            &self.tokens[self.len() - 3],
-            &self.tokens[self.len() - 2],
-            &self.tokens[self.len() - 1],
-        ))
+        let mut values = Vec::with_capacity(N);
+        for index in (0..N).rev() {
+            values.push(&self.tokens[self.len() - index - 1]);
+        }
+
+        Some(
+            values
+                .try_into()
+                .expect("checked the length when constructing this"),
+        )
     }
 
     pub fn into_tokens(self) -> Vec<ConcreteLineToken> {
@@ -101,7 +126,7 @@ impl Intermediary {
             ConcreteLineToken::DoKeyword => {
                 self.handle_do_keyword();
             }
-            ConcreteLineToken::ConditionalKeyword { contents } => self.handle_conditional(contents),
+            ConcreteLineToken::ConditionalKeyword { contents: _ } => self.handle_conditional(),
             ConcreteLineToken::End => self.handle_end(),
             ConcreteLineToken::DefKeyword => self.handle_def(),
             ConcreteLineToken::Indent { depth } => {
@@ -123,18 +148,13 @@ impl Intermediary {
             }
             ConcreteLineToken::Comment { .. } => {
                 if matches!(
-                    self.last_4(),
-                    Some((_, _, ConcreteLineToken::End, ConcreteLineToken::HardNewLine))
-                ) {
-                    self.insert_trailing_blankline(BlanklineReason::CommentAfterEnd);
-                } else if matches!(
-                    self.last_4(),
-                    Some((
+                    self.last::<4>(),
+                    Some([
                         _,
                         _,
                         ConcreteLineToken::HardNewLine,
                         ConcreteLineToken::HardNewLine
-                    ))
+                    ])
                 ) {
                     let mut module_or_class_before_newline = false;
                     let mut past_first_two_newlines = 0;
@@ -178,11 +198,6 @@ impl Intermediary {
 
     fn handle_do_keyword(&mut self) {
         self.current_line_metadata.set_has_do_keyword();
-        if let Some(prev) = &self.previous_line_metadata {
-            if prev.wants_spacer_for_conditional() {
-                self.insert_trailing_blankline(BlanklineReason::DoKeyword);
-            }
-        }
     }
 
     fn handle_class_or_module(&mut self) {
@@ -193,13 +208,8 @@ impl Intermediary {
         }
     }
 
-    fn handle_conditional(&mut self, cond: &str) {
+    fn handle_conditional(&mut self) {
         self.current_line_metadata.set_has_conditional();
-        if let Some(prev) = &self.previous_line_metadata {
-            if prev.wants_spacer_for_conditional() && cond == "if" {
-                self.insert_trailing_blankline(BlanklineReason::Conditional);
-            }
-        }
     }
 
     pub fn clear_breakable_garbage(&mut self) {
@@ -213,6 +223,15 @@ impl Intermediary {
     }
 
     pub fn insert_trailing_blankline(&mut self, _bl: BlanklineReason) {
+        if self.index_of_last_hard_newline <= 2 {
+            self.tokens.insert(
+                self.index_of_last_hard_newline,
+                ConcreteLineToken::HardNewLine,
+            );
+            self.index_of_last_hard_newline += 1;
+            self.debug_assert_newlines();
+            return;
+        }
         match (
             self.tokens.get(self.index_of_last_hard_newline - 2),
             self.tokens.get(self.index_of_last_hard_newline - 1),

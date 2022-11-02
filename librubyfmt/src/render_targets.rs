@@ -1,5 +1,6 @@
 use crate::delimiters::BreakableDelims;
 use crate::line_tokens::{AbstractLineToken, ConcreteLineTokenAndTargets};
+use crate::parser_state::FormattingContext;
 use crate::types::{ColNumber, LineNumber};
 use std::collections::HashSet;
 
@@ -54,14 +55,17 @@ pub trait AbstractTokenTarget: std::fmt::Debug {
     fn index_of_prev_newline(&self) -> Option<usize>;
     fn last_token_is_a_newline(&self) -> bool;
     fn to_breakable_entry(self: Box<Self>) -> BreakableEntry;
+    fn len(&self) -> usize;
 }
 
 #[derive(Debug, Clone)]
 pub struct BreakableEntry {
+    #[allow(dead_code)]
     spaces: ColNumber,
     tokens: Vec<AbstractLineToken>,
     line_numbers: HashSet<LineNumber>,
     delims: BreakableDelims,
+    context: FormattingContext,
 }
 
 impl AbstractTokenTarget for BreakableEntry {
@@ -142,16 +146,25 @@ impl AbstractTokenTarget for BreakableEntry {
     fn is_multiline(&self) -> bool {
         self.line_numbers.len() > 1 || self.any_collapsing_newline_has_heredoc_content()
     }
+
+    fn len(&self) -> usize {
+        self.tokens.len()
+    }
 }
 
 impl BreakableEntry {
-    pub fn new(spaces: ColNumber, delims: BreakableDelims) -> Self {
+    pub fn new(spaces: ColNumber, delims: BreakableDelims, context: FormattingContext) -> Self {
         BreakableEntry {
             spaces,
             tokens: Vec::new(),
             line_numbers: HashSet::new(),
             delims,
+            context,
         }
+    }
+
+    pub fn entry_formatting_context(&self) -> FormattingContext {
+        self.context
     }
 
     fn any_collapsing_newline_has_heredoc_content(&self) -> bool {

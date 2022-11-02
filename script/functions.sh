@@ -13,6 +13,7 @@ f_md5() {
     fi
 }
 
+# shellcheck disable=SC2120
 f_rubyfmt() {
     "${REPO_BASE}/target/release/rubyfmt-main" "$@"
 }
@@ -45,11 +46,11 @@ test_fixtures_folder() {
       actual_file="${expected_file//expected/actual}"
 
       ## Test if the formatting works as expected
-      time f_rubyfmt "$actual_file" > /tmp/out.rb
+      f_rubyfmt < "$actual_file" > /tmp/out.rb
       diff_files o /tmp/out.rb "$expected_file"
 
       ## Test if the formatting is idempotent
-      time f_rubyfmt "$expected_file" > /tmp/out.rb
+      f_rubyfmt < "$expected_file" > /tmp/out.rb
       diff_files i /tmp/out.rb "$expected_file"
     done
 

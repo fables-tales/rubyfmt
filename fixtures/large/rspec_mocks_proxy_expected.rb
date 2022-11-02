@@ -178,7 +178,6 @@ module RSpec
       # @private
       def record_message_received(message, *args, &block)
         @order_group.invoked(SpecificMessage.new(object, message, args))
-
         @messages_received_mutex.synchronize do
           @messages_received << [message, args, block]
         end
@@ -193,7 +192,6 @@ module RSpec
 
         if (stub && expectation && expectation.called_max_times?) || (stub && !expectation)
           expectation.increase_actual_received_count! if expectation && expectation.actual_received_count_matters?
-
           if (expectation = find_almost_matching_expectation(message, *args))
             expectation.advise(*args) unless expectation.expected_messages_received?
           end

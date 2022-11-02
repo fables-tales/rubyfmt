@@ -2,7 +2,7 @@
 use log::debug;
 use std::ffi::CString;
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[repr(transparent)]
 pub struct VALUE(libc::uintptr_t);
 

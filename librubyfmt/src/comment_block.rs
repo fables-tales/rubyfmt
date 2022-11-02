@@ -3,7 +3,7 @@ use std::ops::Range;
 use crate::line_tokens::ConcreteLineToken;
 use crate::types::{ColNumber, LineNumber};
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct CommentBlock {
     span: Range<LineNumber>,
     comments: Vec<String>,
@@ -37,7 +37,11 @@ impl CommentBlock {
 
     pub fn apply_spaces(mut self, indent_depth: ColNumber) -> Self {
         for comment in &mut self.comments {
-            *comment = str::repeat(" ", indent_depth as _) + comment;
+            // Ignore empty strings -- these represent blank lines between
+            // groups of comments
+            if !comment.is_empty() {
+                *comment = str::repeat(" ", indent_depth as _) + comment
+            }
         }
         self
     }

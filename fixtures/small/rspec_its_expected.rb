@@ -1,5 +1,7 @@
-it "a" \
-  "b" do
+it(
+  "a" \
+    "b"
+) do
   #hi
 end
 
@@ -33,6 +35,13 @@ describe "foo", flag: true, other: "b", another: false do
 end
 
 describe("foo", flag: true, other: "b") { it("bar", other: "b", another: false) { 1 } }
+
+describe(
+  "writing some really really long test name",
+  truth: "this isn't actually a test, it just looks like one",
+  opinion: "please don't name your DSL 'describe', but a little too late now I guess"
+) do
+end
 
 RSpec.describe "bees" do
 end

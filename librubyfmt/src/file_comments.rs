@@ -4,10 +4,11 @@ use std::mem;
 use log::debug;
 
 use crate::comment_block::CommentBlock;
+use crate::parser_state::line_difference_requires_newline;
 use crate::ruby::*;
 use crate::types::LineNumber;
 
-#[derive(Debug, Default)]
+#[derive(Clone, Debug, Default)]
 pub struct FileComments {
     start_of_file_contiguous_comment_lines: Option<CommentBlock>,
     other_comments: BTreeMap<LineNumber, String>,
@@ -93,18 +94,63 @@ impl FileComments {
         self.start_of_file_contiguous_comment_lines.take()
     }
 
-    pub fn extract_comments_to_line(&mut self, line_number: LineNumber) -> Option<CommentBlock> {
+    pub fn has_comments_in_lines(&self, start_line: LineNumber, end_line: LineNumber) -> bool {
+        let line_range = start_line..end_line;
+        self.other_comments
+            .keys()
+            .any(|key| line_range.contains(key))
+    }
+
+    pub fn extract_comments_to_line(
+        &mut self,
+        starting_line_number: LineNumber,
+        line_number: LineNumber,
+    ) -> Option<(CommentBlock, LineNumber)> {
         self.other_comments
             .keys()
             .next()
             .copied()
             .map(|lowest_line| {
-                let remaining_comments = self.other_comments.split_off(&(line_number + 1));
+                let remaining_comments = self.other_comments.split_off(&(&line_number + 1));
                 let comments = mem::replace(&mut self.other_comments, remaining_comments)
                     .into_iter()
-                    .map(|(_, v)| v)
-                    .collect();
-                CommentBlock::new(lowest_line..line_number + 1, comments)
+                    .collect::<Vec<(_, _)>>();
+                if comments.is_empty() {
+                    return (
+                        CommentBlock::new(lowest_line..line_number + 1, Vec::new()),
+                        starting_line_number,
+                    );
+                }
+
+                let mut comment_block_with_spaces: Vec<String> = Vec::new();
+                let mut last_line = None;
+
+                if line_difference_requires_newline(
+                    comments.first().unwrap().0,
+                    starting_line_number,
+                ) {
+                    comment_block_with_spaces.push(String::new());
+                }
+
+                for (index, comment_contents) in comments {
+                    if last_line.is_some()
+                        && line_difference_requires_newline(index, last_line.unwrap())
+                    {
+                        comment_block_with_spaces.push(String::new());
+                    }
+                    last_line = Some(index);
+                    comment_block_with_spaces.push(comment_contents);
+                }
+
+                if line_number > last_line.unwrap() + 1 {
+                    last_line = Some(line_number);
+                    comment_block_with_spaces.push(String::new());
+                }
+
+                (
+                    CommentBlock::new(lowest_line..line_number + 1, comment_block_with_spaces),
+                    last_line.unwrap(),
+                )
             })
     }
 }

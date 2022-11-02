@@ -4,7 +4,8 @@ lambda { |x, ;y|
   puts(y)
   y = 19
   puts(y)
-}.call(17)
+}
+  .call(17)
 puts(y)
 
 a do |;x|

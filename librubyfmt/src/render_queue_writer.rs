@@ -1,11 +1,12 @@
 use crate::intermediary::{BlanklineReason, Intermediary};
 use crate::line_tokens::*;
+use crate::parser_state::FormattingContext;
 use crate::render_targets::{AbstractTokenTarget, BreakableEntry, ConvertType};
 #[cfg(debug_assertions)]
 use log::debug;
 use std::io::{self, Write};
 
-const MAX_LINE_LENGTH: usize = 120;
+pub const MAX_LINE_LENGTH: usize = 120;
 
 pub struct RenderQueueWriter {
     tokens: Vec<ConcreteLineTokenAndTargets>,
@@ -27,6 +28,8 @@ impl RenderQueueWriter {
     }
 
     fn render_as(accum: &mut Intermediary, tokens: Vec<ConcreteLineTokenAndTargets>) {
+        use ConcreteLineToken::*;
+
         for next_token in tokens.into_iter() {
             match next_token {
                 ConcreteLineTokenAndTargets::BreakableEntry(be) => {
@@ -35,28 +38,65 @@ impl RenderQueueWriter {
                 ConcreteLineTokenAndTargets::ConcreteLineToken(x) => accum.push(x),
             }
 
-            if accum.len() >= 4 {
-                if let (
-                    &ConcreteLineToken::HeredocClose { .. },
-                    &ConcreteLineToken::HardNewLine,
-                    &ConcreteLineToken::Indent { .. },
-                    &ConcreteLineToken::HardNewLine,
-                ) = accum.last_4().expect("we checked length")
-                {
-                    accum.pop_heredoc_mistake();
-                }
+            if let Some(
+                [&ConcreteLineToken::HeredocClose { .. }, &ConcreteLineToken::HardNewLine, &ConcreteLineToken::Indent { .. }, &ConcreteLineToken::HardNewLine],
+            ) = accum.last::<4>()
+            {
+                accum.pop_heredoc_mistake();
+            }
 
-                if let (
-                    &ConcreteLineToken::End,
-                    &ConcreteLineToken::HardNewLine,
-                    &ConcreteLineToken::Indent { .. },
-                    x,
-                ) = accum.last_4().expect("we checked length")
-                {
-                    if x.is_in_need_of_a_trailing_blankline() {
-                        accum.insert_trailing_blankline(BlanklineReason::ComesAfterEnd);
+            if let Some(
+                [&ConcreteLineToken::End, &ConcreteLineToken::HardNewLine, &ConcreteLineToken::Indent { .. }, x],
+            ) = accum.last::<4>()
+            {
+                if x.is_in_need_of_a_trailing_blankline() {
+                    accum.insert_trailing_blankline(BlanklineReason::ComesAfterEnd);
+                }
+            }
+
+            if let Some([HardNewLine, HardNewLine, Comment { contents }, HardNewLine]) =
+                accum.last::<4>()
+            {
+                if contents.is_empty() {
+                    accum.pop_require_comment_whitespace();
+                }
+            }
+
+            if let Some(
+                [&ConcreteLineToken::End, &ConcreteLineToken::AfterCallChain, &ConcreteLineToken::HardNewLine, &ConcreteLineToken::Indent { .. }, x],
+            ) = accum.last::<5>()
+            {
+                match x {
+                    ConcreteLineToken::DefKeyword => {}
+                    _ => {
+                        if x.is_in_need_of_a_trailing_blankline()
+                            && !x.is_method_visibility_modifier()
+                        {
+                            accum.insert_trailing_blankline(BlanklineReason::ComesAfterEnd);
+                        }
                     }
                 }
+            }
+
+            if let Some(
+                [&ConcreteLineToken::HeredocClose { .. }, &ConcreteLineToken::HardNewLine, &ConcreteLineToken::Indent { .. }, &ConcreteLineToken::Indent { .. }, &ConcreteLineToken::Delim { .. }],
+            ) = accum.last::<5>()
+            {
+                accum.fix_heredoc_delim_indent_mistake();
+            }
+
+            if let Some(
+                [&ConcreteLineToken::HeredocClose { .. }, &ConcreteLineToken::HardNewLine, &ConcreteLineToken::Indent { .. }, &ConcreteLineToken::Indent { .. }, &ConcreteLineToken::DirectPart { .. }],
+            ) = accum.last::<5>()
+            {
+                accum.fix_heredoc_direct_part_indent_mistake();
+            }
+
+            if let Some(
+                [&ConcreteLineToken::HeredocClose { .. }, &ConcreteLineToken::HardNewLine, &ConcreteLineToken::Indent { .. }, &ConcreteLineToken::Delim { .. }, &ConcreteLineToken::Comma, &ConcreteLineToken::HardNewLine, &ConcreteLineToken::HardNewLine],
+            ) = accum.last::<7>()
+            {
+                accum.fix_heredoc_arg_newline_mistake();
             }
         }
     }
@@ -64,7 +104,9 @@ impl RenderQueueWriter {
     fn format_breakable_entry(accum: &mut Intermediary, be: BreakableEntry) {
         let length = be.single_line_string_length();
 
-        if length > MAX_LINE_LENGTH || be.is_multiline() {
+        if (length > MAX_LINE_LENGTH || be.is_multiline())
+            && be.entry_formatting_context() != FormattingContext::StringEmbexpr
+        {
             Self::render_as(accum, be.into_tokens(ConvertType::MultiLine));
         } else {
             Self::render_as(accum, be.into_tokens(ConvertType::SingleLine));
@@ -85,17 +127,27 @@ impl RenderQueueWriter {
             debug!("final tokens: {:?}", tokens);
         }
 
-        let len = tokens.len();
-        if len > 2 {
-            let delete = matches!(
-                (tokens.get(len - 2), tokens.get(len - 1)),
+        loop {
+            let len = tokens.len();
+            if len < 2 {
+                break;
+            }
+
+            let delete = match (tokens.get(len - 2), tokens.get(len - 1)) {
                 (
+                    Some(ConcreteLineToken::Comment { contents }),
                     Some(ConcreteLineToken::HardNewLine),
-                    Some(ConcreteLineToken::HardNewLine)
-                )
-            );
+                ) => contents.is_empty(),
+                (Some(ConcreteLineToken::HardNewLine), Some(ConcreteLineToken::HardNewLine)) => {
+                    true
+                }
+                _ => false,
+            };
+
             if delete {
                 tokens.pop();
+            } else {
+                break;
             }
         }
 

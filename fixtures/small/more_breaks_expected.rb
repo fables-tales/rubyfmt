@@ -3,9 +3,9 @@ def a(&blk)
 end
 
 a do |
-  qweqweoiruqweoiruqweoiruqwioeruioeqwuoriqwuerioqewr,
-  qweoruiqweuroiqweurioqwueroieqwurioqwuerioqweuioruqweoir
-|
+    qweqweoiruqweoiruqweoiruqwioeruioeqwuoriqwuerioqewr,
+    qweoruiqweuroiqweurioqwueroieqwurioqwuerioqweuioruqweoir
+  |
 end
 
 [

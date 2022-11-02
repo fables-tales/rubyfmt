@@ -10,8 +10,6 @@ env:
     GEM_HOME: /tmp/.bundle
     GEM_PATH: /tmp/.bundle
     TERM: xterm256
-    SCCACHE_DIR: /tmp/sccache
-    RUSTC_WRAPPER: sccache
 
 jobs:
   rustfmt:
@@ -35,7 +33,7 @@ jobs:
       - uses: actions/checkout@v1
       - uses: actions-rs/toolchain@v1
         with:
-          toolchain: 1.51.0
+          toolchain: 1.63.0
           components: clippy
           override: true
           profile: minimal
@@ -62,7 +60,7 @@ jobs:
         submodules: true
     - uses: actions-rs/toolchain@v1
       with:
-        toolchain: 1.51.0
+        toolchain: 1.63.0
         override: true
         profile: minimal
     - uses: actions/cache@v2
@@ -74,25 +72,9 @@ jobs:
     - uses: actions/cache@v2
       with:
         path: |
-          /tmp/sccache
-        key: ${{ runner.os }}-sccache-${{ hashFiles('**/Cargo.lock') }}
-    - uses: actions/cache@v2
-      with:
-        path: |
           librubyfmt/ruby_checkout
         key: ${{ runner.os }}-ruby-v1-${{ hashFiles('.git/modules/librubyfmt/ruby_checkout/HEAD') }}
-    - if: runner.os == 'Linux'
-      run: |
-        sudo apt-get install -y build-essential ruby-dev bison
-
-        SCCACHE_VERSION=0.2.15
-        SCCACHE_FILE=sccache-v$SCCACHE_VERSION-x86_64-unknown-linux-musl
-        mkdir -p $HOME/.local/bin
-        curl -L "https://github.com/mozilla/sccache/releases/download/v$SCCACHE_VERSION/$SCCACHE_FILE.tar.gz" | tar xz
-        chmod +x $SCCACHE_FILE/sccache
-        mv -f $SCCACHE_FILE/sccache $HOME/.local/bin/sccache
-        echo "$HOME/.local/bin" >> $GITHUB_PATH
     - if: runner.os == 'macOS'
       run: |
-        brew install sccache automake
+        brew install automake
     - run: ./script/test.sh

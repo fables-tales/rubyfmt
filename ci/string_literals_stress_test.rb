@@ -25,6 +25,44 @@ puts <<EOD
 "abc"\"
 EOD
 
+puts '
+  some stuff \
+  other_stuff \\
+'
+puts "
+  more stuff \\
+  even more stuff \
+"
+puts "
+  group {
+    person {
+      attribute {
+        slug
+      }
+    }
+    created
+    updated
+    otherPeople {
+      name
+    }
+  }
+"
+
+puts '
+  group {
+    person {
+      attribute {
+        slug
+      }
+    }
+    created
+    updated
+    otherPeople {
+      name
+    }
+  }
+'
+
 @foo = 3
 puts '#@foo'
 puts '#{3}'

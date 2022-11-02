@@ -17,5 +17,8 @@ module MathsAndPhysics
   CONST = [
     a, #maths
     b, #physics
+
+    # foreign language
+    c
   ]
 end

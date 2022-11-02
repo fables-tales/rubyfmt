@@ -36,17 +36,32 @@ class Parser < Ripper::SexpBuilderPP
     @next_heredoc_stack = []
     @heredoc_regex = /(<<[-~]?)(.*$)/
     @regexp_stack = []
+    @embexpr_stack = []
     @string_stack = []
     @kw_stacks = {
+      "do" => [],
+      "ensure" => [],
+      "next" => [],
       "return" => [],
       "when" => [],
       "case" => [],
       "yield" => [],
       "break" => [],
       "super" => [],
+      "retry" => [],
+      "redo" => [],
+      "rescue" => [],
+      "begin" => [],
+      "else" => [],
+      "if" => [],
+      "unless" => [],
+      "elsif" => [],
+      "while" => [],
+      "until" => [],
     }
     @tlambda_stack = []
     @array_location_stacks = []
+    @rbracket_stack = []
     @lbrace_stack = []
     @comments = {}
     @last_ln = 0
@@ -55,6 +70,31 @@ class Parser < Ripper::SexpBuilderPP
   def on_nl(*args)
     @last_ln = lineno+1
     super(*args)
+  end
+
+  # This method has incorrect behavior inside Ripper,
+  # so we patch it for now
+  # original: https://github.com/ruby/ruby/blob/118368c1dd9304c0c21a4437016af235bd9b8438/ext/ripper/lib/ripper/sexp.rb#L144-L155
+  def on_heredoc_dedent(val, width)
+    dedented_lines = []
+    val.map! do |e|
+      next e if e.is_a?(Symbol) && /_content\z/ =~ e
+
+      if e.is_a?(Array) && e[0] == :@tstring_content && !dedented_lines.include?(e[2][0])
+        e = dedent_element(e, width)
+        dedented_lines << e[2][0]
+      elsif e.is_a?(Array) && e[0] == :string_embexpr
+        # String embexprs can also span multiple lines, but they don't need
+        # any dedenting since they're not strings, so we should mark
+        # any line they touch as dedented
+        line_start, line_end = e.last
+        (line_start..line_end).each { |line_number| dedented_lines << line_number }
+      elsif String === e
+        dedent_string(e, width)
+      end
+      e
+    end
+    val
   end
 
   def parse
@@ -92,6 +132,7 @@ class Parser < Ripper::SexpBuilderPP
     end
 
     define_method(:"on_#{event}_beg") do |delim|
+      @array_location_stacks << lineno
       @percent_array_stack = delim
     end
 
@@ -120,95 +161,297 @@ class Parser < Ripper::SexpBuilderPP
     end
   end
 
-  def on_lbrace(*args)
-    @lbrace_stack << [lineno, column]
+  def on_next(*_args)
+    super + [start_end_for_keyword('next')]
   end
 
-  def on_brace_block(params, body)
-    @lbrace_stack.pop
+  def on_if(*_args)
+    super + [start_end_for_keyword('if')]
+  end
+
+  def on_unless(*_args)
+    super + [start_end_for_keyword('unless')]
+  end
+
+  def on_else(*_args)
+    super + [start_end_for_keyword('else')]
+  end
+
+  def on_elsif(*_args)
+    super + [start_end_for_keyword('elsif')]
+  end
+
+  def on_lbrace(*args)
+    @lbrace_stack << lineno
+  end
+
+  def on_rbracket(*_args)
+    @rbracket_stack << lineno
     super
   end
 
+  def on_brace_block(params, body)
+    start_line = @lbrace_stack.pop
+    end_line = lineno
+    super + [[start_line, end_line]]
+  end
+
+  def on_do_block(*args)
+    super + [start_end_for_keyword('do')]
+  end
+
+  def on_block_var(*_args)
+    with_lineno { super }
+  end
+
+  # In the case of mod statements, we've previously
+  # pushed their lines onto the stack but now
+  # don't need them, so we pop them off and ignore them
+
+  def on_if_mod(*_args)
+    # In this case, we don't use the line here, so just remove it
+    @kw_stacks['if'].pop
+    super
+  end
+
+  def on_unless_mod(*_args)
+    # In this case, we don't use the line here, so just remove it
+    @kw_stacks['unless'].pop
+    super
+  end
+
+  def on_while_mod(*_args)
+    @kw_stacks['while'].pop
+    super
+  end
+
+  def on_until_mod(*_args)
+    @kw_stacks['until'].pop
+    super
+  end
+
+  def on_while(*args)
+    super + [start_end_for_keyword('while')]
+  end
+
+  def on_until(*args)
+    super + [start_end_for_keyword('until')]
+  end
+
   def on_hash(assocs)
-    [:hash, assocs, @lbrace_stack.pop]
+    [:hash, assocs, [@lbrace_stack.pop, lineno]]
   end
 
   def on_zsuper
-    [:zsuper, [lineno, column]]
+    # ripper doesn't handle on_zsuper correctly.
+    # however `on_kw` catches zsuper, so use that!
+    [:zsuper, start_end_for_keyword('super')]
+  end
+
+  def on_yield0
+    # ripper doesn't handle on_yield0 correctly.
+    # however `on_kw` catches yield0, so use that!
+    [:yield0, start_end_for_keyword('yield')]
+  end
+
+  def on_redo
+    # ripper doesn't handle on_redo correctly.
+    # however `on_kw` catches redo, so use that!
+    [:redo, start_end_for_keyword('redo')]
+  end
+
+  def on_begin(*args)
+    beg, statements = super
+    [beg, start_end_for_keyword('begin'), statements]
+  end
+
+  def on_rescue(*args)
+    super + [start_end_for_keyword('rescue')]
+  end
+
+  def on_ensure(*args)
+    super + [start_end_for_keyword('ensure')]
+  end
+
+  def on_retry
+    # ripper doesn't handle on_retry correctly.
+    # however `on_kw` catches retry, so use that!
+    [:retry, start_end_for_keyword('retry')]
+  end
+
+  def on_arg_paren(args_node)
+    with_lineno { super }
+  end
+
+  def on_call(*_args)
+    with_lineno { super }
+  end
+
+  def on_method_add_arg(*_args)
+    with_lineno { super }
+  end
+
+  def on_paren(*_args)
+    with_lineno { super }
+  end
+
+  def on_args_add_block(*_args)
+    with_lineno { super }
+  end
+
+  def on_params(*_args)
+    with_lineno { super }
+  end
+
+  def on_vcall(*_args)
+    with_lineno { super }
   end
 
   def on_lbracket(*args)
-    @array_location_stacks << [lineno, column]
+    @array_location_stacks << lineno
   end
 
   def on_array(*args)
     res = super
     res[1][1].shift if (ary = res.dig(1, 1, 0)) && ary.is_a?(Array) && ary[0] == :_rubyfmt_delim # it's done its job
-    res << @array_location_stacks.pop
+    res << [@array_location_stacks.pop, lineno]
     res
+  end
+
+  def on_aref(*_args)
+    # This isn't needed, so we just remove it for tracking
+    @array_location_stacks.pop
+    # The lineno here is actually one line *after*
+    # the line of the bracket, so we manually trace
+    # the line of the rbracket instead
+    super + [[@rbracket_stack.pop, column]]
+  end
+
+  def on_aref_field(*_args)
+    # This isn't needed, so we just remove it for tracking
+    @array_location_stacks.pop
+    # The lineno here is actually one line *after*
+    # the line of the bracket, so we manually trace
+    # the line of the rbracket instead
+    super + [[@rbracket_stack.pop, column]]
   end
 
   def on_kw(kw)
     if stack = @kw_stacks[kw]
-      stack << [lineno, column]
+      stack << lineno
     end
     super
   end
 
   def on_super(args)
-    [:super, args, @kw_stacks["super"].pop]
+    [:super, args, start_end_for_keyword('super')]
   end
 
   def on_return(args)
-    [:return, args, @kw_stacks["return"].pop]
+    [:return, args, start_end_for_keyword('return')]
+  end
+
+  def on_return0
+    [:return0, start_end_for_keyword('return')]
   end
 
   def on_when(cond, body, tail)
-    [:when, cond, body, tail, @kw_stacks["when"].pop]
+    [:when, cond, body, tail, start_end_for_keyword('when')]
   end
 
   def on_case(cond, body)
-    [:case, cond, body, @kw_stacks["case"].pop]
+    [:case, cond, body, start_end_for_keyword('case')]
   end
 
   def on_yield(arg)
-    [:yield, arg, @kw_stacks["yield"].pop]
+    [:yield, arg, start_end_for_keyword('yield')]
   end
 
   def on_break(arg)
-    [:break, arg, @kw_stacks["break"].pop]
+    [:break, arg, start_end_for_keyword('break')]
   end
 
   def on_tlambda(*args)
-    @tlambda_stack << [lineno, column]
+    @tlambda_stack << lineno
     super
+  end
+
+  def on_def(*args)
+    with_lineno { super }
+  end
+
+  def on_defs(*args)
+    with_lineno { super }
+  end
+
+  def on_class(*args)
+    with_lineno { super }
+  end
+
+  def on_sclass(*args)
+    with_lineno { super }
+  end
+
+  def on_module(*args)
+    with_lineno { super }
   end
 
   def on_heredoc_beg(*args, &blk)
     heredoc_parts = @heredoc_regex.match(args[0]).captures
     raise "bad heredoc" unless heredoc_parts.select { |x| x != nil }.count == 2
-    @next_heredoc_stack.push(heredoc_parts)
+    @next_heredoc_stack.push([heredoc_parts, [lineno]])
     super
   end
 
   def on_heredoc_end(*args, &blk)
-    @heredoc_stack.push(@next_heredoc_stack.pop)
+    # Append current lineno to the current heredoc
+    heredoc = @next_heredoc_stack.pop
+    heredoc.last.push(lineno)
+    @heredoc_stack.push(heredoc)
     super
+  end
+
+  def on_symbol_literal(*_args)
+    with_lineno { super }
   end
 
   def on_string_literal(*args, &blk)
     if @heredoc_stack.last
       heredoc_parts = @heredoc_stack.pop
-      args.insert(0, [:heredoc_string_literal, heredoc_parts])
+      args.insert(0, [:heredoc_string_literal] + heredoc_parts)
     else
-      end_delim = @string_stack.pop
-      start_delim = @string_stack.pop
+      end_delim, end_line = @string_stack.pop
+      start_delim, start_line = @string_stack.pop
+
+      args << [start_line, end_line]
 
       if start_delim && end_delim && start_delim != "\""
         if start_delim == "'" || start_delim.start_with?("%q")
           # re-evaluate the string with its own quotes to handle escaping.
           if args[0][1]
-            args[0][1][1] = eval("#{start_delim}#{args[0][1][1]}#{end_delim}").inspect[1..-2]
+            es = eval("#{start_delim}#{args[0][1][1]}#{end_delim}")
+            # did the original contain \u's?
+            have_source_slash_u = args[0][1][1].include?("\\u")
+            # if all chars are unicode definitionally none of them are delimiters so we
+            # can skip inspect
+            have_all_unicode = es.chars.all? { |x| x.bytes.first >= 128 }
+
+            if have_all_unicode && !have_source_slash_u
+              "#{start_delim}#{args[0][1][1]}#{end_delim}"
+            else
+              args[0][1][1] = es.inspect[1..-2]
+            end
+            # Match at word boundaries and beginning/end of the string
+            # so that things like `'\n'` correctly become `"\\n"`
+            # instead of rendering as actual whitespace
+            #
+            # About this regex: `(?<!\\)` does a negative lookup for slashes
+            # before the newline escape, which will only match instances
+            # like `\\n` and not `\\\\n`
+            args[0][1][1].gsub!(/(?<!\\)\\n/, "\n")
+            # This matches a special edge case where the last character on the line of a
+            # single-quoted string is "\".
+            args[0][1][1].gsub!(/\\\\\\n/, "\\\\\\\n")
           end
         else
           # find delimiters after an odd number of backslashes, or quotes after even number.
@@ -240,25 +483,42 @@ class Parser < Ripper::SexpBuilderPP
   end
 
   def on_lambda(*args, &blk)
-    terminator = @file_lines[lineno - 1]
-
-    if terminator.include?("}")
-      args.insert(1, :curly)
-    else
-      args.insert(1, :do)
-    end
-    args.insert(args.length, @tlambda_stack.pop)
+    args.insert(args.length, [@tlambda_stack.pop, lineno])
     [:lambda, *args]
   end
 
   def on_tstring_beg(*args, &blk)
-    @string_stack << args[0]
+    @string_stack << [args[0], lineno]
     super
   end
 
   def on_tstring_end(*args, &blk)
-    @string_stack << args[0]
+    @string_stack << [args[0], lineno]
     super
+  end
+
+  def on_embexpr_beg(*args)
+    @embexpr_stack << [lineno]
+    super
+  end
+
+  def on_embexpr_end(*args)
+    # Append end line to make a StartEnd
+    @embexpr_stack.last << lineno
+    super
+  end
+
+  def on_string_embexpr(*args)
+    super + [@embexpr_stack.pop]
+  end
+
+  def on_dyna_symbol(*args)
+    # dyna_symbol expressions still end up calling
+    # on_tstring_end, which will append the closing
+    # quote to @string_stack. We want to ignore this,
+    # so remove it from the stack.
+    start_line = @string_stack.pop[1]
+    super + [[start_line, lineno]]
   end
 
   def on_regexp_beg(re_part)
@@ -273,6 +533,17 @@ class Parser < Ripper::SexpBuilderPP
 
   def on_comment(comment)
     @comments[lineno] = comment
+  end
+
+  private def start_end_for_keyword(keyword)
+    [@kw_stacks[keyword].pop, lineno]
+  end
+
+  private def with_lineno(&blk)
+    start_line = lineno
+    res = yield
+    end_line = lineno
+    res + [[start_line, end_line]]
   end
 end
 

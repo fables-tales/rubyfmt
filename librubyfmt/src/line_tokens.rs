@@ -20,7 +20,7 @@ pub fn clats_indent(depth: ColNumber) -> ConcreteLineTokenAndTargets {
 
 // represents something that will actually end up as a ruby token, as opposed to
 // something that has to be transformed to become a ruby token
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ConcreteLineToken {
     HardNewLine,
     Indent { depth: u32 },
@@ -36,6 +36,7 @@ pub enum ConcreteLineToken {
     Comma,
     Space,
     Dot,
+    Ellipsis,
     ColonColon,
     LonelyOperator,
     OpenSquareBracket,
@@ -50,6 +51,7 @@ pub enum ConcreteLineToken {
     SingleSlash,
     Comment { contents: String },
     Delim { contents: String },
+    AfterCallChain,
     End,
     HeredocClose { symbol: String },
 }
@@ -71,6 +73,7 @@ impl ConcreteLineToken {
             Self::Comma => ",".to_string(),
             Self::Space => " ".to_string(),
             Self::Dot => ".".to_string(),
+            Self::Ellipsis => "...".to_string(),
             Self::ColonColon => "::".to_string(),
             Self::LonelyOperator => "&.".to_string(),
             Self::OpenSquareBracket => "[".to_string(),
@@ -87,6 +90,9 @@ impl ConcreteLineToken {
             Self::Delim { contents } => contents,
             Self::End => "end".to_string(),
             Self::HeredocClose { symbol } => symbol,
+            // no-op, this is purely semantic information
+            // for the render queue
+            Self::AfterCallChain => "".to_string(),
         }
     }
 
@@ -102,13 +108,28 @@ impl ConcreteLineToken {
     fn is_conditional_spaced_token(&self) -> bool {
         match self {
             Self::ConditionalKeyword { contents } => !(contents == "else" || contents == "elsif"),
+            Self::Dot => false,
+            Self::DirectPart { part } => part != "&.",
             _ => true,
+        }
+    }
+
+    pub fn is_method_visibility_modifier(&self) -> bool {
+        match self {
+            Self::DirectPart { part } => {
+                part == "public"
+                    || part == "private"
+                    || part == "protected"
+                    || part == "public_class_method"
+                    || part == "private_class_method"
+            }
+            _ => false,
         }
     }
 
     pub fn is_single_line_breakable_garbage(&self) -> bool {
         match self {
-            Self::DirectPart { part } => (part == &"".to_string()),
+            Self::DirectPart { part } => part == &"".to_string(),
             Self::Comma => true,
             Self::Space => true,
             _ => false,
@@ -261,33 +282,22 @@ impl AbstractLineToken {
         let mut res = vec![];
         if let Some(values) = heredoc_strings {
             for hds in values {
-                let mut s = std::str::from_utf8(&hds.buf)
-                    .expect("it's utf8")
-                    .to_string();
-                while s.ends_with('\n') {
-                    s.pop();
-                }
+                let indent = hds.indent;
+                let kind = hds.kind.clone();
+                let symbol = hds.closing_symbol();
 
-                if hds.squiggly {
-                    s = s
-                        .split('\n')
-                        .map(|l| format!("{}{}", " ".repeat(hds.indent as usize), l))
-                        .collect::<Vec<String>>()
-                        .join("\n")
+                let s = hds.render_as_string();
+                if !s.is_empty() {
+                    res.push(clats_direct_part(s));
+                    res.push(cltats_hard_newline());
                 }
-                res.push(clats_direct_part(s));
-                res.push(cltats_hard_newline());
-                if hds.squiggly {
-                    res.push(clats_indent(hds.indent));
+                if !kind.is_bare() {
+                    res.push(clats_indent(indent));
                 }
-                res.push(clats_heredoc_close(hds.symbol));
+                res.push(clats_heredoc_close(symbol));
                 res.push(cltats_hard_newline());
-                let indent = if hds.indent != 0 {
-                    hds.indent - 2
-                } else {
-                    hds.indent
-                };
-                res.push(clats_indent(indent));
+                let indent_depth = if indent != 0 { indent - 2 } else { indent };
+                res.push(clats_indent(indent_depth));
             }
         }
         res

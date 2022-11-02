@@ -7,12 +7,15 @@ use serde::*;
 
 use crate::types::LineNumber;
 
-fn ident_as_cc(i: String, lc: LineCol) -> CallChainElement {
-    CallChainElement::IdentOrOpOrKeywordOrConst(IdentOrOpOrKeywordOrConst::Ident(Ident::new(i, lc)))
+fn ident_as_cc(i: String, start_end: &StartEnd) -> CallChainElement {
+    CallChainElement::IdentOrOpOrKeywordOrConst(IdentOrOpOrKeywordOrConst::Ident(Ident::new(
+        i,
+        LineCol::from_line(start_end.0),
+    )))
 }
 
-fn args_as_cc(an: ArgNode) -> CallChainElement {
-    CallChainElement::ArgsAddStarOrExpressionList(normalize_args(an))
+fn args_as_cc(an: ArgNode, start_end: Option<StartEnd>) -> CallChainElement {
+    CallChainElement::ArgsAddStarOrExpressionListOrArgsForward(normalize_args(an), start_end)
 }
 
 macro_rules! def_tag {
@@ -200,21 +203,21 @@ impl<'de> Deserialize<'de> for MLhs {
 
 def_tag!(zsuper_tag, "zsuper");
 #[derive(Deserialize, Debug, Clone)]
-pub struct ZSuper(pub zsuper_tag, pub LineCol);
+pub struct ZSuper(pub zsuper_tag, pub StartEnd);
 
 impl ZSuper {
     fn into_call_chain(self) -> Vec<CallChainElement> {
-        vec![ident_as_cc("super".to_string(), self.1)]
+        vec![ident_as_cc("super".to_string(), &self.1)]
     }
 }
 
 def_tag!(yield0_tag, "yield0");
 #[derive(Deserialize, Debug, Clone)]
-pub struct Yield0(yield0_tag);
+pub struct Yield0(pub yield0_tag, pub StartEnd);
 
 impl Yield0 {
     fn into_call_chain(self) -> Vec<CallChainElement> {
-        vec![ident_as_cc("yield".to_string(), LineCol::unknown())]
+        vec![ident_as_cc("yield".to_string(), &self.1)]
     }
 }
 
@@ -225,6 +228,7 @@ pub struct If(
     pub Box<Expression>,
     pub Vec<Expression>,
     pub Option<ElsifOrElse>,
+    pub StartEnd,
 );
 
 def_tag!(unless_tag, "unless");
@@ -234,6 +238,7 @@ pub struct Unless(
     pub Box<Expression>,
     pub Vec<Expression>,
     pub Option<Else>,
+    pub StartEnd,
 );
 
 #[derive(RipperDeserialize, Debug, Clone)]
@@ -249,11 +254,12 @@ pub struct Elsif(
     pub Box<Expression>,
     pub Vec<Expression>,
     pub Option<Box<ElsifOrElse>>,
+    pub StartEnd,
 );
 
 def_tag!(else_tag, "else");
 #[derive(Deserialize, Debug, Clone)]
-pub struct Else(pub else_tag, pub Vec<Expression>);
+pub struct Else(pub else_tag, pub Vec<Expression>, pub StartEnd);
 
 def_tag!(undef_tag, "undef");
 #[derive(Deserialize, Debug, Clone)]
@@ -291,7 +297,7 @@ def_tag!(mrhs_new_from_args_tag, "mrhs_new_from_args");
 #[derive(Deserialize, Debug, Clone)]
 pub struct MRHSNewFromArgs(
     pub mrhs_new_from_args_tag,
-    pub ArgsAddStarOrExpressionList,
+    pub ArgsAddStarOrExpressionListOrArgsForward,
     #[serde(default)]
     /// This will be none if only two expressions are given and the last is a
     /// splat. For example, `rescue A, *B`
@@ -335,9 +341,10 @@ impl Command {
         let io = (self.1).into_ident_or_op_or_keyword_or_const();
         let (s, lc) = io.to_def_parts();
         vec![
-            ident_as_cc(s, lc),
-            CallChainElement::ArgsAddStarOrExpressionList(
+            ident_as_cc(s, &StartEnd(lc.0, lc.0)),
+            CallChainElement::ArgsAddStarOrExpressionListOrArgsForward(
                 normalize_args_add_block_or_expression_list(self.2),
+                None,
             ),
         ]
     }
@@ -350,6 +357,7 @@ impl ToMethodCall for Command {
             (self.1).into_ident_or_op_or_keyword_or_const(),
             false,
             normalize_args_add_block_or_expression_list(self.2),
+            None,
         )
     }
 }
@@ -391,9 +399,10 @@ pub enum MRHSOrArray {
 }
 
 #[derive(RipperDeserialize, Debug, Clone)]
-pub enum IdentOrVarField {
+pub enum RestParamAssignable {
     Ident(Ident),
     VarField(VarField),
+    ArefField(ArefField),
 }
 
 #[derive(RipperDeserialize, Debug, Clone)]
@@ -404,6 +413,7 @@ pub enum Assignable {
     TopConstField(TopConstField),
     ArefField(ArefField),
     Field(Field),
+    MLhs(MLhs),
     // 2.6+
     Ident(Ident),
 }
@@ -418,7 +428,12 @@ pub struct EndBlock(pub end_block, pub Vec<Expression>);
 
 def_tag!(aref_field_tag, "aref_field");
 #[derive(Deserialize, Debug, Clone)]
-pub struct ArefField(pub aref_field_tag, pub Box<Expression>, pub ArgsAddBlock);
+pub struct ArefField(
+    pub aref_field_tag,
+    pub Box<Expression>,
+    pub ArgsAddBlock,
+    pub LineCol,
+);
 
 def_tag!(const_path_field_tag, "const_path_field");
 #[derive(Deserialize, Debug, Clone)]
@@ -478,12 +493,16 @@ pub struct CVar(pub cvar_tag, pub String, pub LineCol);
 
 def_tag!(heredoc_string_literal_tag, "heredoc_string_literal");
 #[derive(Deserialize, Debug, Clone)]
-pub struct HeredocStringLiteral(pub heredoc_string_literal_tag, pub (String, String));
+pub struct HeredocStringLiteral(
+    pub heredoc_string_literal_tag,
+    pub (String, String),
+    pub StartEnd,
+);
 
 def_tag!(string_literal_tag, "string_literal");
 #[derive(RipperDeserialize, Debug, Clone)]
 pub enum StringLiteral {
-    Normal(string_literal_tag, StringContent),
+    Normal(string_literal_tag, StringContent, StartEnd),
     Heredoc(string_literal_tag, HeredocStringLiteral, StringContent),
 }
 
@@ -493,17 +512,23 @@ pub struct XStringLiteral(pub xstring_literal_tag, pub Vec<StringContentPart>);
 
 def_tag!(dyna_symbol_tag, "dyna_symbol");
 #[derive(Deserialize, Debug, Clone)]
-pub struct DynaSymbol(pub dyna_symbol_tag, pub StringContentOrStringContentParts);
+pub struct DynaSymbol(
+    pub dyna_symbol_tag,
+    pub StringContentOrStringContentParts,
+    StartEnd,
+);
 
 impl DynaSymbol {
     pub fn to_string_literal(self) -> StringLiteral {
         match self.1 {
             StringContentOrStringContentParts::StringContent(sc) => {
-                StringLiteral::Normal(string_literal_tag, sc)
+                StringLiteral::Normal(string_literal_tag, sc, self.2)
             }
-            StringContentOrStringContentParts::StringContentParts(scp) => {
-                StringLiteral::Normal(string_literal_tag, StringContent(string_content_tag, scp))
-            }
+            StringContentOrStringContentParts::StringContentParts(scp) => StringLiteral::Normal(
+                string_literal_tag,
+                StringContent(string_content_tag, scp),
+                self.2,
+            ),
         }
     }
 }
@@ -573,28 +598,25 @@ impl<'de> Deserialize<'de> for StringContent {
 
 def_tag!(array_tag, "array");
 #[derive(Deserialize, Debug, Clone)]
-pub struct Array(
-    pub array_tag,
-    pub SimpleArrayOrPercentArray,
-    pub Option<LineCol>,
-);
+pub struct Array(pub array_tag, pub SimpleArrayOrPercentArray, pub StartEnd);
 
 #[derive(RipperDeserialize, Debug, Clone)]
 pub enum SimpleArrayOrPercentArray {
-    SimpleArray(Option<ArgsAddStarOrExpressionList>),
+    SimpleArray(Option<ArgsAddStarOrExpressionListOrArgsForward>),
     LowerPercentArray((String, Vec<TStringContent>, LineCol)),
     UpperPercentArray((String, Vec<Vec<StringContentPart>>, LineCol)),
 }
 
 #[derive(RipperDeserialize, Debug, Clone)]
-pub enum ArgsAddStarOrExpressionList {
+pub enum ArgsAddStarOrExpressionListOrArgsForward {
     ExpressionList(Vec<Expression>),
     ArgsAddStar(ArgsAddStar),
+    ArgsForward(ArgsForward),
 }
 
-impl ArgsAddStarOrExpressionList {
+impl ArgsAddStarOrExpressionListOrArgsForward {
     pub fn is_empty(&self) -> bool {
-        if let ArgsAddStarOrExpressionList::ExpressionList(el) = self {
+        if let ArgsAddStarOrExpressionListOrArgsForward::ExpressionList(el, ..) = self {
             if el.is_empty() {
                 return true;
             }
@@ -604,7 +626,7 @@ impl ArgsAddStarOrExpressionList {
     }
 
     pub fn empty() -> Self {
-        ArgsAddStarOrExpressionList::ExpressionList(vec![])
+        ArgsAddStarOrExpressionListOrArgsForward::ExpressionList(vec![])
     }
 }
 
@@ -612,7 +634,7 @@ def_tag!(args_add_star_tag, "args_add_star");
 #[derive(Debug, Clone)]
 pub struct ArgsAddStar(
     pub args_add_star_tag,
-    pub Box<ArgsAddStarOrExpressionList>,
+    pub Box<ArgsAddStarOrExpressionListOrArgsForward>,
     pub Box<Expression>,
     pub Vec<Expression>,
 );
@@ -678,7 +700,11 @@ pub enum ParenExpressionOrExpressions {
 
 def_tag!(paren_expr_tag, "paren");
 #[derive(Deserialize, Debug, Clone)]
-pub struct ParenExpr(pub paren_expr_tag, pub ParenExpressionOrExpressions);
+pub struct ParenExpr(
+    pub paren_expr_tag,
+    pub ParenExpressionOrExpressions,
+    pub StartEnd,
+);
 
 def_tag!(dot2_tag, "dot2");
 #[derive(Deserialize, Debug, Clone)]
@@ -707,6 +733,7 @@ pub struct Def(
     pub IdentOrOpOrKeywordOrConst,
     pub ParenOrParams,
     pub Box<BodyStmt>,
+    pub StartEnd,
 );
 
 #[derive(RipperDeserialize, Debug, Clone)]
@@ -739,7 +766,7 @@ impl IdentOrOpOrKeywordOrConst {
 
 def_tag!(begin_tag, "begin");
 #[derive(Deserialize, Debug, Clone)]
-pub struct Begin(pub begin_tag, pub Box<BodyStmt>);
+pub struct Begin(pub begin_tag, pub StartEnd, pub Box<BodyStmt>);
 
 def_tag!(bodystmt_tag, "bodystmt");
 #[derive(Deserialize, Debug, Clone)]
@@ -750,18 +777,6 @@ pub struct BodyStmt(
     pub Option<RescueElseOrExpressionList>,
     pub Option<Ensure>,
 );
-
-impl BodyStmt {
-    pub fn is_empty(&self) -> bool {
-        let length = (self.1).len();
-        let expressions_empty = match (self.1).get(0) {
-            Some(Expression::VoidStmt(VoidStmt(_))) => length == 1,
-            None => true,
-            _ => false,
-        };
-        expressions_empty && (self.2).is_none() && (self.3).is_none() && (self.4).is_none()
-    }
-}
 
 // deals with 2.6, where else is a vec expression and not an else
 #[derive(RipperDeserialize, Debug, Clone)]
@@ -778,6 +793,7 @@ pub struct Rescue(
     pub Option<Assignable>,
     pub Option<Vec<Expression>>,
     pub Option<Box<Rescue>>,
+    pub StartEnd,
 );
 
 #[derive(RipperDeserialize, Debug, Clone)]
@@ -791,11 +807,15 @@ pub enum MRHS {
 
 def_tag!(rescue_else_tag, "else");
 #[derive(Deserialize, Debug, Clone)]
-pub struct RescueElse(pub rescue_else_tag, pub Option<Vec<Expression>>);
+pub struct RescueElse(
+    pub rescue_else_tag,
+    pub Option<Vec<Expression>>,
+    pub StartEnd,
+);
 
 def_tag!(ensure_tag, "ensure");
 #[derive(Deserialize, Debug, Clone)]
-pub struct Ensure(pub ensure_tag, pub Option<Vec<Expression>>);
+pub struct Ensure(pub ensure_tag, pub Option<Vec<Expression>>, pub StartEnd);
 
 def_tag!(const_tag, "@const");
 #[derive(Deserialize, Debug, Clone)]
@@ -834,7 +854,7 @@ pub enum IdentOrMLhs {
 
 def_tag!(paren_tag, "paren");
 #[derive(Deserialize, Debug, Clone)]
-pub struct Paren(pub paren_tag, pub Box<Params>);
+pub struct Paren(pub paren_tag, pub Box<Params>, pub StartEnd);
 
 impl Paren {
     fn is_present(&self) -> bool {
@@ -848,11 +868,12 @@ pub struct Params(
     pub params_tag,
     pub Option<Vec<IdentOrMLhs>>,
     pub Option<Vec<(Ident, Expression)>>,
-    pub Option<RestParamOr0OrExcessedComma>,
+    pub Option<RestParamOr0OrExcessedCommaOrArgsForward>,
     pub Option<Vec<IdentOrMLhs>>,
     pub Option<Vec<(Label, ExpressionOrFalse)>>,
     pub Option<KwRestParam>,
     pub Option<BlockArg>,
+    pub StartEnd,
 );
 
 impl Params {
@@ -922,15 +943,20 @@ impl Params {
 //   a single representative node, but that didn't work with the serde setup
 //   we have for some reason.
 #[derive(RipperDeserialize, Debug, Clone)]
-pub enum RestParamOr0OrExcessedComma {
+pub enum RestParamOr0OrExcessedCommaOrArgsForward {
     Zero(i64),
     RestParam(RestParam),
     ExcessedComma(ExcessedComma),
+    ArgsForward(ArgsForward),
 }
 
 def_tag!(excessed_comma_tag, "excessed_comma");
 #[derive(Deserialize, Debug, Clone)]
 pub struct ExcessedComma(excessed_comma_tag);
+
+def_tag!(args_forward_tag, "args_forward");
+#[derive(Deserialize, Debug, Clone)]
+pub struct ArgsForward(args_forward_tag);
 
 impl Params {
     pub fn non_null_positions(&self) -> Vec<bool> {
@@ -947,6 +973,7 @@ impl Params {
 }
 
 #[derive(RipperDeserialize, Debug, Clone)]
+#[allow(clippy::large_enum_variant)]
 pub enum ExpressionOrFalse {
     Expression(Expression),
     False(bool),
@@ -954,7 +981,7 @@ pub enum ExpressionOrFalse {
 
 def_tag!(rest_param_tag, "rest_param");
 #[derive(Deserialize, Debug, Clone)]
-pub struct RestParam(pub rest_param_tag, pub Option<IdentOrVarField>);
+pub struct RestParam(pub rest_param_tag, pub Option<RestParamAssignable>);
 
 def_tag!(kw_rest_param_tag, "kwrest_param");
 #[derive(Deserialize, Debug, Clone)]
@@ -967,30 +994,51 @@ pub struct BlockArg(pub blockarg_tag, pub Ident);
 #[derive(Deserialize, Debug, Clone)]
 pub struct LineCol(pub LineNumber, pub u64);
 
+#[derive(Deserialize, Debug, Clone)]
+pub struct StartEnd(pub LineNumber, pub LineNumber);
+
+impl StartEnd {
+    pub fn start_line(&self) -> LineNumber {
+        self.0
+    }
+
+    pub fn end_line(&self) -> LineNumber {
+        self.1
+    }
+
+    pub fn unknown() -> Self {
+        StartEnd(0, 0)
+    }
+}
+
 impl LineCol {
     fn unknown() -> Self {
         LineCol(0, 0)
     }
+
+    fn from_line(ln: LineNumber) -> Self {
+        LineCol(ln, 0)
+    }
 }
 
-pub fn normalize_arg_paren(ap: ArgParen) -> ArgsAddStarOrExpressionList {
+pub fn normalize_arg_paren(ap: ArgParen) -> ArgsAddStarOrExpressionListOrArgsForward {
     match *ap.1 {
-        ArgNode::Null(_) => ArgsAddStarOrExpressionList::ExpressionList(vec![]),
+        ArgNode::Null(_) => ArgsAddStarOrExpressionListOrArgsForward::ExpressionList(vec![]),
         ae => normalize_args(ae),
     }
 }
 
 pub fn normalize_args_add_block_or_expression_list(
     aab: ArgsAddBlockOrExpressionList,
-) -> ArgsAddStarOrExpressionList {
+) -> ArgsAddStarOrExpressionListOrArgsForward {
     match aab {
         ArgsAddBlockOrExpressionList::ExpressionList(el) => {
-            ArgsAddStarOrExpressionList::ExpressionList(el)
+            ArgsAddStarOrExpressionListOrArgsForward::ExpressionList(el)
         }
         ArgsAddBlockOrExpressionList::ArgsAddBlock(aab) => normalize_args_add_block(aab),
     }
 }
-pub fn normalize_args_add_block(aab: ArgsAddBlock) -> ArgsAddStarOrExpressionList {
+pub fn normalize_args_add_block(aab: ArgsAddBlock) -> ArgsAddStarOrExpressionListOrArgsForward {
     // .1 is expression list
     // .2 is block
     match aab.2 {
@@ -999,33 +1047,37 @@ pub fn normalize_args_add_block(aab: ArgsAddBlock) -> ArgsAddStarOrExpressionLis
             let trailing_expr_as_vec = vec![Expression::ToProc(ToProc(undeserializable, e))];
 
             match (aab.1).into_args_add_star_or_expression_list() {
-                ArgsAddStarOrExpressionList::ExpressionList(items) => {
-                    ArgsAddStarOrExpressionList::ExpressionList(
+                ArgsAddStarOrExpressionListOrArgsForward::ExpressionList(items) => {
+                    ArgsAddStarOrExpressionListOrArgsForward::ExpressionList(
                         vec![items, trailing_expr_as_vec].concat(),
                     )
                 }
-                ArgsAddStarOrExpressionList::ArgsAddStar(aas) => {
+                ArgsAddStarOrExpressionListOrArgsForward::ArgsAddStar(aas) => {
                     let mut new_aas = aas;
                     new_aas.3 = vec![new_aas.3, trailing_expr_as_vec].concat();
-                    ArgsAddStarOrExpressionList::ArgsAddStar(new_aas)
+                    ArgsAddStarOrExpressionListOrArgsForward::ArgsAddStar(new_aas)
+                }
+                ArgsAddStarOrExpressionListOrArgsForward::ArgsForward(af) => {
+                    ArgsAddStarOrExpressionListOrArgsForward::ArgsForward(af)
                 }
             }
         }
     }
 }
 
-pub fn normalize_args(arg_node: ArgNode) -> ArgsAddStarOrExpressionList {
+pub fn normalize_args(arg_node: ArgNode) -> ArgsAddStarOrExpressionListOrArgsForward {
     match arg_node {
         ArgNode::ArgParen(ap) => normalize_arg_paren(ap),
         ArgNode::ArgsAddBlock(aab) => normalize_args_add_block(aab),
-        ArgNode::ArgsAddStar(aas) => ArgsAddStarOrExpressionList::ArgsAddStar(aas),
-        ArgNode::Exprs(exprs) => ArgsAddStarOrExpressionList::ExpressionList(exprs),
+        ArgNode::ArgsAddStar(aas) => ArgsAddStarOrExpressionListOrArgsForward::ArgsAddStar(aas),
+        ArgNode::Exprs(exprs) => ArgsAddStarOrExpressionListOrArgsForward::ExpressionList(exprs),
         ArgNode::Const(c) => {
-            ArgsAddStarOrExpressionList::ExpressionList(vec![Expression::Const(c)])
+            ArgsAddStarOrExpressionListOrArgsForward::ExpressionList(vec![Expression::Const(c)])
         }
         ArgNode::Ident(c) => {
-            ArgsAddStarOrExpressionList::ExpressionList(vec![Expression::Ident(c)])
+            ArgsAddStarOrExpressionListOrArgsForward::ExpressionList(vec![Expression::Ident(c)])
         }
+        ArgNode::ArgsForward(af) => ArgsAddStarOrExpressionListOrArgsForward::ArgsForward(af),
         ArgNode::Null(_) => panic!("should never be called with null"),
     }
 }
@@ -1035,6 +1087,7 @@ pub enum ArgNode {
     ArgParen(ArgParen),
     ArgsAddBlock(ArgsAddBlock),
     ArgsAddStar(ArgsAddStar),
+    ArgsForward(ArgsForward),
     Exprs(Vec<Expression>),
     Const(Const),
     Ident(Ident),
@@ -1043,7 +1096,7 @@ pub enum ArgNode {
 
 def_tag!(arg_paren_tag, "arg_paren");
 #[derive(Deserialize, Debug, Clone)]
-pub struct ArgParen(pub arg_paren_tag, pub Box<ArgNode>);
+pub struct ArgParen(pub arg_paren_tag, pub Box<ArgNode>, pub StartEnd);
 
 // See: https://dev.to/penelope_zone/understanding-ruby-s-block-proc-parsing-4a89
 #[derive(RipperDeserialize, Debug, Clone)]
@@ -1059,33 +1112,34 @@ pub struct ArgsAddBlock(
     pub args_add_block_tag,
     pub ArgsAddBlockInner,
     pub ToProcExpr,
+    pub StartEnd,
 );
 
 #[derive(RipperDeserialize, Debug, Clone)]
 pub enum AABParen {
     Paren((paren_tag, Box<Expression>)),
-    Expression(Expression),
+    Expression(Box<Expression>),
 }
 
 #[derive(RipperDeserialize, Debug, Clone)]
 pub enum ArgsAddBlockInner {
     Parens(Vec<AABParen>),
-    ArgsAddStarOrExpressionList(ArgsAddStarOrExpressionList),
+    ArgsAddStarOrExpressionListOrArgsForward(ArgsAddStarOrExpressionListOrArgsForward),
 }
 
 impl ArgsAddBlockInner {
-    pub fn into_args_add_star_or_expression_list(self) -> ArgsAddStarOrExpressionList {
+    pub fn into_args_add_star_or_expression_list(self) -> ArgsAddStarOrExpressionListOrArgsForward {
         match self {
-            ArgsAddBlockInner::ArgsAddStarOrExpressionList(a) => a,
+            ArgsAddBlockInner::ArgsAddStarOrExpressionListOrArgsForward(a) => a,
             ArgsAddBlockInner::Parens(ps) => {
                 let el = ps
                     .into_iter()
                     .map(|aabp| match aabp {
                         AABParen::Paren(p) => *p.1,
-                        AABParen::Expression(e) => e,
+                        AABParen::Expression(e) => *e,
                     })
                     .collect();
-                ArgsAddStarOrExpressionList::ExpressionList(el)
+                ArgsAddStarOrExpressionListOrArgsForward::ExpressionList(el)
             }
         }
     }
@@ -1101,7 +1155,7 @@ pub struct BareAssocHash(pub bare_assoc_hash_tag, pub Vec<AssocNewOrAssocSplat>)
 
 def_tag!(hash_tag, "hash");
 #[derive(Deserialize, Debug, Clone)]
-pub struct Hash(pub hash_tag, pub Option<AssocListFromArgs>, pub LineCol);
+pub struct Hash(pub hash_tag, pub Option<AssocListFromArgs>, pub StartEnd);
 
 def_tag!(assoclist_from_args_tag, "assoclist_from_args");
 #[derive(Deserialize, Debug, Clone)]
@@ -1110,7 +1164,7 @@ pub struct AssocListFromArgs(pub assoclist_from_args_tag, pub Vec<AssocNewOrAsso
 #[derive(RipperDeserialize, Debug, Clone)]
 pub enum AssocNewOrAssocSplat {
     AssocNew(Box<AssocNew>),
-    AssocSplat(AssocSplat),
+    AssocSplat(Box<AssocSplat>),
 }
 
 def_tag!(assoc_new_tag, "assoc_new");
@@ -1133,7 +1187,7 @@ pub struct Label(pub label_tag, pub String, pub LineCol);
 
 def_tag!(symbol_literal_tag, "symbol_literal");
 #[derive(Deserialize, Debug, Clone)]
-pub struct SymbolLiteral(pub symbol_literal_tag, pub SymbolOrBare);
+pub struct SymbolLiteral(pub symbol_literal_tag, pub SymbolOrBare, pub StartEnd);
 
 #[derive(RipperDeserialize, Debug, Clone)]
 pub enum SymbolOrBare {
@@ -1178,6 +1232,15 @@ pub struct Symbol(
     pub IdentOrConstOrKwOrOpOrIvarOrGvarOrCvarOrBacktick,
 );
 
+impl Symbol {
+    pub fn from_string(s: String, l: LineCol) -> Self {
+        Symbol(
+            symbol_tag,
+            IdentOrConstOrKwOrOpOrIvarOrGvarOrCvarOrBacktick::Ident(Ident::new(s, l)),
+        )
+    }
+}
+
 #[derive(RipperDeserialize, Debug, Clone)]
 pub enum CallLeft {
     Paren(ParenExpr),
@@ -1205,14 +1268,15 @@ impl CallLeft {
             CallLeft::SingleParen(_, e) => vec![CallChainElement::Paren(ParenExpr(
                 paren_expr_tag,
                 ParenExpressionOrExpressions::Expressions(vec![*e]),
+                StartEnd::unknown(),
             ))],
             CallLeft::FCall(FCall(_, ic)) => vec![CallChainElement::IdentOrOpOrKeywordOrConst(
                 ic.into_ident_or_op_or_keyword_or_const(),
             )],
-            CallLeft::VCall(VCall(_, ic)) => vec![CallChainElement::IdentOrOpOrKeywordOrConst(
+            CallLeft::VCall(VCall(_, ic, _)) => vec![CallChainElement::IdentOrOpOrKeywordOrConst(
                 ic.into_ident_or_op_or_keyword_or_const(),
             )],
-            CallLeft::Call(Call(_, left, dot, name)) => {
+            CallLeft::Call(Call(_, left, dot, name, _)) => {
                 let mut res = left.into_call_chain();
                 res.push(CallChainElement::DotTypeOrOp(dot));
 
@@ -1221,9 +1285,9 @@ impl CallLeft {
                 }
                 res
             }
-            CallLeft::MethodAddArg(MethodAddArg(_, left, an)) => {
+            CallLeft::MethodAddArg(MethodAddArg(_, left, an, start_end)) => {
                 let mut res = left.into_call_chain();
-                res.push(args_as_cc(an));
+                res.push(args_as_cc(an, Some(start_end)));
                 res
             }
             CallLeft::MethodAddBlock(MethodAddBlock(_, left, block)) => {
@@ -1249,7 +1313,10 @@ pub enum CallChainElement {
     IdentOrOpOrKeywordOrConst(IdentOrOpOrKeywordOrConst),
     Block(Block),
     VarRef(VarRef),
-    ArgsAddStarOrExpressionList(ArgsAddStarOrExpressionList),
+    ArgsAddStarOrExpressionListOrArgsForward(
+        ArgsAddStarOrExpressionListOrArgsForward,
+        Option<StartEnd>,
+    ),
     DotTypeOrOp(DotTypeOrOp),
     Paren(ParenExpr),
     Expression(Box<Expression>),
@@ -1259,7 +1326,12 @@ pub type DotCall = call_tag;
 
 def_tag!(method_add_arg_tag, "method_add_arg");
 #[derive(Deserialize, Debug, Clone)]
-pub struct MethodAddArg(pub method_add_arg_tag, pub Box<CallLeft>, pub ArgNode);
+pub struct MethodAddArg(
+    pub method_add_arg_tag,
+    pub Box<CallLeft>,
+    pub ArgNode,
+    pub StartEnd,
+);
 
 impl ToMethodCall for MethodAddArg {
     fn to_method_call(self) -> MethodCall {
@@ -1268,13 +1340,14 @@ impl ToMethodCall for MethodAddArg {
             .pop()
             .expect("cannot be empty with method add arg");
         if let CallChainElement::IdentOrOpOrKeywordOrConst(n) = last {
-            MethodCall::new(orig_chain, n, true, normalize_args(self.2))
+            MethodCall::new(orig_chain, n, true, normalize_args(self.2), Some(self.3))
         } else {
             MethodCall::new(
                 orig_chain,
                 IdentOrOpOrKeywordOrConst::Ident(Ident::new(".()".to_string(), LineCol::unknown())),
                 true,
                 normalize_args(self.2),
+                Some(self.3),
             )
         }
     }
@@ -1284,13 +1357,36 @@ def_tag!(method_add_block_tag, "method_add_block");
 #[derive(Deserialize, Debug, Clone)]
 pub struct MethodAddBlock(method_add_block_tag, pub Box<CallLeft>, pub Block);
 
+impl ToMethodCall for MethodAddBlock {
+    fn to_method_call(self) -> MethodCall {
+        let mut orig_chain = (self.1).into_call_chain();
+        let last = orig_chain.pop().expect("cannot be empty");
+        let (args, start_end) = match last {
+            CallChainElement::ArgsAddStarOrExpressionListOrArgsForward(aas, start_end) => {
+                (aas, start_end)
+            }
+            _ => (
+                ArgsAddStarOrExpressionListOrArgsForward::ExpressionList(Vec::new()),
+                None,
+            ),
+        };
+        MethodCall::new(
+            orig_chain,
+            IdentOrOpOrKeywordOrConst::Ident(Ident::new(".()".to_string(), LineCol::unknown())),
+            true,
+            args,
+            start_end,
+        )
+    }
+}
+
 def_tag!(fcall_tag, "fcall");
 #[derive(Deserialize, Debug, Clone)]
 pub struct FCall(pub fcall_tag, pub IdentOrConst);
 
 def_tag!(vcall);
 #[derive(Deserialize, Debug, Clone)]
-pub struct VCall(pub vcall, pub IdentOrConst);
+pub struct VCall(pub vcall, pub IdentOrConst, pub StartEnd);
 
 pub trait ToMethodCall {
     fn to_method_call(self) -> MethodCall;
@@ -1302,7 +1398,8 @@ impl ToMethodCall for VCall {
             vec![],
             (self.1).into_ident_or_op_or_keyword_or_const(),
             false,
-            ArgsAddStarOrExpressionList::ExpressionList(vec![]),
+            ArgsAddStarOrExpressionListOrArgsForward::ExpressionList(vec![]),
+            Some(self.2),
         )
     }
 }
@@ -1319,7 +1416,8 @@ pub struct MethodCall(
     // original used parens
     pub bool,
     // args
-    pub ArgsAddStarOrExpressionList,
+    pub ArgsAddStarOrExpressionListOrArgsForward,
+    pub Option<StartEnd>,
 );
 
 impl MethodCall {
@@ -1327,9 +1425,10 @@ impl MethodCall {
         chain: Vec<CallChainElement>,
         name: IdentOrOpOrKeywordOrConst,
         use_parens: bool,
-        args: ArgsAddStarOrExpressionList,
+        args: ArgsAddStarOrExpressionListOrArgsForward,
+        start_end: Option<StartEnd>,
     ) -> Self {
-        MethodCall(method_call_tag, chain, name, use_parens, args)
+        MethodCall(method_call_tag, chain, name, use_parens, args, start_end)
     }
 }
 
@@ -1346,6 +1445,7 @@ pub struct Call(
     pub Box<CallLeft>,
     pub DotTypeOrOp,
     pub CallMethodName,
+    pub StartEnd,
 );
 
 impl ToMethodCall for Call {
@@ -1362,7 +1462,8 @@ impl ToMethodCall for Call {
             chain,
             method_name,
             false,
-            ArgsAddStarOrExpressionList::empty(),
+            ArgsAddStarOrExpressionListOrArgsForward::empty(),
+            Some(self.4),
         )
     }
 }
@@ -1382,7 +1483,7 @@ impl CommandCall {
         let mut recur = (self.1).into_call_chain();
         recur.push(CallChainElement::DotTypeOrOp(self.2));
         recur.push(CallChainElement::IdentOrOpOrKeywordOrConst(self.3));
-        recur.push(args_as_cc(self.4));
+        recur.push(args_as_cc(self.4, None));
         recur
     }
 }
@@ -1392,7 +1493,7 @@ impl ToMethodCall for CommandCall {
         let mut chain = (self.1).into_call_chain();
         chain.push(CallChainElement::DotTypeOrOp(self.2));
 
-        MethodCall::new(chain, self.3, false, normalize_args(self.4))
+        MethodCall::new(chain, self.3, false, normalize_args(self.4), None)
     }
 }
 
@@ -1454,14 +1555,15 @@ pub struct OpAssign(
 
 def_tag!(next_tag, "next");
 #[derive(Deserialize, Debug, Clone)]
-pub struct Next(pub next_tag, pub ArgsAddBlockOrExpressionList);
+pub struct Next(pub next_tag, pub ArgsAddBlockOrExpressionList, pub StartEnd);
 
 impl Next {
     pub fn into_call_chain(self) -> Vec<CallChainElement> {
         vec![
-            ident_as_cc("next".to_string(), LineCol::unknown()),
-            CallChainElement::ArgsAddStarOrExpressionList(
+            ident_as_cc("next".to_string(), &self.2),
+            CallChainElement::ArgsAddStarOrExpressionListOrArgsForward(
                 normalize_args_add_block_or_expression_list(self.1),
+                Some(self.2),
             ),
         ]
     }
@@ -1509,11 +1611,14 @@ pub struct Unary(pub unary_tag, pub UnaryType, pub Box<Expression>);
 
 def_tag!(super_tag, "super");
 #[derive(Deserialize, Debug, Clone)]
-pub struct Super(pub super_tag, pub ArgNode, pub LineCol);
+pub struct Super(pub super_tag, pub ArgNode, pub StartEnd);
 
 impl Super {
     pub fn into_call_chain(self) -> Vec<CallChainElement> {
-        vec![ident_as_cc("super".to_string(), self.2), args_as_cc(self.1)]
+        vec![
+            ident_as_cc("super".to_string(), &self.2),
+            args_as_cc(self.1, Some(self.2)),
+        ]
     }
 }
 
@@ -1521,9 +1626,13 @@ impl ToMethodCall for Super {
     fn to_method_call(self) -> MethodCall {
         MethodCall::new(
             vec![],
-            IdentOrOpOrKeywordOrConst::Ident(Ident::new("super".to_string(), self.2)),
+            IdentOrOpOrKeywordOrConst::Ident(Ident::new(
+                "super".to_string(),
+                LineCol::from_line((self.2).0),
+            )),
             true,
             normalize_args(self.1),
+            Some(self.2),
         )
     }
 }
@@ -1546,6 +1655,7 @@ pub struct Class(
     pub ConstPathRefOrConstRefOrTopConstRef,
     pub Option<Box<Expression>>,
     pub Box<BodyStmt>,
+    pub StartEnd,
 );
 
 def_tag!(module_tag, "module");
@@ -1554,6 +1664,7 @@ pub struct Module(
     pub module_tag,
     pub ConstPathRefOrConstRefOrTopConstRef,
     pub Box<BodyStmt>,
+    pub StartEnd,
 );
 
 def_tag!(defs_tag, "defs");
@@ -1565,6 +1676,7 @@ pub struct Defs(
     pub IdentOrOpOrKeywordOrConst,
     pub ParenOrParams,
     pub Box<BodyStmt>,
+    pub StartEnd,
 );
 
 #[derive(RipperDeserialize, Debug, Clone)]
@@ -1602,7 +1714,12 @@ pub struct Float(float_tag, pub String, pub LineCol);
 
 def_tag!(aref_tag, "aref");
 #[derive(Deserialize, Debug, Clone)]
-pub struct Aref(aref_tag, pub Box<Expression>, pub Option<ArgNode>);
+pub struct Aref(
+    aref_tag,
+    pub Box<Expression>,
+    pub Option<ArgNode>,
+    pub LineCol,
+);
 
 def_tag!(char_tag, "@CHAR");
 #[derive(Deserialize, Debug, Clone)]
@@ -1610,11 +1727,11 @@ pub struct Char(char_tag, pub String, pub LineCol);
 
 def_tag!(return_tag, "return");
 #[derive(Deserialize, Debug, Clone)]
-pub struct Return(return_tag, pub ArgNode, pub LineCol);
+pub struct Return(return_tag, pub ArgNode, pub StartEnd);
 
 def_tag!(return0_tag, "return0");
 #[derive(Deserialize, Debug, Clone)]
-pub struct Return0(return0_tag);
+pub struct Return0(return0_tag, pub StartEnd);
 
 def_tag!(regexp_literal_tag, "regexp_literal");
 #[derive(Deserialize, Debug, Clone)]
@@ -1634,12 +1751,15 @@ pub struct Backref(backref_tag, pub String, pub LineCol);
 
 def_tag!(yield_tag, "yield");
 #[derive(Deserialize, Debug, Clone)]
-pub struct Yield(yield_tag, pub ParenOrArgsAddBlock, pub LineCol);
+pub struct Yield(yield_tag, pub ParenOrArgsAddBlock, pub StartEnd);
 
 impl Yield {
     fn into_call_chain(self) -> Vec<CallChainElement> {
         let arg = (self.1).into_arg_node();
-        vec![ident_as_cc("yield".to_string(), self.2), args_as_cc(arg)]
+        vec![
+            ident_as_cc("yield".to_string(), &self.2),
+            args_as_cc(arg, Some(self.2)),
+        ]
     }
 }
 
@@ -1649,28 +1769,44 @@ impl ToMethodCall for Yield {
             ParenOrArgsAddBlock::ArgsAddBlock(ArgsAddBlock(
                 _,
                 ArgsAddBlockInner::Parens(aabparen),
-                _,
+                ..,
             )) => {
                 aabparen.len() == 1
-                    && matches!(
-                        aabparen[0],
-                        AABParen::Expression(Expression::BareAssocHash(_))
-                    )
+                    && match &aabparen[0] {
+                        AABParen::Expression(expr) => {
+                            matches!(**expr, Expression::BareAssocHash(_))
+                        }
+                        _ => false,
+                    }
             }
             x => x.is_paren(),
         };
+
+        // This will be used to determine whether or not to wind to the end of the expression,
+        // but for calls without parens, this will wind _too far_, so we return `None` in those
+        // cases to avoid over-winding
+        let start_end = if use_parens {
+            Some(self.2.clone())
+        } else {
+            None
+        };
+
         MethodCall::new(
             vec![],
-            IdentOrOpOrKeywordOrConst::Ident(Ident::new("yield".to_string(), self.2)),
+            IdentOrOpOrKeywordOrConst::Ident(Ident::new(
+                "yield".to_string(),
+                LineCol::from_line((self.2).0),
+            )),
             use_parens,
             normalize_args((self.1).into_arg_node()),
+            start_end,
         )
     }
 }
 
 def_tag!(break_tag, "break");
 #[derive(Deserialize, Debug, Clone)]
-pub struct Break(break_tag, pub ParenOrArgsAddBlock, pub LineCol);
+pub struct Break(break_tag, pub ParenOrArgsAddBlock, pub StartEnd);
 
 #[derive(RipperDeserialize, Debug, Clone)]
 pub enum ParenOrArgsAddBlock {
@@ -1724,23 +1860,44 @@ pub struct BlockVar(
     block_var_tag,
     pub Option<Box<Params>>,
     pub BlockLocalVariables,
+    pub StartEnd,
 );
 
 def_tag!(do_block_tag, "do_block");
 #[derive(Deserialize, Debug, Clone)]
-pub struct DoBlock(do_block_tag, pub Option<BlockVar>, pub Box<BodyStmt>);
+pub struct DoBlock(
+    do_block_tag,
+    pub Option<BlockVar>,
+    pub Box<BodyStmt>,
+    pub StartEnd,
+);
 
 def_tag!(brace_block_tag, "brace_block");
 #[derive(Deserialize, Debug, Clone)]
-pub struct BraceBlock(brace_block_tag, pub Option<BlockVar>, pub Vec<Expression>);
+pub struct BraceBlock(
+    brace_block_tag,
+    pub Option<BlockVar>,
+    pub Vec<Expression>,
+    pub StartEnd,
+);
 
 def_tag!(while_tag, "while");
 #[derive(Deserialize, Debug, Clone)]
-pub struct While(while_tag, pub Box<Expression>, pub Vec<Expression>);
+pub struct While(
+    while_tag,
+    pub Box<Expression>,
+    pub Vec<Expression>,
+    pub StartEnd,
+);
 
 def_tag!(until_tag, "until");
 #[derive(Deserialize, Debug, Clone)]
-pub struct Until(until_tag, pub Box<Expression>, pub Vec<Expression>);
+pub struct Until(
+    until_tag,
+    pub Box<Expression>,
+    pub Vec<Expression>,
+    pub StartEnd,
+);
 
 def_tag!(while_mod_tag, "while_mod");
 #[derive(Deserialize, Debug, Clone)]
@@ -1752,16 +1909,21 @@ pub struct UntilMod(until_mod_tag, pub Box<Expression>, pub Box<Expression>);
 
 def_tag!(case_tag, "case");
 #[derive(Deserialize, Debug, Clone)]
-pub struct Case(case_tag, pub Option<Box<Expression>>, pub When, pub LineCol);
+pub struct Case(
+    case_tag,
+    pub Option<Box<Expression>>,
+    pub When,
+    pub StartEnd,
+);
 
 def_tag!(when_tag, "when");
 #[derive(Deserialize, Debug, Clone)]
 pub struct When(
     when_tag,
-    pub ArgsAddStarOrExpressionList,
+    pub ArgsAddStarOrExpressionListOrArgsForward,
     pub Vec<Expression>,
     pub Option<Box<WhenOrElse>>,
-    pub LineCol,
+    pub StartEnd,
 );
 
 #[derive(RipperDeserialize, Debug, Clone)]
@@ -1772,19 +1934,24 @@ pub enum WhenOrElse {
 
 def_tag!(case_else_tag, "else");
 #[derive(Deserialize, Debug, Clone)]
-pub struct CaseElse(case_else_tag, pub Vec<Expression>);
+pub struct CaseElse(case_else_tag, pub Vec<Expression>, pub StartEnd);
 
 def_tag!(retry_tag, "retry");
 #[derive(Deserialize, Debug, Clone)]
-pub struct Retry(retry_tag);
+pub struct Retry(pub retry_tag, pub StartEnd);
 
 def_tag!(redo_tag, "redo");
 #[derive(Deserialize, Debug, Clone)]
-pub struct Redo(redo_tag);
+pub struct Redo(pub redo_tag, pub StartEnd);
 
 def_tag!(sclass_tag, "sclass");
 #[derive(Deserialize, Debug, Clone)]
-pub struct SClass(sclass_tag, pub Box<Expression>, pub Box<BodyStmt>);
+pub struct SClass(
+    sclass_tag,
+    pub Box<Expression>,
+    pub Box<BodyStmt>,
+    pub StartEnd,
+);
 
 // some constructs were expressionlist in 2.5 and bodystmt in 2.6 so this
 // deals with both cases
@@ -1799,9 +1966,8 @@ def_tag!(stabby_lambda_tag, "lambda");
 pub struct StabbyLambda(
     stabby_lambda_tag,
     pub ParenOrParams,
-    pub String,
     pub ExpressionListOrBodyStmt,
-    pub LineCol,
+    pub StartEnd,
 );
 
 def_tag!(imaginary_tag, "@imaginary");

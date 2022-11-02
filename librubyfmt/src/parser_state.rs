@@ -2,9 +2,9 @@ use crate::comment_block::{CommentBlock, Merge};
 use crate::delimiters::BreakableDelims;
 use crate::file_comments::FileComments;
 use crate::format::{format_inner_string, StringType};
-use crate::heredoc_string::HeredocString;
+use crate::heredoc_string::{HeredocKind, HeredocString};
 use crate::line_tokens::*;
-use crate::render_queue_writer::RenderQueueWriter;
+use crate::render_queue_writer::{RenderQueueWriter, MAX_LINE_LENGTH};
 use crate::render_targets::{AbstractTokenTarget, BaseQueue, BreakableEntry};
 use crate::ripper_tree_types::StringContentPart;
 use crate::types::{ColNumber, LineNumber};
@@ -12,7 +12,9 @@ use log::debug;
 use std::io::{self, Cursor, Write};
 use std::str;
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+pub type RenderFunc<'a> = Box<dyn FnOnce(&mut dyn ConcreteParserState) + 'a>;
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum FormattingContext {
     Main,
     Assign,
@@ -22,6 +24,7 @@ pub enum FormattingContext {
     CurlyBlock,
     ArgsList,
     IfOp,
+    StringEmbexpr,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -60,6 +63,7 @@ where
     fn emit_colon_colon(&mut self);
     fn emit_lonely_operator(&mut self);
     fn emit_dot(&mut self);
+    fn emit_ellipsis(&mut self);
     fn emit_else(&mut self);
     fn emit_begin_block(&mut self);
     fn emit_begin(&mut self);
@@ -89,22 +93,25 @@ where
     fn emit_def(&mut self, def_name: String);
     fn emit_indent(&mut self);
     fn emit_heredoc_start(&mut self, hd_type: String, symbol: String);
+    fn emit_after_call_chain(&mut self);
 
     // other state changers
     fn bind_variable(&mut self, s: String);
     fn scope_has_variable(&self, s: &str) -> bool;
     fn insert_comment_collection(&mut self, comments: CommentBlock);
-    fn wind_line_if_needed_for_array(&mut self);
     fn on_line(&mut self, line_number: LineNumber);
-    fn wind_dumping_comments(&mut self);
+    fn wind_dumping_comments_until_line(&mut self, line_number: LineNumber);
+    fn wind_dumping_comments(&mut self, maybe_max_line_number: Option<LineNumber>);
     fn shift_comments(&mut self);
+    fn shift_comments_at_index(&mut self, index: usize);
     fn wind_line_forward(&mut self);
     fn render_heredocs(&mut self, skip: bool);
     fn push_heredoc_content(
         &mut self,
         symbol: String,
-        is_squiggly: bool,
+        kind: HeredocKind,
         parts: Vec<StringContentPart>,
+        end_line: LineNumber,
     );
 
     // queries
@@ -112,43 +119,30 @@ where
     fn current_formatting_context_requires_parens(&self) -> bool;
     fn current_formatting_context(&self) -> FormattingContext;
     fn is_absorbing_indents(&self) -> bool;
+    fn has_comments_in_line(&self, start_line: LineNumber, end_line: LineNumber) -> bool;
+    fn current_line_number(&self) -> u64;
 
     // blocks
-    fn with_formatting_context<'a>(
+    fn start_indent(&mut self);
+    fn end_indent(&mut self);
+    fn with_formatting_context(&mut self, fc: FormattingContext, f: RenderFunc);
+    fn new_scope(&mut self, f: RenderFunc);
+    fn new_block(&mut self, f: RenderFunc);
+    fn with_start_of_line(&mut self, start_of_line: bool, f: RenderFunc);
+    fn breakable_of(&mut self, delims: BreakableDelims, f: RenderFunc) -> bool;
+    fn inline_breakable_of(&mut self, delims: BreakableDelims, f: RenderFunc);
+    fn dedent(&mut self, f: RenderFunc);
+    fn reset_space_count(&mut self);
+    fn with_absorbing_indent_block(&mut self, f: RenderFunc);
+    fn magic_handle_comments_for_multiline_arrays(
         &mut self,
-        fc: FormattingContext,
-        f: Box<dyn FnOnce(&mut dyn ConcreteParserState) + 'a>,
+        end_line: Option<LineNumber>,
+        f: RenderFunc,
     );
-    fn new_scope<'a>(&mut self, f: Box<dyn FnOnce(&mut dyn ConcreteParserState) + 'a>);
-    fn new_block<'a>(&mut self, f: Box<dyn FnOnce(&mut dyn ConcreteParserState) + 'a>);
-    fn with_start_of_line<'a>(
-        &mut self,
-        start_of_line: bool,
-        f: Box<dyn FnOnce(&mut dyn ConcreteParserState) + 'a>,
-    );
-    fn breakable_of<'a>(
-        &mut self,
-        delims: BreakableDelims,
-        f: Box<dyn FnOnce(&mut dyn ConcreteParserState) + 'a>,
-    );
-    fn dedent<'a>(&mut self, f: Box<dyn FnOnce(&mut dyn ConcreteParserState) + 'a>);
-    fn with_absorbing_indent_block<'a>(
-        &mut self,
-        f: Box<dyn FnOnce(&mut dyn ConcreteParserState) + 'a>,
-    );
-    fn magic_handle_comments_for_multiline_arrays<'a>(
-        &mut self,
-        f: Box<dyn FnOnce(&mut dyn ConcreteParserState) + 'a>,
-    );
-    fn with_suppress_comments<'a>(
-        &mut self,
-        suppress: bool,
-        f: Box<dyn FnOnce(&mut dyn ConcreteParserState) + 'a>,
-    );
-    fn will_render_as_multiline<'a>(
-        &mut self,
-        f: Box<dyn FnOnce(&mut dyn ConcreteParserState) + 'a>,
-    ) -> bool;
+    fn with_suppress_comments(&mut self, suppress: bool, f: RenderFunc);
+    fn will_render_as_multiline(&mut self, f: RenderFunc) -> bool;
+
+    fn will_render_beyond_max_line_length(&mut self, f: RenderFunc) -> bool;
 
     // stuff to remove from this enum
     fn emit_soft_newline(&mut self);
@@ -181,7 +175,7 @@ impl ConcreteParserState for BaseParserState {
             .expect("it's never empty")
             .contains(&s.to_string())
     }
-    fn new_scope<'a>(&mut self, f: Box<dyn FnOnce(&mut dyn ConcreteParserState) + 'a>) {
+    fn new_scope<'a>(&mut self, f: RenderFunc) {
         self.scopes.push(vec![]);
         f(self);
         self.scopes.pop();
@@ -192,23 +186,31 @@ impl ConcreteParserState for BaseParserState {
     fn push_heredoc_content(
         &mut self,
         symbol: String,
-        is_squiggly: bool,
+        kind: HeredocKind,
         parts: Vec<StringContentPart>,
+        end_line: LineNumber,
     ) {
         let mut next_ps = BaseParserState::render_with_blank_state(self, |n| {
             n.insert_user_newlines = false;
             format_inner_string(n, parts, StringType::Heredoc);
-            n.emit_newline();
         });
 
         for hs in next_ps.heredoc_strings.drain(0..) {
             self.heredoc_strings.push(hs);
         }
 
+        // Update line number and clear out any comments we might have rendered in e.g. an embexpr
+        //
+        // (Ignore this comment extraction, we've already rendered them elsewhere)
+        let _ = self
+            .comments_hash
+            .extract_comments_to_line(self.current_orig_line_number, end_line);
+        self.current_orig_line_number = end_line;
+
         let data = next_ps.render_to_buffer();
         self.heredoc_strings.push(HeredocString::new(
             symbol,
-            is_squiggly,
+            kind,
             data,
             self.current_spaces(),
         ));
@@ -221,58 +223,140 @@ impl ConcreteParserState for BaseParserState {
 
     fn magic_handle_comments_for_multiline_arrays<'a>(
         &mut self,
-        f: Box<dyn FnOnce(&mut dyn ConcreteParserState) + 'a>,
+        end_line: Option<LineNumber>,
+        f: RenderFunc,
     ) {
         let current_line_number = self.current_orig_line_number;
         self.new_block(Box::new(|ps| {
             ps.shift_comments();
         }));
         f(self);
+        // Reset here -- this resets when we emit newlines, but this may be out of date
+        // if the most recent array didn't emit a newline
+        self.reset_space_count();
         let new_line_number = self.current_orig_line_number;
         if new_line_number > current_line_number {
-            self.wind_line_forward();
-            self.shift_comments();
+            // Only wind forward if the next line is empty or a comment
+            if self.comments_hash.is_empty_line(new_line_number + 1) {
+                if let Some(end_line) = end_line {
+                    self.wind_dumping_comments_until_line(end_line);
+                }
+                if self
+                    .comments_to_insert
+                    .as_ref()
+                    .map(|comments| comments.has_comments())
+                    .unwrap_or(false)
+                    .to_owned()
+                {
+                    self.push_concrete_token(ConcreteLineToken::HardNewLine);
+                }
+                let index = if let Some(be) = self.breakable_entry_stack.last() {
+                    be.len()
+                } else {
+                    self.index_of_prev_hard_newline().unwrap_or(0)
+                };
+                self.shift_comments_at_index(index);
+            } else {
+                self.shift_comments();
+            }
         }
-        self.current_orig_line_number = new_line_number;
-        debug!("coln: {}", new_line_number);
     }
 
-    fn will_render_as_multiline<'a>(
-        &mut self,
-        f: Box<dyn FnOnce(&mut dyn ConcreteParserState) + 'a>,
-    ) -> bool {
+    fn will_render_as_multiline<'a>(&mut self, f: RenderFunc) -> bool {
         let mut next_ps = BaseParserState::new_with_depth_stack_from(self);
-        f(&mut next_ps);
+        // Ignore commments when determining line length
+        next_ps.with_suppress_comments(true, f);
         let data = next_ps.render_to_buffer();
 
         let s = str::from_utf8(&data).expect("string is utf8").to_string();
         s.trim().contains('\n')
     }
 
-    fn dedent<'a>(&mut self, f: Box<dyn FnOnce(&mut dyn ConcreteParserState) + 'a>) {
+    fn will_render_beyond_max_line_length<'a>(&mut self, f: RenderFunc) -> bool {
+        let mut next_ps = BaseParserState::new_with_depth_stack_from(self);
+        // Ignore commments when determining line length
+        next_ps.with_suppress_comments(true, f);
+        let data = next_ps.render_to_buffer();
+
+        let s = str::from_utf8(&data).expect("string is utf8").to_string();
+
+        // Add current spaces to account for current indentation level
+        (s.split_whitespace().collect::<String>().len() + (self.current_spaces() as usize))
+            > MAX_LINE_LENGTH
+    }
+
+    fn reset_space_count(&mut self) {
+        self.spaces_after_last_newline = self.current_spaces();
+    }
+
+    fn dedent<'a>(&mut self, f: RenderFunc) {
         let ds_length = self.depth_stack.len();
         self.depth_stack[ds_length - 1].decrement();
         f(self);
         self.depth_stack[ds_length - 1].increment();
     }
 
-    fn with_start_of_line<'a>(
-        &mut self,
-        start_of_line: bool,
-        f: Box<dyn FnOnce(&mut dyn ConcreteParserState) + 'a>,
-    ) {
+    fn start_indent(&mut self) {
+        let ds_length = self.depth_stack.len();
+        self.depth_stack[ds_length - 1].increment();
+    }
+
+    fn end_indent(&mut self) {
+        let ds_length = self.depth_stack.len();
+        self.depth_stack[ds_length - 1].decrement();
+    }
+
+    fn with_start_of_line<'a>(&mut self, start_of_line: bool, f: RenderFunc) {
         self.start_of_line.push(start_of_line);
         f(self);
         self.start_of_line.pop();
     }
 
-    fn breakable_of<'a>(
-        &mut self,
-        delims: BreakableDelims,
-        f: Box<dyn FnOnce(&mut dyn ConcreteParserState) + 'a>,
-    ) {
+    fn breakable_of<'a>(&mut self, delims: BreakableDelims, f: RenderFunc) -> bool {
         self.shift_comments();
-        let mut be = BreakableEntry::new(self.current_spaces(), delims);
+        let mut be = BreakableEntry::new(
+            self.current_spaces(),
+            delims,
+            self.current_formatting_context(),
+        );
+        be.push_line_number(self.current_orig_line_number);
+        self.breakable_entry_stack.push(Box::new(be));
+
+        self.new_block(Box::new(|ps| {
+            ps.emit_collapsing_newline();
+            f(ps);
+            ps.emit_collapsing_newline();
+        }));
+
+        // The last newline is in the old block, so we need
+        // to reset to ensure that any comments between now and the
+        // next newline are at the right indentation level
+        self.reset_space_count();
+        // Make sure we shift comments before ending the breakable.
+        // This ensures that comments inside breakables never end up rendering
+        // outside their delimiters.
+        self.shift_comments();
+        self.emit_soft_indent();
+
+        let insert_be = self
+            .breakable_entry_stack
+            .pop()
+            .expect("cannot have empty here because we just pushed")
+            .to_breakable_entry();
+        let is_multiline = insert_be.is_multiline();
+        self.push_target(ConcreteLineTokenAndTargets::BreakableEntry(insert_be));
+        is_multiline
+    }
+
+    /// A version of `breakable_of` for list-like things that use whitespace delimiters.
+    /// At the moment, this is only for conditions in a `when` clause
+    fn inline_breakable_of<'a>(&mut self, delims: BreakableDelims, f: RenderFunc) {
+        self.shift_comments();
+        let mut be = BreakableEntry::new(
+            self.current_spaces(),
+            delims,
+            self.current_formatting_context(),
+        );
         be.push_line_number(self.current_orig_line_number);
         self.breakable_entry_stack.push(Box::new(be));
 
@@ -281,7 +365,10 @@ impl ConcreteParserState for BaseParserState {
             f(ps);
         }));
 
-        self.emit_soft_indent();
+        // The last newline is in the old block, so we need
+        // to reset to ensure that any comments between now and the
+        // next newline are at the right indentation level
+        self.reset_space_count();
 
         let insert_be = self
             .breakable_entry_stack
@@ -291,20 +378,13 @@ impl ConcreteParserState for BaseParserState {
         self.push_target(ConcreteLineTokenAndTargets::BreakableEntry(insert_be));
     }
 
-    fn with_suppress_comments<'a>(
-        &mut self,
-        suppress: bool,
-        f: Box<dyn FnOnce(&mut dyn ConcreteParserState) + 'a>,
-    ) {
+    fn with_suppress_comments<'a>(&mut self, suppress: bool, f: RenderFunc) {
         self.suppress_comments_stack.push(suppress);
         f(self);
         self.suppress_comments_stack.pop();
     }
 
-    fn with_absorbing_indent_block<'a>(
-        &mut self,
-        f: Box<dyn FnOnce(&mut dyn ConcreteParserState) + 'a>,
-    ) {
+    fn with_absorbing_indent_block<'a>(&mut self, f: RenderFunc) {
         let was_absorbing = self.absorbing_indents != 0;
         self.absorbing_indents += 1;
         if was_absorbing {
@@ -315,18 +395,14 @@ impl ConcreteParserState for BaseParserState {
         self.absorbing_indents -= 1;
     }
 
-    fn new_block<'a>(&mut self, f: Box<dyn FnOnce(&mut dyn ConcreteParserState) + 'a>) {
+    fn new_block<'a>(&mut self, f: RenderFunc) {
         let ds_length = self.depth_stack.len();
         self.depth_stack[ds_length - 1].increment();
         f(self);
         self.depth_stack[ds_length - 1].decrement();
     }
 
-    fn with_formatting_context<'a>(
-        &mut self,
-        fc: FormattingContext,
-        f: Box<dyn FnOnce(&mut dyn ConcreteParserState) + 'a>,
-    ) {
+    fn with_formatting_context<'a>(&mut self, fc: FormattingContext, f: RenderFunc) {
         self.formatting_context.push(fc);
         f(self);
         self.formatting_context.pop();
@@ -342,11 +418,19 @@ impl ConcreteParserState for BaseParserState {
             be.push_line_number(line_number);
         }
 
-        let comments = self.comments_hash.extract_comments_to_line(line_number);
-        self.push_comments(comments);
+        if let Some((comments, last_comment_line)) = self
+            .comments_hash
+            .extract_comments_to_line(self.current_orig_line_number, line_number)
+        {
+            self.push_comments(comments);
+            self.current_orig_line_number =
+                std::cmp::max(self.current_orig_line_number, last_comment_line);
+        }
 
         debug!("lns: {} {}", line_number, self.current_orig_line_number);
-        if line_number - self.current_orig_line_number >= 2 && self.insert_user_newlines {
+        if line_difference_requires_newline(line_number, self.current_orig_line_number)
+            && self.insert_user_newlines
+        {
             debug!("extra line");
             self.insert_extra_newline_at_last_newline();
         }
@@ -371,19 +455,20 @@ impl ConcreteParserState for BaseParserState {
             .expect("start of line is never_empty")
     }
 
+    fn has_comments_in_line(&self, start_line: LineNumber, end_line: LineNumber) -> bool {
+        self.comments_hash
+            .has_comments_in_lines(start_line, end_line)
+    }
+
+    fn current_line_number(&self) -> u64 {
+        self.current_orig_line_number
+    }
+
     fn emit_def(&mut self, def_name: String) {
         self.emit_def_keyword();
         self.push_concrete_token(ConcreteLineToken::DirectPart {
             part: format!(" {}", def_name),
         });
-    }
-
-    fn wind_line_if_needed_for_array(&mut self) {
-        debug!("bestack {:?}", self.breakable_entry_stack);
-        debug!("lbimul {}", self.last_breakable_is_multiline());
-        if self.last_breakable_is_multiline() {
-            self.wind_line_forward()
-        }
     }
 
     fn insert_comment_collection(&mut self, comments: CommentBlock) {
@@ -426,13 +511,38 @@ impl ConcreteParserState for BaseParserState {
         self.spaces_after_last_newline = self.current_spaces();
     }
 
-    fn wind_dumping_comments(&mut self) {
+    fn wind_dumping_comments_until_line(&mut self, line_number: LineNumber) {
+        self.wind_dumping_comments(Some(line_number))
+    }
+
+    fn wind_dumping_comments(&mut self, maybe_max_line_number: Option<LineNumber>) {
+        // Return early if we're already at/past
+        // the max line number
+        if maybe_max_line_number
+            .map(|ln| ln <= self.current_orig_line_number)
+            .unwrap_or(false)
+        {
+            return;
+        }
+
         self.on_line(self.current_orig_line_number + 1);
-        let mut did_wind = false;
         let should_iter = |ps: &BaseParserState, ln| {
             debug!("{}", ln);
+            // If we have a max line number, it will be the last token
+            // of an expression (e.g. the `end` of a `do`/`end` block), so it's
+            // fine if we wind forward to that line
+            if maybe_max_line_number
+                .map(|max| ln + 1 == max)
+                .unwrap_or(false)
+            {
+                return true;
+            }
+
             ps.comments_hash.still_in_file(ln + 1)
                 && (ps.comments_hash.has_line(ln + 1) || ps.comments_hash.is_empty_line(ln + 1))
+                && maybe_max_line_number
+                    .map(|max_line| ln + 1 < max_line)
+                    .unwrap_or(true)
         };
         while should_iter(self, self.current_orig_line_number) {
             if !self
@@ -450,11 +560,6 @@ impl ConcreteParserState for BaseParserState {
                 }
                 mr.add_line("".to_string());
             }
-            self.on_line(self.current_orig_line_number + 1);
-            did_wind = true;
-            debug!("{}", self.current_orig_line_number);
-        }
-        if did_wind {
             self.on_line(self.current_orig_line_number + 1);
             debug!("{}", self.current_orig_line_number);
         }
@@ -476,11 +581,13 @@ impl ConcreteParserState for BaseParserState {
 
     fn shift_comments(&mut self) {
         let idx_of_prev_hard_newline = self.index_of_prev_hard_newline();
-        if let Some(new_comments) = self.comments_to_insert.take() {
-            let insert_index = idx_of_prev_hard_newline.unwrap_or(0);
+        self.shift_comments_at_index(idx_of_prev_hard_newline.unwrap_or(0));
+    }
 
+    fn shift_comments_at_index(&mut self, index: usize) {
+        if let Some(new_comments) = self.comments_to_insert.take() {
             self.insert_concrete_tokens(
-                insert_index,
+                index,
                 new_comments.into_line_tokens().into_iter().collect(),
             );
         }
@@ -507,6 +614,10 @@ impl ConcreteParserState for BaseParserState {
             self.push_abstract_token(AbstractLineToken::CollapsingNewLine(hd));
         }
         self.spaces_after_last_newline = self.current_spaces();
+    }
+
+    fn emit_after_call_chain(&mut self) {
+        self.push_concrete_token(ConcreteLineToken::AfterCallChain)
     }
 
     fn emit_space(&mut self) {
@@ -610,6 +721,10 @@ impl ConcreteParserState for BaseParserState {
         self.push_concrete_token(ConcreteLineToken::Dot);
     }
 
+    fn emit_ellipsis(&mut self) {
+        self.push_concrete_token(ConcreteLineToken::Ellipsis)
+    }
+
     fn emit_lonely_operator(&mut self) {
         self.push_concrete_token(ConcreteLineToken::LonelyOperator);
     }
@@ -633,30 +748,29 @@ impl ConcreteParserState for BaseParserState {
 
     fn render_heredocs(&mut self, skip: bool) {
         while !self.heredoc_strings.is_empty() {
-            let mut next_heredoc = self.heredoc_strings.pop().expect("we checked it's there");
+            let next_heredoc = self.heredoc_strings.pop().expect("we checked it's there");
             let want_newline = !self.last_token_is_a_newline();
             if want_newline {
                 self.push_concrete_token(ConcreteLineToken::HardNewLine);
             }
 
-            if let Some(b'\n') = next_heredoc.buf.last() {
-                next_heredoc.buf.pop();
-            };
+            let kind = next_heredoc.kind.clone();
+            let symbol = next_heredoc.closing_symbol();
+            let space_count = next_heredoc.indent;
+            let string_contents = next_heredoc.render_as_string();
 
-            if let Some(b'\n') = next_heredoc.buf.last() {
-                next_heredoc.buf.pop();
-            };
-
-            self.push_concrete_token(ConcreteLineToken::DirectPart {
-                part: String::from_utf8(next_heredoc.buf).expect("heredoc is utf8"),
-            });
-            self.emit_newline();
-            if next_heredoc.squiggly {
-                self.emit_indent();
+            if !string_contents.is_empty() {
+                self.push_concrete_token(ConcreteLineToken::DirectPart {
+                    part: string_contents,
+                });
+                self.emit_newline();
+            }
+            if !kind.is_bare() {
+                self.push_concrete_token(ConcreteLineToken::Indent { depth: space_count })
             } else {
                 self.push_concrete_token(ConcreteLineToken::Indent { depth: 0 });
             }
-            self.emit_heredoc_close(next_heredoc.symbol.replace("'", ""));
+            self.emit_heredoc_close(symbol.replace('\'', ""));
             if !skip {
                 self.emit_newline();
             }
@@ -724,30 +838,18 @@ impl BaseParserState {
         }
     }
 
-    fn last_breakable_is_multiline(&self) -> bool {
-        self.breakable_entry_stack
+    fn push_comments(&mut self, comments: CommentBlock) {
+        if !self
+            .suppress_comments_stack
             .last()
-            .map(|o| o.is_multiline())
-            .unwrap_or(false)
-    }
-
-    fn push_comments(&mut self, comments: Option<CommentBlock>) {
-        match comments {
-            None => {}
-            Some(comments) => {
-                if !self
-                    .suppress_comments_stack
-                    .last()
-                    .expect("comments stack is never empty")
-                {
-                    let len = comments.len();
-                    let trailing_comment = comments.is_trailing();
-                    self.insert_comment_collection(comments);
-                    if !trailing_comment {
-                        self.current_orig_line_number += len as u64;
-                        debug!("pe coln: {}", len);
-                    }
-                }
+            .expect("comments stack is never empty")
+        {
+            let len = comments.len();
+            let trailing_comment = comments.is_trailing();
+            self.insert_comment_collection(comments);
+            if !trailing_comment {
+                self.current_orig_line_number += len as u64;
+                debug!("pe coln: {}", len);
             }
         }
     }
@@ -756,7 +858,22 @@ impl BaseParserState {
         let idx = self.index_of_prev_hard_newline();
         let insert_idx = idx.unwrap_or(0);
 
-        self.insert_concrete_tokens(insert_idx, vec![ConcreteLineToken::HardNewLine]);
+        // Insert SoftNewlines in breakable entries instead of
+        // HardNewlines. They're functionally the same (since at
+        // this point we know that the breakable will be multiline),
+        // but inserting newlines for comments is special-cased
+        // for soft newlines inside of breakables (and this special casing
+        // is sometimes broken by mixing newline types), so we should
+        // use SoftNewlines here instead.
+        if self.breakable_entry_stack.last().is_some() {
+            let hd = self.gather_heredocs();
+            self.breakable_entry_stack
+                .last_mut()
+                .unwrap()
+                .insert_at(insert_idx, &mut vec![AbstractLineToken::SoftNewline(hd)]);
+        } else {
+            self.insert_concrete_tokens(insert_idx, vec![ConcreteLineToken::HardNewLine]);
+        }
     }
 
     fn current_spaces(&self) -> ColNumber {
@@ -783,6 +900,8 @@ impl BaseParserState {
 
     fn new_with_depth_stack_from(ps: &BaseParserState) -> Self {
         let mut next_ps = BaseParserState::new(FileComments::default());
+        next_ps.comments_hash = ps.comments_hash.clone();
+        next_ps.start_of_line = ps.start_of_line.clone();
         next_ps.depth_stack = ps.depth_stack.clone();
         next_ps.current_orig_line_number = ps.current_orig_line_number;
         next_ps
@@ -810,10 +929,6 @@ impl BaseParserState {
             }
             _ => panic!("failed to convert"),
         }
-    }
-
-    pub fn wind_line_forward(&mut self) {
-        self.on_line(self.current_orig_line_number + 1);
     }
 
     pub fn flush_start_of_file_comments(&mut self) {
@@ -890,4 +1005,8 @@ impl BaseParserState {
         f(&mut next_ps);
         next_ps
     }
+}
+
+pub fn line_difference_requires_newline(to_line: LineNumber, from_line: LineNumber) -> bool {
+    (to_line > from_line) && (to_line - from_line >= 2)
 }

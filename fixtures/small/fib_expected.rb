@@ -1,7 +1,6 @@
 def fib(i)
   a = 1
   b = 1
-
   i.times do
     tmp = a + b
     a = b

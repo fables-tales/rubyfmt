@@ -1,6 +1,5 @@
 #![deny(warnings, missing_copy_implementations)]
-#![allow(clippy::upper_case_acronyms)]
-#![allow(clippy::enum_variant_names)]
+#![allow(clippy::upper_case_acronyms, clippy::enum_variant_names)]
 
 use serde::de::value;
 use std::io::{Cursor, Write};
@@ -38,7 +37,7 @@ use ruby_ops::{load_rubyfmt, ParseError, Parser, RipperTree};
 #[cfg(debug_assertions)]
 use log::debug;
 #[cfg(debug_assertions)]
-use simplelog::{Config, LevelFilter, TermLogger, TerminalMode};
+use simplelog::{ConfigBuilder, LevelFilter, TermLogger, TerminalMode};
 
 extern "C" {
     pub fn Init_ripper();
@@ -61,7 +60,11 @@ pub enum RichFormatError {
 }
 
 impl RichFormatError {
-    fn into_format_error(self) -> FormatError {
+    pub fn as_exit_code(&self) -> i32 {
+        self.as_format_error() as i32
+    }
+
+    fn as_format_error(&self) -> FormatError {
         match self {
             RichFormatError::SyntaxError => FormatError::SyntaxError,
             RichFormatError::RipperParseFailure(_) => FormatError::RipperParseFailure,
@@ -78,6 +81,8 @@ pub enum FormatError {
     RipperParseFailure = 2,
     IOError = 3,
     OtherRubyError = 4,
+    // Diffs are only necessary in --check mode
+    DiffDetected = 5,
 }
 
 pub fn format_buffer(buf: &str) -> Result<String, RichFormatError> {
@@ -129,7 +134,7 @@ pub unsafe extern "C" fn rubyfmt_format_buffer(
             Box::into_raw(Box::new(RubyfmtString(o.into_boxed_str())))
         }
         Err(e) => {
-            *err = e.into_format_error() as i64;
+            *err = e.as_format_error() as i64;
             std::ptr::null::<RubyfmtString>() as _
         }
     }
@@ -148,7 +153,7 @@ pub extern "C" fn rubyfmt_string_len(s: &RubyfmtString) -> usize {
 #[no_mangle]
 extern "C" fn rubyfmt_string_free(rubyfmt_string: *mut RubyfmtString) {
     unsafe {
-        Box::from_raw(rubyfmt_string);
+        drop(Box::from_raw(rubyfmt_string));
     }
 }
 
@@ -214,8 +219,14 @@ fn run_parser_on(buf: &str) -> Result<(RipperTree, FileComments), RichFormatErro
 fn init_logger() {
     #[cfg(debug_assertions)]
     {
-        TermLogger::init(LevelFilter::Debug, Config::default(), TerminalMode::Stderr)
-            .expect("making a term logger");
+        TermLogger::init(
+            LevelFilter::Debug,
+            ConfigBuilder::new()
+                .set_time_level(LevelFilter::Off)
+                .build(),
+            TerminalMode::Stderr,
+        )
+        .expect("making a term logger");
         debug!("logger works");
     }
 }

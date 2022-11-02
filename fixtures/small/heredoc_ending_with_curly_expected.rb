@@ -1,5 +1,5 @@
 raise(
-  <<-EOM.gsub(
+  <<-EOM
               |#{"*" * 50}
               |:#{key} is not allowed
               |
@@ -12,8 +12,6 @@ raise(
               |
               |  #{RESERVED_KEYS.join("\n  ")}
               |#{"*" * 50}
-EOM
-    /^\s+\|/,
-    ""
-  )
+  EOM
+    .gsub(/^\s+\|/, "")
 )

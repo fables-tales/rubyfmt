@@ -18,6 +18,9 @@ module MathsAndPhysics
     #maths
     a,
     #physics
-    b
+    b,
+
+    # foreign language
+    c
   ]
 end

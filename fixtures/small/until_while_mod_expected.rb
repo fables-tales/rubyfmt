@@ -1,6 +1,8 @@
-until true
-  class Foo
-  end
-end
+class Foo
+end until true
+
+begin
+  puts("")
+end while false
 
 eval.the.thing(4) { |x| y } while false
