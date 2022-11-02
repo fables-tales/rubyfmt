@@ -2314,10 +2314,9 @@ pub fn format_class(ps: &mut dyn ConcreteParserState, class: Class) {
                 }
             }
 
-            if inherit.is_some() {
-                let inherit_expression = *(inherit.expect("We checked it is some"));
+            if let Some(inherit_expression) = inherit {
                 ps.emit_ident(" < ".to_string());
-                format_expression(ps, inherit_expression);
+                format_expression(ps, *inherit_expression);
             }
         }),
     );
