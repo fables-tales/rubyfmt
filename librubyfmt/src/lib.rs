@@ -86,10 +86,10 @@ pub enum FormatError {
 }
 
 pub fn format_buffer(buf: &str) -> Result<String, RichFormatError> {
-    let (tree, file_comments) = run_parser_on(buf)?;
+    let (tree, file_comments, end_data) = run_parser_on(buf)?;
     let out_data = vec![];
     let mut output = Cursor::new(out_data);
-    toplevel_format_program(&mut output, tree, file_comments)?;
+    toplevel_format_program(&mut output, tree, file_comments, end_data)?;
     output.flush().expect("flushing to a vec should never fail");
     Ok(String::from_utf8(output.into_inner()).expect("we never write invalid UTF-8"))
 }
@@ -197,19 +197,20 @@ pub fn toplevel_format_program<W: Write>(
     writer: &mut W,
     tree: RipperTree,
     file_comments: FileComments,
+    end_data: Option<&str>,
 ) -> Result<(), RichFormatError> {
     let mut ps = BaseParserState::new(file_comments);
     let v: ripper_tree_types::Program =
         de::from_value(tree).map_err(RichFormatError::RipperParseFailure)?;
 
-    format::format_program(&mut ps, v);
+    format::format_program(&mut ps, v, end_data);
 
     ps.write(writer).map_err(RichFormatError::IOError)?;
     writer.flush().map_err(RichFormatError::IOError)?;
     Ok(())
 }
 
-fn run_parser_on(buf: &str) -> Result<(RipperTree, FileComments), RichFormatError> {
+fn run_parser_on(buf: &str) -> Result<(RipperTree, FileComments, Option<&str>), RichFormatError> {
     Parser::new(buf).parse().map_err(|e| match e {
         ParseError::SyntaxError => RichFormatError::SyntaxError,
         ParseError::OtherRubyError(s) => RichFormatError::OtherRubyError(s),

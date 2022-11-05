@@ -24,7 +24,7 @@ class Parser < Ripper::SexpBuilderPP
 
   def initialize(file_data)
     super(file_data)
-    @file_lines = file_data.split("\n")
+    @file_lines = file_data.lines
 
     @lines_with_any_ruby = {}
 
@@ -65,6 +65,8 @@ class Parser < Ripper::SexpBuilderPP
     @lbrace_stack = []
     @comments = {}
     @last_ln = 0
+    # binary contents comming after a `__END__` node
+    @data_contents_start_line = nil
   end
 
   def on_nl(*args)
@@ -103,7 +105,13 @@ class Parser < Ripper::SexpBuilderPP
     if res == nil || error?
       nil
     else
-      [res, @comments, @lines_with_any_ruby, @last_ln]
+      data_contents = if @data_contents_start_line
+        @file_lines[@data_contents_start_line..].join
+      else
+        nil
+      end
+
+      [res, @comments, @lines_with_any_ruby, @last_ln, data_contents]
     end
   end
 
@@ -533,6 +541,11 @@ class Parser < Ripper::SexpBuilderPP
 
   def on_comment(comment)
     @comments[lineno] = comment
+  end
+
+  def on___end__(val)
+    super
+    @data_contents_start_line = lineno
   end
 
   private def start_end_for_keyword(keyword)

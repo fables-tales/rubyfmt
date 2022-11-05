@@ -94,6 +94,8 @@ where
     fn emit_indent(&mut self);
     fn emit_heredoc_start(&mut self, hd_type: String, symbol: String);
     fn emit_after_call_chain(&mut self);
+    fn emit_data_end(&mut self);
+    fn emit_data(&mut self, data: &str);
 
     // other state changers
     fn bind_variable(&mut self, s: String);
@@ -706,6 +708,16 @@ impl ConcreteParserState for BaseParserState {
 
     fn emit_else(&mut self) {
         self.emit_conditional_keyword("else".to_string());
+    }
+
+    fn emit_data_end(&mut self) {
+        self.push_concrete_token(ConcreteLineToken::DataEnd);
+    }
+
+    fn emit_data(&mut self, data: &str) {
+        self.push_concrete_token(ConcreteLineToken::DirectPart {
+            part: data.to_string(),
+        })
     }
 
     fn wind_line_forward(&mut self) {

@@ -3788,7 +3788,7 @@ pub fn format_expression(ps: &mut dyn ConcreteParserState, expression: Expressio
     }
 }
 
-pub fn format_program(ps: &mut BaseParserState, program: Program) {
+pub fn format_program(ps: &mut BaseParserState, program: Program, end_data: Option<&str>) {
     ps.flush_start_of_file_comments();
     debug!("{:?}", program);
     for expression in program.1 {
@@ -3797,4 +3797,10 @@ pub fn format_program(ps: &mut BaseParserState, program: Program) {
     ps.emit_newline();
     ps.on_line(10_000_000_000_000_000_000);
     ps.shift_comments();
+
+    if let Some(end_data) = end_data {
+        ps.emit_data_end();
+        ps.emit_newline();
+        ps.emit_data(end_data);
+    }
 }
