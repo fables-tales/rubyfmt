@@ -42,16 +42,23 @@ impl Parser {
         }
     }
 
-    pub fn parse(self) -> Result<(RipperTree, FileComments), ParseError> {
+    pub fn parse(self) -> Result<(RipperTree, FileComments, Option<&'static str>), ParseError> {
         let mut state = 0;
         let maybe_ret_tuple =
             unsafe { rb_protect(Parser::real_run_parser as _, self.0 as _, &mut state) };
         if state == 0 {
             if maybe_ret_tuple != Qnil {
                 let ret_tuple = unsafe { ruby_array_to_slice(maybe_ret_tuple) };
-                if let [tree, comments, lines, last_lineno] = ret_tuple {
+                if let [tree, comments, lines, last_lineno, end_contents] = ret_tuple {
                     let fc = FileComments::from_ruby_hash(*comments, *lines, *last_lineno);
-                    Ok((RipperTree::new(*tree), fc))
+                    let end_contents = unsafe {
+                        if rubyfmt_rb_nil_p(*end_contents) != 0 {
+                            None
+                        } else {
+                            Some(ruby_string_to_str(*end_contents))
+                        }
+                    };
+                    Ok((RipperTree::new(*tree), fc, end_contents))
                 } else {
                     panic!(
                         "expected return tuple to match expected, actually got: {}",

@@ -54,6 +54,7 @@ pub enum ConcreteLineToken {
     AfterCallChain,
     End,
     HeredocClose { symbol: String },
+    DataEnd,
 }
 
 impl ConcreteLineToken {
@@ -90,6 +91,7 @@ impl ConcreteLineToken {
             Self::Delim { contents } => contents,
             Self::End => "end".to_string(),
             Self::HeredocClose { symbol } => symbol,
+            Self::DataEnd => "__END__".to_string(),
             // no-op, this is purely semantic information
             // for the render queue
             Self::AfterCallChain => "".to_string(),
