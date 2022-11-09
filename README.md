@@ -46,9 +46,7 @@ Once installed, add the following to vscode's `settings.json` file:
 
 ### RubyMine (and similar Jetbrains family IDE)
 
-[Install](https://www.jetbrains.com/help/ruby/settings-tools-file-watchers.html) the File Watchers plugin and configue it like shown below.
-
-<img src="https://user-images.githubusercontent.com/8165/90933920-3b32eb80-e3b5-11ea-9a38-120249d022a3.png" height="300" />
+[Install](https://www.jetbrains.com/help/ruby/settings-tools-file-watchers.html) the File Watchers plugin and go to `File | Settings | Tools | File Watchers`. Now import `watchers.xml` from `editor_plugins/rubymine/`. Optionally set `Level` to `Global` to have it available across all projects.
 
 See [this reference](https://www.jetbrains.com/help/ruby/using-file-watchers.html#ws_filewatcher_type_and_location_of_input_files) on using file watchers to learn more.
 
