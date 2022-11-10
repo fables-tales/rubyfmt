@@ -1,1 +1,1 @@
-alias == eql?
+alias_method :==, :eql?

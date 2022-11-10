@@ -7,8 +7,8 @@
 ]
 
 [
-  "",
+  ""
   # Comment one
   # Comment two
-  *[]
+
 ]

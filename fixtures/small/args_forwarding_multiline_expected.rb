@@ -1,5 +1,5 @@
 def a(...)
   if should_pass?
-    return b(...)
+    b(...)
   end
 end

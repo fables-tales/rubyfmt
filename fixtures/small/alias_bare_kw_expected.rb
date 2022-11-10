@@ -1,1 +1,1 @@
-alias bees defined?
+alias_method :bees, :defined?

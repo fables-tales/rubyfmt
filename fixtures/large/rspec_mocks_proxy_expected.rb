@@ -4,8 +4,8 @@ module RSpec
     class Proxy
       # @private
       SpecificMessage = Struct.new(:object, :message, :args) do
-        def ==(expectation)
-          expectation.orig_object == object && expectation.matches?(message, *args)
+        def ==(other)
+          other.orig_object == object && other.matches?(message, *args)
         end
       end
 
@@ -101,7 +101,7 @@ module RSpec
             next unless expectation.matches?(actual_method_name, *args)
 
             expectation.safe_invoke(nil)
-            block.call(*args, &received_block) if block
+            block&.call(*args, &received_block)
           end
         end
       end
@@ -191,7 +191,7 @@ module RSpec
         stub = find_matching_method_stub(message, *args)
 
         if (stub && expectation && expectation.called_max_times?) || (stub && !expectation)
-          expectation.increase_actual_received_count! if expectation && expectation.actual_received_count_matters?
+          expectation.increase_actual_received_count! if expectation&.actual_received_count_matters?
           if (expectation = find_almost_matching_expectation(message, *args))
             expectation.advise(*args) unless expectation.expected_messages_received?
           end
@@ -201,7 +201,9 @@ module RSpec
           expectation.unadvise(messages_arg_list)
           expectation.invoke(stub, *args, &block)
         elsif (expectation = find_almost_matching_expectation(message, *args))
-          expectation.advise(*args) if null_object? unless expectation.expected_messages_received?
+          unless expectation.expected_messages_received?
+            expectation.advise(*args) if null_object?
+          end
 
           if null_object? || !has_negative_expectation?(message)
             expectation.raise_unexpected_message_args_error([args])
@@ -350,7 +352,7 @@ module RSpec
       def any_instance_class_recorder_observing_method?(klass, method_name)
         only_return_existing = true
         recorder = ::RSpec::Mocks.space.any_instance_recorder_for(klass, only_return_existing)
-        return true if recorder && recorder.already_observing?(method_name)
+        return true if recorder&.already_observing?(method_name)
 
         superklass = klass.superclass
         return false if superklass.nil?
@@ -390,7 +392,7 @@ module RSpec
       # That's what this method (together with `original_unbound_method_handle_from_ancestor_for`)
       # does.
       def original_method_handle_for(message)
-        unbound_method = superclass_proxy && superclass_proxy.original_unbound_method_handle_from_ancestor_for(message.to_sym)
+        unbound_method = superclass_proxy&.original_unbound_method_handle_from_ancestor_for(message.to_sym)
 
         return super unless unbound_method
         unbound_method.bind(object)
@@ -414,7 +416,7 @@ module RSpec
 
       def original_unbound_method_handle_from_ancestor_for(message)
         double = method_double_from_ancestor_for(message)
-        double && double.original_method.unbind
+        double&.original_method&.unbind
       end
 
       def method_double_from_ancestor_for(message)
@@ -422,17 +424,15 @@ module RSpec
           # The fact that there is no method double for this message indicates
           # that it has not been redefined by rspec-mocks. We need to continue
           # looking up the ancestor chain.
-          return superclass_proxy && superclass_proxy.method_double_from_ancestor_for(message)
+          return superclass_proxy&.method_double_from_ancestor_for(message)
         end
       end
 
       def superclass_proxy
         return @superclass_proxy if defined?(@superclass_proxy)
 
-        if (superclass = object.superclass)
-          @superclass_proxy = @source_space.superclass_proxy_for(superclass)
-        else
-          @superclass_proxy = nil
+        @superclass_proxy = if (superclass = object.superclass)
+          @source_space.superclass_proxy_for(superclass)
         end
       end
     end

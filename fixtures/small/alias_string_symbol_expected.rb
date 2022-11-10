@@ -1,1 +1,1 @@
-alias :"a" :"b"
+alias_method :a, :b

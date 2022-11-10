@@ -1,10 +1,8 @@
 def foo
-  begin
-    # Call this method
-    this_method
+  # Call this method
+  this_method
 
-    # Then call that method
-    that_method
-  rescue => e
-  end
+  # Then call that method
+  that_method
+rescue => e
 end

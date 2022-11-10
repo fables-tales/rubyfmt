@@ -2,5 +2,5 @@ class Foo
   def bees
   end
 
-  alias :bees :cheese
+  alias_method :bees, :cheese
 end

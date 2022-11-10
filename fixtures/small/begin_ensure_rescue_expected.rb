@@ -5,10 +5,8 @@ class ForIndents
   end
 
   def func2
-    begin
-    rescue Bees
-      a
-    end
+  rescue Bees
+    a
   end
 
   def func3
@@ -17,21 +15,17 @@ class ForIndents
   end
 
   def func4
-    begin
-    rescue Bees
-      a
-    ensure
-      b
-    end
+  rescue Bees
+    a
+  ensure
+    b
   end
 
   def func_with_comments
-    begin
-      foo!
-    rescue
-      # We could not foo!
-      # Our sincerest apologies
-    end
+    foo!
+  rescue
+    # We could not foo!
+    # Our sincerest apologies
   end
 
   def func_with_mulilines
