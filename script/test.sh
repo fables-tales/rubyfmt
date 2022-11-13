@@ -16,4 +16,4 @@ uname -a
 ./script/tests/test_error_handling.sh
 ./script/tests/test_fixtures.sh
 ./script/tests/test_formatting_locks.sh
-./script/tests/test_rspec_stress.sh
+#./script/tests/test_rspec_stress.sh

@@ -603,7 +603,7 @@ dependencies = [
 
 [[package]]
 name = "rubyfmt"
-version = "0.6.8-pre"
+version = "0.8.0-pre"
 dependencies = [
  "backtrace",
  "cc",
@@ -619,7 +619,7 @@ dependencies = [
 
 [[package]]
 name = "rubyfmt-main"
-version = "0.6.8-pre"
+version = "0.8.0-pre"
 dependencies = [
  "clap",
  "dirs",
