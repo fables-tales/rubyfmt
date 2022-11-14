@@ -18,6 +18,10 @@ Rubyfmt supports the following CLI invocations:
 * `rubyfmt --header-opt-in -- files or directories` to format files only with a `# rubyfmt: true` comment at the top of the file
 * `rubyfmt --header-opt-out -- files or directories` to skip formatting files with a `# rubyfmt: false` comment at the top of the file
 
+`rubyfmt` also supports ignoring files with a `.rubyfmtignore` file when present in the root of the working directory.
+`.rubyfmtignore` uses the same syntax as `.gitignore`, so you can choose to ignore whole directories or use globs as needed.
+By default, `rubyfmt` also ignores files in `.gitignore` during file traversal, but you can force these files to be formatted by using the `--include-gitignored` flag.
+
 ## Editor Support
 
 ### Vim
