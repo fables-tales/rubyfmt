@@ -80,6 +80,6 @@ jobs:
     - run: ./script/test.sh
     - uses: actions/upload-artifact@v3
       with:
-        name: rubyfmt-artifact
+        name: rubyfmt-artifact-${{ matrix.os }}
         path: target/release/rubyfmt-main
 
