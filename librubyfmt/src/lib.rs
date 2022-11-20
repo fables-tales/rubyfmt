@@ -6,6 +6,9 @@ use std::io::{Cursor, Write};
 use std::slice;
 use std::str;
 
+#[macro_use]
+extern crate lazy_static;
+
 #[cfg(all(feature = "use_jemalloc", not(target_env = "msvc")))]
 #[global_allocator]
 static ALLOC: jemallocator::Jemalloc = jemallocator::Jemalloc;

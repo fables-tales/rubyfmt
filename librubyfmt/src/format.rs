@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use crate::delimiters::BreakableDelims;
 use crate::heredoc_string::HeredocKind;
 use crate::parser_state::{BaseParserState, ConcreteParserState, FormattingContext, RenderFunc};
@@ -661,6 +663,21 @@ pub fn args_has_single_def_expression(args: &ArgsAddStarOrExpressionListOrArgsFo
     false
 }
 
+lazy_static! {
+    static ref RSPEC_METHODS: HashSet<&'static str> = vec!["it", "describe"].into_iter().collect();
+    static ref GEMFILE_METHODS: HashSet<&'static str> = vec![
+        // Gemfile
+        "gem",
+        "source",
+        "ruby",
+        "group",
+    ].into_iter().collect();
+    static ref OPTIONALLY_PARENTHESIZED_METHODS: HashSet<&'static str> =
+        vec!["super", "require", "require_relative",]
+            .into_iter()
+            .collect::<HashSet<_>>();
+}
+
 pub fn use_parens_for_method_call(
     ps: &dyn ConcreteParserState,
     chain: &[CallChainElement],
@@ -702,7 +719,9 @@ pub fn use_parens_for_method_call(
         }
     }
 
-    if name == "super" || name == "require" || name == "require_relative" {
+    if OPTIONALLY_PARENTHESIZED_METHODS.contains(name.as_str())
+        || GEMFILE_METHODS.contains(name.as_str())
+    {
         return original_used_parens;
     }
 
@@ -2663,17 +2682,26 @@ pub fn format_backref(ps: &mut dyn ConcreteParserState, backref: Backref) {
     }
 }
 
-fn can_elide_parens_for_rspec_dsl_call(cc: &[CallChainElement]) -> bool {
+/// Matches call chains on common special-cased names, like
+/// `it`/`describe` for tests and `gem`/`source`/etc. for Gemfiles.
+fn can_elide_parens_for_reserved_names(cc: &[CallChainElement]) -> bool {
     if let Some(CallChainElement::Block(Block::BraceBlock(_))) = cc.last() {
         return false;
     };
 
-    let is_bare_it_or_describe = match cc.get(0) {
+    let is_bare_reserved_method_name = match cc.get(0) {
         Some(CallChainElement::IdentOrOpOrKeywordOrConst(IdentOrOpOrKeywordOrConst::Ident(
             Ident(_, ident, _),
-        ))) => ident == "it" || ident == "describe",
+        ))) => {
+            let ident = ident.as_str();
+            RSPEC_METHODS.contains(ident) || GEMFILE_METHODS.contains(ident)
+        }
         _ => false,
     };
+
+    if is_bare_reserved_method_name {
+        return true;
+    }
 
     let is_rspec_describe = match (cc.get(0), cc.get(2)) {
         (
@@ -2685,7 +2713,7 @@ fn can_elide_parens_for_rspec_dsl_call(cc: &[CallChainElement]) -> bool {
         _ => false,
     };
 
-    is_bare_it_or_describe || is_rspec_describe
+    is_rspec_describe
 }
 
 /// Returns `true` if the call chain is indented, `false` if not
@@ -2709,7 +2737,7 @@ fn format_call_chain_elements(
     cc: Vec<CallChainElement>,
     render_multiline_chain: bool,
 ) {
-    let elide_parens = can_elide_parens_for_rspec_dsl_call(&cc);
+    let elide_parens = can_elide_parens_for_reserved_names(&cc);
     let mut has_indented = false;
     // When set, force all `CallChainElement::ArgsAddStarOrExpressionListOrArgsForward`
     // to use parens, even when empty. This handles cases like `super()` where parens matter

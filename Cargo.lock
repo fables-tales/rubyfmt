@@ -608,6 +608,7 @@ dependencies = [
  "backtrace",
  "cc",
  "jemallocator",
+ "lazy_static",
  "libc",
  "log",
  "ripper_deserialize",
