@@ -911,10 +911,17 @@ impl BaseParserState {
     }
 
     fn new_with_depth_stack_from(ps: &BaseParserState) -> Self {
+        let mut next_ps = BaseParserState::new_with_reset_depth_stack(ps);
+        next_ps.depth_stack = ps.depth_stack.clone();
+        next_ps
+    }
+
+    // Creates a copy of the parser state *with the depth_stack reset*.
+    // This is used for heredocs, where we explicitly want to ignore current indentation.
+    fn new_with_reset_depth_stack(ps: &BaseParserState) -> Self {
         let mut next_ps = BaseParserState::new(FileComments::default());
         next_ps.comments_hash = ps.comments_hash.clone();
         next_ps.start_of_line = ps.start_of_line.clone();
-        next_ps.depth_stack = ps.depth_stack.clone();
         next_ps.current_orig_line_number = ps.current_orig_line_number;
         next_ps
     }
@@ -1013,7 +1020,7 @@ impl BaseParserState {
     where
         F: FnOnce(&mut BaseParserState),
     {
-        let mut next_ps = BaseParserState::new_with_depth_stack_from(ps);
+        let mut next_ps = BaseParserState::new_with_reset_depth_stack(ps);
         f(&mut next_ps);
         next_ps
     }
