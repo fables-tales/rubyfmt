@@ -222,6 +222,13 @@ impl Intermediary {
         }
     }
 
+    pub fn insert_blankline_from_end(&mut self, index_from_end: usize) {
+        self.tokens.insert(
+            self.tokens.len() - index_from_end,
+            ConcreteLineToken::HardNewLine,
+        )
+    }
+
     pub fn insert_trailing_blankline(&mut self, _bl: BlanklineReason) {
         if self.index_of_last_hard_newline <= 2 {
             self.tokens.insert(

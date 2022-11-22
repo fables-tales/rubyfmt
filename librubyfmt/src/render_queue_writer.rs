@@ -63,16 +63,19 @@ impl RenderQueueWriter {
             }
 
             if let Some(
-                [&ConcreteLineToken::End, &ConcreteLineToken::AfterCallChain, &ConcreteLineToken::HardNewLine, &ConcreteLineToken::Indent { .. }, x],
-            ) = accum.last::<5>()
+                [&ConcreteLineToken::End, &ConcreteLineToken::AfterCallChain, &ConcreteLineToken::HardNewLine, &ConcreteLineToken::Indent { .. }, x, maybe_space, maybe_def],
+            ) = accum.last::<7>()
             {
                 match x {
                     ConcreteLineToken::DefKeyword => {}
                     _ => {
                         if x.is_in_need_of_a_trailing_blankline()
-                            && !x.is_method_visibility_modifier()
+                            && !matches!(
+                                (maybe_space, maybe_def),
+                                (ConcreteLineToken::Space, ConcreteLineToken::DefKeyword)
+                            )
                         {
-                            accum.insert_trailing_blankline(BlanklineReason::ComesAfterEnd);
+                            accum.insert_blankline_from_end(4);
                         }
                     }
                 }
