@@ -1,6 +1,7 @@
 #![deny(warnings, missing_copy_implementations)]
 
 use clap::Parser;
+use ignore::gitignore::GitignoreBuilder;
 use ignore::WalkBuilder;
 use regex::Regex;
 use similar::TextDiff;
@@ -64,6 +65,9 @@ struct CommandlineOpts {
     /// Write files back in place, do not write output to STDOUT.
     #[clap(short, long, name = "in-place")]
     in_place: bool,
+
+    #[clap(long, name = "stdin-path")]
+    stdin_path: Option<String>,
 
     /// Paths for rubyfmt to analyze. By default the output will be printed to STDOUT. See `--in-place` to write files back in-place.
     /// Acceptable paths are:{n}
@@ -243,6 +247,20 @@ fn file_walker_builder(
     builder
 }
 
+/// Checks whether the file is included in the .gitignore or .rubyfmtignore
+/// This should only be used in cases where we're not doing file iteration,
+/// like for checking `--stdin-path`.
+/// For cases where we want to walk a directory, use `file_walker_builder` instead.
+fn file_is_ignored(path: &str) -> bool {
+    let mut builder = GitignoreBuilder::new(".");
+    builder.add(".rubyfmtignore");
+
+    // The second argument to `matched` is whether or not this path
+    // is a directory. We're assuming that this function is only called in
+    // cases where this will be a file, so we hardcode it to false.
+    builder.build().unwrap().matched(path, false).is_ignore()
+}
+
 // Parse command line arguments. Expand any input files.
 fn get_command_line_options() -> CommandlineOpts {
     let opts = CommandlineOpts::parse();
@@ -289,6 +307,9 @@ fn iterate_input_files(opts: &CommandlineOpts, f: &dyn Fn((&Path, &String))) {
             return;
         }
 
+        // if let Some(stdin_path) = &opts.stdin_path {
+        //     dbg!(file_is_ignored(stdin_path));
+        // }
         io::stdin()
             .read_to_string(&mut buffer)
             .expect("reading from stdin to not fail");
