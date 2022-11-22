@@ -4,7 +4,17 @@
 
 ## How do I use it
 
-Build it:
+
+### Install from `brew`
+
+On Mac and Linux, `rubyfmt` can be installed with [Homebrew](https://brew.sh/):
+
+```bash
+brew install rubyfmt
+```
+
+### Build from source
+
 1. Make sure you've got cargo installed
 2. Run `make all`
 3. Copy target/release/rubyfmt-main to somewhere on your path as `rubyfmt`
