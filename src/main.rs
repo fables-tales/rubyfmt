@@ -340,6 +340,12 @@ fn puts_stdout(input: &String) {
 }
 
 fn main() {
+    ctrlc::set_handler(move || {
+        eprintln!("`rubyfmt` process was terminated. Exiting...");
+        exit(1);
+    })
+    .expect("Error setting Ctrl-C handler");
+
     updates::begin_checking_for_updates();
 
     let opts = get_command_line_options();
