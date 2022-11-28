@@ -433,58 +433,7 @@ class Parser < Ripper::SexpBuilderPP
 
       args << [start_line, end_line]
 
-      if start_delim && end_delim && start_delim != "\""
-        if start_delim == "'" || start_delim.start_with?("%q")
-          # re-evaluate the string with its own quotes to handle escaping.
-          if args[0][1]
-            es = eval("#{start_delim}#{args[0][1][1]}#{end_delim}")
-            # did the original contain \u's?
-            have_source_slash_u = args[0][1][1].include?("\\u")
-            # if all chars are unicode definitionally none of them are delimiters so we
-            # can skip inspect
-            have_all_unicode = es.chars.all? { |x| x.bytes.first >= 128 }
-
-            if have_all_unicode && !have_source_slash_u
-              "#{start_delim}#{args[0][1][1]}#{end_delim}"
-            else
-              args[0][1][1] = es.inspect[1..-2]
-            end
-            # Match at word boundaries and beginning/end of the string
-            # so that things like `'\n'` correctly become `"\\n"`
-            # instead of rendering as actual whitespace
-            #
-            # About this regex: `(?<!\\)` does a negative lookup for slashes
-            # before the newline escape, which will only match instances
-            # like `\\n` and not `\\\\n`
-            args[0][1][1].gsub!(/(?<!\\)\\n/, "\n")
-            # This matches a special edge case where the last character on the line of a
-            # single-quoted string is "\".
-            args[0][1][1].gsub!(/\\\\\\n/, "\\\\\\\n")
-          end
-        else
-          # find delimiters after an odd number of backslashes, or quotes after even number.
-          pattern = /(?<!\\)(\\\\)*(\\#{Regexp.escape(start_delim[-1])}|\\#{Regexp.escape(end_delim)}|")/
-
-          (args[0][1..-1] || []).each do |part|
-            next if part.nil?
-            case part[0]
-            when :@tstring_content
-              part[1] = part[1].gsub(pattern) do |str|
-                if str.end_with?('"')
-                  # insert needed escape
-                  "#{str[0..-2]}\\\""
-                else
-                  # drop unnecessary escape
-                  "#{str[0..-3]}#{str[-1]}"
-                end
-              end
-            when :string_embexpr, :string_dvar
-            else
-              raise "got #{part[0]} in a #{start_delim}...#{end_delim} string"
-            end
-          end
-        end
-      end
+      clean_string_content(start_delim, end_delim, args[0])
     end
 
     super
@@ -525,8 +474,10 @@ class Parser < Ripper::SexpBuilderPP
     # on_tstring_end, which will append the closing
     # quote to @string_stack. We want to ignore this,
     # so remove it from the stack.
-    start_line = @string_stack.pop[1]
-    super + [[start_line, lineno]]
+    delim, start_line = @string_stack.pop
+    res = super
+    clean_string_content(delim, delim, res[1])
+    res + [[start_line, lineno]]
   end
 
   def on_regexp_beg(re_part)
@@ -557,6 +508,61 @@ class Parser < Ripper::SexpBuilderPP
     res = yield
     end_line = lineno
     res + [[start_line, end_line]]
+  end
+
+  private def clean_string_content(start_delim, end_delim, string_contents)
+    if start_delim && end_delim && start_delim != "\""
+        if start_delim == "'" || start_delim.start_with?("%q")
+          # re-evaluate the string with its own quotes to handle escaping.
+          if string_contents[1]
+            es = eval("#{start_delim}#{string_contents[1][1]}#{end_delim}")
+            # did the original contain \u's?
+            have_source_slash_u = string_contents[1][1].include?("\\u")
+            # if all chars are unicode definitionally none of them are delimiters so we
+            # can skip inspect
+            have_all_unicode = es.chars.all? { |x| x.bytes.first >= 128 }
+
+            if have_all_unicode && !have_source_slash_u
+              "#{start_delim}#{string_contents[1][1]}#{end_delim}"
+            else
+              string_contents[1][1] = es.inspect[1..-2]
+            end
+            # Match at word boundaries and beginning/end of the string
+            # so that things like `'\n'` correctly become `"\\n"`
+            # instead of rendering as actual whitespace
+            #
+            # About this regex: `(?<!\\)` does a negative lookup for slashes
+            # before the newline escape, which will only match instances
+            # like `\\n` and not `\\\\n`
+            string_contents[1][1].gsub!(/(?<!\\)\\n/, "\n")
+            # This matches a special edge case where the last character on the line of a
+            # single-quoted string is "\".
+            string_contents[1][1].gsub!(/\\\\\\n/, "\\\\\\\n")
+          end
+        else
+          # find delimiters after an odd number of backslashes, or quotes after even number.
+          pattern = /(?<!\\)(\\\\)*(\\#{Regexp.escape(start_delim[-1])}|\\#{Regexp.escape(end_delim)}|")/
+
+          (string_contents[1..-1] || []).each do |part|
+            next if part.nil?
+            case part[0]
+            when :@tstring_content
+              part[1] = part[1].gsub(pattern) do |str|
+                if str.end_with?('"')
+                  # insert needed escape
+                  "#{str[0..-2]}\\\""
+                else
+                  # drop unnecessary escape
+                  "#{str[0..-3]}#{str[-1]}"
+                end
+              end
+            when :string_embexpr, :string_dvar
+            else
+              raise "got #{part[0]} in a #{start_delim}...#{end_delim} string"
+            end
+          end
+        end
+      end
   end
 end
 
