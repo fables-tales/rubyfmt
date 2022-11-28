@@ -9,7 +9,7 @@ use std::ffi::OsStr;
 use std::fs::{read_to_string, File, OpenOptions};
 use std::io::{self, BufRead, BufReader, Read, Write};
 use std::path::Path;
-use std::process::exit;
+use std::process::{exit, Command};
 use std::sync::{Arc, Mutex};
 
 #[macro_use]
@@ -289,6 +289,15 @@ fn iterate_input_files(opts: &CommandlineOpts, f: &dyn Fn((&Path, &String))) {
     if opts.include_paths.is_empty() {
         // If not include paths are present, assume user is passing via STDIN
         let mut buffer = String::new();
+
+        if atty::is(atty::Stream::Stdin) {
+            // Call executable with `--help` args to print help statement
+            let mut command = Command::new(std::env::current_exe().unwrap());
+            command.arg("--help");
+            command.spawn().unwrap().wait().unwrap();
+            return;
+        }
+
         io::stdin()
             .read_to_string(&mut buffer)
             .expect("reading from stdin to not fail");

@@ -644,6 +644,7 @@ dependencies = [
 name = "rubyfmt-main"
 version = "0.8.0-pre"
 dependencies = [
+ "atty",
  "clap",
  "ctrlc",
  "dirs",
