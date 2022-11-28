@@ -10,12 +10,12 @@ git archive --format=zip HEAD > archive.zip
 git submodule init
 git submodule update
 (
-cd librubyfmt/ruby_checkout/
+cd librubyfmt/ruby_ops/ruby_checkout/
 git reset --hard && git clean -fdx
 )
 mkdir /tmp/rubyfmt_source
 unzip archive.zip -d /tmp/rubyfmt_source
-cp -r librubyfmt/ruby_checkout/ /tmp/rubyfmt_source/librubyfmt/ruby_checkout/
+cp -r librubyfmt/ruby_ops/ruby_checkout/ /tmp/rubyfmt_source/librubyfmt/ruby_ops/ruby_checkout/
 )
 tar -cvz -f "rubyfmt-$1-sources.tar.gz" -C "/tmp/rubyfmt_source" .
 mkdir -p "releases/$1/"

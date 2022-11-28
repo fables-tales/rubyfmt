@@ -1,5 +1,96 @@
-use crate::file_comments::FileComments;
+#![allow(clippy::missing_safety_doc, clippy::result_unit_err)]
+
+#[macro_use]
+pub mod ruby;
+pub mod de;
+mod file_comments;
+
+use log::debug;
+#[cfg(debug_assertions)]
+use simplelog::{ConfigBuilder, LevelFilter, TermLogger, TerminalMode};
+
+pub use crate::file_comments::RubyComments;
 use crate::ruby::*;
+
+pub type InitResult = libc::c_int;
+
+#[derive(Debug, Copy, Clone)]
+pub enum InitStatus {
+    OK = 0,
+    ERROR = 1,
+}
+
+#[no_mangle]
+pub extern "C" fn rubyfmt_init() -> InitResult {
+    init_logger();
+    let res = setup_ruby();
+    if res.is_err() {
+        return InitStatus::ERROR as InitResult;
+    }
+
+    let res = unsafe { load_ripper() };
+    if res.is_err() {
+        return InitStatus::ERROR as InitResult;
+    }
+
+    let res = unsafe { load_rubyfmt() };
+    if res.is_err() {
+        return InitStatus::ERROR as InitResult;
+    }
+
+    InitStatus::OK as InitResult
+}
+
+fn init_logger() {
+    #[cfg(debug_assertions)]
+    {
+        TermLogger::init(
+            LevelFilter::Debug,
+            ConfigBuilder::new()
+                .set_time_level(LevelFilter::Off)
+                .build(),
+            TerminalMode::Stderr,
+        )
+        .expect("making a term logger");
+        debug!("logger works");
+    }
+}
+
+// Safety: This function expects a functioning Ruby VM
+unsafe fn load_ripper() -> Result<(), ()> {
+    // trick ruby in to thinking ripper is already loaded
+    ruby::eval_str(
+        r#"
+    $LOADED_FEATURES << "ripper.bundle"
+    $LOADED_FEATURES << "ripper.so"
+    $LOADED_FEATURES << "ripper.rb"
+    $LOADED_FEATURES << "ripper/core.rb"
+    $LOADED_FEATURES << "ripper/sexp.rb"
+    $LOADED_FEATURES << "ripper/filter.rb"
+    $LOADED_FEATURES << "ripper/lexer.rb"
+    "#,
+    )?;
+
+    // init the ripper C module
+    Init_ripper();
+
+    //load each ripper program
+    ruby::eval_str(include_str!("../ruby_checkout/ext/ripper/lib/ripper.rb"))?;
+    ruby::eval_str(include_str!(
+        "../ruby_checkout/ext/ripper/lib/ripper/core.rb"
+    ))?;
+    ruby::eval_str(include_str!(
+        "../ruby_checkout/ext/ripper/lib/ripper/lexer.rb"
+    ))?;
+    ruby::eval_str(include_str!(
+        "../ruby_checkout/ext/ripper/lib/ripper/filter.rb"
+    ))?;
+    ruby::eval_str(include_str!(
+        "../ruby_checkout/ext/ripper/lib/ripper/sexp.rb"
+    ))?;
+
+    Ok(())
+}
 
 pub fn setup_ruby() -> Result<(), ()> {
     unsafe {
@@ -42,7 +133,7 @@ impl Parser {
         }
     }
 
-    pub fn parse(self) -> Result<(RipperTree, FileComments, Option<&'static str>), ParseError> {
+    pub fn parse(self) -> Result<(RipperTree, RubyComments, Option<&'static str>), ParseError> {
         let mut state = 0;
         let maybe_ret_tuple =
             unsafe { rb_protect(Parser::real_run_parser as _, self.0 as _, &mut state) };
@@ -50,7 +141,7 @@ impl Parser {
             if maybe_ret_tuple != Qnil {
                 let ret_tuple = unsafe { ruby_array_to_slice(maybe_ret_tuple) };
                 if let [tree, comments, lines, last_lineno, end_contents] = ret_tuple {
-                    let fc = FileComments::from_ruby_hash(*comments, *lines, *last_lineno);
+                    let fc = RubyComments::from_ruby_hash(*comments, *lines, *last_lineno);
                     let end_contents = unsafe {
                         if rubyfmt_rb_nil_p(*end_contents) != 0 {
                             None

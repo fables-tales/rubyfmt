@@ -217,11 +217,11 @@ fn rubyfmt_string(
 }
 
 fn initialize_rubyfmt() {
-    let res = rubyfmt::rubyfmt_init();
-    if res != rubyfmt::InitStatus::OK as libc::c_int {
+    let res = ruby_ops::rubyfmt_init();
+    if res != ruby_ops::InitStatus::OK as libc::c_int {
         panic!(
             "bad init status: {}",
-            rubyfmt::ruby::current_exception_as_rust_string()
+            ruby_ops::ruby::current_exception_as_rust_string()
         );
     }
 }

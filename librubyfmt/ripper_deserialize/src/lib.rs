@@ -40,7 +40,7 @@ pub fn derive_deserialize(input: TokenStream) -> TokenStream {
             where
                 D: serde::Deserializer<'de>,
             {
-                use crate::ruby::VALUE;
+                use ruby_ops::ruby::VALUE;
                 use serde::Deserialize;
 
                 let value = VALUE::deserialize(deserializer)?;

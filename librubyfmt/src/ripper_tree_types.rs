@@ -1,5 +1,7 @@
 #![allow(clippy::wrong_self_convention)]
 
+extern crate ruby_ops;
+
 #[cfg(debug_assertions)]
 use log::debug;
 use ripper_deserialize::RipperDeserialize;

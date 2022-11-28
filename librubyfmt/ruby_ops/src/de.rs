@@ -1,7 +1,10 @@
-use crate::ruby::{self, VALUE};
-use crate::ruby_ops::RipperTree;
 use serde::de::{self, Error as _};
 use std::mem::size_of;
+
+use crate::{
+    ruby::{self, VALUE},
+    RipperTree,
+};
 
 pub fn from_value<T: de::DeserializeOwned>(v: RipperTree) -> Result<T> {
     T::deserialize(Deserializer(v.into_value()))
@@ -105,7 +108,7 @@ impl<'de> de::Deserialize<'de> for VALUE {
 }
 
 impl VALUE {
-    pub(crate) fn into_deserializer(self) -> impl serde::Deserializer<'static> + Copy {
+    pub fn into_deserializer(self) -> impl serde::Deserializer<'static> + Copy {
         Deserializer(self)
     }
 }

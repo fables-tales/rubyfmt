@@ -6,6 +6,7 @@ license = "MIT OR Apache-2.0"
 edition = "2018"
 
 [dependencies]
+ruby_ops = { path = "../ruby_ops" }
 syn = { version = "1", features = ["full"] }
 quote = "1"
 proc-macro2 = "1"

@@ -1,6 +1,6 @@
 */target/*
 *target*
-*librubyfmt/ruby_checkout/*
+*librubyfmt/ruby_ops/ruby_checkout/*
 *.git/*
 *out/*
 *releases/*

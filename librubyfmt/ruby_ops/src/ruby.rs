@@ -10,6 +10,8 @@ pub struct VALUE(libc::uintptr_t);
 #[repr(transparent)]
 pub struct ID(libc::uintptr_t);
 
+pub type LineNumber = u64;
+
 #[repr(C)]
 #[derive(Debug, Clone, Copy)]
 pub enum ruby_value_type {

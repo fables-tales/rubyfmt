@@ -72,7 +72,7 @@ jobs:
     - uses: actions/cache@v2
       with:
         path: |
-          librubyfmt/ruby_checkout
+          librubyfmt/ruby_ops/ruby_checkout
         key: ${{ runner.os }}-ruby-v1-${{ hashFiles('.git/modules/librubyfmt/ruby_checkout/HEAD') }}
     - if: runner.os == 'macOS'
       run: |

@@ -15,10 +15,7 @@ static ALLOC: jemallocator::Jemalloc = jemallocator::Jemalloc;
 
 pub type RawStatus = i64;
 
-#[macro_use]
-pub mod ruby;
 mod comment_block;
-mod de;
 mod delimiters;
 mod file_comments;
 mod format;
@@ -30,29 +27,13 @@ mod parser_state;
 mod render_queue_writer;
 mod render_targets;
 mod ripper_tree_types;
-mod ruby_ops;
 mod types;
 
 use file_comments::FileComments;
 use parser_state::BaseParserState;
-use ruby_ops::{load_rubyfmt, ParseError, Parser, RipperTree};
-
-#[cfg(debug_assertions)]
-use log::debug;
-#[cfg(debug_assertions)]
-use simplelog::{ConfigBuilder, LevelFilter, TermLogger, TerminalMode};
-
-extern "C" {
-    pub fn Init_ripper();
-}
+use ruby_ops::{ParseError, Parser, RipperTree, RubyComments};
 
 pub struct RubyfmtString(Box<str>);
-
-#[derive(Debug, Copy, Clone)]
-pub enum InitStatus {
-    OK = 0,
-    ERROR = 1,
-}
 
 #[derive(Debug)]
 pub enum RichFormatError {
@@ -92,30 +73,14 @@ pub fn format_buffer(buf: &str) -> Result<String, RichFormatError> {
     let (tree, file_comments, end_data) = run_parser_on(buf)?;
     let out_data = vec![];
     let mut output = Cursor::new(out_data);
-    toplevel_format_program(&mut output, tree, file_comments, end_data)?;
+    toplevel_format_program(
+        &mut output,
+        tree,
+        FileComments::new(file_comments),
+        end_data,
+    )?;
     output.flush().expect("flushing to a vec should never fail");
     Ok(String::from_utf8(output.into_inner()).expect("we never write invalid UTF-8"))
-}
-
-#[no_mangle]
-pub extern "C" fn rubyfmt_init() -> libc::c_int {
-    init_logger();
-    let res = ruby_ops::setup_ruby();
-    if res.is_err() {
-        return InitStatus::ERROR as libc::c_int;
-    }
-
-    let res = unsafe { load_ripper() };
-    if res.is_err() {
-        return InitStatus::ERROR as libc::c_int;
-    }
-
-    let res = unsafe { load_rubyfmt() };
-    if res.is_err() {
-        return InitStatus::ERROR as libc::c_int;
-    }
-
-    InitStatus::OK as libc::c_int
 }
 
 /// # Safety
@@ -160,42 +125,6 @@ extern "C" fn rubyfmt_string_free(rubyfmt_string: *mut RubyfmtString) {
     }
 }
 
-// Safety: This function expects a functioning Ruby VM
-unsafe fn load_ripper() -> Result<(), ()> {
-    // trick ruby in to thinking ripper is already loaded
-    ruby::eval_str(
-        r#"
-    $LOADED_FEATURES << "ripper.bundle"
-    $LOADED_FEATURES << "ripper.so"
-    $LOADED_FEATURES << "ripper.rb"
-    $LOADED_FEATURES << "ripper/core.rb"
-    $LOADED_FEATURES << "ripper/sexp.rb"
-    $LOADED_FEATURES << "ripper/filter.rb"
-    $LOADED_FEATURES << "ripper/lexer.rb"
-    "#,
-    )?;
-
-    // init the ripper C module
-    Init_ripper();
-
-    //load each ripper program
-    ruby::eval_str(include_str!("../ruby_checkout/ext/ripper/lib/ripper.rb"))?;
-    ruby::eval_str(include_str!(
-        "../ruby_checkout/ext/ripper/lib/ripper/core.rb"
-    ))?;
-    ruby::eval_str(include_str!(
-        "../ruby_checkout/ext/ripper/lib/ripper/lexer.rb"
-    ))?;
-    ruby::eval_str(include_str!(
-        "../ruby_checkout/ext/ripper/lib/ripper/filter.rb"
-    ))?;
-    ruby::eval_str(include_str!(
-        "../ruby_checkout/ext/ripper/lib/ripper/sexp.rb"
-    ))?;
-
-    Ok(())
-}
-
 pub fn toplevel_format_program<W: Write>(
     writer: &mut W,
     tree: RipperTree,
@@ -204,7 +133,7 @@ pub fn toplevel_format_program<W: Write>(
 ) -> Result<(), RichFormatError> {
     let mut ps = BaseParserState::new(file_comments);
     let v: ripper_tree_types::Program =
-        de::from_value(tree).map_err(RichFormatError::RipperParseFailure)?;
+        ruby_ops::de::from_value(tree).map_err(RichFormatError::RipperParseFailure)?;
 
     format::format_program(&mut ps, v, end_data);
 
@@ -213,24 +142,9 @@ pub fn toplevel_format_program<W: Write>(
     Ok(())
 }
 
-fn run_parser_on(buf: &str) -> Result<(RipperTree, FileComments, Option<&str>), RichFormatError> {
+fn run_parser_on(buf: &str) -> Result<(RipperTree, RubyComments, Option<&str>), RichFormatError> {
     Parser::new(buf).parse().map_err(|e| match e {
         ParseError::SyntaxError => RichFormatError::SyntaxError,
         ParseError::OtherRubyError(s) => RichFormatError::OtherRubyError(s),
     })
-}
-
-fn init_logger() {
-    #[cfg(debug_assertions)]
-    {
-        TermLogger::init(
-            LevelFilter::Debug,
-            ConfigBuilder::new()
-                .set_time_level(LevelFilter::Off)
-                .build(),
-            TerminalMode::Stderr,
-        )
-        .expect("making a term logger");
-        debug!("logger works");
-    }
 }

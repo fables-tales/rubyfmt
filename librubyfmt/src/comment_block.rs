@@ -14,10 +14,6 @@ impl CommentBlock {
         CommentBlock { span, comments }
     }
 
-    pub fn following_line_number(&self) -> LineNumber {
-        self.span.end
-    }
-
     pub fn add_line(&mut self, line: String) {
         self.span.end += 1;
         self.comments.push(line);
