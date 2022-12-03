@@ -994,7 +994,7 @@ pub struct BlockArg(pub blockarg_tag, pub Ident);
 #[derive(Deserialize, Debug, Clone)]
 pub struct LineCol(pub LineNumber, pub u64);
 
-#[derive(Deserialize, Debug, Clone)]
+#[derive(Deserialize, Debug, Clone, Eq, PartialEq)]
 pub struct StartEnd(pub LineNumber, pub LineNumber);
 
 impl StartEnd {
@@ -1527,7 +1527,7 @@ pub struct Equals(pub equals_tag);
 
 def_tag!(dot_tag, ".");
 #[derive(Deserialize, Debug, Clone)]
-pub struct Dot(pub dot_tag);
+pub struct Dot(pub dot_tag, pub StartEnd);
 
 def_tag!(colon_colon_tag, "::");
 #[derive(Deserialize, Debug, Clone)]
@@ -1535,11 +1535,11 @@ pub struct ColonColon(pub colon_colon_tag);
 
 def_tag!(lonely_operator_tag, "&.");
 #[derive(Deserialize, Debug, Clone)]
-pub struct LonelyOperator(pub lonely_operator_tag);
+pub struct LonelyOperator(pub lonely_operator_tag, pub StartEnd);
 
 def_tag!(op_tag, "@op");
 #[derive(Deserialize, Debug, Clone)]
-pub struct Op(pub op_tag, pub Operator, pub LineCol);
+pub struct Op(pub op_tag, pub Operator, pub LineCol, pub StartEnd);
 
 #[derive(RipperDeserialize, Debug, Clone)]
 pub enum Operator {
