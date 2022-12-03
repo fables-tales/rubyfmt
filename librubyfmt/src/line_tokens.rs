@@ -116,19 +116,6 @@ impl ConcreteLineToken {
         }
     }
 
-    pub fn is_method_visibility_modifier(&self) -> bool {
-        match self {
-            Self::DirectPart { part } => {
-                part == "public"
-                    || part == "private"
-                    || part == "protected"
-                    || part == "public_class_method"
-                    || part == "private_class_method"
-            }
-            _ => false,
-        }
-    }
-
     pub fn is_single_line_breakable_garbage(&self) -> bool {
         match self {
             Self::DirectPart { part } => part == &"".to_string(),
