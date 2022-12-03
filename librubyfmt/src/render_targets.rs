@@ -1,5 +1,5 @@
 use crate::delimiters::BreakableDelims;
-use crate::line_tokens::{AbstractLineToken, ConcreteLineTokenAndTargets};
+use crate::line_tokens::{AbstractLineToken, ConcreteLineToken, ConcreteLineTokenAndTargets};
 use crate::parser_state::FormattingContext;
 use crate::types::{ColNumber, LineNumber};
 use std::collections::HashSet;
@@ -144,7 +144,9 @@ impl AbstractTokenTarget for BreakableEntry {
     }
 
     fn is_multiline(&self) -> bool {
-        self.line_numbers.len() > 1 || self.any_collapsing_newline_has_heredoc_content()
+        self.line_numbers.len() > 1
+            || self.any_collapsing_newline_has_heredoc_content()
+            || self.contains_hard_newline()
     }
 
     fn len(&self) -> usize {
@@ -175,6 +177,15 @@ impl BreakableEntry {
                 be.any_collapsing_newline_has_heredoc_content()
             }
             _ => false,
+        })
+    }
+
+    fn contains_hard_newline(&self) -> bool {
+        self.tokens.iter().any(|t| {
+            matches!(
+                t,
+                AbstractLineToken::ConcreteLineToken(ConcreteLineToken::HardNewLine)
+            )
         })
     }
 }

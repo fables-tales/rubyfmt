@@ -1755,19 +1755,18 @@ pub fn format_aref_field(ps: &mut dyn ConcreteParserState, af: ArefField) {
         false,
         Box::new(|ps| {
             format_expression(ps, *af.1);
-            let aab = af.2;
-            match aab.2 {
-                ToProcExpr::Present(_) => {
-                    panic!("got a to_proc in an aref_field, should be impossible");
+
+            let index_expr = af.2;
+            let arr_contents = match index_expr {
+                None => None,
+                Some(ArgsAddBlockOrExpressionList::ArgsAddBlock(aab)) => {
+                    Some(aab.1.into_args_add_star_or_expression_list())
                 }
-                ToProcExpr::NotPresent(_) => {
-                    format_array_fast_path(
-                        ps,
-                        end_line,
-                        Some((aab.1).into_args_add_star_or_expression_list()),
-                    );
-                }
-            }
+                Some(ArgsAddBlockOrExpressionList::ExpressionList(expr_list)) => Some(
+                    ArgsAddStarOrExpressionListOrArgsForward::ExpressionList(expr_list),
+                ),
+            };
+            format_array_fast_path(ps, end_line, arr_contents);
         }),
     );
 
@@ -2299,7 +2298,12 @@ fn format_constant_body(ps: &mut dyn ConcreteParserState, bodystmt: Box<BodyStmt
     }));
 
     ps.on_line(end_line);
-    ps.emit_end();
+    ps.with_start_of_line(
+        true,
+        Box::new(|ps| {
+            ps.emit_end();
+        }),
+    );
     if ps.at_start_of_line() {
         ps.emit_newline();
     }
