@@ -2298,7 +2298,12 @@ fn format_constant_body(ps: &mut dyn ConcreteParserState, bodystmt: Box<BodyStmt
     }));
 
     ps.on_line(end_line);
-    ps.emit_end();
+    ps.with_start_of_line(
+        true,
+        Box::new(|ps| {
+            ps.emit_end();
+        }),
+    );
     if ps.at_start_of_line() {
         ps.emit_newline();
     }
