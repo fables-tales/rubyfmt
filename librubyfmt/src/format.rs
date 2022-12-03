@@ -2789,7 +2789,11 @@ fn format_call_chain_elements(
                     ps.start_indent();
                     has_indented = true;
                 }
-                if render_multiline_chain {
+                if render_multiline_chain
+                    // Separating `::` calls with a newline
+                    // isn't valid syntax
+                    && !matches!(d, DotTypeOrOp::ColonColon(_))
+                {
                     ps.emit_newline();
                     ps.emit_indent();
                 }
@@ -2844,9 +2848,10 @@ fn is_heredoc_call_chain_with_breakables(cc_elements: &[CallChainElement]) -> bo
 ///
 /// ## High-level rules
 ///
-/// The two main rules that govern whether or not to multiline a method chain is to split across multiple lines if
-/// (1) the whole chain exceeds the maximum line length or
-/// (2) the chain contains blocks that are split across multiple lines
+/// The three main rules that govern whether or not to multiline a method chain is to split across multiple lines if
+/// (1) the user multilined the chain,
+/// (2) the whole chain exceeds the maximum line length, or
+/// (3) the chain contains blocks that are split across multiple lines
 ///
 /// That said, both of these have some *very large* asterisks, since there are a lot of contexts in which these
 /// have special cases for various reasons (see below).
@@ -2883,6 +2888,38 @@ fn should_multiline_call_chain(ps: &mut dyn ConcreteParserState, method_call: &M
         CallChainElement::IdentOrOpOrKeywordOrConst(ident),
         CallChainElement::ArgsAddStarOrExpressionListOrArgsForward(args, start_end),
     ]);
+
+    let all_op_locations = call_chain_to_check
+        .iter()
+        .filter_map(|cc_elem| match cc_elem {
+            CallChainElement::DotTypeOrOp(dot_type_or_op) => {
+                match dot_type_or_op {
+                    // ColonColon is specially represented in the parser, and
+                    // it can't be properly multilined anyways, so we ignore it here
+                    DotTypeOrOp::ColonColon(..) => None,
+                    DotTypeOrOp::StringDot(..) => None,
+                    DotTypeOrOp::Op(Op(.., start_end))
+                    | DotTypeOrOp::DotType(
+                        DotType::LonelyOperator(LonelyOperator(_, start_end))
+                        | DotType::Dot(Dot(_, start_end)),
+                    ) => Some(start_end.clone()),
+                    DotTypeOrOp::Period(Period(.., linecol)) => {
+                        Some(StartEnd(linecol.0, linecol.0))
+                    }
+                }
+            }
+            _ => None,
+        })
+        .collect::<Vec<StartEnd>>();
+    // Multiline the chain if all the operators (dots, double colons, etc.) are not on the same line
+    if let Some(first_op_start_end) = all_op_locations.first() {
+        let chain_is_user_multilined = !all_op_locations
+            .iter()
+            .all(|op_start_end| op_start_end == first_op_start_end);
+        if chain_is_user_multilined {
+            return true;
+        }
+    }
 
     // Ignore chains that are basically only method calls, e.g.
     // ````ruby

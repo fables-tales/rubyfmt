@@ -169,6 +169,10 @@ class Parser < Ripper::SexpBuilderPP
     end
   end
 
+  def on_op(*_args)
+    super + [[lineno, lineno]]
+  end
+
   def on_next(*_args)
     super + [start_end_for_keyword('next')]
   end
