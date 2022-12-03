@@ -431,7 +431,7 @@ def_tag!(aref_field_tag, "aref_field");
 pub struct ArefField(
     pub aref_field_tag,
     pub Box<Expression>,
-    pub ArgsAddBlock,
+    pub Option<ArgsAddBlockOrExpressionList>,
     pub LineCol,
 );
 
