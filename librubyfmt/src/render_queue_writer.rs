@@ -75,7 +75,17 @@ impl RenderQueueWriter {
                                 (ConcreteLineToken::Space, ConcreteLineToken::DefKeyword)
                             )
                         {
-                            accum.insert_blankline_from_end(4);
+                            // If we're here, the last few tokens must look like this:
+                            // | token             | index_from_end |
+                            // |  End              | 6              |
+                            // |. AfterCallChain   | 5              |
+                            // |  HardNewline      | 4              | <-- insert after this token
+                            // |. Indent           | 3 .            |
+                            // |  (ArbitraryToken) | 2              |
+                            // |  (ArbitraryToken) | 1              |
+                            // |  (ArbitraryToken) | 0              |
+                            const LAST_NEWLINE_INDEX_FROM_END: usize = 4;
+                            accum.insert_blankline_from_end(LAST_NEWLINE_INDEX_FROM_END);
                         }
                     }
                 }
