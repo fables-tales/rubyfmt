@@ -27,10 +27,8 @@ foo.bar.baz
 
 foo::bar&.nil?
 
-foo
-  ::bar
-  &.nil?
-  ::klass
+foo::bar
+  &.nil?::klass
   .true?
 
 Class

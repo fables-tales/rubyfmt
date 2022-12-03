@@ -2789,10 +2789,15 @@ fn format_call_chain_elements(
                     ps.start_indent();
                     has_indented = true;
                 }
+                let is_double_colon = match &d {
+                    DotTypeOrOp::ColonColon(_) => true,
+                    DotTypeOrOp::StringDot(val) => val == "::",
+                    _ => false,
+                };
                 if render_multiline_chain
                     // Separating `::` calls with a newline
                     // isn't valid syntax
-                    && !matches!(d, DotTypeOrOp::ColonColon(_))
+                    && !is_double_colon
                 {
                     ps.emit_newline();
                     ps.emit_indent();
