@@ -3,7 +3,9 @@ def empty_example
 end
 
 sig do
-  params(a: T::Array[String], b: T::Hash[Symbol, String]).returns(T::Set[Symbol]).checked(:tests)
+  params(a: T::Array[String], b: T::Hash[Symbol, String])
+    .returns(T::Set[Symbol])
+    .checked(:tests)
 end
 def do_the_thing(a, b)
   puts(a)

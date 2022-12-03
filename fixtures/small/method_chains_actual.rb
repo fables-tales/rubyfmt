@@ -13,6 +13,28 @@ returns_array.map { |foo|
   b: ""
 )
 
+foo.bar.baz
+
+foo.bar
+.baz
+
+# If they're all on the same line but different from
+# the first receiver, consider that "on one line"
+foo
+.bar.baz
+
+foo::bar
+&.nil?
+
+foo::bar
+&.nil?::klass
+.true?
+
+Class
+&.new
+.call!
+
+
 def example
   things
     .map do |thing|

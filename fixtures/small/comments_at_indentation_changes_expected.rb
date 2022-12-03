@@ -1,6 +1,9 @@
 it "" do
-  # Should only download the patches twice
-  Test::Mock.expects(Util, :download_file).twice.returns(true)
+  Test::Mock
+    .expects(Util, :download_file)
+    # Should only download the patches twice
+    .twice
+    .returns(true)
 end
 
 # Make some fake thing

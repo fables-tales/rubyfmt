@@ -305,7 +305,10 @@ module RSpec
     class PartialDoubleProxy < Proxy
       def original_method_handle_for(message)
         if any_instance_class_recorder_observing_method?(@object.class, message)
-          message = ::RSpec::Mocks.space.any_instance_recorder_for(@object.class).build_alias_method_name(message)
+          message = ::RSpec::Mocks
+            .space
+            .any_instance_recorder_for(@object.class)
+            .build_alias_method_name(message)
         end
 
         ::RSpec::Support.method_handle_for(@object, message)
