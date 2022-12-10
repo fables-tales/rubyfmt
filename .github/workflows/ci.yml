@@ -78,8 +78,16 @@ jobs:
       run: |
         brew install automake
     - run: ./script/test.sh
+    - if: runner.os == 'ubuntu'
+      run: |
+        cargo install cargo-deb
+        cargo deb
+        ls target/debian/
     - uses: actions/upload-artifact@v3
       with:
         name: rubyfmt-artifact-${{ matrix.os }}
         path: target/release/rubyfmt-main
-
+    - uses: actions/upload-artifact@v3
+      with:
+        name: rubyfmt-debian-pkg
+        path: target/debian/*
