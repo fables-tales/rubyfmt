@@ -84,7 +84,8 @@ jobs:
       run: |
         cargo install cargo-deb
         cargo deb
-        ls target/debian/
+        cd target/debian/
+        dput ppa:reesewilliams/rubyfmt-test-do-not-use *.deb
     - uses: actions/upload-artifact@v3
       with:
         name: rubyfmt-artifact-${{ matrix.os }}
