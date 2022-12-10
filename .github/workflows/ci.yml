@@ -44,7 +44,7 @@ jobs:
     steps:
       - uses: actions/checkout@v1
       - run: |
-          sudo apt-get install -y shellcheck
+          sudo apt-get install -y dput shellcheck
           ./script/lints/lint_fixtures.sh
           ./script/lints/lint_scripts.sh
 
