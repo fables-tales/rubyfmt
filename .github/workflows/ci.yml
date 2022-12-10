@@ -68,6 +68,8 @@ jobs:
         path: |
           ~/.cargo/registry
           ~/.cargo/git
+          target/debug/deps
+          target/release/deps
         key: ${{ runner.os }}-cargo-2-${{ hashFiles('**/Cargo.lock') }}
     - uses: actions/cache@v2
       with:
@@ -78,7 +80,7 @@ jobs:
       run: |
         brew install automake
     - run: ./script/test.sh
-    - if: runner.os == 'ubuntu'
+    - if: runner.os == 'Linux'
       run: |
         cargo install cargo-deb
         cargo deb
