@@ -44,7 +44,7 @@ jobs:
     steps:
       - uses: actions/checkout@v1
       - run: |
-          sudo apt-get install -y dput shellcheck
+          sudo apt-get install -y shellcheck
           ./script/lints/lint_fixtures.sh
           ./script/lints/lint_scripts.sh
 
@@ -82,6 +82,7 @@ jobs:
     - run: ./script/test.sh
     - if: runner.os == 'Linux'
       run: |
+        sudo apt-get install -y dput
         cargo install cargo-deb
         cargo deb
         cd target/debian/
