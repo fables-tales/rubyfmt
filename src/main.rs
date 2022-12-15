@@ -1,6 +1,5 @@
 #![deny(warnings, missing_copy_implementations)]
 
-mod updates;
 use clap::Parser;
 use ignore::WalkBuilder;
 use regex::Regex;
@@ -42,14 +41,6 @@ enum ExecutionError {
 #[derive(Debug, Parser)]
 #[clap(author, version, about, long_about = None)]
 struct CommandlineOpts {
-    /// Fetch current latest version
-    #[clap(long)]
-    internal_fetch_latest_version: bool,
-
-    /// Disables hints to update rubyfmt
-    #[clap(long, name = "silence-update-messages")]
-    silence_update_message: bool,
-
     /// Turn on check mode. This outputs diffs of inputs to STDOUT. Will exit non-zero when differences are detected.
     #[clap(short, long)]
     check: bool,
@@ -355,16 +346,9 @@ fn main() {
     })
     .expect("Error setting Ctrl-C handler");
 
-    updates::begin_checking_for_updates();
-
     let opts = get_command_line_options();
 
     match opts {
-        CommandlineOpts {
-            internal_fetch_latest_version: true,
-            ..
-        } => updates::fetch_latest_version().unwrap(),
-
         CommandlineOpts { check: true, .. } => {
             initialize_rubyfmt();
             let text_diffs: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(Vec::new()));
@@ -429,9 +413,5 @@ fn main() {
                 None => puts_stdout(before),
             })
         }
-    }
-
-    if !opts.silence_update_message {
-        updates::report_if_update_available();
     }
 }
