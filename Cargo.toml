@@ -6,7 +6,7 @@ members = [
 
 [package]
 name = "rubyfmt-main"
-version = "0.8.0-pre"
+version = "0.8.1"
 authors = ["Penelope Phippen <penelopedotzone@gmail.com>"]
 edition = "2018"
 
