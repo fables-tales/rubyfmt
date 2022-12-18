@@ -475,6 +475,24 @@ DIFF
     )
 }
 
+test_does_not_require_double_dash() {
+    (
+    cd "$(mktemp -d)"
+
+    cat > a_ruby_file_1.rb <<- DIFF
+a 1,2,3
+DIFF
+
+    f_rubyfmt -i a_ruby_file_1.rb
+
+    cat > expected.rb <<- DIFF
+a(1, 2, 3)
+DIFF
+
+    diff_files o expected.rb a_ruby_file_1.rb
+    )
+}
+
 test_format_respects_opt_out_header() {
     (
     cd "$(mktemp -d)"
@@ -662,6 +680,7 @@ test_format_directory_with_changes
 test_format_input_file_with_changes
 test_format_respects_opt_in_header
 test_format_respects_opt_out_header
+test_does_not_require_double_dash
 
 test_format_without_changes
 test_format_multiple_files_without_changes

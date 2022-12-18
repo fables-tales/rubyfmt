@@ -80,7 +80,7 @@ struct CommandlineOpts {
     /// - Directories (i.e. lib/foo/){n}
     /// - Input files (i.e. @/tmp/files.txt). These files must contain one file path or directory per line
     /// rubyfmt will use these as input.{n}
-    #[clap(name = "include-paths", last = true)]
+    #[clap(name = "include-paths")]
     include_paths: Vec<String>,
 }
 
