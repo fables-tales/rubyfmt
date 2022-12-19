@@ -1878,12 +1878,17 @@ pub fn format_massign(ps: &mut dyn ConcreteParserState, massign: MAssign) {
                 AssignableListOrMLhs::AssignableList(al) => {
                     let length = al.len();
                     for (idx, v) in al.into_iter().enumerate() {
+                        let is_rest_param = matches!(v, Assignable::RestParam(..));
                         format_assignable(ps, v);
                         let last = idx == length - 1;
                         if !last {
                             ps.emit_comma_space();
                         }
-                        if length == 1 {
+                        // `*foo = []` is valid ruby, but
+                        // `*foo, = []` is not (but `foo, = []` is!),
+                        // so in cases where the only assignable is a rest param,
+                        // leave the comma out
+                        if length == 1 && !is_rest_param {
                             ps.emit_comma();
                         }
                     }
