@@ -18,5 +18,5 @@ unzip archive.zip -d /tmp/rubyfmt_source
 cp -r librubyfmt/ruby_checkout/ /tmp/rubyfmt_source/librubyfmt/ruby_checkout/
 )
 tar -cvz -f "rubyfmt-$1-sources.tar.gz" -C "/tmp/rubyfmt_source" .
-mkdir -p "releases/$1/"
-mv "rubyfmt-$1-sources.tar.gz" "releases/$1/"
+mkdir -p "out/release/source"
+mv "rubyfmt-$1-sources.tar.gz" "out/release/source"
