@@ -115,7 +115,7 @@ impl RenderQueueWriter {
     }
 
     fn format_breakable_entry(accum: &mut Intermediary, be: BreakableEntry) {
-        let length = be.single_line_string_length();
+        let length = accum.current_line_length() + be.single_line_string_length();
 
         if (length > MAX_LINE_LENGTH || be.is_multiline())
             && be.entry_formatting_context() != FormattingContext::StringEmbexpr

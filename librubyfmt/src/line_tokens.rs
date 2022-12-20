@@ -98,6 +98,34 @@ impl ConcreteLineToken {
         }
     }
 
+    /// The length of the token's string representation
+    pub fn len(&self) -> usize {
+        use ConcreteLineToken::*;
+        // The alternative to this match condition would be to clone and render
+        // each individual string token, which would increase the allocations of rubyfmt
+        // by an order of magnitude
+        match self {
+            AfterCallChain => 0, // purely semantic token, doesn't render
+            Indent { depth } => *depth as usize,
+            Keyword { keyword: contents }
+            | Op { op: contents }
+            | DirectPart { part: contents }
+            | LTStringContent { content: contents }
+            | Comment { contents }
+            | Delim { contents }
+            | ConditionalKeyword { contents }
+            | HeredocClose { symbol: contents }
+            | ModKeyword { contents } => contents.len(),
+            HardNewLine | Comma | Space | Dot | OpenSquareBracket | CloseSquareBracket
+            | OpenCurlyBracket | CloseCurlyBracket | OpenParen | CloseParen | SingleSlash => 1,
+            DoKeyword | CommaSpace | LonelyOperator | ColonColon | DoubleQuote => 2,
+            DefKeyword | Ellipsis | End => 3, // "def"/"..."/"end"
+            ClassKeyword => 5,                // "class"
+            ModuleKeyword => 6,               // "module"
+            DataEnd => 7,                     // "__END__"
+        }
+    }
+
     fn is_block_closing_token(&self) -> bool {
         match self {
             Self::End => true,

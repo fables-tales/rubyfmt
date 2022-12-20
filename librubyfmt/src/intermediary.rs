@@ -90,6 +90,17 @@ impl Intermediary {
         self.tokens
     }
 
+    pub fn current_line_length(&self) -> usize {
+        if self.tokens.is_empty() {
+            return 0;
+        }
+
+        let line_start_index = self.index_of_last_hard_newline + 1;
+        let tokens_on_current_line = &self.tokens[line_start_index..];
+
+        tokens_on_current_line.iter().map(|t| t.len()).sum()
+    }
+
     pub fn push(&mut self, lt: ConcreteLineToken) {
         self.debug_assert_newlines();
         let mut do_push = true;
