@@ -91,4 +91,8 @@ impl BreakableDelims {
             contents: self.multi_line.close.clone(),
         }
     }
+
+    pub fn single_line_len(&self) -> usize {
+        self.single_line.open.len() + self.single_line.close.len()
+    }
 }

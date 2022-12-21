@@ -136,7 +136,8 @@ impl AbstractTokenTarget for BreakableEntry {
             .iter()
             .map(|tok| tok.clone().into_single_line())
             .map(|tok| tok.into_ruby().len())
-            .sum()
+            .sum::<usize>()
+            + self.delims.single_line_len()
     }
 
     fn push_line_number(&mut self, number: LineNumber) {

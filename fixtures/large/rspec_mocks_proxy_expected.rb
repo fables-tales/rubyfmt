@@ -393,7 +393,9 @@ module RSpec
       # That's what this method (together with `original_unbound_method_handle_from_ancestor_for`)
       # does.
       def original_method_handle_for(message)
-        unbound_method = superclass_proxy && superclass_proxy.original_unbound_method_handle_from_ancestor_for(message.to_sym)
+        unbound_method = superclass_proxy && superclass_proxy.original_unbound_method_handle_from_ancestor_for(
+          message.to_sym
+        )
 
         return super unless unbound_method
         unbound_method.bind(object)
