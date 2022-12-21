@@ -688,6 +688,18 @@ pub fn use_parens_for_method_call(
 ) -> bool {
     let name = method.get_name();
     debug!("name: {:?}", name);
+
+    // If the calling method is a const, the parens become
+    // semantically important, e.g.
+    // ```
+    // class Foo; end
+    // def Foo; end
+    // Foo # class reference
+    // Foo() # method call
+    // ```
+    if matches!(method, IdentOrOpOrKeywordOrConst::Const(..)) {
+        return true;
+    }
     if name.starts_with("attr_") && context == FormattingContext::ClassOrModule {
         return original_used_parens;
     }
