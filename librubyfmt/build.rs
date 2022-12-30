@@ -10,11 +10,11 @@ fn main() -> Output {
     #[cfg(target_os = "linux")]
     let libname = "ruby-static";
     #[cfg(target_os = "macos")]
-    let libname = "ruby.2.7-static";
+    let libname = "ruby.3.0-static";
     #[cfg(all(target_arch = "x86_64", windows))]
-    let libname = "x64-vcruntime140-ruby270-static";
+    let libname = "x64-vcruntime140-ruby300-static";
     #[cfg(all(target_arch = "x86", windows))]
-    let libname = "vcruntime140-ruby270-static";
+    let libname = "vcruntime140-ruby300-static";
     #[cfg(all(target_env = "gnu", windows))]
     compile_error!("rubyfmt on Windows is currently only supported with msvc");
 
@@ -51,6 +51,7 @@ fn main() -> Output {
     cc::Build::new()
         .file("src/rubyfmt.c")
         .object(ruby_checkout_path.join(&ripper))
+        .object(ruby_checkout_path.join("gc.o"))
         .include(ruby_checkout_path.join("include"))
         .include(ruby_checkout_path.join(".ext/include/arm64-darwin20"))
         .include(ruby_checkout_path.join(".ext/include/arm64-darwin21"))
