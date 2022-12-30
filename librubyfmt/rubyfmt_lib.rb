@@ -146,25 +146,25 @@ class Parser < Ripper::SexpBuilderPP
 
     define_method(:"on_#{event}_add") do |parts, part|
       delim = parts[1][0][1]
-      parts.tap do |node|
-        unless delim.end_with?('[')
-          delim_start = delim[-1]
-          delim_close = DELIM_CLOSE_PAREN[delim_start]
-          pattern = if delim_close
-            /(?<!\\)(?:\\\\)*(?:\\[#{Regexp.escape(delim_start)}#{Regexp.escape(delim_close)}]|[\[\]])/
-          else
-            /(?<!\\)(?:\\\\)*(?:\\#{Regexp.escape(delim_start)}|[\[\]])/
-          end
-          if part[0].is_a?(Array)
-            part.each do |sub_part|
-              escape_percent_array_paren_content(sub_part, pattern)
-            end
-          else
-            escape_percent_array_paren_content(part, pattern)
-          end
+
+      unless delim.end_with?('[')
+        delim_start = delim[-1]
+        delim_close = DELIM_CLOSE_PAREN[delim_start]
+        pattern = if delim_close
+          /(?<!\\)(?:\\\\)*(?:\\[#{Regexp.escape(delim_start)}#{Regexp.escape(delim_close)}]|[\[\]])/
+        else
+          /(?<!\\)(?:\\\\)*(?:\\#{Regexp.escape(delim_start)}|[\[\]])/
         end
-        node[1] << part
+        if part[0].is_a?(Array)
+          part.each do |sub_part|
+            escape_percent_array_paren_content(sub_part, pattern)
+          end
+        else
+          escape_percent_array_paren_content(part, pattern)
+        end
       end
+      parts[1] << part
+
       super(parts, part)
     end
   end
@@ -569,5 +569,3 @@ class Parser < Ripper::SexpBuilderPP
       end
   end
 end
-
-GC.disable
