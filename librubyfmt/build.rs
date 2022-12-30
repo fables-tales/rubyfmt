@@ -51,7 +51,6 @@ fn main() -> Output {
     cc::Build::new()
         .file("src/rubyfmt.c")
         .object(ruby_checkout_path.join(&ripper))
-        .object(ruby_checkout_path.join("gc.o"))
         .include(ruby_checkout_path.join("include"))
         .include(ruby_checkout_path.join(".ext/include/arm64-darwin20"))
         .include(ruby_checkout_path.join(".ext/include/arm64-darwin21"))
