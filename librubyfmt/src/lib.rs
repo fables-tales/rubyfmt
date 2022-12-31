@@ -44,6 +44,7 @@ use simplelog::{ConfigBuilder, LevelFilter, TermLogger, TerminalMode};
 
 extern "C" {
     pub fn Init_ripper();
+    pub fn rb_gc_disable();
 }
 
 pub struct RubyfmtString(Box<str>);
@@ -193,6 +194,7 @@ unsafe fn load_ripper() -> Result<(), ()> {
         "../ruby_checkout/ext/ripper/lib/ripper/sexp.rb"
     ))?;
 
+    rb_gc_disable();
     Ok(())
 }
 
