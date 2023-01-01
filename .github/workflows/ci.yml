@@ -76,7 +76,7 @@ jobs:
         key: ${{ runner.os }}-ruby-v1-${{ hashFiles('.git/modules/librubyfmt/ruby_checkout/HEAD') }}
     - if: runner.os == 'macOS'
       run: |
-        brew install automake
+        brew install automake bison
     - run: ./script/test.sh
     - uses: actions/upload-artifact@v3
       with:
