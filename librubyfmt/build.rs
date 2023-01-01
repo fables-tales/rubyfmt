@@ -10,11 +10,11 @@ fn main() -> Output {
     #[cfg(target_os = "linux")]
     let libname = "ruby-static";
     #[cfg(target_os = "macos")]
-    let libname = "ruby.3.0-static";
+    let libname = "ruby.3.2-static";
     #[cfg(all(target_arch = "x86_64", windows))]
-    let libname = "x64-vcruntime140-ruby300-static";
+    let libname = "x64-vcruntime140-ruby320-static";
     #[cfg(all(target_arch = "x86", windows))]
-    let libname = "vcruntime140-ruby300-static";
+    let libname = "vcruntime140-ruby320-static";
     #[cfg(all(target_env = "gnu", windows))]
     compile_error!("rubyfmt on Windows is currently only supported with msvc");
 
