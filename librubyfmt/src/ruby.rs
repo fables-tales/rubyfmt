@@ -46,8 +46,9 @@ pub enum ruby_value_type {
     RUBY_T_MASK = 0x1f,
 }
 
+// From https://github.com/ruby/ruby/blob/f55212bce939f736559709a8cd16c409772389c8/include/ruby/internal/special_consts.h#L97
 #[allow(non_upper_case_globals)]
-pub const Qnil: VALUE = VALUE(8);
+pub const Qnil: VALUE = VALUE(4);
 
 extern "C" {
     // stuff that we need to compile out rubyfmt
