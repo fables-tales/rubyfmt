@@ -186,31 +186,39 @@ pub fn format_params(
 
 pub fn format_kwrest_params(
     ps: &mut dyn ConcreteParserState,
-    kwrest_params: Option<KwRestParam>,
+    kwrest_params: Option<KwRestParamOrArgsForward>,
 ) -> bool {
     if kwrest_params.is_none() {
         return false;
     }
 
-    ps.with_start_of_line(
-        false,
-        Box::new(|ps| {
-            ps.emit_soft_indent();
-            ps.emit_ident("**".to_string());
-            let ident = (kwrest_params.unwrap()).1;
-            if let Some(ident) = ident {
-                bind_ident(ps, &ident);
-                format_ident(ps, ident);
-            }
-        }),
-    );
+    match kwrest_params.unwrap() {
+        KwRestParamOrArgsForward::KwRestParam(kwrest_params) => {
+            ps.with_start_of_line(
+                false,
+                Box::new(|ps| {
+                    ps.emit_soft_indent();
+                    ps.emit_ident("**".to_string());
+                    let ident = kwrest_params.1;
+                    if let Some(ident) = ident {
+                        bind_ident(ps, &ident);
+                        format_ident(ps, ident);
+                    }
+                }),
+            );
+        }
+        KwRestParamOrArgsForward::ArgsForward(_) => ps.emit_ellipsis(),
+    }
     true
 }
 
-pub fn format_block_arg(ps: &mut dyn ConcreteParserState, block_arg: Option<BlockArg>) -> bool {
+pub fn format_block_arg(
+    ps: &mut dyn ConcreteParserState,
+    block_arg: Option<BlockArgOrTag>,
+) -> bool {
     match block_arg {
-        None => false,
-        Some(ba) => {
+        None | Some(BlockArgOrTag::Tag(..)) => false,
+        Some(BlockArgOrTag::BlockArg(ba)) => {
             ps.with_start_of_line(
                 false,
                 Box::new(|ps| {
@@ -265,7 +273,7 @@ pub fn format_kwargs(
 
 pub fn format_rest_param(
     ps: &mut dyn ConcreteParserState,
-    rest_param: Option<RestParamOr0OrExcessedCommaOrArgsForward>,
+    rest_param: Option<RestParamOr0OrExcessedComma>,
     special_case: SpecialCase,
 ) -> bool {
     let mut res = false;
@@ -274,12 +282,9 @@ pub fn format_rest_param(
         Box::new(|ps| {
             match rest_param {
                 None => {}
-                Some(RestParamOr0OrExcessedCommaOrArgsForward::ExcessedComma(_)) => {}
-                Some(RestParamOr0OrExcessedCommaOrArgsForward::Zero(_)) => {}
-                Some(RestParamOr0OrExcessedCommaOrArgsForward::ArgsForward(_)) => {
-                    ps.emit_ellipsis();
-                }
-                Some(RestParamOr0OrExcessedCommaOrArgsForward::RestParam(rp)) => {
+                Some(RestParamOr0OrExcessedComma::ExcessedComma(_)) => {}
+                Some(RestParamOr0OrExcessedComma::Zero(_)) => {}
+                Some(RestParamOr0OrExcessedComma::RestParam(rp)) => {
                     if special_case != SpecialCase::RestParamOutsideOfParamDef {
                         ps.emit_soft_indent();
                     }
@@ -360,7 +365,7 @@ pub fn format_mlhs(ps: &mut dyn ConcreteParserState, mlhs: MLhs) {
                     MLhsInner::RestParam(rp) => {
                         format_rest_param(
                             ps,
-                            Some(RestParamOr0OrExcessedCommaOrArgsForward::RestParam(rp)),
+                            Some(RestParamOr0OrExcessedComma::RestParam(rp)),
                             SpecialCase::NoSpecialCase,
                         );
                     }
@@ -1823,7 +1828,7 @@ pub fn format_assignable(ps: &mut dyn ConcreteParserState, v: Assignable) {
         Assignable::RestParam(rp) => {
             format_rest_param(
                 ps,
-                Some(RestParamOr0OrExcessedCommaOrArgsForward::RestParam(rp)),
+                Some(RestParamOr0OrExcessedComma::RestParam(rp)),
                 SpecialCase::RestParamOutsideOfParamDef,
             );
         }

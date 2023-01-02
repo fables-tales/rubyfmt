@@ -862,17 +862,25 @@ impl Paren {
     }
 }
 
+def_tag!(block_tag, "&");
+
+#[derive(RipperDeserialize, Debug, Clone)]
+pub enum BlockArgOrTag {
+    BlockArg(BlockArg),
+    Tag(block_tag),
+}
+
 def_tag!(params_tag, "params");
 #[derive(Deserialize, Debug, Clone)]
 pub struct Params(
     pub params_tag,
     pub Option<Vec<IdentOrMLhs>>,
     pub Option<Vec<(Ident, Expression)>>,
-    pub Option<RestParamOr0OrExcessedCommaOrArgsForward>,
+    pub Option<RestParamOr0OrExcessedComma>,
     pub Option<Vec<IdentOrMLhs>>,
     pub Option<Vec<(Label, ExpressionOrFalse)>>,
-    pub Option<KwRestParam>,
-    pub Option<BlockArg>,
+    pub Option<KwRestParamOrArgsForward>,
+    pub Option<BlockArgOrTag>,
     pub StartEnd,
 );
 
@@ -943,11 +951,10 @@ impl Params {
 //   a single representative node, but that didn't work with the serde setup
 //   we have for some reason.
 #[derive(RipperDeserialize, Debug, Clone)]
-pub enum RestParamOr0OrExcessedCommaOrArgsForward {
+pub enum RestParamOr0OrExcessedComma {
     Zero(i64),
     RestParam(RestParam),
     ExcessedComma(ExcessedComma),
-    ArgsForward(ArgsForward),
 }
 
 def_tag!(excessed_comma_tag, "excessed_comma");
@@ -982,6 +989,12 @@ pub enum ExpressionOrFalse {
 def_tag!(rest_param_tag, "rest_param");
 #[derive(Deserialize, Debug, Clone)]
 pub struct RestParam(pub rest_param_tag, pub Option<RestParamAssignable>);
+
+#[derive(RipperDeserialize, Debug, Clone)]
+pub enum KwRestParamOrArgsForward {
+    KwRestParam(KwRestParam),
+    ArgsForward(ArgsForward),
+}
 
 def_tag!(kw_rest_param_tag, "kwrest_param");
 #[derive(Deserialize, Debug, Clone)]
