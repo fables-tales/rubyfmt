@@ -221,13 +221,7 @@ fn initialize_rubyfmt() {
 /* Helpers                                            */
 /******************************************************/
 
-fn file_walker_builder(
-    CommandlineOpts {
-        include_paths,
-        include_gitignored,
-        ..
-    }: &CommandlineOpts,
-) -> WalkBuilder {
+fn file_walker_builder(include_paths: Vec<&String>, include_gitignored: bool) -> WalkBuilder {
     // WalkBuilder does not have an API for adding multiple inputs.
     // Must pass the first input to the constructor, and the tail afterwards.
     // Safe to unwrap here.
@@ -238,7 +232,7 @@ fn file_walker_builder(
         builder.add(path);
     }
 
-    builder.git_ignore(!*include_gitignored);
+    builder.git_ignore(!include_gitignored);
     builder.add_custom_ignore_filename(".rubyfmtignore");
     builder
 }
@@ -294,14 +288,21 @@ fn iterate_input_files(opts: &CommandlineOpts, f: &dyn Fn((&Path, &String))) {
             .expect("reading from stdin to not fail");
         f((Path::new("stdin"), &buffer))
     } else {
-        for result in file_walker_builder(opts).build() {
-            match result {
-                Ok(pp) => {
-                    let file_path = pp.path();
+        let mut file_paths = Vec::new();
+        let mut dir_paths = Vec::new();
+        for path in &opts.include_paths {
+            if Path::new(&path).is_file() {
+                file_paths.push(path)
+            } else {
+                dir_paths.push(path)
+            }
+        }
 
-                    if file_path.is_file()
-                        && file_path.extension().and_then(OsStr::to_str) == Some("rb")
-                    {
+        if !file_paths.is_empty() {
+            for result in file_walker_builder(file_paths, opts.include_gitignored).build() {
+                match result {
+                    Ok(pp) => {
+                        let file_path = pp.path();
                         let buffer_res = read_to_string(file_path);
 
                         match buffer_res {
@@ -312,8 +313,33 @@ fn iterate_input_files(opts: &CommandlineOpts, f: &dyn Fn((&Path, &String))) {
                             ),
                         }
                     }
+                    Err(e) => handle_execution_error(opts, ExecutionError::FileSearchFailure(e)),
                 }
-                Err(e) => handle_execution_error(opts, ExecutionError::FileSearchFailure(e)),
+            }
+        }
+
+        if !dir_paths.is_empty() {
+            for result in file_walker_builder(dir_paths, opts.include_gitignored).build() {
+                match result {
+                    Ok(pp) => {
+                        let file_path = pp.path();
+
+                        if file_path.is_file()
+                            && file_path.extension().and_then(OsStr::to_str) == Some("rb")
+                        {
+                            let buffer_res = read_to_string(file_path);
+
+                            match buffer_res {
+                                Ok(buffer) => f((file_path, &buffer)),
+                                Err(e) => handle_execution_error(
+                                    opts,
+                                    ExecutionError::IOError(e, file_path.display().to_string()),
+                                ),
+                            }
+                        }
+                    }
+                    Err(e) => handle_execution_error(opts, ExecutionError::FileSearchFailure(e)),
+                }
             }
         }
     }
