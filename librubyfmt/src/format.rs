@@ -2528,22 +2528,13 @@ pub fn format_binary(ps: &mut dyn ConcreteParserState, binary: Binary, must_be_m
                 ps.with_start_of_line(
                     false,
                     Box::new(|ps| {
-                        let mut render_all_multiline = render_multiline;
+                        let mut render_last_item_on_new_line = false;
                         let op = binary.2;
 
                         if let Expression::Binary(b) = *binary.1 {
-                            // Force multiline render iff they're (1) the same operator and (2) on different lines.
-                            // This is really only supported for chains of the same operator, e.g.
-                            // ```
-                            // a ||
-                            //   b ||
-                            //   c
-                            // ```
-                            // but not mixed operators, since multilining them can make the operator precedence misleading.
-                            render_all_multiline =
-                                render_all_multiline || is_same_operator_on_other_line(&op, &b.2);
-
-                            format_binary(ps, b, render_all_multiline);
+                            let is_multiline = render_multiline || (op.1 != (b.2).1);
+                            render_last_item_on_new_line = is_multiline;
+                            format_binary(ps, b, is_multiline);
                         } else {
                             format_expression(ps, *binary.1);
                         }
@@ -2554,34 +2545,39 @@ pub fn format_binary(ps: &mut dyn ConcreteParserState, binary: Binary, must_be_m
 
                         let next_expr = *binary.3;
 
-                        render_all_multiline = render_all_multiline
-                            || if let Expression::Binary(ref b) = next_expr {
-                                is_same_operator_on_other_line(&op, &b.2)
-                            } else {
-                                false
-                            };
-
                         ps.emit_space();
-                        ps.emit_ident(op.0);
+                        ps.emit_ident(op.0.clone());
                         // In some cases, previous expressions changed the space
                         // count but haven't reset it, so we force a reset here in
                         // case we shift comments during the _next_ expression
                         ps.reset_space_count();
 
-                        if render_all_multiline && is_not_comparison {
+                        if render_multiline && is_not_comparison {
                             ps.new_block(Box::new(|ps| {
                                 ps.emit_newline();
                                 ps.emit_indent();
 
                                 if let Expression::Binary(b) = next_expr {
-                                    format_binary(ps, b, render_all_multiline);
+                                    let is_multiline = render_multiline || (op.1 != (b.2).1);
+                                    format_binary(ps, b, is_multiline);
                                 } else {
                                     format_expression(ps, next_expr);
                                 }
                             }));
                         } else {
-                            ps.emit_space();
-                            format_expression(ps, next_expr);
+                            if render_last_item_on_new_line {
+                                ps.new_block(Box::new(|ps| {
+                                    ps.emit_newline();
+                                    ps.emit_indent();
+                                }));
+                            } else {
+                                ps.emit_space();
+                            }
+                            if let Expression::Binary(b) = next_expr {
+                                format_binary(ps, b, render_last_item_on_new_line);
+                            } else {
+                                format_expression(ps, next_expr);
+                            }
                         }
                     }),
                 );
@@ -2596,13 +2592,6 @@ pub fn format_binary(ps: &mut dyn ConcreteParserState, binary: Binary, must_be_m
     if ps.at_start_of_line() {
         ps.emit_newline();
     }
-}
-
-fn is_same_operator_on_other_line(left: &BinaryOperator, right: &BinaryOperator) -> bool {
-    // Line number is different
-    (left.1 != right.1) &&
-    // Operator is the same
-    (left.0 == right.0)
 }
 
 pub fn format_float(ps: &mut dyn ConcreteParserState, float: Float) {
