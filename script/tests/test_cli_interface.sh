@@ -654,6 +654,23 @@ DIFF
     )
 }
 
+test_formats_non_rb_files() {
+    (
+    cd "$(mktemp -d)"
+    echo "a 1, 2, 3" > test.rake
+
+    f_rubyfmt -i -- test.rake
+
+    cat > test_expected.rake <<- DIFF
+a(1, 2, 3)
+DIFF
+
+    cat test.rake
+
+    diff_files o test_expected.rake test.rake
+    )
+}
+
 test_simple_stdout
 test_i_flag
 test_i_flag_no_changes
@@ -691,3 +708,5 @@ test_respects_gitignore
 test_includes_gitignore
 
 test_respects_rubyfmt_ignore_file
+
+test_formats_non_rb_files
