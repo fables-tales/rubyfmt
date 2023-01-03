@@ -732,7 +732,7 @@ pub struct Def(
     pub def_tag,
     pub IdentOrOpOrKeywordOrConst,
     pub ParenOrParams,
-    pub Box<BodyStmt>,
+    pub Box<DefBodyStmt>,
     pub StartEnd,
 );
 
@@ -777,6 +777,16 @@ pub struct BodyStmt(
     pub Option<RescueElseOrExpressionList>,
     pub Option<Ensure>,
 );
+
+// The bodystmt for endless defs
+#[derive(Deserialize, Debug, Clone)]
+pub struct EndlessBodyStmt(pub bodystmt_tag, pub Expression);
+
+#[derive(RipperDeserialize, Debug, Clone)]
+pub enum DefBodyStmt {
+    EndBodyStmt(BodyStmt),
+    EndlessBodyStmt(EndlessBodyStmt),
+}
 
 // deals with 2.6, where else is a vec expression and not an else
 #[derive(RipperDeserialize, Debug, Clone)]
@@ -1693,7 +1703,7 @@ pub struct Defs(
     pub DotOrColon,
     pub IdentOrOpOrKeywordOrConst,
     pub ParenOrParams,
-    pub Box<BodyStmt>,
+    pub Box<DefBodyStmt>,
     pub StartEnd,
 );
 
