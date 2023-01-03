@@ -1176,16 +1176,17 @@ pub fn format_assoc(
                             ps.emit_space();
                             ps.emit_ident("=>".to_string());
                         }
-                        ps.emit_space();
                     }
                     AssocKey::Expression(expression) => {
                         format_expression(ps, expression);
                         ps.emit_space();
                         ps.emit_ident("=>".to_string());
-                        ps.emit_space();
                     }
                 }
-                format_expression(ps, new.2);
+                if let Some(expr) = new.2 {
+                    ps.emit_space();
+                    format_expression(ps, expr);
+                }
             }
             AssocNewOrAssocSplat::AssocSplat(splat) => {
                 ps.emit_ident("**".to_string());
