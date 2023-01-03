@@ -2528,12 +2528,24 @@ pub fn format_binary(ps: &mut dyn ConcreteParserState, binary: Binary, must_be_m
                 ps.with_start_of_line(
                     false,
                     Box::new(|ps| {
-                        let mut render_last_item_on_new_line = false;
                         let op = binary.2;
 
+                        // If we force multilining (for e.g. long lines), *or*
+                        // because either inner expressions are user-multilined,
+                        // multiline *all* binaries in this chain
+                        let mut is_multiline = render_multiline;
+                        if let Expression::Binary(ref b) = *binary.1 {
+                            if op.1 != (b.2).1 {
+                                is_multiline = true;
+                            }
+                        }
+                        if let Expression::Binary(ref b) = *binary.3 {
+                            if op.1 != (b.2).1 {
+                                is_multiline = true;
+                            }
+                        }
+
                         if let Expression::Binary(b) = *binary.1 {
-                            let is_multiline = render_multiline || (op.1 != (b.2).1);
-                            render_last_item_on_new_line = is_multiline;
                             format_binary(ps, b, is_multiline);
                         } else {
                             format_expression(ps, *binary.1);
@@ -2546,26 +2558,32 @@ pub fn format_binary(ps: &mut dyn ConcreteParserState, binary: Binary, must_be_m
                         let next_expr = *binary.3;
 
                         ps.emit_space();
-                        ps.emit_ident(op.0.clone());
+                        ps.emit_ident(op.0);
                         // In some cases, previous expressions changed the space
                         // count but haven't reset it, so we force a reset here in
                         // case we shift comments during the _next_ expression
                         ps.reset_space_count();
 
                         if render_multiline && is_not_comparison {
+                            // This branch runs when we're rendering additional binaries
+                            // nested inside *already multilined* binaries, e.g. a binary
+                            // with a long line length *and* a nested conditional on the right-hand side
                             ps.new_block(Box::new(|ps| {
                                 ps.emit_newline();
                                 ps.emit_indent();
 
                                 if let Expression::Binary(b) = next_expr {
-                                    let is_multiline = render_multiline || (op.1 != (b.2).1);
                                     format_binary(ps, b, is_multiline);
                                 } else {
                                     format_expression(ps, next_expr);
                                 }
                             }));
                         } else {
-                            if render_last_item_on_new_line {
+                            if is_multiline && is_not_comparison {
+                                // Hack, but we want to "continue" the chain of binary
+                                // operators, which previously were at a deeper indentation level.
+                                // However, we don't want the following expressions to "inherit" this
+                                // indentation while rendering, so we only use the block for indentation
                                 ps.new_block(Box::new(|ps| {
                                     ps.emit_newline();
                                     ps.emit_indent();
@@ -2574,7 +2592,7 @@ pub fn format_binary(ps: &mut dyn ConcreteParserState, binary: Binary, must_be_m
                                 ps.emit_space();
                             }
                             if let Expression::Binary(b) = next_expr {
-                                format_binary(ps, b, render_last_item_on_new_line);
+                                format_binary(ps, b, is_multiline);
                             } else {
                                 format_expression(ps, next_expr);
                             }
