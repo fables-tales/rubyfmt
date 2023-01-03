@@ -2521,45 +2521,81 @@ pub fn format_binary(ps: &mut dyn ConcreteParserState, binary: Binary, must_be_m
         ps.emit_indent();
     }
 
-    let format_func = |ps: &mut dyn ConcreteParserState, render_multiline: bool| {
+    let format_func = |ps: &mut dyn ConcreteParserState, force_multiline: bool| {
         ps.with_formatting_context(
             FormattingContext::Binary,
             Box::new(|ps| {
                 ps.with_start_of_line(
                     false,
                     Box::new(|ps| {
+                        let op = binary.2;
+
+                        // If we force multilining (for e.g. long lines), *or*
+                        // because either inner expressions are user-multilined,
+                        // multiline *all* binaries in this chain
+                        let mut is_multiline = force_multiline;
+                        if let Expression::Binary(ref b) = *binary.1 {
+                            if op.1 != (b.2).1 {
+                                is_multiline = true;
+                            }
+                        }
+                        if let Expression::Binary(ref b) = *binary.3 {
+                            if op.1 != (b.2).1 {
+                                is_multiline = true;
+                            }
+                        }
+
                         if let Expression::Binary(b) = *binary.1 {
-                            format_binary(ps, b, render_multiline);
+                            format_binary(ps, b, is_multiline);
                         } else {
                             format_expression(ps, *binary.1);
                         }
 
-                        let operator = binary.2;
                         let comparison_operators =
                             vec![">", ">=", "===", "==", "<", "<=", "<=>", "!="];
-                        let is_not_comparison =
-                            !comparison_operators.iter().any(|o| o == &operator);
-
-                        ps.emit_space();
-                        ps.emit_ident(operator);
+                        let is_not_comparison = !comparison_operators.iter().any(|o| o == &op.0);
 
                         let next_expr = *binary.3;
 
+                        ps.emit_space();
+                        ps.emit_ident(op.0);
                         // In some cases, previous expressions changed the space
                         // count but haven't reset it, so we force a reset here in
                         // case we shift comments during the _next_ expression
                         ps.reset_space_count();
 
-                        if render_multiline && is_not_comparison {
+                        if force_multiline && is_not_comparison {
+                            // This branch runs when we're rendering additional binaries
+                            // nested inside *already multilined* binaries, e.g. a binary
+                            // with a long line length *and* a nested conditional on the right-hand side
                             ps.new_block(Box::new(|ps| {
                                 ps.emit_newline();
                                 ps.emit_indent();
 
-                                format_expression(ps, next_expr);
+                                if let Expression::Binary(b) = next_expr {
+                                    format_binary(ps, b, is_multiline);
+                                } else {
+                                    format_expression(ps, next_expr);
+                                }
                             }));
                         } else {
-                            ps.emit_space();
-                            format_expression(ps, next_expr);
+                            if is_multiline && is_not_comparison {
+                                // Hack, but we want to "continue" the chain of binary
+                                // operators, which previously were at a deeper indentation level.
+                                // However, we don't want the following expressions to "inherit" this
+                                // indentation while rendering, so we only use the block for indentation
+                                ps.new_block(Box::new(|ps| {
+                                    ps.emit_newline();
+                                    ps.emit_indent();
+                                }));
+                            } else {
+                                ps.emit_space();
+                            }
+                            if let Expression::Binary(b) = next_expr {
+                                format_binary(ps, b, is_multiline);
+                            } else {
+                                format_expression(ps, next_expr);
+                            }
                         }
                     }),
                 );

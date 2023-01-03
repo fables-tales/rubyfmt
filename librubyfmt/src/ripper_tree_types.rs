@@ -1717,12 +1717,15 @@ pub enum DotOrColon {
     Op(Operator),
 }
 
+#[derive(Deserialize, Debug, Clone)]
+pub struct BinaryOperator(pub String, pub StartEnd);
+
 def_tag!(binary_tag, "binary");
 #[derive(Deserialize, Debug, Clone)]
 pub struct Binary(
     pub binary_tag,
     pub Box<Expression>,
-    pub String,
+    pub BinaryOperator,
     pub Box<Expression>,
 );
 
