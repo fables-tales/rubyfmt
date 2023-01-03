@@ -18,8 +18,7 @@ if very_long_conditional? ||
 end
 
 a ||
-  b ||
-  c
+  b || c
 
 a ||
   b &&
@@ -35,8 +34,7 @@ a ||
   d
 
 a &&
-  b ||
-  c &&
+  b || c &&
   d
 
 if a &&
