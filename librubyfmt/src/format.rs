@@ -18,35 +18,62 @@ pub fn format_def(ps: &mut dyn ConcreteParserState, def: Def) {
         ps.emit_indent();
     }
     ps.emit_def(def_expression.0);
+
+    format_def_body(ps, pp, *body, end_line);
+
+    if ps.at_start_of_line() {
+        ps.emit_newline();
+    }
+}
+
+fn format_def_body(
+    ps: &mut dyn ConcreteParserState,
+    pp: ParenOrParams,
+    bodystmt: DefBodyStmt,
+    end_line: LineNumber,
+) {
+    let has_end = matches!(bodystmt, DefBodyStmt::EndBodyStmt(..));
     ps.new_scope(Box::new(|ps| {
         format_paren_or_params(ps, pp);
 
         ps.with_formatting_context(
             FormattingContext::Def,
-            Box::new(|ps| {
-                ps.new_block(Box::new(|ps| {
-                    ps.emit_newline();
+            Box::new(|ps| match bodystmt {
+                DefBodyStmt::EndBodyStmt(bodystmt) => {
+                    ps.new_block(Box::new(|ps| {
+                        ps.emit_newline();
+                        ps.with_start_of_line(
+                            true,
+                            Box::new(|ps| {
+                                format_bodystmt(ps, Box::new(bodystmt), end_line);
+                            }),
+                        );
+                    }));
+                }
+                DefBodyStmt::EndlessBodyStmt(bodystmt) => {
+                    ps.emit_space();
+                    ps.emit_op("=".to_string());
+                    ps.emit_space();
+
                     ps.with_start_of_line(
-                        true,
+                        false,
                         Box::new(|ps| {
-                            format_bodystmt(ps, body, end_line);
+                            format_expression(ps, bodystmt.1);
                         }),
-                    );
-                }));
+                    )
+                }
             }),
         );
     }));
 
-    ps.with_start_of_line(
-        true,
-        Box::new(|ps| {
-            ps.wind_dumping_comments_until_line(end_line);
-            ps.emit_end();
-        }),
-    );
-
-    if ps.at_start_of_line() {
-        ps.emit_newline();
+    if has_end {
+        ps.with_start_of_line(
+            true,
+            Box::new(|ps| {
+                ps.wind_dumping_comments_until_line(end_line);
+                ps.emit_end();
+            }),
+        );
     }
 }
 
@@ -2253,32 +2280,10 @@ pub fn format_defs(ps: &mut dyn ConcreteParserState, defs: Defs) {
             ps.emit_dot();
             let (ident, linecol) = ident_or_kw.to_def_parts();
             handle_string_and_linecol(ps, ident, linecol);
-            format_paren_or_params(ps, paren_or_params);
         }),
     );
 
-    ps.with_formatting_context(
-        FormattingContext::Def,
-        Box::new(|ps| {
-            ps.new_block(Box::new(|ps| {
-                ps.emit_newline();
-                ps.with_start_of_line(
-                    true,
-                    Box::new(|ps| {
-                        format_bodystmt(ps, bodystmt, end_line);
-                    }),
-                );
-            }));
-        }),
-    );
-
-    ps.wind_dumping_comments_until_line(end_line);
-    ps.with_start_of_line(
-        true,
-        Box::new(|ps| {
-            ps.emit_end();
-        }),
-    );
+    format_def_body(ps, paren_or_params, *bodystmt, end_line);
 
     if ps.at_start_of_line() {
         ps.emit_newline();
