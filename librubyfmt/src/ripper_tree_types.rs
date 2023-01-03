@@ -1187,7 +1187,7 @@ pub enum AssocNewOrAssocSplat {
 
 def_tag!(assoc_new_tag, "assoc_new");
 #[derive(Deserialize, Debug, Clone)]
-pub struct AssocNew(pub assoc_new_tag, pub AssocKey, pub Expression);
+pub struct AssocNew(pub assoc_new_tag, pub AssocKey, pub Option<Expression>);
 
 def_tag!(assoc_splat_tag, "assoc_splat");
 #[derive(Deserialize, Debug, Clone)]
