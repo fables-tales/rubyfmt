@@ -2521,7 +2521,7 @@ pub fn format_binary(ps: &mut dyn ConcreteParserState, binary: Binary, must_be_m
         ps.emit_indent();
     }
 
-    let format_func = |ps: &mut dyn ConcreteParserState, render_multiline: bool| {
+    let format_func = |ps: &mut dyn ConcreteParserState, force_multiline: bool| {
         ps.with_formatting_context(
             FormattingContext::Binary,
             Box::new(|ps| {
@@ -2533,7 +2533,7 @@ pub fn format_binary(ps: &mut dyn ConcreteParserState, binary: Binary, must_be_m
                         // If we force multilining (for e.g. long lines), *or*
                         // because either inner expressions are user-multilined,
                         // multiline *all* binaries in this chain
-                        let mut is_multiline = render_multiline;
+                        let mut is_multiline = force_multiline;
                         if let Expression::Binary(ref b) = *binary.1 {
                             if op.1 != (b.2).1 {
                                 is_multiline = true;
@@ -2564,7 +2564,7 @@ pub fn format_binary(ps: &mut dyn ConcreteParserState, binary: Binary, must_be_m
                         // case we shift comments during the _next_ expression
                         ps.reset_space_count();
 
-                        if render_multiline && is_not_comparison {
+                        if force_multiline && is_not_comparison {
                             // This branch runs when we're rendering additional binaries
                             // nested inside *already multilined* binaries, e.g. a binary
                             // with a long line length *and* a nested conditional on the right-hand side
