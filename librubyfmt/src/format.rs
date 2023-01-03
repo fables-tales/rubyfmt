@@ -2528,34 +2528,56 @@ pub fn format_binary(ps: &mut dyn ConcreteParserState, binary: Binary, must_be_m
                 ps.with_start_of_line(
                     false,
                     Box::new(|ps| {
+                        let mut render_all_multiline = render_multiline;
+                        let op = binary.2;
+
                         if let Expression::Binary(b) = *binary.1 {
-                            format_binary(ps, b, render_multiline);
+                            // Force multiline render iff they're (1) the same operator and (2) on different lines.
+                            // This is really only supported for chains of the same operator, e.g.
+                            // ```
+                            // a ||
+                            //   b ||
+                            //   c
+                            // ```
+                            // but not mixed operators, since multilining them can make the operator precedence misleading.
+                            render_all_multiline =
+                                render_all_multiline || is_same_operator_on_other_line(&op, &b.2);
+
+                            format_binary(ps, b, render_all_multiline);
                         } else {
                             format_expression(ps, *binary.1);
                         }
 
-                        let operator = binary.2;
                         let comparison_operators =
                             vec![">", ">=", "===", "==", "<", "<=", "<=>", "!="];
-                        let is_not_comparison =
-                            !comparison_operators.iter().any(|o| o == &operator);
-
-                        ps.emit_space();
-                        ps.emit_ident(operator);
+                        let is_not_comparison = !comparison_operators.iter().any(|o| o == &op.0);
 
                         let next_expr = *binary.3;
 
+                        render_all_multiline = render_all_multiline
+                            || if let Expression::Binary(ref b) = next_expr {
+                                is_same_operator_on_other_line(&op, &b.2)
+                            } else {
+                                false
+                            };
+
+                        ps.emit_space();
+                        ps.emit_ident(op.0);
                         // In some cases, previous expressions changed the space
                         // count but haven't reset it, so we force a reset here in
                         // case we shift comments during the _next_ expression
                         ps.reset_space_count();
 
-                        if render_multiline && is_not_comparison {
+                        if render_all_multiline && is_not_comparison {
                             ps.new_block(Box::new(|ps| {
                                 ps.emit_newline();
                                 ps.emit_indent();
 
-                                format_expression(ps, next_expr);
+                                if let Expression::Binary(b) = next_expr {
+                                    format_binary(ps, b, render_all_multiline);
+                                } else {
+                                    format_expression(ps, next_expr);
+                                }
                             }));
                         } else {
                             ps.emit_space();
@@ -2574,6 +2596,13 @@ pub fn format_binary(ps: &mut dyn ConcreteParserState, binary: Binary, must_be_m
     if ps.at_start_of_line() {
         ps.emit_newline();
     }
+}
+
+fn is_same_operator_on_other_line(left: &BinaryOperator, right: &BinaryOperator) -> bool {
+    // Line number is different
+    (left.1 != right.1) &&
+    // Operator is the same
+    (left.0 == right.0)
 }
 
 pub fn format_float(ps: &mut dyn ConcreteParserState, float: Float) {

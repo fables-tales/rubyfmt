@@ -59,6 +59,7 @@ class Parser < Ripper::SexpBuilderPP
       "while" => [],
       "until" => [],
     }
+    @op_locations = []
     @tlambda_stack = []
     @array_location_stacks = []
     @rbracket_stack = []
@@ -170,7 +171,15 @@ class Parser < Ripper::SexpBuilderPP
   end
 
   def on_op(*_args)
+    @op_locations << lineno
     super + [[lineno, lineno]]
+  end
+
+  def on_binary(left, operator, right)
+    res = super
+    op_location = @op_locations.pop
+    res[2] = [res[2], [op_location, op_location]]
+    res
   end
 
   def on_next(*_args)
