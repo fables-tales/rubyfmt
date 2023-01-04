@@ -1912,6 +1912,17 @@ pub struct BraceBlock(
     pub StartEnd,
 );
 
+impl BraceBlock {
+    pub fn into_do_block(self) -> DoBlock {
+        DoBlock(
+            do_block_tag,
+            self.1,
+            Box::new(BodyStmt(bodystmt_tag, self.2, None, None, None)),
+            self.3,
+        )
+    }
+}
+
 def_tag!(while_tag, "while");
 #[derive(Deserialize, Debug, Clone)]
 pub struct While(

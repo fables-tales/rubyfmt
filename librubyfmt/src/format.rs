@@ -3072,7 +3072,20 @@ fn should_multiline_call_chain(ps: &mut dyn ConcreteParserState, method_call: &M
 }
 
 pub fn format_block(ps: &mut dyn ConcreteParserState, b: Block) {
-    match b {
+    let block = match b {
+        Block::DoBlock(..) => b,
+        Block::BraceBlock(bb) => {
+            // Transform multiline BraceBlocks into do/end blocks
+            if bb.2.len() > 1
+                || ps.will_render_as_multiline(Box::new(|ps| format_brace_block(ps, bb.clone())))
+            {
+                Block::DoBlock(bb.into_do_block())
+            } else {
+                Block::BraceBlock(bb)
+            }
+        }
+    };
+    match block {
         Block::BraceBlock(bb) => format_brace_block(ps, bb),
         Block::DoBlock(db) => format_do_block(ps, db),
     }
