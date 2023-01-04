@@ -15,7 +15,7 @@ def foo
   end
 
   # More comments!!
-  commented_brace_block {
+  commented_brace_block do
     # Such plainness of the pre-baroque
     # Hardly involves the eye, until
     # It meets his left-hand gauntlet, still
@@ -23,7 +23,7 @@ def foo
     # One sees, with a sharp tender shock,
 
     # His hand withdrawn, holding her hand.
-  }
+  end
 
   method_call
 end

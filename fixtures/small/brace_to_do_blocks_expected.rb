@@ -18,8 +18,3 @@ class Foo
     end
   )
 end
-
-group(:test) do
-  gem "mocha"
-  gem "rack-test"
-end

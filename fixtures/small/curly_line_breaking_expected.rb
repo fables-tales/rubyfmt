@@ -1,5 +1,5 @@
 do_something { |a| [a] }
-do_something { |a|
+do_something do |a|
   [
     1,
     2,
@@ -105,4 +105,4 @@ do_something { |a|
     3,
     3
   ]
-}
+end

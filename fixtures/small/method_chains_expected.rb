@@ -1,8 +1,8 @@
 returns_array
-  .map { |foo|
+  .map do |foo|
     thing = foo.idk
     thing.call
-  }
+  end
   .chain do |bar|
     bar.do_stuff!
   end
@@ -110,10 +110,10 @@ var = MyModule::MyClass
   .foo
   .bar
   .baz
-  .map { |x|
+  .map do |x|
     multiline
     block
-  }
+  end
   .bacon
   .next_call(
     a: "",

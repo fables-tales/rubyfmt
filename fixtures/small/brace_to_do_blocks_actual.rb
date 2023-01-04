@@ -10,5 +10,3 @@ class Foo
   # !! `example_dsl [].map do |k| k; k+1 end`
   example_dsl [].map { |k| k; k+1 }
 end
-
-group(:test) { gem 'mocha'; gem 'rack-test' }
