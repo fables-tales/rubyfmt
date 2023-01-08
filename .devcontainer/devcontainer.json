@@ -1,0 +1,22 @@
+{
+	"name": "Dockerfile",
+	"build": {
+		// Sets the run context to one level up instead of the .devcontainer folder.
+		"context": "..",
+		"dockerfile": "../dockerfiles/build.Dockerfile"
+	},
+	"features": {
+		"ghcr.io/devcontainers/features/ruby:1": {},
+		"ghcr.io/devcontainers/features/rust:1": {},
+		"ghcr.io/devcontainers/features/github-cli:1": {},
+		"ghcr.io/meaningful-ooo/devcontainer-features/homebrew:2": {},
+		"ghcr.io/dhoeric/features/act:1": {}
+	},
+
+	"extensions": [
+		"rust-lang.rust-analyzer"
+	],
+
+	// When the container is ready, go ahead and run a full build
+	"postCreateCommand": "cargo build && cargo build --release"
+}
