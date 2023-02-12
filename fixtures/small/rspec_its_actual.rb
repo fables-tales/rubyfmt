@@ -39,6 +39,10 @@ describe "writing some really really long test name",
   opinion: "please don't name your DSL 'describe', but a little too late now I guess" do
 end
 
+test "some really good test name" do
+  assert(true)
+end
+
 RSpec.describe "bees" do
 end
 

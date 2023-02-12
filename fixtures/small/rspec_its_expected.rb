@@ -43,6 +43,10 @@ describe(
 ) do
 end
 
+test "some really good test name" do
+  assert(true)
+end
+
 RSpec.describe "bees" do
 end
 
