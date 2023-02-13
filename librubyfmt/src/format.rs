@@ -696,7 +696,7 @@ pub fn args_has_single_def_expression(args: &ArgsAddStarOrExpressionListOrArgsFo
 }
 
 lazy_static! {
-    static ref RSPEC_METHODS: HashSet<&'static str> = vec!["it", "describe"].into_iter().collect();
+    static ref TEST_METHODS: HashSet<&'static str> = vec!["it", "describe", "test"].into_iter().collect();
     static ref GEMFILE_METHODS: HashSet<&'static str> = vec![
         // Gemfile
         "gem",
@@ -2773,7 +2773,7 @@ fn can_elide_parens_for_reserved_names(cc: &[CallChainElement]) -> bool {
             Ident(_, ident, _),
         ))) => {
             let ident = ident.as_str();
-            RSPEC_METHODS.contains(ident) || GEMFILE_METHODS.contains(ident)
+            TEST_METHODS.contains(ident) || GEMFILE_METHODS.contains(ident)
         }
         _ => false,
     };
