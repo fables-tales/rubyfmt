@@ -1455,9 +1455,7 @@ pub fn format_array(ps: &mut dyn ConcreteParserState, array: Array) {
     ps.on_line((array.2).0);
 
     match array.1 {
-        SimpleArrayOrPercentArray::SimpleArray(a) => {
-            format_array_fast_path(ps, array.2.end_line(), a)
-        }
+        SimpleArrayOrPercentArray::SimpleArray(a) => format_array_fast_path(ps, &array.2, a),
         SimpleArrayOrPercentArray::LowerPercentArray(pa) => {
             ps.on_line((pa.2).0);
             format_percent_array(
@@ -1483,13 +1481,24 @@ pub fn format_array(ps: &mut dyn ConcreteParserState, array: Array) {
 
 pub fn format_array_fast_path(
     ps: &mut dyn ConcreteParserState,
-    end_line: LineNumber,
+    start_end: &StartEnd,
     a: Option<ArgsAddStarOrExpressionListOrArgsForward>,
 ) {
+    let &StartEnd(start_line, end_line) = start_end;
     match a {
         None => {
-            ps.emit_open_square_bracket();
-            ps.emit_close_square_bracket();
+            let is_multiline = start_line != end_line;
+            if is_multiline && ps.has_comments_in_line(start_line, end_line) {
+                ps.breakable_of(
+                    BreakableDelims::for_array(),
+                    Box::new(|ps| {
+                        ps.wind_dumping_comments_until_line(end_line);
+                    }),
+                );
+            } else {
+                ps.emit_open_square_bracket();
+                ps.emit_close_square_bracket();
+            }
         }
         Some(a) => {
             ps.breakable_of(
@@ -1794,7 +1803,8 @@ pub fn format_aref_field(ps: &mut dyn ConcreteParserState, af: ArefField) {
         ps.emit_indent();
     }
 
-    let end_line = (af.3).0;
+    // Aref fields are always on a single line, so we construct a single-line StartEnd here
+    let start_end = StartEnd((af.3).0, (af.3).0);
 
     ps.with_start_of_line(
         false,
@@ -1811,11 +1821,11 @@ pub fn format_aref_field(ps: &mut dyn ConcreteParserState, af: ArefField) {
                     ArgsAddStarOrExpressionListOrArgsForward::ExpressionList(expr_list),
                 ),
             };
-            format_array_fast_path(ps, end_line, arr_contents);
+            format_array_fast_path(ps, &start_end, arr_contents);
         }),
     );
 
-    ps.wind_dumping_comments_until_line(end_line);
+    ps.wind_dumping_comments_until_line(start_end.end_line());
 
     if ps.at_start_of_line() {
         ps.emit_newline();
@@ -2635,7 +2645,8 @@ pub fn format_aref(ps: &mut dyn ConcreteParserState, aref: Aref) {
         ps.emit_indent();
     }
 
-    let end_line = (aref.3).0;
+    // Aref fields are always on a single line, so we construct a single-line StartEnd here
+    let start_end = StartEnd((aref.3).0, (aref.3).0);
 
     ps.with_start_of_line(
         false,
@@ -2648,13 +2659,13 @@ pub fn format_aref(ps: &mut dyn ConcreteParserState, aref: Aref) {
                 }
                 Some(arg_node) => {
                     let args_list = normalize_args(arg_node);
-                    format_array_fast_path(ps, end_line, Some(args_list));
+                    format_array_fast_path(ps, &start_end, Some(args_list));
                 }
             }
         }),
     );
 
-    ps.wind_dumping_comments_until_line(end_line);
+    ps.wind_dumping_comments_until_line(start_end.end_line());
 
     if ps.at_start_of_line() {
         ps.emit_newline();
