@@ -2768,15 +2768,25 @@ fn can_elide_parens_for_reserved_names(cc: &[CallChainElement]) -> bool {
         return false;
     };
 
-    let is_bare_reserved_method_name = match cc.get(0) {
-        Some(CallChainElement::IdentOrOpOrKeywordOrConst(IdentOrOpOrKeywordOrConst::Ident(
-            Ident(_, ident, _),
-        ))) => {
-            let ident = ident.as_str();
-            RSPEC_METHODS.contains(ident) || GEMFILE_METHODS.contains(ident)
-        }
-        _ => false,
-    };
+    // If there are multiple calls, we cannot elide parens -- otherwise, the dot
+    // elements will end up on the call arguments, which is incorrect. These
+    // only apply to "bare" calls, e.g. calls with only arguments (including blocks)
+    // but nothing else
+    let is_bare_call = cc
+        .iter()
+        .filter(|e| matches!(e, CallChainElement::DotTypeOrOp(..)))
+        .count()
+        == 1;
+    let is_bare_reserved_method_name = is_bare_call
+        && match cc.get(0) {
+            Some(CallChainElement::IdentOrOpOrKeywordOrConst(
+                IdentOrOpOrKeywordOrConst::Ident(Ident(_, ident, _)),
+            )) => {
+                let ident = ident.as_str();
+                RSPEC_METHODS.contains(ident) || GEMFILE_METHODS.contains(ident)
+            }
+            _ => false,
+        };
 
     if is_bare_reserved_method_name {
         return true;
@@ -2839,7 +2849,7 @@ fn format_call_chain_elements(
             CallChainElement::VarRef(vr) => format_var_ref(ps, vr),
             CallChainElement::ArgsAddStarOrExpressionListOrArgsForward(aas, start_end) => {
                 if !aas.is_empty() || next_args_list_must_use_parens {
-                    let delims = if elide_parens {
+                    let delims = if dbg!(elide_parens) {
                         BreakableDelims::for_kw()
                     } else {
                         BreakableDelims::for_method_call()
