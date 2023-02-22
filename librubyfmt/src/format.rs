@@ -2772,11 +2772,9 @@ fn can_elide_parens_for_reserved_names(cc: &[CallChainElement]) -> bool {
     // elements will end up on the call arguments, which is incorrect. These
     // only apply to "bare" calls, e.g. calls with only arguments (including blocks)
     // but nothing else
-    let is_bare_call = cc
+    let is_bare_call = !cc
         .iter()
-        .filter(|e| matches!(e, CallChainElement::DotTypeOrOp(..)))
-        .count()
-        == 0;
+        .any(|e| matches!(e, CallChainElement::DotTypeOrOp(..)));
     let is_bare_reserved_method_name = is_bare_call
         && match cc.get(0) {
             Some(CallChainElement::IdentOrOpOrKeywordOrConst(
