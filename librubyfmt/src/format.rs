@@ -2776,7 +2776,7 @@ fn can_elide_parens_for_reserved_names(cc: &[CallChainElement]) -> bool {
         .iter()
         .filter(|e| matches!(e, CallChainElement::DotTypeOrOp(..)))
         .count()
-        == 1;
+        == 0;
     let is_bare_reserved_method_name = is_bare_call
         && match cc.get(0) {
             Some(CallChainElement::IdentOrOpOrKeywordOrConst(
@@ -2849,7 +2849,7 @@ fn format_call_chain_elements(
             CallChainElement::VarRef(vr) => format_var_ref(ps, vr),
             CallChainElement::ArgsAddStarOrExpressionListOrArgsForward(aas, start_end) => {
                 if !aas.is_empty() || next_args_list_must_use_parens {
-                    let delims = if dbg!(elide_parens) {
+                    let delims = if elide_parens {
                         BreakableDelims::for_kw()
                     } else {
                         BreakableDelims::for_method_call()
