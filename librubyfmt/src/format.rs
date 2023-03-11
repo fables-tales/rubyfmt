@@ -2768,15 +2768,23 @@ fn can_elide_parens_for_reserved_names(cc: &[CallChainElement]) -> bool {
         return false;
     };
 
-    let is_bare_reserved_method_name = match cc.get(0) {
-        Some(CallChainElement::IdentOrOpOrKeywordOrConst(IdentOrOpOrKeywordOrConst::Ident(
-            Ident(_, ident, _),
-        ))) => {
-            let ident = ident.as_str();
-            RSPEC_METHODS.contains(ident) || GEMFILE_METHODS.contains(ident)
-        }
-        _ => false,
-    };
+    // If there are multiple calls, we cannot elide parens -- otherwise, the dot
+    // elements will end up on the call arguments, which is incorrect. These
+    // only apply to "bare" calls, e.g. calls with only arguments (including blocks)
+    // but nothing else
+    let is_bare_call = !cc
+        .iter()
+        .any(|e| matches!(e, CallChainElement::DotTypeOrOp(..)));
+    let is_bare_reserved_method_name = is_bare_call
+        && match cc.get(0) {
+            Some(CallChainElement::IdentOrOpOrKeywordOrConst(
+                IdentOrOpOrKeywordOrConst::Ident(Ident(_, ident, _)),
+            )) => {
+                let ident = ident.as_str();
+                RSPEC_METHODS.contains(ident) || GEMFILE_METHODS.contains(ident)
+            }
+            _ => false,
+        };
 
     if is_bare_reserved_method_name {
         return true;
