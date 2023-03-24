@@ -1,7 +1,6 @@
 name: Release
 on:
   push:
-    branches: [reese-release-action]
     tags:
       - "*"
 
@@ -10,7 +9,6 @@ env:
   GEM_HOME: /tmp/.bundle
   GEM_PATH: /tmp/.bundle
   TERM: xterm256
-  RELEASE_DIR: out/release
 
 jobs:
   build:
@@ -77,18 +75,16 @@ jobs:
       - uses: actions/download-artifact@v3
         with:
           name: rubyfmt-source-release
-      - run: |
-          ls
       - uses: actions/download-artifact@v3
         with:
           name: rubyfmt-release-artifact-ubuntu-latest
-      - run: |
-          ls
       - uses: actions/download-artifact@v3
         with:
           name: rubyfmt-release-artifact-macos-latest
-      - run: |
-          ls
-      - if: github.ref == 'ref/heads/trunk'
-        run: |
-          echo "on trunk!"
+      - name: Ship It 🚢
+        uses: softprops/action-gh-release@v1
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          files: rubyfmt-*.tar.gz
+          fail_on_unmatched_files: true
+          generate_release_notes: true
