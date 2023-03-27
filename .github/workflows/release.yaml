@@ -1,0 +1,90 @@
+name: Release
+on:
+  push:
+    tags:
+      - "*"
+
+env:
+  BUNDLE_PATH: /tmp/.bundle
+  GEM_HOME: /tmp/.bundle
+  GEM_PATH: /tmp/.bundle
+  TERM: xterm256
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          submodules: true
+          fetch-depth: 0
+      - if: runner.os == 'macOS'
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: 1.63.0
+          target: aarch64-apple-darwin
+          default: true
+          override: true
+          profile: minimal
+      - if: runner.os != 'macOS'
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: 1.63.0
+          override: true
+          profile: minimal
+      - uses: actions/cache@v2
+        with:
+          path: |
+            librubyfmt/ruby_checkout
+          key: ${{ runner.os }}-ruby-v1-${{ hashFiles('.git/modules/librubyfmt/ruby_checkout/HEAD') }}
+      - if: runner.os == 'macOS'
+        run: |
+          brew install automake bison
+          echo "/usr/local/opt/bison/bin:$PATH" >> $GITHUB_PATH
+      - run: ./script/make_release
+      - uses: actions/upload-artifact@v3
+        with:
+          name: rubyfmt-release-artifact-${{ matrix.os }}
+          path: rubyfmt-*.tar.gz
+  source-release:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          submodules: true
+          fetch-depth: 0
+      - run: |
+          TAG=$(git describe HEAD)
+          RELEASE_DIR="out/release"
+          mkdir -p ${RELEASE_DIR}
+          ./script/make_source_release ${TAG}
+      - uses: actions/upload-artifact@v3
+        with:
+          name: rubyfmt-source-release
+          path: "out/release/source"
+  release:
+    runs-on: macos-latest
+    needs:
+      - build
+      - source-release
+    steps:
+      - uses: actions/download-artifact@v3
+        with:
+          name: rubyfmt-source-release
+      - uses: actions/download-artifact@v3
+        with:
+          name: rubyfmt-release-artifact-ubuntu-latest
+      - uses: actions/download-artifact@v3
+        with:
+          name: rubyfmt-release-artifact-macos-latest
+      - name: Ship It 🚢
+        uses: softprops/action-gh-release@v1
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          files: rubyfmt-*.tar.gz
+          fail_on_unmatched_files: true
+          generate_release_notes: true
