@@ -43,6 +43,22 @@ plugin from a git clone is fairly easy:
 * Add `source /path/to/rubyfmt.vim` to your `~/.vimrc` (e.g. [my dotfiles](https://github.com/penelopezone/dotfiles/commit/2c0e9c1215de368e64e063021e9523aa349c5454#diff-2152fa38b4d8bb10c75d6339a959650dR253) please note, this line is commented)
 * Add `let g:rubyfmt_path = /path/to/target/release/rubyfmt-main` beneath the source line
 
+### Neovim + LSP + null-ls
+
+If you use the popular [null-ls](https://github.com/jose-elias-alvarez/null-ls.nvim) LSP plugin to manage formatters, it supports `rubyfmt` out of the box. You can add the formatter to your existing `setup()` configuration:
+
+```diff
+local null_ls = require("null-ls")
+
+null_ls.setup({
+  sources = {
++   null_ls.builtins.formatting.rubyfmt,
+  },
+})
+```
+
+Read more in the [null-ls documentation](https://github.com/jose-elias-alvarez/null-ls.nvim/blob/main/doc/BUILTINS.md#rubyfmt).
+
 ### Visual Studio Code
 
 Rubyfmt is a supported formatter in the popular
