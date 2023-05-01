@@ -3122,6 +3122,36 @@ pub fn is_empty_bodystmt(bodystmt: &Vec<Expression>) -> bool {
     bodystmt.len() == 1 && matches!(bodystmt[0], Expression::VoidStmt(..))
 }
 
+#[derive(Clone, Copy, PartialEq, Debug)]
+enum BraceBlockRenderMethod {
+    /// Blocks consisting only of whitespace and comments:
+    /// ```ruby
+    /// thing.map { |_arg|
+    ///   # Do some things!
+    ///
+    ///   # Some more things!
+    /// }
+    /// ```
+    OnlyComments,
+    /// A completely empty block, e.g. `lambda { }`
+    NoCommentsOrExpressions,
+    /// A block with _exactly_ one expression and nothing else.
+    /// These can stay on a single line and so are closer to "regular"
+    /// breakables since we don't need to worry about comments.
+    /// Example: `thing.map { |arg| arg.itself }`
+    SingleExpressionNoComments,
+    /// A block with multiple expressions, which will always be multilined.
+    /// Example:
+    /// ```ruby
+    /// lambda { |arg|
+    ///   copy = arg.dup
+    ///   change!(copy)
+    ///   copy
+    /// }
+    /// ```
+    MultipleExpressions,
+}
+
 pub fn format_brace_block(ps: &mut dyn ConcreteParserState, brace_block: BraceBlock) {
     let bv = brace_block.1;
     let body = brace_block.2;
@@ -3129,76 +3159,99 @@ pub fn format_brace_block(ps: &mut dyn ConcreteParserState, brace_block: BraceBl
 
     ps.on_line(start_line);
 
-    let new_body = body.clone();
+    let brace_block_render_method = get_brace_block_render_method(ps, start_line, end_line, &body);
 
-    let will_render_multiline =
-        brace_contents_will_render_multiline(ps, start_line, end_line, new_body);
+    ps.inline_breakable_of(
+        BreakableDelims::for_brace_block(),
+        Box::new(|ps| {
+            if let Some(bv) = bv {
+                format_blockvar(ps, bv);
+            }
 
-    ps.emit_ident("{".to_string());
-
-    if let Some(bv) = bv {
-        format_blockvar(ps, bv);
-    }
-
-    render_block_contents(ps, will_render_multiline, body, end_line);
-    ps.emit_ident("}".to_string());
+            render_block_contents(ps, brace_block_render_method, body, end_line);
+        }),
+    );
 }
 
 fn render_block_contents(
     ps: &mut dyn ConcreteParserState,
-    will_render_multiline: bool,
+    brace_block_render_method: BraceBlockRenderMethod,
     body: Vec<Expression>,
     end_line: u64,
 ) {
-    ps.new_block(Box::new(|ps| {
-        ps.with_start_of_line(
-            will_render_multiline,
-            Box::new(|ps| {
-                if will_render_multiline {
-                    ps.emit_newline();
-                } else {
-                    ps.emit_space();
-                }
-                for expr in body.into_iter() {
-                    format_expression(ps, expr);
-                }
-            }),
-        );
-    }));
-    if will_render_multiline {
-        ps.emit_indent();
-    } else {
-        ps.emit_space();
+    // Why is this so complicated? Well, dear reader,
+    // brace blocks are "special" in that they're wrapped in a
+    // breakable but don't work the same as other breakables like hashes/arrays.
+    // Because we have to account for blockvars, and because there are additional
+    // constraints outside of line length (e.g. always multiline if there are
+    // multiple expressions in the block), we split the handling of the initial
+    // whitespace differently for different conditions.
+    match brace_block_render_method {
+        BraceBlockRenderMethod::OnlyComments => {
+            ps.emit_soft_newline();
+            ps.wind_dumping_comments_until_line(end_line);
+            ps.shift_comments();
+            // Force the closing brace on indentation back
+            ps.dedent(Box::new(|ps| ps.emit_soft_indent()));
+            return;
+        }
+        BraceBlockRenderMethod::NoCommentsOrExpressions => {
+            ps.wind_dumping_comments_until_line(end_line);
+            ps.emit_space();
+            return;
+        }
+        BraceBlockRenderMethod::SingleExpressionNoComments => {
+            // Soft newlines are special-cased in breakables to
+            // serve as "anchors" for where to start rendering comments,
+            // so we use them instead of hard newlines so that comments
+            // shift to the correct spot.
+            ps.emit_soft_newline();
+            ps.emit_soft_indent()
+        }
+        BraceBlockRenderMethod::MultipleExpressions => ps.emit_newline(),
     }
+
+    let always_multiline = brace_block_render_method == BraceBlockRenderMethod::MultipleExpressions;
+
+    ps.with_start_of_line(
+        always_multiline,
+        Box::new(|ps| {
+            for expr in body.into_iter() {
+                format_expression(ps, expr);
+            }
+            ps.shift_comments();
+        }),
+    );
+    // This is assuming that we're always inside of an `inline_breakable_of` block, which
+    // doesn't handle the indentation for the closing delimeter for us.
+    if !always_multiline {
+        ps.emit_soft_newline();
+    }
+    ps.dedent(Box::new(|ps| ps.emit_soft_indent()));
+
     ps.wind_dumping_comments_until_line(end_line);
 }
 
-fn brace_contents_will_render_multiline(
+fn get_brace_block_render_method(
     ps: &mut dyn ConcreteParserState,
     start_line: u64,
     end_line: u64,
-    body: Vec<Expression>,
-) -> bool {
-    let has_comments = ps.has_comments_in_line(start_line, end_line);
-    let is_multiline = ps.will_render_as_multiline(Box::new(|next_ps| {
-        next_ps.new_block(Box::new(|next_ps| {
-            next_ps.with_start_of_line(
-                true,
-                Box::new(|next_ps| {
-                    next_ps.with_formatting_context(
-                        FormattingContext::CurlyBlock,
-                        Box::new(|next_ps| {
-                            for expr in body.into_iter() {
-                                format_expression(next_ps, expr);
-                            }
-                        }),
-                    );
-                }),
-            );
-        }));
-    }));
+    body: &Vec<Expression>,
+) -> BraceBlockRenderMethod {
+    let has_multiple_expressions = body.len() > 1;
+    if has_multiple_expressions {
+        return BraceBlockRenderMethod::MultipleExpressions;
+    }
 
-    is_multiline || has_comments
+    // Else, force multiline if there are comments inside
+    let has_comments = ps.has_comments_in_line(start_line, end_line);
+    if has_comments && is_empty_bodystmt(body) {
+        BraceBlockRenderMethod::OnlyComments
+    } else if is_empty_bodystmt(body) {
+        BraceBlockRenderMethod::NoCommentsOrExpressions
+    } else {
+        BraceBlockRenderMethod::SingleExpressionNoComments
+    }
 }
 
 pub fn format_do_block(ps: &mut dyn ConcreteParserState, do_block: DoBlock) {
@@ -3417,6 +3470,7 @@ pub fn format_when_or_else(ps: &mut dyn ConcreteParserState, tail: WhenOrElse) {
                         ps.inline_breakable_of(
                             BreakableDelims::for_when(),
                             Box::new(|ps| {
+                                ps.emit_collapsing_newline();
                                 format_list_like_thing(ps, conditionals, None, false);
                             }),
                         );
@@ -3583,14 +3637,16 @@ pub fn format_stabby_lambda(ps: &mut dyn ConcreteParserState, sl: StabbyLambda) 
             // Curly blocks are always represented as ExpressionLists (stmt_add nodes)
             // while do/end blocks are BodyStmt nodes
             match body {
-                ExpressionListOrBodyStmt::ExpressionList(bud) => {
-                    let b = bud;
-                    let will_render_multiline =
-                        brace_contents_will_render_multiline(ps, start_line, end_line, b.clone());
+                ExpressionListOrBodyStmt::ExpressionList(body) => {
+                    let brace_block_render_method =
+                        get_brace_block_render_method(ps, start_line, end_line, &body);
                     ps.emit_space();
-                    ps.emit_ident("{".to_string());
-                    render_block_contents(ps, will_render_multiline, b, end_line);
-                    ps.emit_ident("}".to_string());
+                    ps.inline_breakable_of(
+                        BreakableDelims::for_brace_block(),
+                        Box::new(|ps| {
+                            render_block_contents(ps, brace_block_render_method, body, end_line);
+                        }),
+                    );
                 }
                 ExpressionListOrBodyStmt::BodyStmt(bs) => {
                     ps.emit_space();
