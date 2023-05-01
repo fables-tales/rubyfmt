@@ -2,6 +2,16 @@ sig { void }
 def empty_example
 end
 
+sig { params(foo: SomePrettyLongClassName, bar: AnEvenLongerClassName::ThatMakesThisGoPrettyFar, baz: Hasdfasdfasdfasdas) }
+def do_stuff!(foo, bar, baz); end
+
+sig {
+  # This method doesn't return anything weeeeee
+  void
+  # But you can bet it has some side effects
+}
+def do_stuff!; end
+
 sig do
   params(a: T::Array[String], b: T::Hash[Symbol, String])
   .returns(T::Set[Symbol])
@@ -70,3 +80,17 @@ end
 my_annotation do
 end
 private def my_method; end
+
+class Bees
+  sig {
+    # These are the params
+    params(
+      first_param: MyClass,
+      # This one is the second one, nice
+      second_param: YourClass,
+    ).void
+    # Please not the bees!
+  }
+  def not_the_bees!
+  end
+end
