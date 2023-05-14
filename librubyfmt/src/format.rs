@@ -3581,6 +3581,8 @@ pub fn format_sclass(ps: &mut dyn ConcreteParserState, sc: SClass) {
     let body = sc.2;
     let end_line = sc.3.end_line();
 
+    ps.on_line(sc.3.start_line());
+
     ps.with_start_of_line(
         false,
         Box::new(|ps| {
@@ -3589,29 +3591,9 @@ pub fn format_sclass(ps: &mut dyn ConcreteParserState, sc: SClass) {
             ps.emit_ident("<<".to_string());
             ps.emit_space();
             format_expression(ps, *expr);
-            ps.emit_newline();
-            ps.new_block(Box::new(|ps| {
-                ps.with_start_of_line(
-                    true,
-                    Box::new(|ps| {
-                        format_bodystmt(ps, body, end_line);
-                    }),
-                );
-            }));
+            format_constant_body(ps, body, end_line);
         }),
     );
-    ps.with_start_of_line(
-        true,
-        Box::new(|ps| {
-            ps.emit_end();
-        }),
-    );
-
-    ps.on_line(end_line);
-
-    if ps.at_start_of_line() {
-        ps.emit_newline();
-    }
 }
 
 pub fn format_stabby_lambda(ps: &mut dyn ConcreteParserState, sl: StabbyLambda) {

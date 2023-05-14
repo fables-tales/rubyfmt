@@ -45,6 +45,7 @@ class Parser < Ripper::SexpBuilderPP
       "return" => [],
       "when" => [],
       "case" => [],
+      "class" => [],
       "yield" => [],
       "break" => [],
       "super" => [],
@@ -406,11 +407,11 @@ class Parser < Ripper::SexpBuilderPP
   end
 
   def on_class(*args)
-    with_lineno { super }
+    super + [start_end_for_keyword("class")]
   end
 
   def on_sclass(*args)
-    with_lineno { super }
+    super + [start_end_for_keyword("class")]
   end
 
   def on_module(*args)
