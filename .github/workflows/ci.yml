@@ -64,7 +64,7 @@ jobs:
           cd ruby-install-0.9.0/
           sudo make install
           cd ..
-          ruby-install ruby 3.2.0 -c -- --with-arch=arm64 CFLAGS=-DUSE_FFI_CLOSURE_ALLOC=1
+          ruby-install ruby 3.2.0 -c -- --with-arch=arm64
 
           export CC_aarch64_unknown_linux_gnu=clang
       - name: Build binary
