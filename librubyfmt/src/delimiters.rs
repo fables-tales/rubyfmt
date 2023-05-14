@@ -68,6 +68,13 @@ impl BreakableDelims {
         }
     }
 
+    pub fn for_brace_block() -> Self {
+        BreakableDelims {
+            single_line: DelimiterPair::new("{".to_string(), " }".to_string()),
+            multi_line: DelimiterPair::new("{".to_string(), "}".to_string()),
+        }
+    }
+
     pub fn single_line_open(&self) -> ConcreteLineToken {
         ConcreteLineToken::Delim {
             contents: self.single_line.open.clone(),

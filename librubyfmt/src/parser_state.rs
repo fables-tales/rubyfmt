@@ -21,7 +21,6 @@ pub enum FormattingContext {
     Binary,
     ClassOrModule,
     Def,
-    CurlyBlock,
     ArgsList,
     IfOp,
     StringEmbexpr,
@@ -363,7 +362,6 @@ impl ConcreteParserState for BaseParserState {
         self.breakable_entry_stack.push(Box::new(be));
 
         self.new_block(Box::new(|ps| {
-            ps.emit_collapsing_newline();
             f(ps);
         }));
 
@@ -371,6 +369,7 @@ impl ConcreteParserState for BaseParserState {
         // to reset to ensure that any comments between now and the
         // next newline are at the right indentation level
         self.reset_space_count();
+        self.shift_comments();
 
         let insert_be = self
             .breakable_entry_stack

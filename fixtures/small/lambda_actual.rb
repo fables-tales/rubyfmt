@@ -6,3 +6,8 @@ lambda { |x| x }
 }
 -> arg { }
 -> {}
+-> {
+  # This lambda is intentionally empty!
+
+  # But we're putting comments in it anyways!
+}
