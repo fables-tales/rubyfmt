@@ -62,6 +62,7 @@ fn main() -> Output {
         .include(ruby_checkout_path.join(".ext/include/x86_64-linux"))
         .include(ruby_checkout_path.join(".ext/include/x64-mswin64_140"))
         .include(ruby_checkout_path.join(".ext/include/i386-mswin32_140"))
+        .warnings(false)
         .compile("rubyfmt_c");
 
     println!(
