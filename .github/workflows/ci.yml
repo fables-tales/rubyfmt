@@ -48,6 +48,37 @@ jobs:
           ./script/lints/lint_fixtures.sh
           ./script/lints/lint_scripts.sh
 
+  cross_compile:
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/checkout@v1
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: 1.63.0
+          override: true
+          profile: minimal
+          target: aarch64-unknown-linux-gnu
+      - run: |
+          wget https://github.com/postmodern/ruby-install/releases/download/v0.9.0/ruby-install-0.9.0.tar.gz
+          tar -xzvf ruby-install-0.9.0.tar.gz
+          cd ruby-install-0.9.0/
+          sudo make install
+          cd ..
+          ruby-install ruby 3.2.0 -c -- --with-arch=arm64 CFLAGS=-DUSE_FFI_CLOSURE_ALLOC=1
+
+          export CC_aarch64_unknown_linux_gnu=clang
+      - name: Build binary
+        uses: houseabsolute/actions-rust-cross@v0
+        with:
+          command: build
+          target: aarch64-unknown-linux-gnu
+          args: "--release"
+          strip: true
+      - uses: actions/upload-artifact@v3
+        with:
+          name: rubyfmt-artifact-ubuntu-20.04-aarch64
+          path: target/release/rubyfmt-main
+
   test:
     runs-on: ${{ matrix.os }}
     strategy:
