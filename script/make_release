@@ -1,6 +1,12 @@
 #!/bin/bash
 set -euxo pipefail
 
+# if darwin, add PATH="/usr/local/opt/bison/bin:$PATH"
+IS_DARWIN=$(uname -s | grep -i darwin || true)
+if [ -n "$IS_DARWIN" ]; then
+    export PATH="/usr/local/opt/bison/bin:$PATH"
+fi
+
 TAG=$(git describe --exact-match HEAD)
 RELEASE_DIR=${RELEASE_DIR:-"tmp/releases/${TAG}-$(uname -s)/"}
 
