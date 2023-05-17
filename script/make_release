@@ -6,7 +6,6 @@ if [[ $OSTYPE == "darwin"* ]]; then
     export PATH="/opt/homebrew/opt/bison/bin:$PATH"
 fi
 bison --version
-exit 1
 
 TAG=$(git describe --exact-match HEAD)
 RELEASE_DIR=${RELEASE_DIR:-"tmp/releases/${TAG}-$(uname -s)/"}
