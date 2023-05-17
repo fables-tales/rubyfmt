@@ -2,7 +2,7 @@
 set -euxo pipefail
 
 # if darwin, add PATH="/usr/local/opt/bison/bin:$PATH"
-if [[ $OSTYPE == "darwin"*]]; then
+if [[ $OSTYPE == "darwin"* ]]; then
     exit 1
     export PATH="/usr/local/opt/bison/bin:$PATH"
 fi
