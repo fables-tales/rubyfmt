@@ -34,6 +34,17 @@ class ForIndents
     end
   end
 
+  def another_func_with_comments
+    begin
+      # We don't do anything in here
+
+      # for some good reason
+    rescue
+      # I promise it's a good reason
+
+    end
+  end
+
   def func_with_mulilines
     _lambda_to_break_stuff = lambda do |this, that, the_other|
       wreak_havoc!

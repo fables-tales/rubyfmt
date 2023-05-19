@@ -15,3 +15,10 @@ end
 
 a.b(1) do
 end
+
+a do
+  # Comment at the beginning
+
+
+  # Comment at the end
+end
