@@ -111,7 +111,7 @@ fn extract_ruby_arch(ruby_checkout_path: &Path) -> String {
 
 fn extract_ruby_library_config(ruby_checkout_path: &Path, arch: &String) -> RubyConfig {
     let config_h = ruby_checkout_path.join(format!(".ext/include/{}/ruby/config.h", arch));
-    let f = File::open(config_h).expect(&format!("cannot find config.h for {}", arch));
+    let f = File::open(config_h).unwrap_or_else(|_| panic!("cannot find config.h for {}", arch));
     let f = BufReader::new(f);
     let config = RubyConfig {
         libz: false,
