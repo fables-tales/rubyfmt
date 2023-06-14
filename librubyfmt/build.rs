@@ -79,7 +79,12 @@ fn extract_ruby_arch(ruby_checkout_path: &Path) -> String {
     let rbconfig_rb = ruby_checkout_path.join("rbconfig.rb");
     let f = File::open(rbconfig_rb).expect("cannot find rbconfig.rb");
     let f = BufReader::new(f);
-    let arch_regex = Regex::new("  CONFIG\\[\"arch\"\\] = \"(?P<arch>[^\"]+)\"")
+    // Naturally, rbconfig.rb permits all manner of Ruby syntax to be used
+    // in the values for CONFIG.  Matching arbitrary Ruby inside the value
+    // string via [^"]+ could be a recipe for very confusing error
+    // messages later.  So we deliberately limit the charcters in the
+    // value string here.
+    let arch_regex = Regex::new("  CONFIG\\[\"arch\"\\] = \"(?P<arch>[-a-z0-9_]+)\"")
         .expect("incorrect regex syntax");
     for line in f.lines() {
         let line = line.expect("could not read from rbconfig.rb");
