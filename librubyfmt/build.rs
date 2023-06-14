@@ -9,6 +9,11 @@ use std::process::{Command, ExitStatus};
 
 type Output = Result<(), Box<dyn Error>>;
 
+struct RubyConfig {
+    libz: bool,
+    libcrypt: bool,
+}
+
 fn main() -> Output {
     #[cfg(target_os = "linux")]
     let libname = "ruby-static";
@@ -66,11 +71,14 @@ fn main() -> Output {
         ruby_checkout_path.display()
     );
     println!("cargo:rustc-link-lib=static={}", libname);
-    #[cfg(not(windows))]
-    println!("cargo:rustc-link-lib=dylib=z");
 
-    #[cfg(target_os = "linux")]
-    println!("cargo:rustc-link-lib=dylib=crypt");
+    let config = extract_ruby_library_config(&ruby_checkout_path, &arch);
+    if config.libz {
+        println!("cargo:rustc-link-lib=dylib=z");
+    }
+    if config.libcrypt {
+        println!("cargo:rustc-link-lib=dylib=crypt");
+    }
 
     Ok(())
 }
@@ -99,6 +107,32 @@ fn extract_ruby_arch(ruby_checkout_path: &Path) -> String {
     }
 
     panic!("could not extract arch from rbconfig.rb");
+}
+
+fn extract_ruby_library_config(ruby_checkout_path: &Path, arch: &String) -> RubyConfig {
+    let config_h = ruby_checkout_path.join(format!(".ext/include/{}/ruby/config.h", arch));
+    let f = File::open(config_h).expect(&format!("cannot find config.h for {}", arch));
+    let f = BufReader::new(f);
+    let config = RubyConfig {
+        libz: false,
+        libcrypt: false,
+    };
+    f.lines().fold(config, |config, line| {
+        let line = line.expect("could not read from config.h");
+        if line.starts_with("#define HAVE_LIBZ 1") {
+            RubyConfig {
+                libz: true,
+                ..config
+            }
+        } else if line.starts_with("#define HAVE_LIBCRYPT 1") {
+            RubyConfig {
+                libcrypt: true,
+                ..config
+            }
+        } else {
+            config
+        }
+    })
 }
 
 #[cfg(unix)]
