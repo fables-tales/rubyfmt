@@ -554,6 +554,7 @@ dependencies = [
  "lazy_static",
  "libc",
  "log",
+ "regex",
  "ripper_deserialize",
  "serde",
  "serde_json",
