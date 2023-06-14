@@ -146,6 +146,7 @@ fn run_configure(ruby_checkout_path: &Path) -> Output {
 fn build_ruby(ruby_checkout_path: &Path) -> Output {
     let o = Command::new("make")
         .arg("-j")
+        .arg("main")
         .current_dir(ruby_checkout_path)
         .status()?;
     check_process_success("make", o)
@@ -155,6 +156,7 @@ fn build_ruby(ruby_checkout_path: &Path) -> Output {
 fn build_ruby(ruby_checkout_path: &Path) -> Output {
     let o = find_tool("nmake.exe")?
         .to_command()
+        .arg("main")
         .current_dir(ruby_checkout_path)
         .status()?;
     check_process_success("nmake", o)
