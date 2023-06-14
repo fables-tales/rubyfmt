@@ -1,5 +1,4 @@
 use regex::Regex;
-#[cfg(windows)]
 use std::env;
 use std::error::Error;
 use std::fs::File;
@@ -31,7 +30,7 @@ fn main() -> Output {
     #[cfg(windows)]
     let ripper = "ext/ripper/ripper.obj";
 
-    let path = std::env::current_dir()?;
+    let path = env::current_dir()?;
     let ruby_checkout_path = path.join("ruby_checkout");
 
     let old_checkout_sha = if ruby_checkout_path.join(ripper).exists() {
