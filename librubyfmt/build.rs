@@ -1,6 +1,9 @@
+use regex::Regex;
 #[cfg(windows)]
 use std::env;
 use std::error::Error;
+use std::fs::File;
+use std::io::{BufRead, BufReader};
 use std::path::Path;
 use std::process::{Command, ExitStatus};
 
@@ -48,19 +51,14 @@ fn main() -> Output {
         }
     }
 
+    let arch = extract_ruby_arch(&ruby_checkout_path);
+
     cc::Build::new()
         .file("src/rubyfmt.c")
         .object(ruby_checkout_path.join(&ripper))
         .include(ruby_checkout_path.join("include"))
-        .include(ruby_checkout_path.join(".ext/include/arm64-darwin21"))
-        .include(ruby_checkout_path.join(".ext/include/arm64-darwin22"))
-        .include(ruby_checkout_path.join(".ext/include/x86_64-darwin21"))
-        .include(ruby_checkout_path.join(".ext/include/x86_64-darwin20"))
-        .include(ruby_checkout_path.join(".ext/include/x86_64-darwin19"))
-        .include(ruby_checkout_path.join(".ext/include/x86_64-darwin18"))
-        .include(ruby_checkout_path.join(".ext/include/x86_64-linux"))
-        .include(ruby_checkout_path.join(".ext/include/x64-mswin64_140"))
-        .include(ruby_checkout_path.join(".ext/include/i386-mswin32_140"))
+        .include(ruby_checkout_path.join(format!(".ext/include/{}", arch)))
+        .warnings(false)
         .compile("rubyfmt_c");
 
     println!(
@@ -75,6 +73,32 @@ fn main() -> Output {
     println!("cargo:rustc-link-lib=dylib=crypt");
 
     Ok(())
+}
+
+fn extract_ruby_arch(ruby_checkout_path: &Path) -> String {
+    let rbconfig_rb = ruby_checkout_path.join("rbconfig.rb");
+    let f = File::open(rbconfig_rb).expect("cannot find rbconfig.rb");
+    let f = BufReader::new(f);
+    // Naturally, rbconfig.rb permits all manner of Ruby syntax to be used
+    // in the values for CONFIG.  Matching arbitrary Ruby inside the value
+    // string via [^"]+ could be a recipe for very confusing error
+    // messages later.  So we deliberately limit the charcters in the
+    // value string here.
+    let arch_regex = Regex::new("  CONFIG\\[\"arch\"\\] = \"(?P<arch>[-a-z0-9_]+)\"")
+        .expect("incorrect regex syntax");
+    for line in f.lines() {
+        let line = line.expect("could not read from rbconfig.rb");
+        let matched = arch_regex
+            .captures(&line)
+            .and_then(|c| c.name("arch"))
+            .map(|s| s.as_str());
+        match matched {
+            Some(name) => return name.to_string(),
+            _ => continue,
+        }
+    }
+
+    panic!("could not extract arch from rbconfig.rb");
 }
 
 #[cfg(unix)]

@@ -531,6 +531,7 @@ dependencies = [
  "jemallocator",
  "libc",
  "log",
+ "regex",
  "ripper_deserialize",
  "serde",
  "serde_json",
