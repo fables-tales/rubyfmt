@@ -53,7 +53,15 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, ubuntu-20.04, macos-latest]
+        include:
+          - os: ubuntu-latest
+            target: native
+          - os: ubuntu-20.04
+            target: native
+          - os: macos-latest
+            target: native
+          - os: ubuntu-20.04
+            target: aarch64-unknown-linux-gnu
     steps:
     - uses: actions/checkout@v2
       with:
@@ -63,24 +71,27 @@ jobs:
         toolchain: 1.63.0
         override: true
         profile: minimal
+        target: aarch64-unknown-linux-gnu
     - uses: actions/cache@v2
       with:
         path: |
           ~/.cargo/registry
           ~/.cargo/git
-        key: ${{ runner.os }}-cargo-2-${{ hashFiles('**/Cargo.lock') }}
+        key: ${{ runner.os }}-${{ matrix.target }}-cargo-2-${{ hashFiles('**/Cargo.lock') }}
     - uses: actions/cache@v2
       with:
         path: |
           librubyfmt/ruby_checkout
-        key: ${{ runner.os }}-ruby-v1-${{ hashFiles('.git/modules/librubyfmt/ruby_checkout/HEAD') }}
+        key: ${{ runner.os }}-${{ matrix.target }}-ruby-v1-${{ hashFiles('.git/modules/librubyfmt/ruby_checkout/HEAD') }}
     - if: runner.os == 'macOS'
       run: |
         brew install automake bison
         echo "/usr/local/opt/bison/bin:$PATH" >> $GITHUB_PATH
     - run: ./script/test.sh
+      env:
+        TARGET: ${{ matrix.target }}
     - uses: actions/upload-artifact@v3
       with:
-        name: rubyfmt-artifact-${{ matrix.os }}
-        path: target/release/rubyfmt-main
+        name: rubyfmt-artifact-${{ matrix.os }}-${{ matrix.target }}
+        path: target/${{ matrix.target == 'native' && 'release' || format('{0}/release', matrix.target) }}/rubyfmt-main
 
