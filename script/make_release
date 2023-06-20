@@ -67,10 +67,16 @@ pwd
 cp RELEASE_README.md "${RELEASE_DIR}/RELEASE_README"
 
 # check the binary
-RES=$(echo 'a(1)' | "${RELEASE_DIR}/rubyfmt")
-if [ "$RES" != "a(1)" ]; then
-    echo "formatting failed"
-    exit 1
-fi
+case "$target" in
+  native)
+    RES=$(echo 'a(1)' | "${RELEASE_DIR}/rubyfmt")
+    if [ "$RES" != "a(1)" ]; then
+      echo "formatting failed"
+      exit 1
+    fi
+    ;;
+  *)
+    ;;
+esac
 
 tar -cvz -f "rubyfmt-${TAG}-${release_tarball_os}-${release_tarball_arch}.tar.gz" "${RELEASE_DIR}"
