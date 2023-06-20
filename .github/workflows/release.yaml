@@ -16,7 +16,13 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest]
+        include:
+          - os: ubuntu-latest
+            target: native
+          - os: macos-latest
+            target: native
+          - os: ubuntu-20.04
+            target: aarch64-unknown-linux-gnu
     steps:
       - uses: actions/checkout@v2
         with:
@@ -36,11 +42,12 @@ jobs:
           toolchain: 1.63.0
           override: true
           profile: minimal
+          target: aarch64-unknown-linux-gnu
       - uses: actions/cache@v2
         with:
           path: |
             librubyfmt/ruby_checkout
-          key: ${{ runner.os }}-ruby-v1-${{ hashFiles('.git/modules/librubyfmt/ruby_checkout/HEAD') }}
+          key: ${{ runner.os }}-${{matrix.target}}-ruby-v1-${{ hashFiles('.git/modules/librubyfmt/ruby_checkout/HEAD') }}
       - if: runner.os == 'macOS'
         run: |
           brew install automake bison
@@ -48,7 +55,7 @@ jobs:
       - run: ./script/make_release
       - uses: actions/upload-artifact@v3
         with:
-          name: rubyfmt-release-artifact-${{ matrix.os }}
+          name: rubyfmt-release-artifact-${{ matrix.os }}-${{ matrix.target }}
           path: rubyfmt-*.tar.gz
   source-release:
     runs-on: macos-latest
