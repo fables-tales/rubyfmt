@@ -11,19 +11,55 @@ mkdir -p "${RELEASE_DIR}"
 mkdir -p "${RELEASE_DIR}/lib/"
 mkdir -p "${RELEASE_DIR}/include/"
 
-cargo build
-cargo build --release
+target="${TARGET:-native}"
 
-cp target/release/rubyfmt-main "${RELEASE_DIR}/rubyfmt"
+case "$target" in
+  native)
+    cargo build
+    cargo build --release
+
+    release_tarball_os="$(uname -s)"
+    release_tarball_arch="$(uname -a)"
+    cargo_target_dir_prefix=""
+    ;;
+  aarch64-unknown-linux-gnu)
+    sudo apt-get update
+    sudo apt-get install -y gcc-aarch64-linux-gnu libc6-dev-arm64-cross
+
+    CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc \
+      CC_aarch64_unknown_linux_gnu=aarch64-linux-gnu-gcc \
+      TARGET_CC=aarch64-linux-gnu-gcc \
+      TARGET_AR=aarch64-linux-gnu-ar \
+      cargo build --target aarch64-unknown-linux-gnu
+
+    CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc \
+      CC_aarch64_unknown_linux_gnu=aarch64-linux-gnu-gcc \
+      TARGET_CC=aarch64-linux-gnu-gcc \
+      TARGET_AR=aarch64-linux-gnu-ar \
+      cargo build --release --target aarch64-unknown-linux-gnu
+
+    cargo_target_dir_prefix="aarch64-unknown-linux-gnu"
+    # This is kind of a hack, since we're assuming we're on a Linux host.
+    release_tarball_os="Linux"
+    release_tarball_arch="aarch64"
+    ;;
+  *)
+    echo "Unknown cross-compilation target $target"
+    exit 1
+    ;;
+esac
+
+cargo_dir="target/${cargo_target_dir_prefix}"
+cp "${cargo_dir}release/rubyfmt-main" "${RELEASE_DIR}/rubyfmt"
 pwd
-cp target/debug/rubyfmt-main "${RELEASE_DIR}/rubyfmt-debug"
+cp "${cargo_dir}debug/rubyfmt-main" "${RELEASE_DIR}/rubyfmt-debug"
 pwd
 # shellcheck disable=2012
-RELEASE_LIB=$(find target/release/ | grep -i 'librubyfmt-.*\.a$')
+RELEASE_LIB=$(find ${cargo_dir}release/ | grep -i 'librubyfmt-.*\.a$')
 cp "$RELEASE_LIB" "${RELEASE_DIR}/lib/librubyfmt.a"
 pwd
 # shellcheck disable=2012
-DEBUG_LIB=$(find target/debug/ | grep -i 'librubyfmt-.*\.a$')
+DEBUG_LIB=$(find ${cargo_dir}debug/ | grep -i 'librubyfmt-.*\.a$')
 cp "$DEBUG_LIB" "${RELEASE_DIR}/lib/librubyfmt-debug.a"
 pwd
 cp librubyfmt/include/rubyfmt.h "${RELEASE_DIR}/include/rubyfmt.h"
@@ -37,4 +73,4 @@ if [ "$RES" != "a(1)" ]; then
     exit 1
 fi
 
-tar -cvz -f "rubyfmt-${TAG}-$(uname -s).tar.gz" "${RELEASE_DIR}"
+tar -cvz -f "rubyfmt-${TAG}-${release_tarball_os}-${release_tarball_arch}.tar.gz" "${RELEASE_DIR}"
