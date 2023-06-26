@@ -10,6 +10,8 @@ cd ~ &&
 git clone rubyfmt.git/ ./rubyfmt &&
 cd rubyfmt &&
 git checkout $TAG &&
+git submodule init &&
+git submodule update &&
 source /root/.cargo/env &&
 find . | grep -i '\.rs$' | xargs -n 10 touch &&
 ./script/make_release &&
