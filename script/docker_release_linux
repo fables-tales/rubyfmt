@@ -2,23 +2,27 @@
 set -euxo pipefail
 TAG=$1
 mkdir -p out
-docker build -t "rubyfmt-release-linux:$(git rev-parse HEAD)" -f ./dockerfiles/build.Dockerfile ./.git
-(
-cat <<EOF
-set -euxo pipefail
-cd ~ &&
-git clone rubyfmt.git/ ./rubyfmt &&
-cd rubyfmt &&
-git checkout $TAG &&
-git submodule init &&
-git submodule update &&
-source /root/.cargo/env &&
-find . | grep -i '\.rs$' | xargs -n 10 touch &&
-./script/make_release &&
-cp -r *.tar.gz /root/out &&
-chmod 666 /root/out/*
+platforms=("linux/amd64" "linux/arm64" "linux/arm/v7")
+
+for platform in "${platforms[@]}"; do
+    docker build --platform "$platform" -f ./dockerfiles/build.Dockerfile -t "rubyfmt-release-linux-$platform:$(git rev-parse HEAD)" ./.git
+    (
+    cat <<EOF
+    set -euxo pipefail
+    cd ~ &&
+    git clone rubyfmt.git/ ./rubyfmt &&
+    cd rubyfmt &&
+    git checkout $TAG &&
+    git submodule init &&
+    git submodule update &&
+    source /root/.cargo/env &&
+    find . | grep -i '\.rs$' | xargs -n 10 touch &&
+    ./script/make_release &&
+    cp -r *.tar.gz /root/out &&
+    chmod 666 /root/out/*
 EOF
-) > file
-docker run --cpus=4 -it -v "$(pwd)/out:/root/out" "rubyfmt-release-linux:$(git rev-parse HEAD)" bash -c "$(cat file)"
-mkdir -p "releases/$TAG"
-cp out/*.tar.gz "releases/$TAG/"
+    ) > file
+    docker run --platform=$platform --cpus=4 -it -v "$(pwd)/out:/root/out" "rubyfmt-release-linux-$platform:$(git rev-parse HEAD)" bash -c "$(cat file)"
+    mkdir -p "releases/$TAG"
+    cp out/*.tar.gz "releases/$TAG/"
+done
