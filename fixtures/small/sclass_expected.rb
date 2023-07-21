@@ -3,4 +3,12 @@ class Foo
   end
 end
 
+class Bar
+  class << self
+  end
+
+  def another_method!
+  end
+end
+
 Foo.machine
