@@ -22,6 +22,7 @@ for platform in "${platforms[@]}"; do
     chmod 666 /root/out/*
 EOF
     ) > file
+    # shellcheck disable=SC2086
     docker run --platform=$platform --cpus=4 -it -v "$(pwd)/out:/root/out" "rubyfmt-release-linux-$platform:$(git rev-parse HEAD)" bash -c "$(cat file)"
     mkdir -p "releases/$TAG"
     cp out/*.tar.gz "releases/$TAG/"
