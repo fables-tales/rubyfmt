@@ -2,10 +2,10 @@
 set -euxo pipefail
 TAG=$1
 mkdir -p out
-platforms=("linux/amd64" "linux/arm64" "linux/arm/v7")
+platforms=("linux/arm64")
 
 for platform in "${platforms[@]}"; do
-    docker build --platform "$platform" -f ./dockerfiles/build.Dockerfile -t "rubyfmt-release-linux-$platform:$(git rev-parse HEAD)" ./.git
+    docker build --no-cache --platform "$platform" -f ./dockerfiles/build.Dockerfile -t "rubyfmt-release-linux-$platform:$(git rev-parse HEAD)" ./.git
     (
     cat <<EOF
     set -euxo pipefail
