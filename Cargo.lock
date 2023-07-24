@@ -546,7 +546,7 @@ dependencies = [
 
 [[package]]
 name = "rubyfmt"
-version = "0.9.0-pre"
+version = "0.9.5-pre"
 dependencies = [
  "backtrace",
  "cc",
@@ -564,7 +564,7 @@ dependencies = [
 
 [[package]]
 name = "rubyfmt-main"
-version = "0.9.0"
+version = "0.9.5"
 dependencies = [
  "atty",
  "clap",
