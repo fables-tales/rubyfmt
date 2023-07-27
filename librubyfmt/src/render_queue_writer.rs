@@ -1,7 +1,9 @@
 use crate::intermediary::{BlanklineReason, Intermediary};
 use crate::line_tokens::*;
 use crate::parser_state::FormattingContext;
-use crate::render_targets::{AbstractTokenTarget, BreakableEntry, ConvertType};
+use crate::render_targets::{
+    AbstractTokenTarget, BreakableCallChainEntry, BreakableEntry, ConvertType,
+};
 #[cfg(debug_assertions)]
 use log::debug;
 use std::io::{self, Write};
@@ -34,6 +36,9 @@ impl RenderQueueWriter {
             match next_token {
                 ConcreteLineTokenAndTargets::BreakableEntry(be) => {
                     Self::format_breakable_entry(accum, be)
+                }
+                ConcreteLineTokenAndTargets::BreakableCallChainEntry(bcce) => {
+                    Self::format_breakable_call_chain_entry(accum, bcce)
                 }
                 ConcreteLineTokenAndTargets::ConcreteLineToken(x) => accum.push(x),
             }
@@ -127,6 +132,18 @@ impl RenderQueueWriter {
             // [.., Comma, Space, DirectPart {part: ""}, <close_delimiter>]
             // so we remove items at positions length-2 until there is nothing
             // in that position that is garbage.
+            accum.clear_breakable_garbage();
+        }
+    }
+
+    fn format_breakable_call_chain_entry(accum: &mut Intermediary, bcce: BreakableCallChainEntry) {
+        let length = accum.current_line_length() + bcce.single_line_string_length();
+        if (length > MAX_LINE_LENGTH || bcce.is_multiline())
+            && bcce.entry_formatting_context() != FormattingContext::StringEmbexpr
+        {
+            Self::render_as(accum, bcce.into_tokens(ConvertType::MultiLine));
+        } else {
+            Self::render_as(accum, bcce.into_tokens(ConvertType::SingleLine));
             accum.clear_breakable_garbage();
         }
     }

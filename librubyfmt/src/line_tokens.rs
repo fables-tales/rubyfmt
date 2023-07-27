@@ -1,5 +1,7 @@
 use crate::heredoc_string::HeredocString;
-use crate::render_targets::{AbstractTokenTarget, BreakableEntry, ConvertType};
+use crate::render_targets::{
+    AbstractTokenTarget, BreakableCallChainEntry, BreakableEntry, ConvertType,
+};
 use crate::types::ColNumber;
 
 pub fn cltats_hard_newline() -> ConcreteLineTokenAndTargets {
@@ -195,6 +197,9 @@ impl From<ConcreteLineTokenAndTargets> for AbstractLineToken {
             ConcreteLineTokenAndTargets::ConcreteLineToken(clt) => {
                 AbstractLineToken::ConcreteLineToken(clt)
             }
+            ConcreteLineTokenAndTargets::BreakableCallChainEntry(bcce) => {
+                AbstractLineToken::BreakableCallChainEntry(bcce)
+            }
         }
     }
 }
@@ -203,6 +208,7 @@ impl From<ConcreteLineTokenAndTargets> for AbstractLineToken {
 pub enum ConcreteLineTokenAndTargets {
     ConcreteLineToken(ConcreteLineToken),
     BreakableEntry(BreakableEntry),
+    BreakableCallChainEntry(BreakableCallChainEntry),
 }
 
 impl ConcreteLineTokenAndTargets {
@@ -228,6 +234,12 @@ impl ConcreteLineTokenAndTargets {
                 .fold("".to_string(), |accum, tok| {
                     format!("{}{}", accum, tok.into_ruby())
                 }),
+            Self::BreakableCallChainEntry(bcce) => bcce
+                .into_tokens(ConvertType::SingleLine)
+                .into_iter()
+                .fold("".to_string(), |accum, tok| {
+                    format!("{}{}", accum, tok.into_ruby())
+                }),
             Self::ConcreteLineToken(clt) => clt.into_ruby(),
         }
     }
@@ -241,6 +253,7 @@ pub enum AbstractLineToken {
     SoftNewline(Option<Vec<HeredocString>>),
     SoftIndent { depth: u32 },
     BreakableEntry(BreakableEntry),
+    BreakableCallChainEntry(BreakableCallChainEntry),
 }
 
 impl AbstractLineToken {
@@ -266,6 +279,9 @@ impl AbstractLineToken {
             }
             Self::ConcreteLineToken(clt) => ConcreteLineTokenAndTargets::ConcreteLineToken(clt),
             Self::BreakableEntry(be) => ConcreteLineTokenAndTargets::BreakableEntry(be),
+            Self::BreakableCallChainEntry(bcce) => {
+                ConcreteLineTokenAndTargets::BreakableCallChainEntry(bcce)
+            }
         }
     }
 
@@ -290,6 +306,9 @@ impl AbstractLineToken {
                 vec![ConcreteLineTokenAndTargets::ConcreteLineToken(clt)]
             }
             Self::BreakableEntry(be) => vec![ConcreteLineTokenAndTargets::BreakableEntry(be)],
+            Self::BreakableCallChainEntry(bcce) => {
+                vec![ConcreteLineTokenAndTargets::BreakableCallChainEntry(bcce)]
+            }
         }
     }
 

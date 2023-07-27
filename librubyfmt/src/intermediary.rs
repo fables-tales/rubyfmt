@@ -228,7 +228,9 @@ impl Intermediary {
         // [.., Comma, Space, DirectPart {part: ""}, <close_delimiter>]
         // so we remove items at positions length-2 until there is nothing
         // in that position that is garbage.
-        while self.tokens[self.len() - 2].is_single_line_breakable_garbage() {
+        while self.tokens.len() > 2
+            && self.tokens[self.len() - 2].is_single_line_breakable_garbage()
+        {
             self.tokens.remove(self.len() - 2);
         }
     }
@@ -283,7 +285,10 @@ impl Intermediary {
         }
         match self.tokens.get(self.index_of_last_hard_newline) {
             Some(&ConcreteLineToken::HardNewLine) => {}
-            _ => panic!("newlines are fucked"),
+            _ => panic!(
+                "newlines are fucked {:?}, {:#?}",
+                self.index_of_last_hard_newline, self.tokens
+            ),
         }
     }
 

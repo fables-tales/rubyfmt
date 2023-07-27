@@ -5,8 +5,10 @@ use crate::format::{format_inner_string, StringType};
 use crate::heredoc_string::{HeredocKind, HeredocString};
 use crate::line_tokens::*;
 use crate::render_queue_writer::{RenderQueueWriter, MAX_LINE_LENGTH};
-use crate::render_targets::{AbstractTokenTarget, BaseQueue, BreakableEntry};
-use crate::ripper_tree_types::StringContentPart;
+use crate::render_targets::{
+    AbstractTokenTarget, BaseQueue, BreakableCallChainEntry, BreakableEntry,
+};
+use crate::ripper_tree_types::{CallChainElement, StringContentPart};
 use crate::types::{ColNumber, LineNumber};
 use log::debug;
 use std::io::{self, Cursor, Write};
@@ -132,6 +134,11 @@ where
     fn with_start_of_line(&mut self, start_of_line: bool, f: RenderFunc);
     fn breakable_of(&mut self, delims: BreakableDelims, f: RenderFunc) -> bool;
     fn inline_breakable_of(&mut self, delims: BreakableDelims, f: RenderFunc);
+    fn breakable_call_chain_of(
+        &mut self,
+        call_chain_elements: Vec<CallChainElement>,
+        f: RenderFunc,
+    );
     fn dedent(&mut self, f: RenderFunc);
     fn reset_space_count(&mut self);
     fn with_absorbing_indent_block(&mut self, f: RenderFunc);
@@ -379,6 +386,37 @@ impl ConcreteParserState for BaseParserState {
         self.push_target(ConcreteLineTokenAndTargets::BreakableEntry(insert_be));
     }
 
+    fn breakable_call_chain_of<'a>(
+        &mut self,
+        call_chain_elements: Vec<CallChainElement>,
+        f: RenderFunc,
+    ) {
+        self.shift_comments();
+        let mut be =
+            BreakableCallChainEntry::new(self.current_formatting_context(), call_chain_elements);
+        be.push_line_number(self.current_orig_line_number);
+        self.breakable_entry_stack.push(Box::new(be));
+
+        self.new_block(Box::new(|ps| {
+            f(ps);
+        }));
+
+        // The last newline is in the old block, so we need
+        // to reset to ensure that any comments between now and the
+        // next newline are at the right indentation level
+        self.reset_space_count();
+        self.shift_comments();
+
+        let insert_bcce = self
+            .breakable_entry_stack
+            .pop()
+            .expect("cannot have empty here because we just pushed")
+            .to_breakable_call_chain();
+        self.push_target(ConcreteLineTokenAndTargets::BreakableCallChainEntry(
+            insert_bcce,
+        ));
+    }
+
     fn with_suppress_comments<'a>(&mut self, suppress: bool, f: RenderFunc) {
         self.suppress_comments_stack.push(suppress);
         f(self);
@@ -444,6 +482,9 @@ impl ConcreteParserState for BaseParserState {
     }
 
     fn emit_indent(&mut self) {
+        if self.current_spaces() == 2 {
+            return;
+        }
         self.push_concrete_token(ConcreteLineToken::Indent {
             depth: self.current_spaces(),
         });
@@ -878,10 +919,10 @@ impl BaseParserState {
         // use SoftNewlines here instead.
         if self.breakable_entry_stack.last().is_some() {
             let hd = self.gather_heredocs();
-            self.breakable_entry_stack
-                .last_mut()
-                .unwrap()
-                .insert_at(insert_idx, &mut vec![AbstractLineToken::SoftNewline(hd)]);
+            self.breakable_entry_stack.last_mut().unwrap().insert_at(
+                insert_idx,
+                &mut vec![AbstractLineToken::CollapsingNewLine(hd)],
+            );
         } else {
             self.insert_concrete_tokens(insert_idx, vec![ConcreteLineToken::HardNewLine]);
         }
@@ -944,6 +985,9 @@ impl BaseParserState {
             }
             AbstractLineToken::BreakableEntry(be) => {
                 ConcreteLineTokenAndTargets::BreakableEntry(be)
+            }
+            AbstractLineToken::BreakableCallChainEntry(bcce) => {
+                ConcreteLineTokenAndTargets::BreakableCallChainEntry(bcce)
             }
             _ => panic!("failed to convert"),
         }
