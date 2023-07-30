@@ -3,7 +3,7 @@ use crate::line_tokens::{AbstractLineToken, ConcreteLineToken, ConcreteLineToken
 use crate::parser_state::FormattingContext;
 use crate::ripper_tree_types::{
     ArgsAddStarOrExpressionListOrArgsForward, Block, CallChainElement, Dot, DotType, DotTypeOrOp,
-    Expression, LonelyOperator, Op, Period, StartEnd, StringLiteral,
+    Expression, LonelyOperator, MethodCall, Op, Period, StartEnd, StringLiteral,
 };
 use crate::types::{ColNumber, LineNumber};
 use std::collections::HashSet;
@@ -79,7 +79,7 @@ impl AbstractTokenTarget for BreakableEntry {
     }
 
     fn to_breakable_call_chain(self: Box<Self>) -> BreakableCallChainEntry {
-        unimplemented!()
+        unreachable!()
     }
 
     fn push(&mut self, lt: AbstractLineToken) {
@@ -207,6 +207,7 @@ pub struct BreakableCallChainEntry {
     line_numbers: HashSet<LineNumber>,
     call_chain: Vec<CallChainElement>,
     context: FormattingContext,
+    method_call: MethodCall,
 }
 
 impl AbstractTokenTarget for BreakableCallChainEntry {
@@ -268,6 +269,10 @@ impl AbstractTokenTarget for BreakableCallChainEntry {
     }
 
     fn single_line_string_length(&self) -> usize {
+        // Render all tokens to strings, but since these are call chains, they may
+        // have multiline blocks (which will often be quite long vertically, even if
+        // they're under 120 characters horizontally). In this case, look for the longest
+        // individual line and get _that_ max length
         self.tokens
             .iter()
             .map(|tok| tok.clone().into_single_line())
@@ -285,22 +290,27 @@ impl AbstractTokenTarget for BreakableCallChainEntry {
             return false;
         }
 
-        let parens_are_multilined = self.tokens.iter().any(|token| match token {
-            AbstractLineToken::BreakableEntry(be) => be.is_multiline(),
-            _ => false,
-        });
-        if parens_are_multilined {
-            dbg!(parens_are_multilined);
-            return true;
-        }
+        // let parens_are_multilined = self.tokens.iter().any(|token| match token {
+        //     AbstractLineToken::BreakableEntry(be) => be.is_multiline(),
+        //     _ => false,
+        // });
+        // if parens_are_multilined {
+        //     return true;
+        // }
 
-        let has_newline_contents =
-            self.any_collapsing_newline_has_heredoc_content();
+        let has_newline_contents = self.any_collapsing_newline_has_heredoc_content();
         if has_newline_contents {
             return true;
         }
 
-        let mut call_chain_to_check = self.call_chain.clone();
+        let MethodCall(_, mut call_chain_to_check, ident, _, args, start_end) =
+            self.method_call.clone();
+
+        // Add the original method as a call chain element purely for the sake of determining multiling
+        call_chain_to_check.append(&mut vec![
+            CallChainElement::IdentOrOpOrKeywordOrConst(ident),
+            CallChainElement::ArgsAddStarOrExpressionListOrArgsForward(args, start_end),
+        ]);
 
         // We don't always want to multiline blocks if their only usage
         // is at the end of a chain, since it's common to have chains
@@ -416,14 +426,20 @@ impl AbstractTokenTarget for BreakableCallChainEntry {
 }
 
 impl BreakableCallChainEntry {
-    pub fn new(context: FormattingContext, call_chain: Vec<CallChainElement>) -> Self {
+    pub fn new(
+        context: FormattingContext,
+        call_chain: Vec<CallChainElement>,
+        method_call: MethodCall,
+    ) -> Self {
         BreakableCallChainEntry {
             tokens: Vec::new(),
             line_numbers: HashSet::new(),
-            context: context,
-            call_chain: call_chain,
+            context,
+            call_chain,
+            method_call,
         }
     }
+
     fn any_collapsing_newline_has_heredoc_content(&self) -> bool {
         self.tokens.iter().any(|t| match t {
             AbstractLineToken::CollapsingNewLine(Some(..)) => true,
@@ -437,6 +453,22 @@ impl BreakableCallChainEntry {
 
     pub fn entry_formatting_context(&self) -> FormattingContext {
         self.context
+    }
+
+    pub fn longest_multiline_string_length(&self) -> usize {
+        // Render all tokens to strings, but since these are call chains, they may
+        // have multiline blocks (which will often be quite long vertically, even if
+        // they're under 120 characters horizontally). In this case, look for the longest
+        // individual line and get _that_ max length
+        self.tokens
+            .iter()
+            .map(|tok| tok.clone().into_single_line())
+            .map(|tok| tok.into_ruby())
+            .collect::<String>()
+            .split("\n")
+            .map(|st| st.len())
+            .max()
+            .unwrap()
     }
 
     /// In practice, this generally means something like the call chain having something

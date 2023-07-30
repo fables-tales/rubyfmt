@@ -830,7 +830,7 @@ pub fn format_method_call(ps: &mut dyn ConcreteParserState, method_call: MethodC
         ps.emit_indent();
     }
 
-    let MethodCall(_, chain, method, original_used_parens, args, start_end) = method_call;
+    let MethodCall(_, chain, method, original_used_parens, args, start_end) = method_call.clone();
 
     debug!("method call!!");
     let use_parens = use_parens_for_method_call(
@@ -845,7 +845,7 @@ pub fn format_method_call(ps: &mut dyn ConcreteParserState, method_call: MethodC
     ps.with_start_of_line(
         false,
         Box::new(|ps| {
-            format_call_chain(ps, chain);
+            format_call_chain(ps, chain, method_call);
 
             if use_parens && method.get_name() == ".()" {
                 ps.emit_ident(".".to_string());
@@ -2796,13 +2796,18 @@ fn can_elide_parens_for_reserved_names(cc: &[CallChainElement]) -> bool {
 }
 
 /// Returns `true` if the call chain is indented, `false` if not
-fn format_call_chain(ps: &mut dyn ConcreteParserState, cc: Vec<CallChainElement>) {
+fn format_call_chain(
+    ps: &mut dyn ConcreteParserState,
+    cc: Vec<CallChainElement>,
+    method_call: MethodCall,
+) {
     if cc.is_empty() {
         return;
     }
 
     ps.breakable_call_chain_of(
         cc.clone(),
+        method_call,
         Box::new(|ps| format_call_chain_elements(ps, cc)),
     );
 
@@ -2814,6 +2819,7 @@ fn format_call_chain_elements(ps: &mut dyn ConcreteParserState, cc: Vec<CallChai
     // When set, force all `CallChainElement::ArgsAddStarOrExpressionListOrArgsForward`
     // to use parens, even when empty. This handles cases like `super()` where parens matter
     let mut next_args_list_must_use_parens = false;
+    let mut has_indented = false;
     for cc_elem in cc {
         let mut element_is_super_keyword = false;
 
@@ -2855,6 +2861,10 @@ fn format_call_chain_elements(ps: &mut dyn ConcreteParserState, cc: Vec<CallChai
                 }
             }
             CallChainElement::DotTypeOrOp(d) => {
+                if !has_indented {
+                    ps.start_indent_for_call_chain();
+                    has_indented = true;
+                }
                 let is_double_colon = match &d {
                     DotTypeOrOp::ColonColon(_) => true,
                     DotTypeOrOp::StringDot(val) => val == "::",
@@ -2919,13 +2929,14 @@ pub fn format_method_add_block(ps: &mut dyn ConcreteParserState, mab: MethodAddB
         ps.emit_indent();
     }
 
+    let method_call = mab.clone().to_method_call();
     let mut chain = (mab.1).into_call_chain();
     chain.push(CallChainElement::Block(mab.2));
 
     ps.with_start_of_line(
         false,
         Box::new(|ps| {
-            format_call_chain(ps, chain);
+            format_call_chain(ps, chain, method_call);
         }),
     );
 

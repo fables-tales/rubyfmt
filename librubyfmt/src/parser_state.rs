@@ -8,7 +8,7 @@ use crate::render_queue_writer::{RenderQueueWriter, MAX_LINE_LENGTH};
 use crate::render_targets::{
     AbstractTokenTarget, BaseQueue, BreakableCallChainEntry, BreakableEntry,
 };
-use crate::ripper_tree_types::{CallChainElement, StringContentPart};
+use crate::ripper_tree_types::{CallChainElement, MethodCall, StringContentPart};
 use crate::types::{ColNumber, LineNumber};
 use log::debug;
 use std::io::{self, Cursor, Write};
@@ -127,6 +127,7 @@ where
 
     // blocks
     fn start_indent(&mut self);
+    fn start_indent_for_call_chain(&mut self);
     fn end_indent(&mut self);
     fn with_formatting_context(&mut self, fc: FormattingContext, f: RenderFunc);
     fn new_scope(&mut self, f: RenderFunc);
@@ -137,6 +138,7 @@ where
     fn breakable_call_chain_of(
         &mut self,
         call_chain_elements: Vec<CallChainElement>,
+        method_call: MethodCall,
         f: RenderFunc,
     );
     fn dedent(&mut self, f: RenderFunc);
@@ -309,6 +311,10 @@ impl ConcreteParserState for BaseParserState {
         self.depth_stack[ds_length - 1].increment();
     }
 
+    fn start_indent_for_call_chain(&mut self) {
+        self.push_concrete_token(ConcreteLineToken::BeginCallChainIndent)
+    }
+
     fn end_indent(&mut self) {
         let ds_length = self.depth_stack.len();
         self.depth_stack[ds_length - 1].decrement();
@@ -389,17 +395,19 @@ impl ConcreteParserState for BaseParserState {
     fn breakable_call_chain_of<'a>(
         &mut self,
         call_chain_elements: Vec<CallChainElement>,
+        method_call: MethodCall,
         f: RenderFunc,
     ) {
         self.shift_comments();
-        let mut be =
-            BreakableCallChainEntry::new(self.current_formatting_context(), call_chain_elements);
+        let mut be = BreakableCallChainEntry::new(
+            self.current_formatting_context(),
+            call_chain_elements,
+            method_call,
+        );
         be.push_line_number(self.current_orig_line_number);
         self.breakable_entry_stack.push(Box::new(be));
 
-        self.new_block(Box::new(|ps| {
-            f(ps);
-        }));
+        f(self);
 
         // The last newline is in the old block, so we need
         // to reset to ensure that any comments between now and the
@@ -482,9 +490,6 @@ impl ConcreteParserState for BaseParserState {
     }
 
     fn emit_indent(&mut self) {
-        if self.current_spaces() == 2 {
-            return;
-        }
         self.push_concrete_token(ConcreteLineToken::Indent {
             depth: self.current_spaces(),
         });

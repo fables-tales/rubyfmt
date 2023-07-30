@@ -137,11 +137,36 @@ impl RenderQueueWriter {
     }
 
     fn format_breakable_call_chain_entry(accum: &mut Intermediary, bcce: BreakableCallChainEntry) {
-        let length = accum.current_line_length() + bcce.single_line_string_length();
+        let is_multiline = bcce.is_multiline();
+        let single_line_string_length = if is_multiline {
+            bcce.longest_multiline_string_length()
+        } else {
+            bcce.single_line_string_length()
+        };
+        let length = accum.current_line_length() + single_line_string_length;
         if (length > MAX_LINE_LENGTH || bcce.is_multiline())
             && bcce.entry_formatting_context() != FormattingContext::StringEmbexpr
         {
-            Self::render_as(accum, bcce.into_tokens(ConvertType::MultiLine));
+            let mut tokens = bcce.into_tokens(ConvertType::MultiLine);
+            let mut started_indent = false;
+            for token in &mut tokens {
+                match token {
+                    ConcreteLineTokenAndTargets::ConcreteLineToken(ConcreteLineToken::Indent {
+                        depth,
+                    }) => {
+                        if started_indent {
+                            *depth += 2;
+                        }
+                    }
+                    ConcreteLineTokenAndTargets::ConcreteLineToken(
+                        ConcreteLineToken::BeginCallChainIndent,
+                    ) => {
+                        started_indent = true;
+                    }
+                    _ => continue,
+                }
+            }
+            Self::render_as(accum, tokens);
         } else {
             Self::render_as(accum, bcce.into_tokens(ConvertType::SingleLine));
             accum.clear_breakable_garbage();

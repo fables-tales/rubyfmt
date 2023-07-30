@@ -53,17 +53,20 @@ pub enum ConcreteLineToken {
     SingleSlash,
     Comment { contents: String },
     Delim { contents: String },
-    AfterCallChain,
     End,
     HeredocClose { symbol: String },
     DataEnd,
+    // These are "magic" tokens. They have no concrete representation,
+    // but they're meaningful inside of the render queue
+    AfterCallChain,
+    BeginCallChainIndent,
 }
 
 impl ConcreteLineToken {
     pub fn into_ruby(self) -> String {
         match self {
             Self::HardNewLine => "\n".to_string(),
-            Self::Indent { depth } => (0..depth).map(|_| ' ').collect(),
+            Self::Indent { depth, .. } => (0..depth).map(|_| ' ').collect(),
             Self::Keyword { keyword } => keyword,
             Self::ModKeyword { contents } => contents,
             Self::ConditionalKeyword { contents } => contents,
@@ -96,7 +99,7 @@ impl ConcreteLineToken {
             Self::DataEnd => "__END__".to_string(),
             // no-op, this is purely semantic information
             // for the render queue
-            Self::AfterCallChain => "".to_string(),
+            Self::AfterCallChain | Self::BeginCallChainIndent => "".to_string(),
         }
     }
 
@@ -107,8 +110,9 @@ impl ConcreteLineToken {
         // each individual string token, which would increase the allocations of rubyfmt
         // by an order of magnitude
         match self {
-            AfterCallChain => 0, // purely semantic token, doesn't render
-            Indent { depth } => *depth as usize,
+            AfterCallChain => 0,       // purely semantic token, doesn't render
+            BeginCallChainIndent => 0, // purely semantic token, doesn't render
+            Indent { depth, .. } => *depth as usize,
             Keyword { keyword: contents }
             | Op { op: contents }
             | DirectPart { part: contents }
