@@ -1,4 +1,4 @@
-#![deny(warnings, missing_copy_implementations)]
+#![deny(missing_copy_implementations)]
 #![allow(clippy::upper_case_acronyms, clippy::enum_variant_names)]
 
 use serde::de::value;

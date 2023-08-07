@@ -31,8 +31,26 @@ impl RenderQueueWriter {
 
     fn render_as(accum: &mut Intermediary, tokens: Vec<ConcreteLineTokenAndTargets>) {
         use ConcreteLineToken::*;
+        let mut additional_indent = 0;
+        let tokens_copy = tokens.clone();
 
-        for next_token in tokens.into_iter() {
+        for (index, mut next_token) in tokens.into_iter().enumerate() {
+            if let ConcreteLineTokenAndTargets::ConcreteLineToken(ConcreteLineToken::Indent {
+                depth,
+            }) = next_token
+            {
+                let is_ending_heredoc_token = tokens_copy.len() > index
+                    && matches!(
+                        tokens_copy.get(index + 1),
+                        Some(ConcreteLineTokenAndTargets::ConcreteLineToken(
+                            ConcreteLineToken::HeredocClose { .. }
+                        ))
+                    );
+                if !is_ending_heredoc_token {
+                    next_token = clats_indent(depth + (additional_indent * 2))
+                }
+            }
+
             match next_token {
                 ConcreteLineTokenAndTargets::BreakableEntry(be) => {
                     Self::format_breakable_entry(accum, be)
@@ -40,7 +58,11 @@ impl RenderQueueWriter {
                 ConcreteLineTokenAndTargets::BreakableCallChainEntry(bcce) => {
                     Self::format_breakable_call_chain_entry(accum, bcce)
                 }
-                ConcreteLineTokenAndTargets::ConcreteLineToken(x) => accum.push(x),
+                ConcreteLineTokenAndTargets::ConcreteLineToken(x) => match x {
+                    BeginCallChainIndent => additional_indent += 1,
+                    EndCallChainIndent => additional_indent -= 1,
+                    _ => accum.push(x),
+                },
             }
 
             if let Some(
@@ -97,17 +119,12 @@ impl RenderQueueWriter {
             }
 
             if let Some(
-                [&ConcreteLineToken::HeredocClose { .. }, &ConcreteLineToken::HardNewLine, &ConcreteLineToken::Indent { .. }, &ConcreteLineToken::Indent { .. }, &ConcreteLineToken::Delim { .. }],
+                [&ConcreteLineToken::HeredocClose { .. }, &ConcreteLineToken::HardNewLine, &ConcreteLineToken::Indent { .. }, &ConcreteLineToken::Indent { .. }, &ConcreteLineToken::Delim { .. }
+                | &ConcreteLineToken::Dot
+                | &ConcreteLineToken::DirectPart { .. }],
             ) = accum.last::<5>()
             {
-                accum.fix_heredoc_delim_indent_mistake();
-            }
-
-            if let Some(
-                [&ConcreteLineToken::HeredocClose { .. }, &ConcreteLineToken::HardNewLine, &ConcreteLineToken::Indent { .. }, &ConcreteLineToken::Indent { .. }, &ConcreteLineToken::DirectPart { .. }],
-            ) = accum.last::<5>()
-            {
-                accum.fix_heredoc_direct_part_indent_mistake();
+                accum.fix_heredoc_duplicate_indent_mistake();
             }
 
             if let Some(
@@ -136,38 +153,18 @@ impl RenderQueueWriter {
         }
     }
 
-    fn format_breakable_call_chain_entry(accum: &mut Intermediary, bcce: BreakableCallChainEntry) {
-        let is_multiline = bcce.is_multiline();
-        let single_line_string_length = if is_multiline {
-            bcce.longest_multiline_string_length()
-        } else {
-            bcce.single_line_string_length()
-        };
+    fn format_breakable_call_chain_entry(accum: &mut Intermediary, mut bcce: BreakableCallChainEntry) {
+        let single_line_string_length = bcce.longest_multiline_string_length();
         let length = accum.current_line_length() + single_line_string_length;
-        if (length > MAX_LINE_LENGTH || bcce.is_multiline())
+        if (length > MAX_LINE_LENGTH
+            || bcce.is_multiline()
+            || bcce.any_collapsing_newline_has_heredoc_content())
             && bcce.entry_formatting_context() != FormattingContext::StringEmbexpr
         {
-            let mut tokens = bcce.into_tokens(ConvertType::MultiLine);
-            let mut started_indent = false;
-            for token in &mut tokens {
-                match token {
-                    ConcreteLineTokenAndTargets::ConcreteLineToken(ConcreteLineToken::Indent {
-                        depth,
-                    }) => {
-                        if started_indent {
-                            *depth += 2;
-                        }
-                    }
-                    ConcreteLineTokenAndTargets::ConcreteLineToken(
-                        ConcreteLineToken::BeginCallChainIndent,
-                    ) => {
-                        started_indent = true;
-                    }
-                    _ => continue,
-                }
-            }
+            let tokens = bcce.into_tokens(ConvertType::MultiLine);
             Self::render_as(accum, tokens);
         } else {
+            bcce.remove_call_chain_magic_tokens();
             Self::render_as(accum, bcce.into_tokens(ConvertType::SingleLine));
             accum.clear_breakable_garbage();
         }

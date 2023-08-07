@@ -160,6 +160,114 @@ pub enum Expression {
     Yield0(Yield0),
 }
 
+impl Expression {
+    pub fn start_line(&self) -> Option<u64> {
+        match self {
+            // Expressions with a StartEnd (ideally most/all of them would end up here)
+            Expression::Class(Class(.., start_end))
+            | Expression::If(If(.., start_end))
+            | Expression::VCall(VCall(.., start_end))
+            | Expression::MethodAddArg(MethodAddArg(.., start_end))
+            | Expression::Def(Def(.., start_end))
+            | Expression::Defs(Defs(.., start_end))
+            | Expression::Paren(ParenExpr(.., start_end))
+            | Expression::SymbolLiteral(SymbolLiteral(.., start_end))
+            | Expression::DynaSymbol(DynaSymbol(.., start_end))
+            | Expression::Begin(Begin(_, start_end, ..))
+            | Expression::Array(Array(.., start_end))
+            | Expression::Next(Next(.., start_end))
+            | Expression::Super(Super(.., start_end))
+            | Expression::Module(Module(.., start_end))
+            | Expression::Return(Return(.., start_end))
+            | Expression::Return0(Return0(_, start_end))
+            | Expression::Hash(Hash(.., start_end))
+            | Expression::Yield(Yield(.., start_end))
+            | Expression::While(While(.., start_end))
+            | Expression::Case(Case(.., start_end))
+            | Expression::Retry(Retry(.., start_end))
+            | Expression::Redo(Redo(.., start_end))
+            | Expression::SClass(SClass(.., start_end))
+            | Expression::Break(Break(.., start_end))
+            | Expression::StabbyLambda(StabbyLambda(.., start_end))
+            | Expression::Unless(Unless(.., start_end))
+            | Expression::ZSuper(ZSuper(.., start_end))
+            | Expression::Yield0(Yield0(.., start_end)) => Some(start_end.start_line()),
+            // Expressions with a LineCol
+            Expression::TopConstRef(TopConstRef(_, Const(.., linecol)))
+            | Expression::Ident(Ident(.., linecol))
+            | Expression::Int(Int(.., linecol))
+            | Expression::Const(Const(.., linecol))
+            | Expression::Kw(Kw(.., linecol))
+            | Expression::Float(Float(.., linecol))
+            | Expression::Aref(Aref(.., linecol))
+            | Expression::Char(Char(.., linecol))
+            | Expression::Backref(Backref(.., linecol))
+            | Expression::Imaginary(Imaginary(.., linecol))
+            | Expression::Rational(Rational(.., linecol)) => Some(linecol.0),
+            // Expressions with locations defined by nested expressions
+            Expression::RescueMod(RescueMod(_, expr, _))
+            | Expression::ToProc(ToProc(_, expr))
+            | Expression::Unary(Unary(.., expr))
+            | Expression::ConstPathRef(ConstPathRef(_, expr, ..))
+            | Expression::Defined(Defined(.., expr))
+            | Expression::Binary(Binary(_, expr, ..))
+            | Expression::WhileMod(WhileMod(_, expr, ..))
+            | Expression::UntilMod(UntilMod(_, expr, ..))
+            | Expression::IfMod(IfMod(_, expr, ..))
+            | Expression::UnlessMod(UnlessMod(_, expr, ..))
+            | Expression::Until(Until(_, expr, ..))
+            | Expression::For(For(_, _, expr, _))
+            | Expression::IfOp(IfOp(_, expr, ..)) => expr.start_line(),
+            // Miscellaneous expressions with special cases
+            Expression::VoidStmt(..) => None,
+            Expression::MLhs(MLhs(mlhs_inners)) => {
+                mlhs_inners.first().map(|mlhs| mlhs.start_line()).flatten()
+            }
+            Expression::MethodAddBlock(MethodAddBlock(_, call_left, ..)) => call_left.start_line(),
+            Expression::RegexpLiteral(RegexpLiteral(_, string_content_parts, _)) => {
+                string_content_parts
+                    .first()
+                    .map(|scp| scp.start_line())
+                    .flatten()
+            }
+            Expression::OpAssign(OpAssign(_, assignable, ..)) => assignable.start_line(),
+            Expression::Params(params) => Some(params.as_ref().8.start_line()),
+            Expression::MethodCall(MethodCall(_, call_chain_elements, ..)) => todo!(),
+            Expression::CommandCall(CommandCall(_, call_left, ..))
+            | Expression::Call(Call(_, call_left, ..)) => call_left.start_line(),
+            Expression::BareAssocHash(BareAssocHash(_, assocs)) => todo!(),
+            Expression::Symbol(Symbol(_, something)) => todo!(),
+            Expression::BeginBlock(BeginBlock(_, exprs))
+            | Expression::EndBlock(EndBlock(_, exprs)) => {
+                exprs.first().map(|expr| expr.start_line()).flatten()
+            }
+            // Pick the first of either expression, since these can be e.g. `foo..bar` or `foo..` or `..bar`
+            Expression::Dot2(Dot2(_, maybe_first_expr, maybe_second_expr))
+            | Expression::Dot3(Dot3(_, maybe_first_expr, maybe_second_expr)) => maybe_first_expr
+                .as_ref()
+                .map(|mfe| mfe.start_line())
+                .or_else(|| maybe_second_expr.as_ref().map(|mse| mse.start_line()))
+                .flatten(),
+            Expression::Alias(Alias(_, symbol, ..)) => Some(symbol.start_line()),
+            Expression::StringLiteral(string_literal) => Some(string_literal.start_line()),
+            Expression::XStringLiteral(XStringLiteral(_, string_parts)) => {
+                string_parts.first().map(|sp| sp.start_line()).flatten()
+            }
+            Expression::VarRef(VarRef(_, var_ref_type)) => Some(var_ref_type.start_line()),
+            Expression::Assign(Assign(_, assignable, ..)) => assignable.start_line(),
+            Expression::MAssign(MAssign(_, assignable_list_or_mlhs, ..)) => todo!(),
+            Expression::Command(Command(_, ident_or_const, ..)) => {
+                Some(ident_or_const.start_line())
+            }
+            Expression::MRHSAddStar(MRHSAddStar(_, mrhs, ..)) => todo!(),
+            Expression::StringConcat(StringConcat(_, concat_or_literal, ..)) => todo!(),
+            Expression::Undef(Undef(_, symbol_literals)) => {
+                symbol_literals.first().map(|s| s.start_line())
+            }
+        }
+    }
+}
+
 def_tag!(mlhs_tag, "mlhs");
 #[derive(Debug, Clone)]
 pub struct MLhs(pub Vec<MLhsInner>);
@@ -171,6 +279,26 @@ pub enum MLhsInner {
     RestParam(RestParam),
     Ident(Ident),
     MLhs(Box<MLhs>),
+}
+
+impl MLhsInner {
+    pub fn start_line(&self) -> Option<u64> {
+        match self {
+            MLhsInner::VarField(VarField(_, var_ref_type)) => Some(var_ref_type.start_line()),
+            MLhsInner::Field(Field(_, expr, ..)) => expr.start_line(),
+            MLhsInner::RestParam(RestParam(.., rest_param_assignable)) => rest_param_assignable
+                .as_ref()
+                .map(|rpa| rpa.start_line())
+                .flatten(),
+            MLhsInner::Ident(Ident(_, _, linecol)) => Some(linecol.0),
+            MLhsInner::MLhs(mlhs) => mlhs
+                .as_ref()
+                .0
+                .first()
+                .map(|mlhs_inner| mlhs_inner.start_line())
+                .flatten(),
+        }
+    }
 }
 
 impl<'de> Deserialize<'de> for MLhs {
@@ -405,6 +533,18 @@ pub enum RestParamAssignable {
     ArefField(ArefField),
 }
 
+impl RestParamAssignable {
+    pub fn start_line(&self) -> Option<u64> {
+        match self {
+            RestParamAssignable::ArefField(ArefField(.., linecol))
+            | RestParamAssignable::Ident(Ident(.., linecol)) => Some(linecol.0),
+            RestParamAssignable::VarField(VarField(.., var_ref_type)) => {
+                Some(var_ref_type.start_line())
+            }
+        }
+    }
+}
+
 #[derive(RipperDeserialize, Debug, Clone)]
 pub enum Assignable {
     VarField(VarField),
@@ -416,6 +556,27 @@ pub enum Assignable {
     MLhs(MLhs),
     // 2.6+
     Ident(Ident),
+}
+
+impl Assignable {
+    pub fn start_line(&self) -> Option<u64> {
+        match self {
+            Assignable::VarField(VarField(.., var_ref_type)) => Some(var_ref_type.start_line()),
+            Assignable::RestParam(RestParam(.., rest_param_assignable)) => rest_param_assignable
+                .as_ref()
+                .map(|rpa| rpa.start_line())
+                .flatten(),
+            Assignable::ConstPathField(ConstPathField(.., Const(.., linecol)))
+            | Assignable::Ident(Ident(.., linecol))
+            | Assignable::TopConstField(TopConstField(.., Const(.., linecol))) => Some(linecol.0),
+            Assignable::ArefField(ArefField(_, expr, ..)) => expr.start_line(),
+            Assignable::Field(Field(_, expr, ..)) => expr.start_line(),
+            Assignable::MLhs(MLhs(mlhs_inners)) => mlhs_inners
+                .first()
+                .map(|mlhs_inner| mlhs_inner.start_line())
+                .flatten(),
+        }
+    }
 }
 
 def_tag!(begin_block, "BEGIN");
@@ -467,6 +628,17 @@ pub enum VarRefType {
 }
 
 impl VarRefType {
+    pub fn start_line(&self) -> u64 {
+        match self {
+            VarRefType::GVar(GVar(.., linecol))
+            | VarRefType::IVar(IVar(.., linecol))
+            | VarRefType::CVar(CVar(.., linecol))
+            | VarRefType::Ident(Ident(.., linecol))
+            | VarRefType::Const(Const(.., linecol))
+            | VarRefType::Kw(Kw(.., linecol)) => linecol.0,
+        }
+    }
+
     pub fn to_local_string(self) -> String {
         match self {
             VarRefType::GVar(v) => v.1,
@@ -504,6 +676,15 @@ def_tag!(string_literal_tag, "string_literal");
 pub enum StringLiteral {
     Normal(string_literal_tag, StringContent, StartEnd),
     Heredoc(string_literal_tag, HeredocStringLiteral, StringContent),
+}
+
+impl StringLiteral {
+    pub fn start_line(&self) -> u64 {
+        match self {
+            StringLiteral::Heredoc(_, HeredocStringLiteral(.., start_end), ..)
+            | StringLiteral::Normal(.., start_end) => start_end.start_line(),
+        }
+    }
 }
 
 def_tag!(xstring_literal_tag, "xstring_literal");
@@ -556,6 +737,18 @@ pub enum StringContentPart {
     TStringContent(TStringContent),
     StringEmbexpr(StringEmbexpr),
     StringDVar(StringDVar),
+}
+
+impl StringContentPart {
+    pub fn start_line(&self) -> Option<u64> {
+        match self {
+            StringContentPart::TStringContent(TStringContent(.., linecol)) => Some(linecol.0),
+            StringContentPart::StringEmbexpr(StringEmbexpr(_, exprs)) => {
+                exprs.first().map(|expr| expr.start_line()).flatten()
+            }
+            StringContentPart::StringDVar(StringDVar(_, expr)) => expr.as_ref().start_line(),
+        }
+    }
 }
 
 def_tag!(string_content_tag, "string_content");
@@ -690,6 +883,17 @@ pub struct Alias(
 pub enum SymbolLiteralOrDynaSymbol {
     DynaSymbol(DynaSymbol),
     SymbolLiteral(SymbolLiteral),
+}
+
+impl SymbolLiteralOrDynaSymbol {
+    pub fn start_line(&self) -> u64 {
+        match self {
+            SymbolLiteralOrDynaSymbol::DynaSymbol(DynaSymbol(.., start_end))
+            | SymbolLiteralOrDynaSymbol::SymbolLiteral(SymbolLiteral(.., start_end)) => {
+                start_end.start_line()
+            }
+        }
+    }
 }
 
 #[derive(RipperDeserialize, Debug, Clone)]
@@ -1243,6 +1447,14 @@ impl IdentOrConst {
             IdentOrConst::Const(c) => IdentOrOpOrKeywordOrConst::Const(c),
         }
     }
+
+    pub fn start_line(&self) -> u64 {
+        match self {
+            IdentOrConst::Ident(Ident(.., linecol)) | IdentOrConst::Const(Const(.., linecol)) => {
+                linecol.0
+            }
+        }
+    }
 }
 
 #[derive(RipperDeserialize, Debug, Clone)]
@@ -1294,6 +1506,29 @@ pub enum CallLeft {
 }
 
 impl CallLeft {
+    pub fn start_line(&self) -> Option<u64> {
+        match self {
+            CallLeft::ZSuper(ZSuper(.., start_end))
+            | CallLeft::Next(Next(.., start_end))
+            | CallLeft::Yield(Yield(.., start_end))
+            | CallLeft::Yield0(Yield0(.., start_end))
+            | CallLeft::Super(Super(.., start_end))
+            | CallLeft::MethodAddArg(MethodAddArg(.., start_end))
+            | CallLeft::VCall(VCall(.., start_end))
+            | CallLeft::Call(Call(.., start_end))
+            | CallLeft::Paren(ParenExpr(.., start_end)) => Some(start_end.start_line()),
+            CallLeft::SingleParen(_, expr) => expr.start_line(),
+            CallLeft::Command(Command(_, ident_or_const, ..))
+            | CallLeft::FCall(FCall(_, ident_or_const)) => Some(match ident_or_const {
+                IdentOrConst::Ident(Ident(.., linecol))
+                | IdentOrConst::Const(Const(.., linecol)) => linecol.0,
+            }),
+            CallLeft::CommandCall(CommandCall(_, call_left, ..))
+            | CallLeft::MethodAddBlock(MethodAddBlock(_, call_left, ..)) => call_left.start_line(),
+            CallLeft::VarRef(VarRef(_, var_ref_type)) => Some(var_ref_type.start_line()),
+            CallLeft::Expression(expr) => expr.start_line(),
+        }
+    }
     pub fn into_call_chain(self) -> Vec<CallChainElement> {
         match self {
             CallLeft::Paren(p) => vec![CallChainElement::Paren(p)],
@@ -1542,6 +1777,20 @@ pub enum DotTypeOrOp {
     ColonColon(ColonColon),
     Op(Op),
     StringDot(String),
+}
+
+impl DotTypeOrOp {
+    pub fn start_line(&self) -> Option<u64> {
+        match self {
+            DotTypeOrOp::Period(Period(.., linecol)) => Some(linecol.0),
+            DotTypeOrOp::DotType(
+                DotType::Dot(Dot(.., start_end))
+                | DotType::LonelyOperator(LonelyOperator(.., start_end)),
+            )
+            | DotTypeOrOp::Op(Op(.., start_end)) => Some(start_end.start_line()),
+            DotTypeOrOp::ColonColon(..) | DotTypeOrOp::StringDot(..) => None,
+        }
+    }
 }
 
 def_tag!(period_tag, "@period");
@@ -1872,6 +2121,15 @@ pub struct YieldParen(yield_paren_tag, pub Box<ArgNode>);
 pub enum Block {
     BraceBlock(BraceBlock),
     DoBlock(DoBlock),
+}
+
+impl Block {
+    pub fn start_line(&self) -> u64 {
+        match self {
+            Block::BraceBlock(BraceBlock(.., start_end))
+            | Block::DoBlock(DoBlock(.., start_end)) => start_end.start_line(),
+        }
+    }
 }
 
 // block local variables are a nightmare, they can be false, nil, or an array

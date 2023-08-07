@@ -128,6 +128,7 @@ where
     // blocks
     fn start_indent(&mut self);
     fn start_indent_for_call_chain(&mut self);
+    fn end_indent_for_call_chain(&mut self);
     fn end_indent(&mut self);
     fn with_formatting_context(&mut self, fc: FormattingContext, f: RenderFunc);
     fn new_scope(&mut self, f: RenderFunc);
@@ -315,6 +316,10 @@ impl ConcreteParserState for BaseParserState {
         self.push_concrete_token(ConcreteLineToken::BeginCallChainIndent)
     }
 
+    fn end_indent_for_call_chain(&mut self) {
+        self.push_concrete_token(ConcreteLineToken::EndCallChainIndent)
+    }
+
     fn end_indent(&mut self) {
         let ds_length = self.depth_stack.len();
         self.depth_stack[ds_length - 1].decrement();
@@ -399,12 +404,11 @@ impl ConcreteParserState for BaseParserState {
         f: RenderFunc,
     ) {
         self.shift_comments();
-        let mut be = BreakableCallChainEntry::new(
+        let be = BreakableCallChainEntry::new(
             self.current_formatting_context(),
             call_chain_elements,
             method_call,
         );
-        be.push_line_number(self.current_orig_line_number);
         self.breakable_entry_stack.push(Box::new(be));
 
         f(self);
@@ -971,7 +975,7 @@ impl BaseParserState {
         next_ps
     }
 
-    fn render_to_buffer(self) -> Vec<u8> {
+    pub fn render_to_buffer(self) -> Vec<u8> {
         let mut bufio = Cursor::new(Vec::new());
         self.write(&mut bufio).expect("in memory io cannot fail");
         bufio.set_position(0);
@@ -1076,4 +1080,14 @@ impl BaseParserState {
 
 pub fn line_difference_requires_newline(to_line: LineNumber, from_line: LineNumber) -> bool {
     (to_line > from_line) && (to_line - from_line >= 2)
+}
+
+pub fn will_render_as_multiline<'a>(ps: &BaseParserState, f: RenderFunc) -> bool {
+    let mut next_ps = BaseParserState::new_with_depth_stack_from(ps);
+    // Ignore commments when determining line length
+    next_ps.with_suppress_comments(true, f);
+    let data = next_ps.render_to_buffer();
+
+    let s = str::from_utf8(&data).expect("string is utf8").to_string();
+    s.trim().contains('\n')
 }

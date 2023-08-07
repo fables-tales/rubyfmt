@@ -1,6 +1,8 @@
 use crate::delimiters::BreakableDelims;
+use crate::file_comments::FileComments;
+use crate::format::format_expression;
 use crate::line_tokens::{AbstractLineToken, ConcreteLineToken, ConcreteLineTokenAndTargets};
-use crate::parser_state::FormattingContext;
+use crate::parser_state::{will_render_as_multiline, BaseParserState, FormattingContext};
 use crate::ripper_tree_types::{
     ArgsAddStarOrExpressionListOrArgsForward, Block, CallChainElement, Dot, DotType, DotTypeOrOp,
     Expression, LonelyOperator, MethodCall, Op, Period, StartEnd, StringLiteral,
@@ -55,18 +57,37 @@ pub trait AbstractTokenTarget: std::fmt::Debug {
     fn into_tokens(self, ct: ConvertType) -> Vec<ConcreteLineTokenAndTargets>;
     fn is_multiline(&self) -> bool;
     fn push_line_number(&mut self, number: LineNumber);
+    fn increment_additional_indent(&mut self);
+    fn additional_indent(&self) -> u32;
     fn single_line_string_length(&self) -> usize;
     fn index_of_prev_newline(&self) -> Option<usize>;
-    fn last_token_is_a_newline(&self) -> bool;
     fn to_breakable_entry(self: Box<Self>) -> BreakableEntry;
     fn to_breakable_call_chain(self: Box<Self>) -> BreakableCallChainEntry;
     fn len(&self) -> usize;
+    fn tokens(&self) -> &Vec<AbstractLineToken>;
+
+    fn last_token_is_a_newline(&self) -> bool {
+        match self.tokens().last() {
+            Some(x) => x.is_newline(),
+            _ => false,
+        }
+    }
+
+    fn any_collapsing_newline_has_heredoc_content(&self) -> bool {
+        self.tokens().iter().any(|t| match t {
+            AbstractLineToken::CollapsingNewLine(Some(..)) => true,
+            AbstractLineToken::SoftNewline(Some(..)) => true,
+            AbstractLineToken::BreakableEntry(be) => {
+                be.any_collapsing_newline_has_heredoc_content()
+            }
+            _ => false,
+        })
+    }
 }
 
 #[derive(Debug, Clone)]
 pub struct BreakableEntry {
-    #[allow(dead_code)]
-    spaces: ColNumber,
+    additional_indent: ColNumber,
     tokens: Vec<AbstractLineToken>,
     line_numbers: HashSet<LineNumber>,
     delims: BreakableDelims,
@@ -76,6 +97,14 @@ pub struct BreakableEntry {
 impl AbstractTokenTarget for BreakableEntry {
     fn to_breakable_entry(self: Box<Self>) -> BreakableEntry {
         *self
+    }
+
+    fn increment_additional_indent(&mut self) {
+        self.additional_indent += 1;
+    }
+
+    fn additional_indent(&self) -> u32 {
+        self.additional_indent
     }
 
     fn to_breakable_call_chain(self: Box<Self>) -> BreakableCallChainEntry {
@@ -106,19 +135,12 @@ impl AbstractTokenTarget for BreakableEntry {
                 let mut new_tokens: Vec<_> = self
                     .tokens
                     .into_iter()
-                    .map(|t| t.into_single_line())
+                    .flat_map(|t| t.into_single_line())
                     .collect();
                 new_tokens.insert(0, self.delims.single_line_open().into());
                 new_tokens.push(self.delims.single_line_close().into());
                 new_tokens
             }
-        }
-    }
-
-    fn last_token_is_a_newline(&self) -> bool {
-        match self.tokens.last() {
-            Some(x) => x.is_newline(),
-            _ => false,
         }
     }
 
@@ -144,7 +166,7 @@ impl AbstractTokenTarget for BreakableEntry {
     fn single_line_string_length(&self) -> usize {
         self.tokens
             .iter()
-            .map(|tok| tok.clone().into_single_line())
+            .flat_map(|tok| tok.clone().into_single_line())
             .map(|tok| tok.into_ruby().len())
             .sum::<usize>()
             + self.delims.single_line_len()
@@ -163,12 +185,20 @@ impl AbstractTokenTarget for BreakableEntry {
     fn len(&self) -> usize {
         self.tokens.len()
     }
+
+    fn tokens(&self) -> &Vec<AbstractLineToken> {
+        &self.tokens
+    }
 }
 
 impl BreakableEntry {
-    pub fn new(spaces: ColNumber, delims: BreakableDelims, context: FormattingContext) -> Self {
+    pub fn new(
+        additional_indent: ColNumber,
+        delims: BreakableDelims,
+        context: FormattingContext,
+    ) -> Self {
         BreakableEntry {
-            spaces,
+            additional_indent,
             tokens: Vec::new(),
             line_numbers: HashSet::new(),
             delims,
@@ -178,17 +208,6 @@ impl BreakableEntry {
 
     pub fn entry_formatting_context(&self) -> FormattingContext {
         self.context
-    }
-
-    fn any_collapsing_newline_has_heredoc_content(&self) -> bool {
-        self.tokens.iter().any(|t| match t {
-            AbstractLineToken::CollapsingNewLine(Some(..)) => true,
-            AbstractLineToken::SoftNewline(Some(..)) => true,
-            AbstractLineToken::BreakableEntry(be) => {
-                be.any_collapsing_newline_has_heredoc_content()
-            }
-            _ => false,
-        })
     }
 
     fn contains_hard_newline(&self) -> bool {
@@ -203,6 +222,7 @@ impl BreakableEntry {
 
 #[derive(Debug, Clone)]
 pub struct BreakableCallChainEntry {
+    additional_indent: u32,
     tokens: Vec<AbstractLineToken>,
     line_numbers: HashSet<LineNumber>,
     call_chain: Vec<CallChainElement>,
@@ -212,7 +232,19 @@ pub struct BreakableCallChainEntry {
 
 impl AbstractTokenTarget for BreakableCallChainEntry {
     fn to_breakable_entry(self: Box<Self>) -> BreakableEntry {
-        unimplemented!()
+        unreachable!()
+    }
+
+    fn increment_additional_indent(&mut self) {
+        self.additional_indent += 1;
+    }
+
+    fn additional_indent(&self) -> u32 {
+        self.additional_indent
+    }
+
+    fn tokens(&self) -> &Vec<AbstractLineToken> {
+        &self.tokens
     }
 
     fn to_breakable_call_chain(self: Box<Self>) -> BreakableCallChainEntry {
@@ -237,15 +269,8 @@ impl AbstractTokenTarget for BreakableCallChainEntry {
             ConvertType::SingleLine => self
                 .tokens
                 .into_iter()
-                .map(|t| t.into_single_line())
+                .flat_map(|t| t.into_single_line())
                 .collect(),
-        }
-    }
-
-    fn last_token_is_a_newline(&self) -> bool {
-        match self.tokens.last() {
-            Some(x) => x.is_newline(),
-            _ => false,
         }
     }
 
@@ -275,7 +300,7 @@ impl AbstractTokenTarget for BreakableCallChainEntry {
         // individual line and get _that_ max length
         self.tokens
             .iter()
-            .map(|tok| tok.clone().into_single_line())
+            .flat_map(|tok| tok.clone().into_single_line())
             .map(|tok| tok.into_ruby().len())
             .sum::<usize>()
     }
@@ -288,19 +313,6 @@ impl AbstractTokenTarget for BreakableCallChainEntry {
         // Never multiline if we're in an embedded expression
         if self.context == FormattingContext::StringEmbexpr {
             return false;
-        }
-
-        // let parens_are_multilined = self.tokens.iter().any(|token| match token {
-        //     AbstractLineToken::BreakableEntry(be) => be.is_multiline(),
-        //     _ => false,
-        // });
-        // if parens_are_multilined {
-        //     return true;
-        // }
-
-        let has_newline_contents = self.any_collapsing_newline_has_heredoc_content();
-        if has_newline_contents {
-            return true;
         }
 
         let MethodCall(_, mut call_chain_to_check, ident, _, args, start_end) =
@@ -396,15 +408,17 @@ impl AbstractTokenTarget for BreakableCallChainEntry {
 
         // If the first item in the chain is a multiline expression (like a hash or array),
         // ignore it when checking line length
-        // if let Some(CallChainElement::Expression(expr)) = call_chain_to_check.first() {
-        //     let is_multiline_expression = ps.will_render_as_multiline(Box::new(|ps| {
-        //         format_expression(ps, expr.as_ref().clone());
-        //     }));
-
-        //     if is_multiline_expression {
-        //         call_chain_to_check.remove(0);
-        //     }
-        // }
+        if let Some(CallChainElement::Expression(expr)) = call_chain_to_check.first() {
+            let is_multiline_expression = will_render_as_multiline(
+                &BaseParserState::new(FileComments::default()),
+                Box::new(|ps| {
+                    format_expression(ps, expr.as_ref().clone());
+                }),
+            );
+            if is_multiline_expression {
+                call_chain_to_check.remove(0);
+            }
+        }
 
         let chain_blocks_are_multilined = call_chain_to_check
             .iter()
@@ -432,6 +446,7 @@ impl BreakableCallChainEntry {
         method_call: MethodCall,
     ) -> Self {
         BreakableCallChainEntry {
+            additional_indent: 0,
             tokens: Vec::new(),
             line_numbers: HashSet::new(),
             context,
@@ -440,15 +455,15 @@ impl BreakableCallChainEntry {
         }
     }
 
-    fn any_collapsing_newline_has_heredoc_content(&self) -> bool {
-        self.tokens.iter().any(|t| match t {
-            AbstractLineToken::CollapsingNewLine(Some(..)) => true,
-            AbstractLineToken::SoftNewline(Some(..)) => true,
-            AbstractLineToken::BreakableEntry(be) => {
-                be.any_collapsing_newline_has_heredoc_content()
-            }
-            _ => false,
-        })
+    pub fn remove_call_chain_magic_tokens(&mut self) {
+        self.tokens.retain(|t| {
+            !matches!(
+                t,
+                AbstractLineToken::ConcreteLineToken(
+                    ConcreteLineToken::BeginCallChainIndent | ConcreteLineToken::EndCallChainIndent
+                )
+            )
+        });
     }
 
     pub fn entry_formatting_context(&self) -> FormattingContext {
@@ -462,7 +477,7 @@ impl BreakableCallChainEntry {
         // individual line and get _that_ max length
         self.tokens
             .iter()
-            .map(|tok| tok.clone().into_single_line())
+            .flat_map(|tok| tok.clone().into_single_line())
             .map(|tok| tok.into_ruby())
             .collect::<String>()
             .split("\n")

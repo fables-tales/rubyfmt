@@ -8,8 +8,7 @@ a.b(1)
 a.b(1).c
 
 a do
-end
-  .after_block
+end.after_block
 
 a.<=(3)
 a&.<=(3)

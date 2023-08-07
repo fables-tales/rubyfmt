@@ -2805,6 +2805,23 @@ fn format_call_chain(
         return;
     }
 
+    let first_elem_line = match cc.first().unwrap() {
+        CallChainElement::IdentOrOpOrKeywordOrConst(ident) => {
+            Some(ident.clone().to_def_parts().1 .0)
+        }
+        CallChainElement::Block(block) => Some(block.start_line()),
+        CallChainElement::VarRef(VarRef(.., var_ref_type)) => Some(var_ref_type.start_line()),
+        CallChainElement::ArgsAddStarOrExpressionListOrArgsForward(_, maybe_start_end) => {
+            maybe_start_end.as_ref().map(|se| se.start_line())
+        }
+        CallChainElement::DotTypeOrOp(d) => d.start_line(),
+        CallChainElement::Paren(ParenExpr(.., start_end)) => Some(start_end.start_line()),
+        CallChainElement::Expression(expr) => expr.start_line(),
+    };
+    if let Some(first_elem_line) = first_elem_line {
+        ps.on_line(first_elem_line);
+    }
+
     ps.breakable_call_chain_of(
         cc.clone(),
         method_call,
@@ -2879,6 +2896,9 @@ fn format_call_chain_elements(ps: &mut dyn ConcreteParserState, cc: Vec<CallChai
             CallChainElement::Expression(e) => format_expression(ps, *e),
         }
         next_args_list_must_use_parens = element_is_super_keyword;
+    }
+    if has_indented {
+        ps.end_indent_for_call_chain();
     }
 }
 

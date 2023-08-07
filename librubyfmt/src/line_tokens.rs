@@ -60,6 +60,7 @@ pub enum ConcreteLineToken {
     // but they're meaningful inside of the render queue
     AfterCallChain,
     BeginCallChainIndent,
+    EndCallChainIndent,
 }
 
 impl ConcreteLineToken {
@@ -99,7 +100,9 @@ impl ConcreteLineToken {
             Self::DataEnd => "__END__".to_string(),
             // no-op, this is purely semantic information
             // for the render queue
-            Self::AfterCallChain | Self::BeginCallChainIndent => "".to_string(),
+            Self::AfterCallChain | Self::BeginCallChainIndent | Self::EndCallChainIndent => {
+                "".to_string()
+            }
         }
     }
 
@@ -110,8 +113,7 @@ impl ConcreteLineToken {
         // each individual string token, which would increase the allocations of rubyfmt
         // by an order of magnitude
         match self {
-            AfterCallChain => 0,       // purely semantic token, doesn't render
-            BeginCallChainIndent => 0, // purely semantic token, doesn't render
+            AfterCallChain | BeginCallChainIndent | EndCallChainIndent => 0, // purely semantic tokens, don't render
             Indent { depth, .. } => *depth as usize,
             Keyword { keyword: contents }
             | Op { op: contents }
@@ -261,30 +263,42 @@ pub enum AbstractLineToken {
 }
 
 impl AbstractLineToken {
-    pub fn into_single_line(self) -> ConcreteLineTokenAndTargets {
+    pub fn into_single_line(self) -> Vec<ConcreteLineTokenAndTargets> {
         match self {
-            Self::CollapsingNewLine(_) => {
+            Self::CollapsingNewLine(heredoc_strings) => {
                 // we ignore the heredoc part of the collapsing newline here because the
                 // line length check is only used to calculate if we're going to render
                 // the breakable as multiline, and we always render heredoc strings as
                 // multiline
-                ConcreteLineTokenAndTargets::ConcreteLineToken(ConcreteLineToken::DirectPart {
-                    part: "".to_string(),
-                })
+                let mut res = vec![ConcreteLineTokenAndTargets::ConcreteLineToken(
+                    ConcreteLineToken::DirectPart {
+                        part: "".to_string(),
+                    },
+                )];
+                res.extend(Self::shimmy_and_shake_heredocs(heredoc_strings));
+                res
             }
-            Self::SoftNewline(_) => {
+            Self::SoftNewline(heredoc_strings) => {
                 // see comment above
-                ConcreteLineTokenAndTargets::ConcreteLineToken(ConcreteLineToken::Space)
+                let mut res = vec![ConcreteLineTokenAndTargets::ConcreteLineToken(
+                    ConcreteLineToken::Space,
+                )];
+                res.extend(Self::shimmy_and_shake_heredocs(heredoc_strings));
+                res
             }
             Self::SoftIndent { .. } => {
-                ConcreteLineTokenAndTargets::ConcreteLineToken(ConcreteLineToken::DirectPart {
-                    part: "".to_string(),
-                })
+                vec![ConcreteLineTokenAndTargets::ConcreteLineToken(
+                    ConcreteLineToken::DirectPart {
+                        part: "".to_string(),
+                    },
+                )]
             }
-            Self::ConcreteLineToken(clt) => ConcreteLineTokenAndTargets::ConcreteLineToken(clt),
-            Self::BreakableEntry(be) => ConcreteLineTokenAndTargets::BreakableEntry(be),
+            Self::ConcreteLineToken(clt) => {
+                vec![ConcreteLineTokenAndTargets::ConcreteLineToken(clt)]
+            }
+            Self::BreakableEntry(be) => vec![ConcreteLineTokenAndTargets::BreakableEntry(be)],
             Self::BreakableCallChainEntry(bcce) => {
-                ConcreteLineTokenAndTargets::BreakableCallChainEntry(bcce)
+                vec![ConcreteLineTokenAndTargets::BreakableCallChainEntry(bcce)]
             }
         }
     }

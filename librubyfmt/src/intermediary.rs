@@ -53,12 +53,7 @@ impl Intermediary {
         self.index_of_last_hard_newline = self.tokens.len() - 1;
     }
 
-    pub fn fix_heredoc_delim_indent_mistake(&mut self) {
-        // Remove duplicate indent
-        self.tokens.remove(self.tokens.len() - 2);
-    }
-
-    pub fn fix_heredoc_direct_part_indent_mistake(&mut self) {
+    pub fn fix_heredoc_duplicate_indent_mistake(&mut self) {
         // Remove duplicate indent
         self.tokens.remove(self.tokens.len() - 3);
     }

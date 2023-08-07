@@ -6,8 +6,7 @@ sig do
       T::Array[Some::Really::Long::ClassName::ToMakeThis::PassTheMaxLineLength]
       # Comment after
     ]
-  )
-    .void
+  ).void
 end
 def foo
 end
