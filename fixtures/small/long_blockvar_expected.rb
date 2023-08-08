@@ -1,5 +1,4 @@
-things
-  .each do |
+things.each do |
     omg:,
     really:,
     dang:,
@@ -9,5 +8,5 @@ things
     you_should_refactor:,
     like_really_this_is_so_long:
   |
-    do_things!
-  end
+  do_things!
+end

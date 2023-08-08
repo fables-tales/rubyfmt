@@ -310,11 +310,6 @@ impl AbstractTokenTarget for BreakableCallChainEntry {
     }
 
     fn is_multiline(&self) -> bool {
-        // Never multiline if we're in an embedded expression
-        if self.context == FormattingContext::StringEmbexpr {
-            return false;
-        }
-
         let MethodCall(_, mut call_chain_to_check, ident, _, args, start_end) =
             self.method_call.clone();
 
@@ -477,10 +472,10 @@ impl BreakableCallChainEntry {
         // individual line and get _that_ max length
         self.tokens
             .iter()
-            .flat_map(|tok| tok.clone().into_single_line())
+            .flat_map(|tok| tok.clone().into_multi_line())
             .map(|tok| tok.into_ruby())
             .collect::<String>()
-            .split("\n")
+            .split("\\n")
             .map(|st| st.len())
             .max()
             .unwrap()

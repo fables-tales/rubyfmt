@@ -153,7 +153,10 @@ impl RenderQueueWriter {
         }
     }
 
-    fn format_breakable_call_chain_entry(accum: &mut Intermediary, mut bcce: BreakableCallChainEntry) {
+    fn format_breakable_call_chain_entry(
+        accum: &mut Intermediary,
+        mut bcce: BreakableCallChainEntry,
+    ) {
         let single_line_string_length = bcce.longest_multiline_string_length();
         let length = accum.current_line_length() + single_line_string_length;
         if (length > MAX_LINE_LENGTH
