@@ -167,7 +167,7 @@ impl AbstractTokenTarget for BreakableEntry {
         self.tokens
             .iter()
             .flat_map(|tok| tok.clone().into_single_line())
-            .map(|tok| tok.into_ruby().len())
+            .map(|tok| tok.into_ruby(ConvertType::SingleLine).len())
             .sum::<usize>()
             + self.delims.single_line_len()
     }
@@ -301,7 +301,7 @@ impl AbstractTokenTarget for BreakableCallChainEntry {
         self.tokens
             .iter()
             .flat_map(|tok| tok.clone().into_single_line())
-            .map(|tok| tok.into_ruby().len())
+            .map(|tok| tok.into_ruby(ConvertType::SingleLine).len())
             .sum::<usize>()
     }
 
@@ -472,10 +472,36 @@ impl BreakableCallChainEntry {
         // individual line and get _that_ max length
         self.tokens
             .iter()
-            .flat_map(|tok| tok.clone().into_multi_line())
-            .map(|tok| tok.into_ruby())
+            .map(|tok| {
+                let forced_multiline = match tok {
+                    AbstractLineToken::BreakableCallChainEntry(bcce) => bcce.is_multiline(),
+                    AbstractLineToken::BreakableEntry(be) => be.is_multiline(),
+                    _ => false,
+                };
+                if forced_multiline {
+                    RenderItem {
+                        tokens: tok.clone().into_multi_line(),
+                        convert_type: ConvertType::MultiLine,
+                    }
+                } else {
+                    RenderItem {
+                        tokens: tok.clone().into_single_line(),
+                        convert_type: ConvertType::SingleLine,
+                    }
+                }
+            })
+            .flat_map(
+                |RenderItem {
+                     tokens,
+                     convert_type,
+                 }| {
+                    tokens
+                        .into_iter()
+                        .map(move |tok| tok.into_ruby(convert_type))
+                },
+            )
             .collect::<String>()
-            .split("\\n")
+            .split('\n')
             .map(|st| st.len())
             .max()
             .unwrap()
@@ -511,4 +537,9 @@ impl BreakableCallChainEntry {
 
         false
     }
+}
+
+struct RenderItem {
+    tokens: Vec<ConcreteLineTokenAndTargets>,
+    convert_type: ConvertType,
 }

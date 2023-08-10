@@ -49,6 +49,16 @@ impl RenderQueueWriter {
                 if !is_ending_heredoc_token {
                     next_token = clats_indent(depth + (additional_indent * 2))
                 }
+            } else if let ConcreteLineTokenAndTargets::ConcreteLineToken(
+                ConcreteLineToken::Comment { contents },
+            ) = next_token
+            {
+                let mut new_contents: String = (0..(additional_indent * 2)).map(|_| ' ').collect();
+                new_contents.push_str(contents.as_str());
+                next_token =
+                    ConcreteLineTokenAndTargets::ConcreteLineToken(ConcreteLineToken::Comment {
+                        contents: new_contents,
+                    })
             }
 
             match next_token {

@@ -2896,6 +2896,7 @@ fn format_call_chain_elements(ps: &mut dyn ConcreteParserState, cc: Vec<CallChai
             CallChainElement::Expression(e) => format_expression(ps, *e),
         }
         next_args_list_must_use_parens = element_is_super_keyword;
+        ps.shift_comments();
     }
     if has_indented {
         ps.end_indent_for_call_chain();

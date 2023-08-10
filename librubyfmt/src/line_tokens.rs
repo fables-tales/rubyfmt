@@ -232,19 +232,19 @@ impl ConcreteLineTokenAndTargets {
         }
     }
 
-    pub fn into_ruby(self) -> String {
+    pub fn into_ruby(self, convert_type: ConvertType) -> String {
         match self {
             Self::BreakableEntry(be) => be
-                .into_tokens(ConvertType::SingleLine)
+                .into_tokens(convert_type)
                 .into_iter()
                 .fold("".to_string(), |accum, tok| {
-                    format!("{}{}", accum, tok.into_ruby())
+                    format!("{}{}", accum, tok.into_ruby(convert_type))
                 }),
             Self::BreakableCallChainEntry(bcce) => bcce
-                .into_tokens(ConvertType::SingleLine)
+                .into_tokens(convert_type)
                 .into_iter()
                 .fold("".to_string(), |accum, tok| {
-                    format!("{}{}", accum, tok.into_ruby())
+                    format!("{}{}", accum, tok.into_ruby(convert_type))
                 }),
             Self::ConcreteLineToken(clt) => clt.into_ruby(),
         }
@@ -266,33 +266,16 @@ impl AbstractLineToken {
     pub fn into_single_line(self) -> Vec<ConcreteLineTokenAndTargets> {
         match self {
             Self::CollapsingNewLine(heredoc_strings) => {
-                // we ignore the heredoc part of the collapsing newline here because the
-                // line length check is only used to calculate if we're going to render
-                // the breakable as multiline, and we always render heredoc strings as
-                // multiline
-                let mut res = vec![ConcreteLineTokenAndTargets::ConcreteLineToken(
-                    ConcreteLineToken::DirectPart {
-                        part: "".to_string(),
-                    },
-                )];
-                res.extend(Self::shimmy_and_shake_heredocs(heredoc_strings));
-                res
+                Self::shimmy_and_shake_heredocs(heredoc_strings)
             }
             Self::SoftNewline(heredoc_strings) => {
-                // see comment above
                 let mut res = vec![ConcreteLineTokenAndTargets::ConcreteLineToken(
                     ConcreteLineToken::Space,
                 )];
                 res.extend(Self::shimmy_and_shake_heredocs(heredoc_strings));
                 res
             }
-            Self::SoftIndent { .. } => {
-                vec![ConcreteLineTokenAndTargets::ConcreteLineToken(
-                    ConcreteLineToken::DirectPart {
-                        part: "".to_string(),
-                    },
-                )]
-            }
+            Self::SoftIndent { .. } => Vec::new(),
             Self::ConcreteLineToken(clt) => {
                 vec![ConcreteLineTokenAndTargets::ConcreteLineToken(clt)]
             }

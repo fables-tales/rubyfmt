@@ -280,9 +280,9 @@ impl Intermediary {
         }
         match self.tokens.get(self.index_of_last_hard_newline) {
             Some(&ConcreteLineToken::HardNewLine) => {}
-            _ => panic!(
+            x => panic!(
                 "newlines are fucked {:?}, {:#?}",
-                self.index_of_last_hard_newline, self.tokens
+                self.index_of_last_hard_newline, x
             ),
         }
     }
