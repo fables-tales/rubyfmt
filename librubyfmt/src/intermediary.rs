@@ -17,6 +17,7 @@ pub struct Intermediary {
     index_of_last_hard_newline: usize,
     current_line_metadata: LineMetadata,
     previous_line_metadata: Option<LineMetadata>,
+    pub additional_indent: u32,
 }
 
 impl Intermediary {
@@ -26,6 +27,7 @@ impl Intermediary {
             current_line_metadata: LineMetadata::new(),
             previous_line_metadata: None,
             index_of_last_hard_newline: 0,
+            additional_indent: 0,
         }
     }
 

@@ -31,7 +31,6 @@ impl RenderQueueWriter {
 
     fn render_as(accum: &mut Intermediary, tokens: Vec<ConcreteLineTokenAndTargets>) {
         use ConcreteLineToken::*;
-        let mut additional_indent = 0;
         let tokens_copy = tokens.clone();
 
         for (index, mut next_token) in tokens.into_iter().enumerate() {
@@ -47,13 +46,14 @@ impl RenderQueueWriter {
                         ))
                     );
                 if !is_ending_heredoc_token {
-                    next_token = clats_indent(depth + (additional_indent * 2))
+                    next_token = clats_indent(depth + (accum.additional_indent * 2))
                 }
             } else if let ConcreteLineTokenAndTargets::ConcreteLineToken(
                 ConcreteLineToken::Comment { contents },
             ) = next_token
             {
-                let mut new_contents: String = (0..(additional_indent * 2)).map(|_| ' ').collect();
+                let mut new_contents: String =
+                    (0..(accum.additional_indent * 2)).map(|_| ' ').collect();
                 new_contents.push_str(contents.as_str());
                 next_token =
                     ConcreteLineTokenAndTargets::ConcreteLineToken(ConcreteLineToken::Comment {
@@ -69,8 +69,8 @@ impl RenderQueueWriter {
                     Self::format_breakable_call_chain_entry(accum, bcce)
                 }
                 ConcreteLineTokenAndTargets::ConcreteLineToken(x) => match x {
-                    BeginCallChainIndent => additional_indent += 1,
-                    EndCallChainIndent => additional_indent -= 1,
+                    BeginCallChainIndent => accum.additional_indent += 1,
+                    EndCallChainIndent => accum.additional_indent -= 1,
                     _ => accum.push(x),
                 },
             }
