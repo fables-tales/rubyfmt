@@ -60,8 +60,7 @@ params(
   route: String,
   config: T.nilable(Some::Really::Long::Type::Name),
   block: T.proc.bind(Some::Really::Long::Type::Name::In::This::Proc).void
-)
-  .void
+).void
 
 Opus::Foo
   .params(
