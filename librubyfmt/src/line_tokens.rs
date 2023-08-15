@@ -266,7 +266,12 @@ impl AbstractLineToken {
     pub fn into_single_line(self) -> Vec<ConcreteLineTokenAndTargets> {
         match self {
             Self::CollapsingNewLine(heredoc_strings) => {
-                Self::shimmy_and_shake_heredocs(heredoc_strings)
+                let mut res = Vec::new();
+                if heredoc_strings.is_some() {
+                    res.push(cltats_hard_newline());
+                }
+                res.extend(Self::shimmy_and_shake_heredocs(heredoc_strings));
+                res
             }
             Self::SoftNewline(heredoc_strings) => {
                 let mut res = vec![ConcreteLineTokenAndTargets::ConcreteLineToken(

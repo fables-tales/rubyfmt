@@ -134,7 +134,7 @@ where
     fn new_scope(&mut self, f: RenderFunc);
     fn new_block(&mut self, f: RenderFunc);
     fn with_start_of_line(&mut self, start_of_line: bool, f: RenderFunc);
-    fn breakable_of(&mut self, delims: BreakableDelims, f: RenderFunc) -> bool;
+    fn breakable_of(&mut self, delims: BreakableDelims, f: RenderFunc);
     fn inline_breakable_of(&mut self, delims: BreakableDelims, f: RenderFunc);
     fn breakable_call_chain_of(
         &mut self,
@@ -331,7 +331,7 @@ impl ConcreteParserState for BaseParserState {
         self.start_of_line.pop();
     }
 
-    fn breakable_of<'a>(&mut self, delims: BreakableDelims, f: RenderFunc) -> bool {
+    fn breakable_of<'a>(&mut self, delims: BreakableDelims, f: RenderFunc) {
         self.shift_comments();
         let mut be = BreakableEntry::new(
             self.current_spaces(),
@@ -362,9 +362,7 @@ impl ConcreteParserState for BaseParserState {
             .pop()
             .expect("cannot have empty here because we just pushed")
             .to_breakable_entry();
-        let is_multiline = insert_be.is_multiline();
         self.push_target(ConcreteLineTokenAndTargets::BreakableEntry(insert_be));
-        is_multiline
     }
 
     /// A version of `breakable_of` for list-like things that use whitespace delimiters.

@@ -70,7 +70,11 @@ impl RenderQueueWriter {
                 }
                 ConcreteLineTokenAndTargets::ConcreteLineToken(x) => match x {
                     BeginCallChainIndent => accum.additional_indent += 1,
-                    EndCallChainIndent => accum.additional_indent -= 1,
+                    EndCallChainIndent => {
+                        if !accum.skip_next_end.pop().expect("We should only have an EndCallChainIndent with an associated BeginCallChainIndent") {
+                            accum.additional_indent -= 1;
+                        }
+                    }
                     _ => accum.push(x),
                 },
             }
@@ -169,17 +173,16 @@ impl RenderQueueWriter {
     ) {
         let single_line_string_length = bcce.longest_multiline_string_length();
         let length = accum.current_line_length() + single_line_string_length;
-        if (length > MAX_LINE_LENGTH
-            || bcce.is_multiline()
-            || bcce.any_collapsing_newline_has_heredoc_content())
+        if (length > MAX_LINE_LENGTH || bcce.is_multiline())
             && bcce.entry_formatting_context() != FormattingContext::StringEmbexpr
         {
+            accum.skip_next_end.push(false);
             let tokens = bcce.into_tokens(ConvertType::MultiLine);
             Self::render_as(accum, tokens);
         } else {
             bcce.remove_call_chain_magic_tokens();
+            accum.skip_next_end.push(true);
             Self::render_as(accum, bcce.into_tokens(ConvertType::SingleLine));
-            accum.clear_breakable_garbage();
         }
     }
 

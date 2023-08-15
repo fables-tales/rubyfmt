@@ -4,8 +4,8 @@ use crate::format::format_expression;
 use crate::line_tokens::{AbstractLineToken, ConcreteLineToken, ConcreteLineTokenAndTargets};
 use crate::parser_state::{will_render_as_multiline, BaseParserState, FormattingContext};
 use crate::ripper_tree_types::{
-    ArgsAddStarOrExpressionListOrArgsForward, Block, CallChainElement, Dot, DotType, DotTypeOrOp,
-    Expression, LonelyOperator, MethodCall, Op, Period, StartEnd, StringLiteral,
+    Block, CallChainElement, Dot, DotType, DotTypeOrOp, Expression, LonelyOperator, MethodCall, Op,
+    Period, StartEnd, StringLiteral,
 };
 use crate::types::{ColNumber, LineNumber};
 use std::collections::HashSet;
@@ -310,6 +310,11 @@ impl AbstractTokenTarget for BreakableCallChainEntry {
     }
 
     fn is_multiline(&self) -> bool {
+        // ???
+        if self.line_numbers.len() > 1 {
+            return true;
+        }
+
         let MethodCall(_, mut call_chain_to_check, ident, _, args, start_end) =
             self.method_call.clone();
 
@@ -521,17 +526,7 @@ impl BreakableCallChainEntry {
     fn is_heredoc_call_chain_with_breakables(&self, cc_elements: &[CallChainElement]) -> bool {
         if let Some(CallChainElement::Expression(expr)) = cc_elements.first() {
             if let Expression::StringLiteral(string_literal) = &**expr {
-                if matches!(string_literal, StringLiteral::Heredoc(..)) {
-                    let contains_breakables = cc_elements.iter().any(|cc_elem| match cc_elem {
-                        CallChainElement::ArgsAddStarOrExpressionListOrArgsForward(
-                            ArgsAddStarOrExpressionListOrArgsForward::ExpressionList(list),
-                            ..,
-                        ) => !list.is_empty(),
-                        CallChainElement::Block(..) => true,
-                        _ => false,
-                    });
-                    return contains_breakables;
-                }
+                return matches!(string_literal, StringLiteral::Heredoc(..));
             }
         }
 

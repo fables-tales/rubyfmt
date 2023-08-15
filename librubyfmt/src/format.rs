@@ -845,6 +845,7 @@ pub fn format_method_call(ps: &mut dyn ConcreteParserState, method_call: MethodC
     ps.with_start_of_line(
         false,
         Box::new(|ps| {
+            let has_empty_chain = chain.is_empty();
             format_call_chain(ps, chain, method_call);
 
             if use_parens && method.get_name() == ".()" {
@@ -905,6 +906,9 @@ pub fn format_method_call(ps: &mut dyn ConcreteParserState, method_call: MethodC
             } else if use_parens {
                 ps.emit_open_paren();
                 ps.emit_close_paren();
+            }
+            if !has_empty_chain {
+                ps.end_indent_for_call_chain();
             }
         }),
     );
@@ -2836,7 +2840,7 @@ fn format_call_chain_elements(ps: &mut dyn ConcreteParserState, cc: Vec<CallChai
     // When set, force all `CallChainElement::ArgsAddStarOrExpressionListOrArgsForward`
     // to use parens, even when empty. This handles cases like `super()` where parens matter
     let mut next_args_list_must_use_parens = false;
-    let mut has_indented = false;
+    ps.start_indent_for_call_chain();
     for cc_elem in cc {
         let mut element_is_super_keyword = false;
 
@@ -2878,10 +2882,6 @@ fn format_call_chain_elements(ps: &mut dyn ConcreteParserState, cc: Vec<CallChai
                 }
             }
             CallChainElement::DotTypeOrOp(d) => {
-                if !has_indented {
-                    ps.start_indent_for_call_chain();
-                    has_indented = true;
-                }
                 let is_double_colon = match &d {
                     DotTypeOrOp::ColonColon(_) => true,
                     DotTypeOrOp::StringDot(val) => val == "::",
@@ -2897,9 +2897,6 @@ fn format_call_chain_elements(ps: &mut dyn ConcreteParserState, cc: Vec<CallChai
         }
         next_args_list_must_use_parens = element_is_super_keyword;
         ps.shift_comments();
-    }
-    if has_indented {
-        ps.end_indent_for_call_chain();
     }
 }
 
@@ -2951,13 +2948,21 @@ pub fn format_method_add_block(ps: &mut dyn ConcreteParserState, mab: MethodAddB
     }
 
     let method_call = mab.clone().to_method_call();
-    let mut chain = (mab.1).into_call_chain();
-    chain.push(CallChainElement::Block(mab.2));
+    let chain = (mab.1).into_call_chain();
+    let block = mab.2;
 
     ps.with_start_of_line(
         false,
         Box::new(|ps| {
+            let has_empty_chain = chain.is_empty();
             format_call_chain(ps, chain, method_call);
+            if !has_empty_chain {
+                ps.end_indent_for_call_chain();
+            }
+            ps.emit_space();
+            format_block(ps, block);
+            // HACK!
+            ps.emit_after_call_chain();
         }),
     );
 

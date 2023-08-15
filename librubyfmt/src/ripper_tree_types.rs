@@ -260,7 +260,9 @@ impl Expression {
                 Some(ident_or_const.start_line())
             }
             Expression::MRHSAddStar(MRHSAddStar(_, mrhs, ..)) => todo!(),
-            Expression::StringConcat(StringConcat(_, concat_or_literal, ..)) => todo!(),
+            Expression::StringConcat(StringConcat(_, concat_or_literal, ..)) => {
+                concat_or_literal.start_line()
+            }
             Expression::Undef(Undef(_, symbol_literals)) => {
                 symbol_literals.first().map(|s| s.start_line())
             }
@@ -405,6 +407,15 @@ pub struct StringConcat(
 pub enum StringConcatOrStringLiteral {
     StringConcat(Box<StringConcat>),
     StringLiteral(StringLiteral),
+}
+
+impl StringConcatOrStringLiteral {
+    pub fn start_line(&self) -> Option<u64> {
+        match self {
+            StringConcatOrStringLiteral::StringConcat(sc) => sc.1.start_line(),
+            StringConcatOrStringLiteral::StringLiteral(sl) => Some(sl.start_line()),
+        }
+    }
 }
 
 def_tag!(mrhs_add_star_tag, "mrhs_add_star");
