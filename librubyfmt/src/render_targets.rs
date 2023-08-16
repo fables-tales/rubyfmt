@@ -352,11 +352,6 @@ impl AbstractTokenTarget for BreakableCallChainEntry {
             })
             .collect::<Vec<StartEnd>>();
 
-        // don't multiline if there's only one call in the chain
-        if all_op_locations.len() < 2 {
-            return false;
-        }
-
         // Multiline the chain if all the operators (dots, double colons, etc.) are not on the same line
         if let Some(first_op_start_end) = all_op_locations.first() {
             let chain_is_user_multilined = !all_op_locations
@@ -364,32 +359,17 @@ impl AbstractTokenTarget for BreakableCallChainEntry {
                 .all(|op_start_end| op_start_end == first_op_start_end);
             if chain_is_user_multilined {
                 return true;
-            }
-        }
-
-        // Ignore chains that are basically only method calls, e.g.
-        // ````ruby
-        // Thing.foo(args)
-        // Thing.foo(args) { block! }
-        // ```
-        // These should always stay inline
-        match call_chain_to_check.as_slice() {
-            [CallChainElement::VarRef(..) | CallChainElement::IdentOrOpOrKeywordOrConst(..), CallChainElement::DotTypeOrOp(..), CallChainElement::IdentOrOpOrKeywordOrConst(..)]
-            | [CallChainElement::VarRef(..) | CallChainElement::IdentOrOpOrKeywordOrConst(..), CallChainElement::DotTypeOrOp(..), CallChainElement::IdentOrOpOrKeywordOrConst(..), CallChainElement::ArgsAddStarOrExpressionListOrArgsForward(..)]
-            | [CallChainElement::VarRef(..) | CallChainElement::IdentOrOpOrKeywordOrConst(..), CallChainElement::DotTypeOrOp(..), CallChainElement::IdentOrOpOrKeywordOrConst(..), CallChainElement::Block(..)]
-            | [CallChainElement::VarRef(..) | CallChainElement::IdentOrOpOrKeywordOrConst(..), CallChainElement::DotTypeOrOp(..), CallChainElement::IdentOrOpOrKeywordOrConst(..), CallChainElement::ArgsAddStarOrExpressionListOrArgsForward(..), CallChainElement::Block(..)] =>
+            } else if self.line_numbers.len() == 2
+                && all_op_locations.len() == 1
+                && *self.line_numbers.iter().max().unwrap() == first_op_start_end.1
             {
-                return false;
+                // This is a mega hack to support constructs like
+                // ```ruby
+                // params(foo: String)
+                //   .returns(Bar)
+                // ```
+                return true;
             }
-            [CallChainElement::Expression(maybe_const_ref), CallChainElement::DotTypeOrOp(..), CallChainElement::IdentOrOpOrKeywordOrConst(..)]
-            | [CallChainElement::Expression(maybe_const_ref), CallChainElement::DotTypeOrOp(..), CallChainElement::IdentOrOpOrKeywordOrConst(..), CallChainElement::ArgsAddStarOrExpressionListOrArgsForward(..)]
-            | [CallChainElement::Expression(maybe_const_ref), CallChainElement::DotTypeOrOp(..), CallChainElement::IdentOrOpOrKeywordOrConst(..), CallChainElement::Block(..)]
-            | [CallChainElement::Expression(maybe_const_ref), CallChainElement::DotTypeOrOp(..), CallChainElement::IdentOrOpOrKeywordOrConst(..), CallChainElement::ArgsAddStarOrExpressionListOrArgsForward(..), CallChainElement::Block(..)] => {
-                if matches!(maybe_const_ref.as_ref(), Expression::ConstPathRef(..)) {
-                    return false;
-                }
-            }
-            _ => {}
         }
 
         // If the first item in the chain is a multiline expression (like a hash or array),
@@ -491,6 +471,34 @@ impl BreakableCallChainEntry {
             .map(|st| st.len())
             .max()
             .unwrap()
+    }
+
+    pub fn should_force_single_line(&self) -> bool {
+        // Ignore chains that are basically only method calls, e.g.
+        // ````ruby
+        // Thing.foo(args)
+        // Thing.foo(args) { block! }
+        // ```
+        // These should always stay inline
+        match self.call_chain.as_slice() {
+            [CallChainElement::VarRef(..) | CallChainElement::IdentOrOpOrKeywordOrConst(..), CallChainElement::DotTypeOrOp(..), CallChainElement::IdentOrOpOrKeywordOrConst(..)]
+            | [CallChainElement::VarRef(..) | CallChainElement::IdentOrOpOrKeywordOrConst(..), CallChainElement::DotTypeOrOp(..), CallChainElement::IdentOrOpOrKeywordOrConst(..), CallChainElement::ArgsAddStarOrExpressionListOrArgsForward(..)]
+            | [CallChainElement::VarRef(..) | CallChainElement::IdentOrOpOrKeywordOrConst(..), CallChainElement::DotTypeOrOp(..), CallChainElement::IdentOrOpOrKeywordOrConst(..), CallChainElement::Block(..)]
+            | [CallChainElement::VarRef(..) | CallChainElement::IdentOrOpOrKeywordOrConst(..), CallChainElement::DotTypeOrOp(..), CallChainElement::IdentOrOpOrKeywordOrConst(..), CallChainElement::ArgsAddStarOrExpressionListOrArgsForward(..), CallChainElement::Block(..)] =>
+            {
+                return true;
+            }
+            [CallChainElement::Expression(maybe_const_ref), CallChainElement::DotTypeOrOp(..), CallChainElement::IdentOrOpOrKeywordOrConst(..)]
+            | [CallChainElement::Expression(maybe_const_ref), CallChainElement::DotTypeOrOp(..), CallChainElement::IdentOrOpOrKeywordOrConst(..), CallChainElement::ArgsAddStarOrExpressionListOrArgsForward(..)]
+            | [CallChainElement::Expression(maybe_const_ref), CallChainElement::DotTypeOrOp(..), CallChainElement::IdentOrOpOrKeywordOrConst(..), CallChainElement::Block(..)]
+            | [CallChainElement::Expression(maybe_const_ref), CallChainElement::DotTypeOrOp(..), CallChainElement::IdentOrOpOrKeywordOrConst(..), CallChainElement::ArgsAddStarOrExpressionListOrArgsForward(..), CallChainElement::Block(..)] => {
+                if matches!(maybe_const_ref.as_ref(), Expression::ConstPathRef(..)) {
+                    return true;
+                }
+            }
+            _ => {}
+        }
+        false
     }
 
     /// In practice, this generally means something like the call chain having something

@@ -201,7 +201,8 @@ impl RenderQueueWriter {
     ) {
         let single_line_string_length = bcce.longest_multiline_string_length();
         let length = accum.current_line_length() + single_line_string_length;
-        if (length > MAX_LINE_LENGTH || bcce.is_multiline())
+        let must_be_single_line = bcce.should_force_single_line();
+        if (!must_be_single_line && (length > MAX_LINE_LENGTH || bcce.is_multiline()))
             && bcce.entry_formatting_context() != FormattingContext::StringEmbexpr
         {
             let tokens = bcce.into_tokens(ConvertType::MultiLine);

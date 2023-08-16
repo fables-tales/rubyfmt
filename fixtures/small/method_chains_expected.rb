@@ -25,7 +25,8 @@ foo
 # the first receiver, consider that "on one line"
 foo.bar.baz
 
-foo::bar&.nil?
+foo::bar
+  &.nil?
 
 foo::bar
   &.nil?::klass
