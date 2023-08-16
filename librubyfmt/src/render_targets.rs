@@ -4,8 +4,8 @@ use crate::format::format_expression;
 use crate::line_tokens::{AbstractLineToken, ConcreteLineToken, ConcreteLineTokenAndTargets};
 use crate::parser_state::{will_render_as_multiline, BaseParserState, FormattingContext};
 use crate::ripper_tree_types::{
-    Block, CallChainElement, Dot, DotType, DotTypeOrOp, Expression, LonelyOperator, MethodCall, Op,
-    Period, StartEnd, StringLiteral,
+    Block, CallChainElement, Dot, DotType, DotTypeOrOp, Expression, LonelyOperator, Op, Period,
+    StartEnd, StringLiteral,
 };
 use crate::types::{ColNumber, LineNumber};
 use std::collections::HashSet;
@@ -227,7 +227,6 @@ pub struct BreakableCallChainEntry {
     line_numbers: HashSet<LineNumber>,
     call_chain: Vec<CallChainElement>,
     context: FormattingContext,
-    method_call: MethodCall,
 }
 
 impl AbstractTokenTarget for BreakableCallChainEntry {
@@ -310,20 +309,7 @@ impl AbstractTokenTarget for BreakableCallChainEntry {
     }
 
     fn is_multiline(&self) -> bool {
-        // ???
-        if self.line_numbers.len() > 1 {
-            return true;
-        }
-
-        let MethodCall(_, mut call_chain_to_check, ident, _, args, start_end) =
-            self.method_call.clone();
-
-        // Add the original method as a call chain element purely for the sake of determining multiling
-        call_chain_to_check.append(&mut vec![
-            CallChainElement::IdentOrOpOrKeywordOrConst(ident),
-            CallChainElement::ArgsAddStarOrExpressionListOrArgsForward(args, start_end),
-        ]);
-
+        let mut call_chain_to_check = self.call_chain.clone();
         // We don't always want to multiline blocks if their only usage
         // is at the end of a chain, since it's common to have chains
         // that end with long blocks, but those blocks don't mean we should
@@ -336,6 +322,10 @@ impl AbstractTokenTarget for BreakableCallChainEntry {
         // ```
         if let Some(CallChainElement::Block(..)) = call_chain_to_check.last() {
             call_chain_to_check.pop();
+        }
+
+        if self.is_heredoc_call_chain_with_breakables(&call_chain_to_check) {
+            return true;
         }
 
         let all_op_locations = self
@@ -402,10 +392,6 @@ impl AbstractTokenTarget for BreakableCallChainEntry {
             _ => {}
         }
 
-        if self.is_heredoc_call_chain_with_breakables(&call_chain_to_check) {
-            return true;
-        }
-
         // If the first item in the chain is a multiline expression (like a hash or array),
         // ignore it when checking line length
         if let Some(CallChainElement::Expression(expr)) = call_chain_to_check.first() {
@@ -440,18 +426,13 @@ impl AbstractTokenTarget for BreakableCallChainEntry {
 }
 
 impl BreakableCallChainEntry {
-    pub fn new(
-        context: FormattingContext,
-        call_chain: Vec<CallChainElement>,
-        method_call: MethodCall,
-    ) -> Self {
+    pub fn new(context: FormattingContext, call_chain: Vec<CallChainElement>) -> Self {
         BreakableCallChainEntry {
             additional_indent: 0,
             tokens: Vec::new(),
             line_numbers: HashSet::new(),
             context,
             call_chain,
-            method_call,
         }
     }
 

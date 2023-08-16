@@ -139,7 +139,6 @@ where
     fn breakable_call_chain_of(
         &mut self,
         call_chain_elements: Vec<CallChainElement>,
-        method_call: MethodCall,
         f: RenderFunc,
     );
     fn dedent(&mut self, f: RenderFunc);
@@ -398,15 +397,11 @@ impl ConcreteParserState for BaseParserState {
     fn breakable_call_chain_of<'a>(
         &mut self,
         call_chain_elements: Vec<CallChainElement>,
-        method_call: MethodCall,
         f: RenderFunc,
     ) {
         self.shift_comments();
-        let be = BreakableCallChainEntry::new(
-            self.current_formatting_context(),
-            call_chain_elements,
-            method_call,
-        );
+        let be =
+            BreakableCallChainEntry::new(self.current_formatting_context(), call_chain_elements);
         self.breakable_entry_stack.push(Box::new(be));
 
         f(self);
@@ -415,7 +410,6 @@ impl ConcreteParserState for BaseParserState {
         // to reset to ensure that any comments between now and the
         // next newline are at the right indentation level
         self.reset_space_count();
-        self.shift_comments();
 
         let insert_bcce = self
             .breakable_entry_stack
@@ -635,10 +629,7 @@ impl ConcreteParserState for BaseParserState {
 
     fn shift_comments_at_index(&mut self, index: usize) {
         if let Some(new_comments) = self.comments_to_insert.take() {
-            self.insert_concrete_tokens(
-                index,
-                new_comments.into_line_tokens().into_iter().collect(),
-            );
+            self.insert_concrete_tokens(index, new_comments.into_line_tokens());
         }
     }
 

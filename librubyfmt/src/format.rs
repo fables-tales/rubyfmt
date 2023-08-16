@@ -830,7 +830,7 @@ pub fn format_method_call(ps: &mut dyn ConcreteParserState, method_call: MethodC
         ps.emit_indent();
     }
 
-    let MethodCall(_, chain, method, original_used_parens, args, start_end) = method_call.clone();
+    let MethodCall(_, mut chain, method, original_used_parens, args, start_end) = method_call;
 
     debug!("method call!!");
     let use_parens = use_parens_for_method_call(
@@ -841,75 +841,15 @@ pub fn format_method_call(ps: &mut dyn ConcreteParserState, method_call: MethodC
         original_used_parens,
         ps.current_formatting_context(),
     );
+    chain.extend([
+        CallChainElement::IdentOrOpOrKeywordOrConst(method),
+        CallChainElement::ArgsAddStarOrExpressionListOrArgsForward(args, start_end),
+    ]);
 
     ps.with_start_of_line(
         false,
         Box::new(|ps| {
-            let has_empty_chain = chain.is_empty();
-            format_call_chain(ps, chain, method_call);
-
-            if use_parens && method.get_name() == ".()" {
-                ps.emit_ident(".".to_string());
-            } else {
-                format_ident(ps, method.into_ident());
-            }
-            let delims = if use_parens {
-                BreakableDelims::for_method_call()
-            } else {
-                BreakableDelims::for_kw()
-            };
-            if !args.is_empty() {
-                if args_has_single_def_expression(&args) {
-                    // If we match `def ...` as the first argument, just
-                    // emit it without any delimiters.
-                    ps.emit_space();
-
-                    if let ArgsAddStarOrExpressionListOrArgsForward::ExpressionList(mut el) = args {
-                        let expr = el.pop().expect("checked the list is not empty");
-
-                        if let Expression::Def(def_expression) = expr {
-                            format_def(ps, def_expression);
-                        } else if let Expression::Defs(defs_expression) = expr {
-                            format_defs(ps, defs_expression);
-                        }
-                    }
-                } else {
-                    let force_single_line = matches!(
-                        args,
-                        ArgsAddStarOrExpressionListOrArgsForward::ArgsForward(..)
-                    );
-
-                    let maybe_end_line = start_end.map(|se| se.1);
-
-                    ps.breakable_of(
-                        delims,
-                        Box::new(|ps| {
-                            ps.with_formatting_context(
-                                FormattingContext::ArgsList,
-                                Box::new(|ps| {
-                                    format_list_like_thing(
-                                        ps,
-                                        args,
-                                        maybe_end_line,
-                                        force_single_line,
-                                    );
-                                    ps.emit_collapsing_newline();
-                                }),
-                            );
-                            debug!("end of format method call");
-                        }),
-                    );
-                    if let Some(end_line) = maybe_end_line {
-                        ps.wind_dumping_comments_until_line(end_line);
-                    }
-                }
-            } else if use_parens {
-                ps.emit_open_paren();
-                ps.emit_close_paren();
-            }
-            if !has_empty_chain {
-                ps.end_indent_for_call_chain();
-            }
+            format_call_chain(ps, chain, Some(use_parens));
         }),
     );
 
@@ -2803,7 +2743,7 @@ fn can_elide_parens_for_reserved_names(cc: &[CallChainElement]) -> bool {
 fn format_call_chain(
     ps: &mut dyn ConcreteParserState,
     cc: Vec<CallChainElement>,
-    method_call: MethodCall,
+    last_call_use_parens: Option<bool>,
 ) {
     if cc.is_empty() {
         return;
@@ -2828,60 +2768,112 @@ fn format_call_chain(
 
     ps.breakable_call_chain_of(
         cc.clone(),
-        method_call,
-        Box::new(|ps| format_call_chain_elements(ps, cc)),
+        Box::new(|ps| format_call_chain_elements(ps, cc, last_call_use_parens)),
     );
 
     ps.emit_after_call_chain();
 }
 
-fn format_call_chain_elements(ps: &mut dyn ConcreteParserState, cc: Vec<CallChainElement>) {
+fn format_call_chain_elements(
+    ps: &mut dyn ConcreteParserState,
+    cc: Vec<CallChainElement>,
+    last_call_use_parens: Option<bool>,
+) {
     let elide_parens = can_elide_parens_for_reserved_names(&cc);
     // When set, force all `CallChainElement::ArgsAddStarOrExpressionListOrArgsForward`
     // to use parens, even when empty. This handles cases like `super()` where parens matter
     let mut next_args_list_must_use_parens = false;
-    ps.start_indent_for_call_chain();
-    for cc_elem in cc {
-        let mut element_is_super_keyword = false;
+    let last_call_index = cc
+        .iter()
+        .rposition(|cce| matches!(cce, CallChainElement::IdentOrOpOrKeywordOrConst(..)));
+    let mut has_indented = false;
+
+    for (index, cc_elem) in cc.into_iter().enumerate() {
+        let mut element_must_use_parens = false;
+        let is_last_call_args = if let Some(last_call_index) = last_call_index {
+            index == (last_call_index + 1)
+        } else {
+            false
+        };
 
         match cc_elem {
             CallChainElement::Paren(p) => format_paren(ps, p),
             CallChainElement::IdentOrOpOrKeywordOrConst(i) => {
                 let ident = i.into_ident();
-                element_is_super_keyword = ident.1 == "super";
+                element_must_use_parens = ident.1 == "super";
 
-                format_ident(ps, ident)
+                if ident.1 == ".()" {
+                    ps.emit_ident(".".to_string());
+                    element_must_use_parens = true;
+                } else {
+                    format_ident(ps, ident);
+                }
+                ps.shift_comments();
             }
             CallChainElement::Block(b) => {
                 ps.emit_space();
                 format_block(ps, b)
             }
-            CallChainElement::VarRef(vr) => format_var_ref(ps, vr),
+            CallChainElement::VarRef(vr) => {
+                format_var_ref(ps, vr);
+                ps.shift_comments();
+            }
             CallChainElement::ArgsAddStarOrExpressionListOrArgsForward(aas, start_end) => {
+                let end_line = start_end.map(|se| se.1);
+
                 if !aas.is_empty() || next_args_list_must_use_parens {
-                    let delims = if elide_parens {
-                        BreakableDelims::for_kw()
+                    let use_parens = if next_args_list_must_use_parens {
+                        true
+                    } else if is_last_call_args && last_call_use_parens.is_some() {
+                        last_call_use_parens.unwrap()
                     } else {
+                        !elide_parens
+                    };
+                    let delims = if use_parens {
                         BreakableDelims::for_method_call()
+                    } else {
+                        BreakableDelims::for_kw()
                     };
 
-                    let end_line = start_end.map(|se| se.1);
+                    // For def visiblity modifiers, e.g. `private def ...`
+                    if args_has_single_def_expression(&aas) {
+                        ps.emit_space();
 
-                    ps.breakable_of(
-                        delims,
-                        Box::new(|ps| {
-                            format_list_like_thing(ps, aas, end_line, false);
-                        }),
-                    );
-                    if let Some(end_line) = end_line {
-                        // If we're rendering a single-line chain, force a reset so
-                        // that comments end up at the current indentation level
-                        ps.reset_space_count();
-                        ps.wind_dumping_comments_until_line(end_line);
+                        if let ArgsAddStarOrExpressionListOrArgsForward::ExpressionList(mut el) =
+                            aas.clone()
+                        {
+                            let expr = el.pop().expect("checked the list is not empty");
+
+                            if let Expression::Def(def_expression) = expr {
+                                format_def(ps, def_expression);
+                            } else if let Expression::Defs(defs_expression) = expr {
+                                format_defs(ps, defs_expression);
+                            }
+                        }
+                    } else {
+                        ps.breakable_of(
+                            delims,
+                            Box::new(|ps| {
+                                format_list_like_thing(ps, aas, end_line, false);
+                            }),
+                        );
+                        if let Some(end_line) = end_line {
+                            // If we're rendering a single-line chain, force a reset so
+                            // that comments end up at the current indentation level
+                            ps.reset_space_count();
+                            ps.wind_dumping_comments_until_line(end_line);
+                        }
                     }
+                } else if is_last_call_args && last_call_use_parens.unwrap_or(false) {
+                    ps.emit_open_paren();
+                    ps.emit_close_paren();
                 }
             }
             CallChainElement::DotTypeOrOp(d) => {
+                if !has_indented {
+                    ps.start_indent_for_call_chain();
+                    has_indented = true;
+                }
                 let is_double_colon = match &d {
                     DotTypeOrOp::ColonColon(_) => true,
                     DotTypeOrOp::StringDot(val) => val == "::",
@@ -2895,8 +2887,10 @@ fn format_call_chain_elements(ps: &mut dyn ConcreteParserState, cc: Vec<CallChai
             }
             CallChainElement::Expression(e) => format_expression(ps, *e),
         }
-        next_args_list_must_use_parens = element_is_super_keyword;
-        ps.shift_comments();
+        next_args_list_must_use_parens = element_must_use_parens;
+    }
+    if has_indented {
+        ps.end_indent_for_call_chain();
     }
 }
 
@@ -2947,22 +2941,14 @@ pub fn format_method_add_block(ps: &mut dyn ConcreteParserState, mab: MethodAddB
         ps.emit_indent();
     }
 
-    let method_call = mab.clone().to_method_call();
-    let chain = (mab.1).into_call_chain();
-    let block = mab.2;
+    let mut chain = (mab.1).into_call_chain();
+    chain.push(CallChainElement::Block(mab.2));
 
     ps.with_start_of_line(
         false,
         Box::new(|ps| {
-            let has_empty_chain = chain.is_empty();
-            format_call_chain(ps, chain, method_call);
-            if !has_empty_chain {
-                ps.end_indent_for_call_chain();
-            }
-            ps.emit_space();
-            format_block(ps, block);
-            // HACK!
-            ps.emit_after_call_chain();
+            // let has_empty_chain = chain.is_empty();
+            format_call_chain(ps, chain, None);
         }),
     );
 
@@ -3132,7 +3118,8 @@ pub fn format_do_block(ps: &mut dyn ConcreteParserState, do_block: DoBlock) {
         true,
         Box::new(|ps| {
             ps.wind_dumping_comments_until_line(end_line);
-            ps.emit_end()
+            ps.emit_end();
+            ps.shift_comments();
         }),
     );
 }
