@@ -1,6 +1,6 @@
 use crate::types::ColNumber;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum HeredocKind {
     Bare,
     Dash,
@@ -8,7 +8,7 @@ pub enum HeredocKind {
 }
 
 impl HeredocKind {
-    pub fn from_string(kind_str: String) -> Self {
+    pub fn from_string(kind_str: &str) -> Self {
         if kind_str.contains('~') {
             HeredocKind::Squiggly
         } else if kind_str.contains('-') {

@@ -1637,14 +1637,10 @@ pub fn format_heredoc_string_literal(
         Box::new(|ps| {
             let heredoc_type = (hd.1).0;
             let heredoc_symbol = (hd.1).1;
-            ps.emit_heredoc_start(heredoc_type.clone(), heredoc_symbol.clone());
+            let kind = HeredocKind::from_string(&heredoc_type);
+            ps.emit_heredoc_start(heredoc_type.clone(), heredoc_symbol.clone(), kind.clone());
 
-            ps.push_heredoc_content(
-                heredoc_symbol,
-                HeredocKind::from_string(heredoc_type),
-                parts,
-                end_line,
-            );
+            ps.push_heredoc_content(heredoc_symbol, kind, parts, end_line);
         }),
     );
 
@@ -2885,7 +2881,14 @@ fn format_call_chain_elements(
                 }
                 format_dot(ps, d);
             }
-            CallChainElement::Expression(e) => format_expression(ps, *e),
+            CallChainElement::Expression(e) => {
+                format_expression(ps, *e);
+                // Eagerly render heredocs if they're in the first expression.
+                // We want the full heredoc to get rendered _before_ we emit the
+                // BeginCallChainIndent token so that it gets correctly indented
+                // (or in the case of it being the first expression, _not_ indented).
+                ps.render_heredocs(true);
+            }
         }
         next_args_list_must_use_parens = element_must_use_parens;
     }

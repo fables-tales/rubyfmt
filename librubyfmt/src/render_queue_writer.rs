@@ -1,3 +1,4 @@
+use crate::heredoc_string::HeredocKind;
 use crate::intermediary::{BlanklineReason, Intermediary};
 use crate::line_tokens::*;
 use crate::parser_state::FormattingContext;
@@ -32,33 +33,64 @@ impl RenderQueueWriter {
     fn render_as(accum: &mut Intermediary, tokens: Vec<ConcreteLineTokenAndTargets>) {
         use ConcreteLineToken::*;
         let tokens_copy = tokens.clone();
+        let mut current_heredoc_kind: Option<HeredocKind> = None;
 
         for (index, mut next_token) in tokens.into_iter().enumerate() {
-            if let ConcreteLineTokenAndTargets::ConcreteLineToken(ConcreteLineToken::Indent {
-                depth,
-            }) = next_token
-            {
-                let is_ending_heredoc_token = tokens_copy.len() > index
-                    && matches!(
-                        tokens_copy.get(index + 1),
-                        Some(ConcreteLineTokenAndTargets::ConcreteLineToken(
-                            ConcreteLineToken::HeredocClose { .. }
-                        ))
-                    );
-                if !is_ending_heredoc_token {
-                    next_token = clats_indent(depth + (accum.additional_indent * 2))
+            // Do any additional indentation changes caused by call chain rendering
+            match &next_token {
+                ConcreteLineTokenAndTargets::ConcreteLineToken(Indent { depth }) => {
+                    let is_ending_heredoc_token = tokens_copy.len() > index
+                        && matches!(
+                            tokens_copy.get(index + 1),
+                            Some(ConcreteLineTokenAndTargets::ConcreteLineToken(
+                                HeredocClose { .. }
+                            ))
+                        );
+                    if !is_ending_heredoc_token {
+                        next_token = clats_indent(depth + (accum.additional_indent * 2))
+                    }
                 }
-            } else if let ConcreteLineTokenAndTargets::ConcreteLineToken(
-                ConcreteLineToken::Comment { contents },
-            ) = next_token
-            {
-                let mut new_contents: String =
-                    (0..(accum.additional_indent * 2)).map(|_| ' ').collect();
-                new_contents.push_str(contents.as_str());
-                next_token =
-                    ConcreteLineTokenAndTargets::ConcreteLineToken(ConcreteLineToken::Comment {
-                        contents: new_contents,
-                    })
+                ConcreteLineTokenAndTargets::ConcreteLineToken(ConcreteLineToken::Comment {
+                    contents,
+                }) => {
+                    let mut new_contents: String =
+                        (0..(accum.additional_indent * 2)).map(|_| ' ').collect();
+                    new_contents.push_str(contents.as_str());
+                    next_token =
+                        ConcreteLineTokenAndTargets::ConcreteLineToken(ConcreteLineToken::Comment {
+                            contents: new_contents,
+                        })
+                }
+                ConcreteLineTokenAndTargets::ConcreteLineToken(ConcreteLineToken::DirectPart {
+                    part,
+                }) => {
+                    if current_heredoc_kind
+                        .map(|k| k.is_squiggly())
+                        .unwrap_or(false)
+                    {
+                        let mut new_contents: String =
+                            (0..(accum.additional_indent * 2)).map(|_| ' ').collect();
+                        new_contents.push_str(part.clone().as_str());
+                        next_token = clats_direct_part(new_contents)
+                    }
+                }
+                ConcreteLineTokenAndTargets::ConcreteLineToken(
+                    ConcreteLineToken::HeredocStart { kind },
+                ) => current_heredoc_kind = Some(*kind),
+                ConcreteLineTokenAndTargets::ConcreteLineToken(
+                    ConcreteLineToken::HeredocClose { symbol },
+                ) => {
+                    // Bare heredocs (e.g. <<FOO) must have the closing ident completely unindented, so
+                    // ignore them in this case
+                    if current_heredoc_kind.map(|k| !k.is_bare()).unwrap_or(false) {
+                        let mut new_contents: String =
+                            (0..(accum.additional_indent * 2)).map(|_| ' ').collect();
+                        new_contents.push_str(symbol.clone().as_str());
+                        next_token = clats_heredoc_close(new_contents);
+                    }
+                    current_heredoc_kind = None;
+                }
+                _ => {}
             }
 
             match next_token {

@@ -1,4 +1,4 @@
-use crate::heredoc_string::HeredocString;
+use crate::heredoc_string::{HeredocKind, HeredocString};
 use crate::render_targets::{
     AbstractTokenTarget, BreakableCallChainEntry, BreakableEntry, ConvertType,
 };
@@ -61,6 +61,7 @@ pub enum ConcreteLineToken {
     AfterCallChain,
     BeginCallChainIndent,
     EndCallChainIndent,
+    HeredocStart { kind: HeredocKind },
 }
 
 impl ConcreteLineToken {
@@ -100,9 +101,10 @@ impl ConcreteLineToken {
             Self::DataEnd => "__END__".to_string(),
             // no-op, this is purely semantic information
             // for the render queue
-            Self::AfterCallChain | Self::BeginCallChainIndent | Self::EndCallChainIndent => {
-                "".to_string()
-            }
+            Self::AfterCallChain
+            | Self::BeginCallChainIndent
+            | Self::EndCallChainIndent
+            | Self::HeredocStart { .. } => "".to_string(),
         }
     }
 
@@ -113,7 +115,7 @@ impl ConcreteLineToken {
         // each individual string token, which would increase the allocations of rubyfmt
         // by an order of magnitude
         match self {
-            AfterCallChain | BeginCallChainIndent | EndCallChainIndent => 0, // purely semantic tokens, don't render
+            AfterCallChain | BeginCallChainIndent | EndCallChainIndent | HeredocStart { .. } => 0, // purely semantic tokens, don't render
             Indent { depth, .. } => *depth as usize,
             Keyword { keyword: contents }
             | Op { op: contents }
