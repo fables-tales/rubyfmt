@@ -1164,6 +1164,7 @@ pub fn format_begin(ps: &mut dyn ConcreteParserState, begin: Begin) {
         ps.emit_indent()
     }
 
+    let end_line = begin.1.end_line();
     ps.on_line(begin.1 .0);
 
     ps.emit_begin();
@@ -1172,7 +1173,10 @@ pub fn format_begin(ps: &mut dyn ConcreteParserState, begin: Begin) {
         ps.emit_newline();
         ps.with_start_of_line(
             true,
-            Box::new(|ps| format_bodystmt(ps, begin.2, begin.1.end_line())),
+            Box::new(|ps| {
+                format_bodystmt(ps, begin.2, end_line);
+                ps.wind_dumping_comments_until_line(end_line);
+            }),
         );
     }));
 
