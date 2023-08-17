@@ -71,9 +71,17 @@ impl RenderQueueWriter {
                         .map(|k| k.is_squiggly())
                         .unwrap_or(false)
                     {
-                        let mut new_contents: String =
+                        let indent: String =
                             (0..(accum.additional_indent * 2)).map(|_| ' ').collect();
-                        new_contents.push_str(part.clone().as_str());
+                        let new_contents = part
+                            .split('\n')
+                            .map(|p| {
+                                let mut line = indent.clone();
+                                line.push_str(p);
+                                line
+                            })
+                            .collect::<Vec<String>>()
+                            .join("\n");
                         next_token = clats_direct_part(new_contents)
                     }
                 }
