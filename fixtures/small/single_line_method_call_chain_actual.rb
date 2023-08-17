@@ -5,3 +5,6 @@ end
 This::Is::Some::SuperDuperLongConstantThatOnlyHasOneCallInTheChain.build(
   reason: Because::ThisCouldCauseUsSome::SeriousProblemsIfWeTriedToMultilineIt::EventThoughItActuallyDoesExtendBeyondTheLimit
 )
+
+this.surprisingly.can_break
+# due to this comment being here!
