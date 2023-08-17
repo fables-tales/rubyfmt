@@ -160,3 +160,13 @@ x
     puts("h")
   end
   &.foo
+
+My::Error.soft(
+  "",
+  stuff: {
+    message_token: message.token,
+
+    # Some comments!
+    value: id_or_email.name
+  }
+)

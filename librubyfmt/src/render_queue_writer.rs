@@ -53,13 +53,16 @@ impl RenderQueueWriter {
                 ConcreteLineTokenAndTargets::ConcreteLineToken(ConcreteLineToken::Comment {
                     contents,
                 }) => {
-                    let mut new_contents: String =
-                        (0..(accum.additional_indent * 2)).map(|_| ' ').collect();
-                    new_contents.push_str(contents.as_str());
-                    next_token =
-                        ConcreteLineTokenAndTargets::ConcreteLineToken(ConcreteLineToken::Comment {
-                            contents: new_contents,
-                        })
+                    if !contents.is_empty() {
+                        let mut new_contents: String =
+                            (0..(accum.additional_indent * 2)).map(|_| ' ').collect();
+                        new_contents.push_str(contents.as_str());
+                        next_token = ConcreteLineTokenAndTargets::ConcreteLineToken(
+                            ConcreteLineToken::Comment {
+                                contents: new_contents,
+                            },
+                        )
+                    }
                 }
                 ConcreteLineTokenAndTargets::ConcreteLineToken(ConcreteLineToken::DirectPart {
                     part,
