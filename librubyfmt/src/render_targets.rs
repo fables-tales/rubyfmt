@@ -359,28 +359,7 @@ impl AbstractTokenTarget for BreakableCallChainEntry {
                 .all(|op_start_end| op_start_end == first_op_start_end);
             if chain_is_user_multilined {
                 return true;
-            } else if !matches!(
-                self.call_chain.first(),
-                Some(CallChainElement::Expression(..))
-            ) && all_op_locations.len() == 1
-                && self.line_numbers.len() == 2
-                && *self.line_numbers.iter().max().unwrap() == first_op_start_end.1
-            {
-                // HACK! This exists only to support very particular, commonly-used mulilining situations like
-                // ```ruby
-                // params(foo: String)
-                //   .returns(Bar)
-                // ```
-                // If you multiline anything inside the call chain, this looks less weird, but not supporting this leads to
-                // semi-annoying formatting decisions like
-                // ```ruby
-                // params(foo: String).returns(
-                //   Bar
-                // )
-                // ```
-                // in situations where part of the call chain is really long
-                return true;
-            };
+            }
         }
 
         // If the first item in the chain is a multiline expression (like a hash or array),
