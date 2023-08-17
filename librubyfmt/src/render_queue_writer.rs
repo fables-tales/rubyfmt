@@ -180,10 +180,13 @@ impl RenderQueueWriter {
 
     fn format_breakable_entry(accum: &mut Intermediary, be: BreakableEntry) {
         let length = accum.current_line_length() + be.single_line_string_length();
+        // We generally will force expressions embedded in strings to be on a single line,
+        // but if that expression has a heredoc nested in it, we should let it render across lines
+        // so that the collapsing newlines render properly.
+        let force_single_line = !be.any_collapsing_newline_has_heredoc_content()
+            && be.entry_formatting_context() == FormattingContext::StringEmbexpr;
 
-        if (length > MAX_LINE_LENGTH || be.is_multiline())
-            && be.entry_formatting_context() != FormattingContext::StringEmbexpr
-        {
+        if (length > MAX_LINE_LENGTH || be.is_multiline()) && !force_single_line {
             Self::render_as(accum, be.into_tokens(ConvertType::MultiLine));
         } else {
             Self::render_as(accum, be.into_tokens(ConvertType::SingleLine));
