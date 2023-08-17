@@ -18,8 +18,6 @@ foo.bar.baz
 foo.bar
 .baz
 
-# If they're all on the same line but different from
-# the first receiver, consider that "on one line"
 foo
 .bar.baz
 

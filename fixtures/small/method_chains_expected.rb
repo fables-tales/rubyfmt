@@ -21,11 +21,12 @@ foo
   .bar
   .baz
 
-# If they're all on the same line but different from
-# the first receiver, consider that "on one line"
-foo.bar.baz
+foo
+  .bar
+  .baz
 
-foo::bar&.nil?
+foo::bar
+  &.nil?
 
 foo::bar
   &.nil?::klass
@@ -60,7 +61,8 @@ params(
   route: String,
   config: T.nilable(Some::Really::Long::Type::Name),
   block: T.proc.bind(Some::Really::Long::Type::Name::In::This::Proc).void
-).void
+)
+  .void
 
 Opus::Foo
   .params(

@@ -3,5 +3,6 @@ def stub_server(path:, body: {})
   stub_request(
     :get,
     "https://example.com#{path}"
-  ).to_return(body: body.to_json)
+  )
+    .to_return(body: body.to_json)
 end

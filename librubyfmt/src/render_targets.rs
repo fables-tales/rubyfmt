@@ -3,10 +3,7 @@ use crate::file_comments::FileComments;
 use crate::format::format_expression;
 use crate::line_tokens::{AbstractLineToken, ConcreteLineToken, ConcreteLineTokenAndTargets};
 use crate::parser_state::{will_render_as_multiline, BaseParserState, FormattingContext};
-use crate::ripper_tree_types::{
-    Block, CallChainElement, Dot, DotType, DotTypeOrOp, Expression, LonelyOperator, Op, Period,
-    StartEnd, StringLiteral,
-};
+use crate::ripper_tree_types::{Block, CallChainElement, Expression, StringLiteral};
 use crate::types::{ColNumber, LineNumber};
 use std::collections::HashSet;
 
@@ -328,40 +325,6 @@ impl AbstractTokenTarget for BreakableCallChainEntry {
             return true;
         }
 
-        let all_op_locations = self
-            .call_chain
-            .iter()
-            .filter_map(|cc_elem| match cc_elem {
-                CallChainElement::DotTypeOrOp(dot_type_or_op) => {
-                    match dot_type_or_op {
-                        // ColonColon is specially represented in the parser, and
-                        // it can't be properly multilined anyways, so we ignore it here
-                        DotTypeOrOp::ColonColon(..) => None,
-                        DotTypeOrOp::StringDot(..) => None,
-                        DotTypeOrOp::Op(Op(.., start_end))
-                        | DotTypeOrOp::DotType(
-                            DotType::LonelyOperator(LonelyOperator(_, start_end))
-                            | DotType::Dot(Dot(_, start_end)),
-                        ) => Some(start_end.clone()),
-                        DotTypeOrOp::Period(Period(.., linecol)) => {
-                            Some(StartEnd(linecol.0, linecol.0))
-                        }
-                    }
-                }
-                _ => None,
-            })
-            .collect::<Vec<StartEnd>>();
-
-        // Multiline the chain if all the operators (dots, double colons, etc.) are not on the same line
-        if let Some(first_op_start_end) = all_op_locations.first() {
-            let chain_is_user_multilined = !all_op_locations
-                .iter()
-                .all(|op_start_end| op_start_end == first_op_start_end);
-            if chain_is_user_multilined {
-                return true;
-            }
-        }
-
         // If the first item in the chain is a multiline expression (like a hash or array),
         // ignore it when checking line length
         if let Some(CallChainElement::Expression(expr)) = call_chain_to_check.first() {
@@ -373,6 +336,21 @@ impl AbstractTokenTarget for BreakableCallChainEntry {
             );
             if is_multiline_expression {
                 call_chain_to_check.remove(0);
+            }
+        }
+
+        let all_element_locations = call_chain_to_check
+            .iter()
+            .filter_map(|cc_elem| cc_elem.start_line())
+            .collect::<Vec<u64>>();
+
+        // Multiline the chain if all the call chain elements are not on the same line
+        if let Some(first_op_start_end) = all_element_locations.first() {
+            let chain_is_user_multilined = !all_element_locations
+                .iter()
+                .all(|op_start_end| op_start_end == first_op_start_end);
+            if chain_is_user_multilined {
+                return true;
             }
         }
 

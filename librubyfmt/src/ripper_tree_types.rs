@@ -1600,6 +1600,24 @@ pub enum CallChainElement {
     Expression(Box<Expression>),
 }
 
+impl CallChainElement {
+    pub fn start_line(&self) -> Option<u64> {
+        match self {
+            CallChainElement::IdentOrOpOrKeywordOrConst(ident) => {
+                Some(ident.clone().to_def_parts().1 .0)
+            }
+            CallChainElement::Block(block) => Some(block.start_line()),
+            CallChainElement::VarRef(VarRef(.., var_ref_type)) => Some(var_ref_type.start_line()),
+            CallChainElement::ArgsAddStarOrExpressionListOrArgsForward(_, maybe_start_end) => {
+                maybe_start_end.as_ref().map(|se| se.start_line())
+            }
+            CallChainElement::DotTypeOrOp(d) => d.start_line(),
+            CallChainElement::Paren(ParenExpr(.., start_end)) => Some(start_end.start_line()),
+            CallChainElement::Expression(expr) => expr.start_line(),
+        }
+    }
+}
+
 pub type DotCall = call_tag;
 
 def_tag!(method_add_arg_tag, "method_add_arg");
