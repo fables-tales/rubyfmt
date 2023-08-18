@@ -81,6 +81,14 @@ this_one_is
     MYHEREDOC
   end
 
+def foo
+  "#{stuff.each do
+  <<~MESSAGE.strip
+    #{message.text}
+  MESSAGE
+  end.join("\n\n")}"
+end
+
 
 puts a
 puts b

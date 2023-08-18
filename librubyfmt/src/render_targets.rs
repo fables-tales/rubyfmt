@@ -61,23 +61,13 @@ pub trait AbstractTokenTarget: std::fmt::Debug {
     fn to_breakable_call_chain(self: Box<Self>) -> BreakableCallChainEntry;
     fn len(&self) -> usize;
     fn tokens(&self) -> &Vec<AbstractLineToken>;
+    fn any_collapsing_newline_has_heredoc_content(&self) -> bool;
 
     fn last_token_is_a_newline(&self) -> bool {
         match self.tokens().last() {
             Some(x) => x.is_newline(),
             _ => false,
         }
-    }
-
-    fn any_collapsing_newline_has_heredoc_content(&self) -> bool {
-        self.tokens().iter().any(|t| match t {
-            AbstractLineToken::CollapsingNewLine(Some(..)) => true,
-            AbstractLineToken::SoftNewline(Some(..)) => true,
-            AbstractLineToken::BreakableEntry(be) => {
-                be.any_collapsing_newline_has_heredoc_content()
-            }
-            _ => false,
-        })
     }
 }
 
@@ -175,6 +165,17 @@ impl AbstractTokenTarget for BreakableEntry {
 
     fn tokens(&self) -> &Vec<AbstractLineToken> {
         &self.tokens
+    }
+
+    fn any_collapsing_newline_has_heredoc_content(&self) -> bool {
+        self.tokens().iter().any(|t| match t {
+            AbstractLineToken::CollapsingNewLine(Some(..)) => true,
+            AbstractLineToken::SoftNewline(Some(..)) => true,
+            AbstractLineToken::BreakableEntry(be) => {
+                be.any_collapsing_newline_has_heredoc_content()
+            }
+            _ => false,
+        })
     }
 }
 
@@ -367,6 +368,25 @@ impl AbstractTokenTarget for BreakableCallChainEntry {
             });
 
         chain_blocks_are_multilined
+    }
+
+    fn any_collapsing_newline_has_heredoc_content(&self) -> bool {
+        self.tokens().iter().any(|t| match t {
+            AbstractLineToken::CollapsingNewLine(Some(..)) => true,
+            AbstractLineToken::SoftNewline(Some(..)) => true,
+            AbstractLineToken::BreakableEntry(be) => {
+                be.any_collapsing_newline_has_heredoc_content()
+            }
+            _ => false,
+        }) || self.call_chain.iter().any(|cce| match cce {
+            CallChainElement::Expression(expr) => {
+                matches!(
+                    expr.as_ref(),
+                    Expression::StringLiteral(StringLiteral::Heredoc(..))
+                )
+            }
+            _ => false,
+        })
     }
 
     fn len(&self) -> usize {
