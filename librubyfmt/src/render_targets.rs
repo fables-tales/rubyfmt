@@ -483,11 +483,13 @@ impl BreakableCallChainEntry {
             {
                 return true;
             }
-            [CallChainElement::Expression(maybe_const_ref), CallChainElement::DotTypeOrOp(..), CallChainElement::IdentOrOpOrKeywordOrConst(..)]
-            | [CallChainElement::Expression(maybe_const_ref), CallChainElement::DotTypeOrOp(..), CallChainElement::IdentOrOpOrKeywordOrConst(..), CallChainElement::ArgsAddStarOrExpressionListOrArgsForward(..)]
-            | [CallChainElement::Expression(maybe_const_ref), CallChainElement::DotTypeOrOp(..), CallChainElement::IdentOrOpOrKeywordOrConst(..), CallChainElement::Block(..)]
-            | [CallChainElement::Expression(maybe_const_ref), CallChainElement::DotTypeOrOp(..), CallChainElement::IdentOrOpOrKeywordOrConst(..), CallChainElement::ArgsAddStarOrExpressionListOrArgsForward(..), CallChainElement::Block(..)] => {
-                if matches!(maybe_const_ref.as_ref(), Expression::ConstPathRef(..)) {
+            [CallChainElement::Expression(maybe_const_ref), CallChainElement::DotTypeOrOp(dot), CallChainElement::IdentOrOpOrKeywordOrConst(..)]
+            | [CallChainElement::Expression(maybe_const_ref), CallChainElement::DotTypeOrOp(dot), CallChainElement::IdentOrOpOrKeywordOrConst(..), CallChainElement::ArgsAddStarOrExpressionListOrArgsForward(..)]
+            | [CallChainElement::Expression(maybe_const_ref), CallChainElement::DotTypeOrOp(dot), CallChainElement::IdentOrOpOrKeywordOrConst(..), CallChainElement::Block(..)]
+            | [CallChainElement::Expression(maybe_const_ref), CallChainElement::DotTypeOrOp(dot), CallChainElement::IdentOrOpOrKeywordOrConst(..), CallChainElement::ArgsAddStarOrExpressionListOrArgsForward(..), CallChainElement::Block(..)] => {
+                if matches!(maybe_const_ref.as_ref(), Expression::ConstPathRef(..))
+                    && maybe_const_ref.start_line() == dot.start_line()
+                {
                     return true;
                 }
             }
