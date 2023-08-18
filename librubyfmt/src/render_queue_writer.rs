@@ -219,8 +219,9 @@ impl RenderQueueWriter {
         let must_multiline = bcce.any_collapsing_newline_has_heredoc_content()
             && bcce.entry_formatting_context() == FormattingContext::StringEmbexpr;
         if must_multiline
-            || (length > MAX_LINE_LENGTH || bcce.is_multiline())
-                && bcce.entry_formatting_context() != FormattingContext::StringEmbexpr
+            || (!bcce.must_single_line()
+                && (length > MAX_LINE_LENGTH || bcce.is_multiline())
+                && bcce.entry_formatting_context() != FormattingContext::StringEmbexpr)
         {
             let tokens = bcce.into_tokens(ConvertType::MultiLine);
             Self::render_as(accum, tokens);
