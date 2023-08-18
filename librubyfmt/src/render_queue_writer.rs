@@ -213,8 +213,9 @@ impl RenderQueueWriter {
         accum: &mut Intermediary,
         mut bcce: BreakableCallChainEntry,
     ) {
-        let single_line_string_length = bcce.longest_multiline_string_length();
-        let length = accum.current_line_length() + single_line_string_length;
+        // N.B. longest_multiline_string_length will include the additional indentation
+        // while rendering, so we don't add the accum.current_line_length() here
+        let length = bcce.longest_multiline_string_length();
         if (length > MAX_LINE_LENGTH || bcce.is_multiline())
             && bcce.entry_formatting_context() != FormattingContext::StringEmbexpr
         {

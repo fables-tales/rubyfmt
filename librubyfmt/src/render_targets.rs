@@ -6,6 +6,7 @@ use crate::parser_state::{will_render_as_multiline, BaseParserState, FormattingC
 use crate::ripper_tree_types::{Block, CallChainElement, Expression, StringLiteral};
 use crate::types::{ColNumber, LineNumber};
 use std::collections::HashSet;
+use std::iter;
 
 fn insert_at<T>(idx: usize, target: &mut Vec<T>, input: &mut Vec<T>) {
     let mut tail = target.split_off(idx);
@@ -54,8 +55,6 @@ pub trait AbstractTokenTarget: std::fmt::Debug {
     fn into_tokens(self, ct: ConvertType) -> Vec<ConcreteLineTokenAndTargets>;
     fn is_multiline(&self) -> bool;
     fn push_line_number(&mut self, number: LineNumber);
-    fn increment_additional_indent(&mut self);
-    fn additional_indent(&self) -> u32;
     fn single_line_string_length(&self) -> usize;
     fn index_of_prev_newline(&self) -> Option<usize>;
     fn to_breakable_entry(self: Box<Self>) -> BreakableEntry;
@@ -84,7 +83,6 @@ pub trait AbstractTokenTarget: std::fmt::Debug {
 
 #[derive(Debug, Clone)]
 pub struct BreakableEntry {
-    additional_indent: ColNumber,
     tokens: Vec<AbstractLineToken>,
     line_numbers: HashSet<LineNumber>,
     delims: BreakableDelims,
@@ -94,14 +92,6 @@ pub struct BreakableEntry {
 impl AbstractTokenTarget for BreakableEntry {
     fn to_breakable_entry(self: Box<Self>) -> BreakableEntry {
         *self
-    }
-
-    fn increment_additional_indent(&mut self) {
-        self.additional_indent += 1;
-    }
-
-    fn additional_indent(&self) -> u32 {
-        self.additional_indent
     }
 
     fn to_breakable_call_chain(self: Box<Self>) -> BreakableCallChainEntry {
@@ -189,13 +179,8 @@ impl AbstractTokenTarget for BreakableEntry {
 }
 
 impl BreakableEntry {
-    pub fn new(
-        additional_indent: ColNumber,
-        delims: BreakableDelims,
-        context: FormattingContext,
-    ) -> Self {
+    pub fn new(delims: BreakableDelims, context: FormattingContext) -> Self {
         BreakableEntry {
-            additional_indent,
             tokens: Vec::new(),
             line_numbers: HashSet::new(),
             delims,
@@ -219,7 +204,7 @@ impl BreakableEntry {
 
 #[derive(Debug, Clone)]
 pub struct BreakableCallChainEntry {
-    additional_indent: u32,
+    pub starting_indentation_depth: u32,
     tokens: Vec<AbstractLineToken>,
     line_numbers: HashSet<LineNumber>,
     call_chain: Vec<CallChainElement>,
@@ -229,14 +214,6 @@ pub struct BreakableCallChainEntry {
 impl AbstractTokenTarget for BreakableCallChainEntry {
     fn to_breakable_entry(self: Box<Self>) -> BreakableEntry {
         unreachable!()
-    }
-
-    fn increment_additional_indent(&mut self) {
-        self.additional_indent += 1;
-    }
-
-    fn additional_indent(&self) -> u32 {
-        self.additional_indent
     }
 
     fn tokens(&self) -> &Vec<AbstractLineToken> {
@@ -398,11 +375,15 @@ impl AbstractTokenTarget for BreakableCallChainEntry {
 }
 
 impl BreakableCallChainEntry {
-    pub fn new(context: FormattingContext, call_chain: Vec<CallChainElement>) -> Self {
+    pub fn new(
+        context: FormattingContext,
+        call_chain: Vec<CallChainElement>,
+        starting_indentation_depth: u32,
+    ) -> Self {
         BreakableCallChainEntry {
-            additional_indent: 0,
             tokens: Vec::new(),
             line_numbers: HashSet::new(),
+            starting_indentation_depth,
             context,
             call_chain,
         }
@@ -428,41 +409,47 @@ impl BreakableCallChainEntry {
         // have multiline blocks (which will often be quite long vertically, even if
         // they're under 120 characters horizontally). In this case, look for the longest
         // individual line and get _that_ max length
-        self.tokens
-            .iter()
-            .map(|tok| {
-                let forced_multiline = match tok {
-                    AbstractLineToken::BreakableCallChainEntry(bcce) => bcce.is_multiline(),
-                    AbstractLineToken::BreakableEntry(be) => be.is_multiline(),
-                    _ => false,
-                };
-                if forced_multiline {
-                    RenderItem {
-                        tokens: tok.clone().into_multi_line(),
-                        convert_type: ConvertType::MultiLine,
-                    }
-                } else {
-                    RenderItem {
-                        tokens: tok.clone().into_single_line(),
-                        convert_type: ConvertType::SingleLine,
-                    }
+        iter::once(&AbstractLineToken::ConcreteLineToken(
+            // Push the starting indentation for the first line -- other
+            // lines will already have this indentation
+            ConcreteLineToken::Indent {
+                depth: self.starting_indentation_depth,
+            },
+        ))
+        .chain(&self.tokens)
+        .map(|tok| {
+            let forced_multiline = match tok {
+                AbstractLineToken::BreakableCallChainEntry(bcce) => bcce.is_multiline(),
+                AbstractLineToken::BreakableEntry(be) => be.is_multiline(),
+                _ => false,
+            };
+            if forced_multiline {
+                RenderItem {
+                    tokens: tok.clone().into_multi_line(),
+                    convert_type: ConvertType::MultiLine,
                 }
-            })
-            .flat_map(
-                |RenderItem {
-                     tokens,
-                     convert_type,
-                 }| {
-                    tokens
-                        .into_iter()
-                        .map(move |tok| tok.into_ruby(convert_type))
-                },
-            )
-            .collect::<String>()
-            .split('\n')
-            .map(|st| st.len())
-            .max()
-            .unwrap()
+            } else {
+                RenderItem {
+                    tokens: tok.clone().into_single_line(),
+                    convert_type: ConvertType::SingleLine,
+                }
+            }
+        })
+        .flat_map(
+            |RenderItem {
+                 tokens,
+                 convert_type,
+             }| {
+                tokens
+                    .into_iter()
+                    .map(move |tok| tok.into_ruby(convert_type))
+            },
+        )
+        .collect::<String>()
+        .split('\n')
+        .map(|st| st.len())
+        .max()
+        .unwrap()
     }
 
     /// In practice, this generally means something like the call chain having something
