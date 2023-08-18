@@ -1608,13 +1608,10 @@ impl CallChainElement {
             }
             CallChainElement::Block(block) => Some(block.start_line()),
             CallChainElement::VarRef(VarRef(.., var_ref_type)) => Some(var_ref_type.start_line()),
-            CallChainElement::ArgsAddStarOrExpressionListOrArgsForward(aas, maybe_start_end) => {
-                // The parser generally incorrectly reports the start_end for these, due to the fact that
-                // they sometimes don't have delimiters, so their begin/end will be overreported
-                if aas.is_empty() {
-                    return None;
-                }
-                maybe_start_end.as_ref().map(|se| se.start_line())
+            CallChainElement::ArgsAddStarOrExpressionListOrArgsForward(..) => {
+                // The start_end for these is generally incorrect, since the parser event
+                // only fires at the _end_ of the expression list
+                None
             }
             CallChainElement::DotTypeOrOp(d) => d.start_line(),
             CallChainElement::Paren(ParenExpr(.., start_end)) => Some(start_end.start_line()),

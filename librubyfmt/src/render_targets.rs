@@ -339,6 +339,21 @@ impl AbstractTokenTarget for BreakableCallChainEntry {
             }
         }
 
+        let all_element_locations = call_chain_to_check
+            .iter()
+            .filter_map(|cc_elem| cc_elem.start_line())
+            .collect::<Vec<u64>>();
+
+        // Multiline the chain if all the call chain elements are not on the same line
+        if let Some(first_op_start_end) = all_element_locations.first() {
+            let chain_is_user_multilined = !all_element_locations
+                .iter()
+                .all(|op_start_end| op_start_end == first_op_start_end);
+            if chain_is_user_multilined {
+                return true;
+            }
+        }
+
         // Ignore chains that are basically only method calls, e.g.
         // ````ruby
         // Thing.foo(args)
@@ -361,21 +376,6 @@ impl AbstractTokenTarget for BreakableCallChainEntry {
                 }
             }
             _ => {}
-        }
-
-        let all_element_locations = call_chain_to_check
-            .iter()
-            .filter_map(|cc_elem| cc_elem.start_line())
-            .collect::<Vec<u64>>();
-
-        // Multiline the chain if all the call chain elements are not on the same line
-        if let Some(first_op_start_end) = all_element_locations.first() {
-            let chain_is_user_multilined = !all_element_locations
-                .iter()
-                .all(|op_start_end| op_start_end == first_op_start_end);
-            if chain_is_user_multilined {
-                return true;
-            }
         }
 
         let chain_blocks_are_multilined = call_chain_to_check
