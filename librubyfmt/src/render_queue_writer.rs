@@ -222,7 +222,7 @@ impl RenderQueueWriter {
             bcce.any_collapsing_newline_has_heredoc_content() && bcce.in_string_embexpr();
         if must_multiline
             || (!bcce.must_single_line()
-                && (length > MAX_LINE_LENGTH || bcce.is_multiline())
+                && ((length > MAX_LINE_LENGTH && !bcce.is_single_call()) || bcce.is_multiline())
                 && !bcce.in_string_embexpr())
         {
             let tokens = bcce.into_tokens(ConvertType::MultiLine);

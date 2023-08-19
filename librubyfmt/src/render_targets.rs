@@ -392,6 +392,19 @@ impl BreakableCallChainEntry {
         });
     }
 
+    pub fn is_single_call(&self) -> bool {
+        let op_count = self
+            .call_chain
+            .iter()
+            .filter(|cc_elem| match cc_elem {
+                CallChainElement::DotTypeOrOp(..) => true,
+                _ => false,
+            })
+            .count();
+
+        op_count == 1
+    }
+
     pub fn in_string_embexpr(&self) -> bool {
         self.context
             .iter()
