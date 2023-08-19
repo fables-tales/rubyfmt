@@ -2838,6 +2838,7 @@ fn format_call_chain_elements(
                             } else if let Expression::Defs(defs_expression) = expr {
                                 format_defs(ps, defs_expression);
                             }
+                            ps.shift_comments();
                         }
                     } else {
                         ps.breakable_of(
