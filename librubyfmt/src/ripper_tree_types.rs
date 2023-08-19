@@ -231,11 +231,16 @@ impl Expression {
             }
             Expression::OpAssign(OpAssign(_, assignable, ..)) => assignable.start_line(),
             Expression::Params(params) => Some(params.as_ref().8.start_line()),
-            Expression::MethodCall(MethodCall(_, call_chain_elements, ..)) => todo!(),
+            Expression::MethodCall(MethodCall(_, call_chain_elements, ..)) => call_chain_elements
+                .first()
+                .map(|cce| cce.start_line())
+                .flatten(),
             Expression::CommandCall(CommandCall(_, call_left, ..))
             | Expression::Call(Call(_, call_left, ..)) => call_left.start_line(),
-            Expression::BareAssocHash(BareAssocHash(_, assocs)) => todo!(),
-            Expression::Symbol(Symbol(_, something)) => todo!(),
+            Expression::BareAssocHash(BareAssocHash(_, assocs)) => {
+                assocs.first().map(|a| a.start_line()).flatten()
+            }
+            Expression::Symbol(Symbol(_, symbol_type)) => symbol_type.start_line(),
             Expression::BeginBlock(BeginBlock(_, exprs))
             | Expression::EndBlock(EndBlock(_, exprs)) => {
                 exprs.first().map(|expr| expr.start_line()).flatten()
@@ -254,11 +259,13 @@ impl Expression {
             }
             Expression::VarRef(VarRef(_, var_ref_type)) => Some(var_ref_type.start_line()),
             Expression::Assign(Assign(_, assignable, ..)) => assignable.start_line(),
-            Expression::MAssign(MAssign(_, assignable_list_or_mlhs, ..)) => todo!(),
+            Expression::MAssign(MAssign(_, assignable_list_or_mlhs, ..)) => {
+                assignable_list_or_mlhs.start_line()
+            }
             Expression::Command(Command(_, ident_or_const, ..)) => {
                 Some(ident_or_const.start_line())
             }
-            Expression::MRHSAddStar(MRHSAddStar(_, mrhs, ..)) => todo!(),
+            Expression::MRHSAddStar(MRHSAddStar(_, mrhs, ..)) => mrhs.start_line(),
             Expression::StringConcat(StringConcat(_, concat_or_literal, ..)) => {
                 concat_or_literal.start_line()
             }
@@ -434,6 +441,17 @@ pub enum MRHSNewFromArgsOrEmpty {
     Empty(Vec<Expression>),
 }
 
+impl MRHSNewFromArgsOrEmpty {
+    pub fn start_line(&self) -> Option<u64> {
+        match self {
+            MRHSNewFromArgsOrEmpty::MRHSNewFromArgs(MRHSNewFromArgs(_, args_add_star, ..)) => {
+                args_add_star.start_line()
+            }
+            MRHSNewFromArgsOrEmpty::Empty(exprs) => exprs.first().map(|e| e.start_line()).flatten(),
+        }
+    }
+}
+
 def_tag!(mrhs_new_from_args_tag, "mrhs_new_from_args");
 #[derive(Deserialize, Debug, Clone)]
 pub struct MRHSNewFromArgs(
@@ -531,6 +549,20 @@ pub struct MAssign(pub massign_tag, pub AssignableListOrMLhs, pub MRHSOrArray);
 pub enum AssignableListOrMLhs {
     AssignableList(Vec<Assignable>),
     MLhs(MLhs),
+}
+
+impl AssignableListOrMLhs {
+    pub fn start_line(&self) -> Option<u64> {
+        match self {
+            AssignableListOrMLhs::AssignableList(al) => al
+                .first()
+                .map(|assignable| assignable.start_line())
+                .flatten(),
+            AssignableListOrMLhs::MLhs(mlhs) => {
+                mlhs.0.first().map(|inner| inner.start_line()).flatten()
+            }
+        }
+    }
 }
 
 #[derive(RipperDeserialize, Debug, Clone)]
@@ -833,6 +865,18 @@ impl ArgsAddStarOrExpressionListOrArgsForward {
 
     pub fn empty() -> Self {
         ArgsAddStarOrExpressionListOrArgsForward::ExpressionList(vec![])
+    }
+
+    pub fn start_line(&self) -> Option<u64> {
+        match self {
+            ArgsAddStarOrExpressionListOrArgsForward::ExpressionList(exprs) => {
+                exprs.first().map(|e| e.start_line()).flatten()
+            }
+            ArgsAddStarOrExpressionListOrArgsForward::ArgsAddStar(ArgsAddStar(_, aas, ..)) => {
+                aas.start_line()
+            }
+            ArgsAddStarOrExpressionListOrArgsForward::ArgsForward(ArgsForward(..)) => None,
+        }
     }
 }
 
@@ -1416,6 +1460,15 @@ pub enum AssocNewOrAssocSplat {
     AssocSplat(Box<AssocSplat>),
 }
 
+impl AssocNewOrAssocSplat {
+    pub fn start_line(&self) -> Option<u64> {
+        match self {
+            AssocNewOrAssocSplat::AssocNew(assoc_new) => assoc_new.as_ref().1.start_line(),
+            AssocNewOrAssocSplat::AssocSplat(assoc_splat) => assoc_splat.as_ref().1.start_line(),
+        }
+    }
+}
+
 def_tag!(assoc_new_tag, "assoc_new");
 #[derive(Deserialize, Debug, Clone)]
 pub struct AssocNew(pub assoc_new_tag, pub AssocKey, pub Option<Expression>);
@@ -1428,6 +1481,15 @@ pub struct AssocSplat(pub assoc_splat_tag, pub Expression);
 pub enum AssocKey {
     Label(Label),
     Expression(Expression),
+}
+
+impl AssocKey {
+    pub fn start_line(&self) -> Option<u64> {
+        match self {
+            AssocKey::Label(Label(.., linecol)) => Some(linecol.0),
+            AssocKey::Expression(expr) => expr.start_line(),
+        }
+    }
 }
 
 def_tag!(label_tag, "@label");
@@ -1480,6 +1542,23 @@ pub enum IdentOrConstOrKwOrOpOrIvarOrGvarOrCvarOrBacktick {
     GVar(GVar),
     CVar(CVar),
     Backtick(Backtick),
+}
+
+impl IdentOrConstOrKwOrOpOrIvarOrGvarOrCvarOrBacktick {
+    pub fn start_line(&self) -> Option<u64> {
+        match self {
+            IdentOrConstOrKwOrOpOrIvarOrGvarOrCvarOrBacktick::Ident(Ident(.., linecol))
+            | IdentOrConstOrKwOrOpOrIvarOrGvarOrCvarOrBacktick::Const(Const(.., linecol))
+            | IdentOrConstOrKwOrOpOrIvarOrGvarOrCvarOrBacktick::Keyword(Kw(.., linecol))
+            | IdentOrConstOrKwOrOpOrIvarOrGvarOrCvarOrBacktick::Op(Op(_, _, linecol, _))
+            | IdentOrConstOrKwOrOpOrIvarOrGvarOrCvarOrBacktick::IVar(IVar(.., linecol))
+            | IdentOrConstOrKwOrOpOrIvarOrGvarOrCvarOrBacktick::GVar(GVar(.., linecol))
+            | IdentOrConstOrKwOrOpOrIvarOrGvarOrCvarOrBacktick::CVar(CVar(.., linecol))
+            | IdentOrConstOrKwOrOpOrIvarOrGvarOrCvarOrBacktick::Backtick(Backtick(.., linecol)) => {
+                Some(linecol.0)
+            }
+        }
+    }
 }
 
 def_tag!(symbol_tag, "symbol");
