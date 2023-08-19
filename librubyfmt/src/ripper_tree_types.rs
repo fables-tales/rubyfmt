@@ -1616,7 +1616,16 @@ impl CallChainElement {
                 None
             }
             CallChainElement::DotTypeOrOp(d) => d.start_line(),
-            CallChainElement::Paren(ParenExpr(.., start_end)) => Some(start_end.start_line()),
+            CallChainElement::Paren(ParenExpr(
+                _,
+                ParenExpressionOrExpressions::Expression(expr),
+                ..,
+            )) => expr.as_ref().start_line(),
+            CallChainElement::Paren(ParenExpr(
+                _,
+                ParenExpressionOrExpressions::Expressions(exprs),
+                ..,
+            )) => exprs.first().map(|e| e.start_line()).flatten(),
             CallChainElement::Expression(expr) => expr.start_line(),
         }
     }

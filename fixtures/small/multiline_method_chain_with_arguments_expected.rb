@@ -6,3 +6,12 @@ def stub_server(path:, body: {})
   )
     .to_return(body: body.to_json)
 end
+
+{
+  "original_fields" => foo,
+  "alternative_fields" => (thing_one(id, api) + thing_two(
+    id,
+    api
+  ))
+    .sort
+}
