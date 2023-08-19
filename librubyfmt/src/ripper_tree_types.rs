@@ -199,7 +199,6 @@ impl Expression {
             | Expression::Const(Const(.., linecol))
             | Expression::Kw(Kw(.., linecol))
             | Expression::Float(Float(.., linecol))
-            | Expression::Aref(Aref(.., linecol))
             | Expression::Char(Char(.., linecol))
             | Expression::Backref(Backref(.., linecol))
             | Expression::Imaginary(Imaginary(.., linecol))
@@ -266,6 +265,9 @@ impl Expression {
             Expression::Undef(Undef(_, symbol_literals)) => {
                 symbol_literals.first().map(|s| s.start_line())
             }
+            // Arefs only have an accurate closing line and not a starting line,
+            // so don't use it here
+            Expression::Aref(Aref(_, expr, ..)) => expr.start_line(),
         }
     }
 }
