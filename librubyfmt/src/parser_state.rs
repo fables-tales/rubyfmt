@@ -393,11 +393,8 @@ impl ConcreteParserState for BaseParserState {
         f: RenderFunc,
     ) {
         self.shift_comments();
-        let mut be = BreakableCallChainEntry::new(
-            self.current_formatting_context(),
-            call_chain_elements,
-            self.current_spaces(),
-        );
+        let mut be =
+            BreakableCallChainEntry::new(self.current_formatting_context(), call_chain_elements);
         be.push_line_number(self.current_orig_line_number);
         self.breakable_entry_stack.push(Box::new(be));
 

@@ -215,7 +215,7 @@ impl RenderQueueWriter {
     ) {
         // N.B. longest_multiline_string_length will include the additional indentation
         // while rendering, so we don't add the accum.current_line_length() here
-        let length = bcce.longest_multiline_string_length();
+        let length = bcce.longest_multiline_string_length(accum.current_line_length());
         let must_multiline = bcce.any_collapsing_newline_has_heredoc_content()
             && bcce.entry_formatting_context() == FormattingContext::StringEmbexpr;
         if must_multiline

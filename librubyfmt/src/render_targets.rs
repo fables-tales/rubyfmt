@@ -205,7 +205,6 @@ impl BreakableEntry {
 
 #[derive(Debug, Clone)]
 pub struct BreakableCallChainEntry {
-    pub starting_indentation_depth: u32,
     tokens: Vec<AbstractLineToken>,
     line_numbers: HashSet<LineNumber>,
     call_chain: Vec<CallChainElement>,
@@ -371,15 +370,10 @@ impl AbstractTokenTarget for BreakableCallChainEntry {
 }
 
 impl BreakableCallChainEntry {
-    pub fn new(
-        context: FormattingContext,
-        call_chain: Vec<CallChainElement>,
-        starting_indentation_depth: u32,
-    ) -> Self {
+    pub fn new(context: FormattingContext, call_chain: Vec<CallChainElement>) -> Self {
         BreakableCallChainEntry {
             tokens: Vec::new(),
             line_numbers: HashSet::new(),
-            starting_indentation_depth,
             context,
             call_chain,
         }
@@ -400,16 +394,16 @@ impl BreakableCallChainEntry {
         self.context
     }
 
-    pub fn longest_multiline_string_length(&self) -> usize {
+    pub fn longest_multiline_string_length(&self, starting_padding: usize) -> usize {
         // Render all tokens to strings, but since these are call chains, they may
         // have multiline blocks (which will often be quite long vertically, even if
         // they're under 120 characters horizontally). In this case, look for the longest
         // individual line and get _that_ max length
         iter::once(&AbstractLineToken::ConcreteLineToken(
             // Push the starting indentation for the first line -- other
-            // lines will already have this indentation
+            // lines will already have the appropriate indentation
             ConcreteLineToken::Indent {
-                depth: self.starting_indentation_depth,
+                depth: starting_padding as u32,
             },
         ))
         .chain(&self.tokens)
