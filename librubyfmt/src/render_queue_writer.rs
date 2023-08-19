@@ -1,7 +1,6 @@
 use crate::heredoc_string::HeredocKind;
 use crate::intermediary::{BlanklineReason, Intermediary};
 use crate::line_tokens::*;
-use crate::parser_state::FormattingContext;
 use crate::render_targets::{
     AbstractTokenTarget, BreakableCallChainEntry, BreakableEntry, ConvertType,
 };
@@ -194,10 +193,13 @@ impl RenderQueueWriter {
         // We generally will force expressions embedded in strings to be on a single line,
         // but if that expression has a heredoc nested in it, we should let it render across lines
         // so that the collapsing newlines render properly.
-        let force_single_line = !be.any_collapsing_newline_has_heredoc_content()
-            && be.entry_formatting_context() == FormattingContext::StringEmbexpr;
+        let force_single_line =
+            !be.any_collapsing_newline_has_heredoc_content() && be.in_string_embexpr();
 
-        if (length > MAX_LINE_LENGTH || be.is_multiline()) && !force_single_line {
+        if force_single_line {
+            Self::render_as(accum, be.into_tokens(ConvertType::SingleLine));
+            accum.clear_breakable_garbage();
+        } else if length > MAX_LINE_LENGTH || be.is_multiline() {
             Self::render_as(accum, be.into_tokens(ConvertType::MultiLine));
         } else {
             Self::render_as(accum, be.into_tokens(ConvertType::SingleLine));
@@ -216,12 +218,12 @@ impl RenderQueueWriter {
         // N.B. longest_multiline_string_length will include the additional indentation
         // while rendering, so we don't add the accum.current_line_length() here
         let length = bcce.longest_multiline_string_length(accum.current_line_length());
-        let must_multiline = bcce.any_collapsing_newline_has_heredoc_content()
-            && bcce.entry_formatting_context() == FormattingContext::StringEmbexpr;
+        let must_multiline =
+            bcce.any_collapsing_newline_has_heredoc_content() && bcce.in_string_embexpr();
         if must_multiline
             || (!bcce.must_single_line()
                 && (length > MAX_LINE_LENGTH || bcce.is_multiline())
-                && bcce.entry_formatting_context() != FormattingContext::StringEmbexpr)
+                && !bcce.in_string_embexpr())
         {
             let tokens = bcce.into_tokens(ConvertType::MultiLine);
             Self::render_as(accum, tokens);

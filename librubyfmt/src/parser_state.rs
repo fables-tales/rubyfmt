@@ -333,7 +333,7 @@ impl ConcreteParserState for BaseParserState {
 
     fn breakable_of<'a>(&mut self, delims: BreakableDelims, f: RenderFunc) {
         self.shift_comments();
-        let mut be = BreakableEntry::new(delims, self.current_formatting_context());
+        let mut be = BreakableEntry::new(delims, self.formatting_context.clone());
         be.push_line_number(self.current_orig_line_number);
         self.breakable_entry_stack.push(Box::new(be));
 
@@ -365,7 +365,7 @@ impl ConcreteParserState for BaseParserState {
     /// At the moment, this is only for conditions in a `when` clause
     fn inline_breakable_of<'a>(&mut self, delims: BreakableDelims, f: RenderFunc) {
         self.shift_comments();
-        let mut be = BreakableEntry::new(delims, self.current_formatting_context());
+        let mut be = BreakableEntry::new(delims, self.formatting_context.clone());
         be.push_line_number(self.current_orig_line_number);
         self.breakable_entry_stack.push(Box::new(be));
 
@@ -394,7 +394,7 @@ impl ConcreteParserState for BaseParserState {
     ) {
         self.shift_comments();
         let mut be =
-            BreakableCallChainEntry::new(self.current_formatting_context(), call_chain_elements);
+            BreakableCallChainEntry::new(self.formatting_context.clone(), call_chain_elements);
         be.push_line_number(self.current_orig_line_number);
         self.breakable_entry_stack.push(Box::new(be));
 

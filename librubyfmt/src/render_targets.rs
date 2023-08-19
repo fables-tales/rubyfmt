@@ -4,7 +4,7 @@ use crate::format::format_expression;
 use crate::line_tokens::{AbstractLineToken, ConcreteLineToken, ConcreteLineTokenAndTargets};
 use crate::parser_state::{will_render_as_multiline, BaseParserState, FormattingContext};
 use crate::ripper_tree_types::{Block, CallChainElement, Expression, StringLiteral};
-use crate::types::{ColNumber, LineNumber};
+use crate::types::LineNumber;
 use std::collections::HashSet;
 use std::iter;
 
@@ -76,7 +76,7 @@ pub struct BreakableEntry {
     tokens: Vec<AbstractLineToken>,
     line_numbers: HashSet<LineNumber>,
     delims: BreakableDelims,
-    context: FormattingContext,
+    context: Vec<FormattingContext>,
 }
 
 impl AbstractTokenTarget for BreakableEntry {
@@ -180,7 +180,7 @@ impl AbstractTokenTarget for BreakableEntry {
 }
 
 impl BreakableEntry {
-    pub fn new(delims: BreakableDelims, context: FormattingContext) -> Self {
+    pub fn new(delims: BreakableDelims, context: Vec<FormattingContext>) -> Self {
         BreakableEntry {
             tokens: Vec::new(),
             line_numbers: HashSet::new(),
@@ -189,8 +189,10 @@ impl BreakableEntry {
         }
     }
 
-    pub fn entry_formatting_context(&self) -> FormattingContext {
+    pub fn in_string_embexpr(&self) -> bool {
         self.context
+            .iter()
+            .any(|fc| fc == &FormattingContext::StringEmbexpr)
     }
 
     fn contains_hard_newline(&self) -> bool {
@@ -208,7 +210,7 @@ pub struct BreakableCallChainEntry {
     tokens: Vec<AbstractLineToken>,
     line_numbers: HashSet<LineNumber>,
     call_chain: Vec<CallChainElement>,
-    context: FormattingContext,
+    context: Vec<FormattingContext>,
 }
 
 impl AbstractTokenTarget for BreakableCallChainEntry {
@@ -370,7 +372,7 @@ impl AbstractTokenTarget for BreakableCallChainEntry {
 }
 
 impl BreakableCallChainEntry {
-    pub fn new(context: FormattingContext, call_chain: Vec<CallChainElement>) -> Self {
+    pub fn new(context: Vec<FormattingContext>, call_chain: Vec<CallChainElement>) -> Self {
         BreakableCallChainEntry {
             tokens: Vec::new(),
             line_numbers: HashSet::new(),
@@ -390,8 +392,10 @@ impl BreakableCallChainEntry {
         });
     }
 
-    pub fn entry_formatting_context(&self) -> FormattingContext {
+    pub fn in_string_embexpr(&self) -> bool {
         self.context
+            .iter()
+            .any(|fc| fc == &FormattingContext::StringEmbexpr)
     }
 
     pub fn longest_multiline_string_length(&self, starting_padding: usize) -> usize {
