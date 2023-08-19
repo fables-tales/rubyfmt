@@ -1058,13 +1058,3 @@ impl BaseParserState {
 pub fn line_difference_requires_newline(to_line: LineNumber, from_line: LineNumber) -> bool {
     (to_line > from_line) && (to_line - from_line >= 2)
 }
-
-pub fn will_render_as_multiline<'a>(ps: &BaseParserState, f: RenderFunc) -> bool {
-    let mut next_ps = BaseParserState::new_with_depth_stack_from(ps);
-    // Ignore commments when determining line length
-    next_ps.with_suppress_comments(true, f);
-    let data = next_ps.render_to_buffer();
-
-    let s = str::from_utf8(&data).expect("string is utf8").to_string();
-    s.trim().contains('\n')
-}

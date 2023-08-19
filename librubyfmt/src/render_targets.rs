@@ -1,8 +1,6 @@
 use crate::delimiters::BreakableDelims;
-use crate::file_comments::FileComments;
-use crate::format::format_expression;
 use crate::line_tokens::{AbstractLineToken, ConcreteLineToken, ConcreteLineTokenAndTargets};
-use crate::parser_state::{will_render_as_multiline, BaseParserState, FormattingContext};
+use crate::parser_state::FormattingContext;
 use crate::ripper_tree_types::{Block, CallChainElement, Expression, StringLiteral};
 use crate::types::LineNumber;
 use std::collections::HashSet;
@@ -306,16 +304,8 @@ impl AbstractTokenTarget for BreakableCallChainEntry {
 
         // If the first item in the chain is a multiline expression (like a hash or array),
         // ignore it when checking line length
-        if let Some(CallChainElement::Expression(expr)) = call_chain_to_check.first() {
-            let is_multiline_expression = will_render_as_multiline(
-                &BaseParserState::new(FileComments::default()),
-                Box::new(|ps| {
-                    format_expression(ps, expr.as_ref().clone());
-                }),
-            );
-            if is_multiline_expression {
-                call_chain_to_check.remove(0);
-            }
+        if let Some(CallChainElement::Expression(..)) = call_chain_to_check.first() {
+            call_chain_to_check.remove(0);
         }
 
         let all_element_locations = call_chain_to_check
