@@ -167,10 +167,8 @@ impl Expression {
             Expression::Class(Class(.., start_end))
             | Expression::If(If(.., start_end))
             | Expression::VCall(VCall(.., start_end))
-            | Expression::MethodAddArg(MethodAddArg(.., start_end))
             | Expression::Def(Def(.., start_end))
             | Expression::Defs(Defs(.., start_end))
-            | Expression::Paren(ParenExpr(.., start_end))
             | Expression::SymbolLiteral(SymbolLiteral(.., start_end))
             | Expression::DynaSymbol(DynaSymbol(.., start_end))
             | Expression::Begin(Begin(_, start_end, ..))
@@ -219,6 +217,7 @@ impl Expression {
             | Expression::IfOp(IfOp(_, expr, ..)) => expr.start_line(),
             // Miscellaneous expressions with special cases
             Expression::VoidStmt(..) => None,
+            Expression::Paren(ParenExpr(.., paren_expr, _)) => paren_expr.start_line(),
             Expression::MLhs(MLhs(mlhs_inners)) => {
                 mlhs_inners.first().map(|mlhs| mlhs.start_line()).flatten()
             }
@@ -235,7 +234,8 @@ impl Expression {
                 .first()
                 .map(|cce| cce.start_line())
                 .flatten(),
-            Expression::CommandCall(CommandCall(_, call_left, ..))
+            Expression::MethodAddArg(MethodAddArg(_, call_left, ..))
+            | Expression::CommandCall(CommandCall(_, call_left, ..))
             | Expression::Call(Call(_, call_left, ..)) => call_left.start_line(),
             Expression::BareAssocHash(BareAssocHash(_, assocs)) => {
                 assocs.first().map(|a| a.start_line()).flatten()
@@ -957,6 +957,17 @@ impl SymbolLiteralOrDynaSymbol {
 pub enum ParenExpressionOrExpressions {
     Expressions(Vec<Expression>),
     Expression(Box<Expression>),
+}
+
+impl ParenExpressionOrExpressions {
+    pub fn start_line(&self) -> Option<u64> {
+        match self {
+            ParenExpressionOrExpressions::Expressions(exprs) => {
+                exprs.first().map(|e| e.start_line()).flatten()
+            }
+            ParenExpressionOrExpressions::Expression(expr) => expr.as_ref().start_line(),
+        }
+    }
 }
 
 def_tag!(paren_expr_tag, "paren");
@@ -1695,16 +1706,7 @@ impl CallChainElement {
                 None
             }
             CallChainElement::DotTypeOrOp(d) => d.start_line(),
-            CallChainElement::Paren(ParenExpr(
-                _,
-                ParenExpressionOrExpressions::Expression(expr),
-                ..,
-            )) => expr.as_ref().start_line(),
-            CallChainElement::Paren(ParenExpr(
-                _,
-                ParenExpressionOrExpressions::Expressions(exprs),
-                ..,
-            )) => exprs.first().map(|e| e.start_line()).flatten(),
+            CallChainElement::Paren(pe) => pe.1.start_line(),
             CallChainElement::Expression(expr) => expr.start_line(),
         }
     }
