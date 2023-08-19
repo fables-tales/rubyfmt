@@ -127,8 +127,9 @@ impl ConcreteLineToken {
             | HeredocClose { symbol: contents }
             | ModKeyword { contents } => contents.len(),
             HardNewLine | Comma | Space | Dot | OpenSquareBracket | CloseSquareBracket
-            | OpenCurlyBracket | CloseCurlyBracket | OpenParen | CloseParen | SingleSlash => 1,
-            DoKeyword | CommaSpace | LonelyOperator | ColonColon | DoubleQuote => 2,
+            | OpenCurlyBracket | CloseCurlyBracket | OpenParen | CloseParen | SingleSlash
+            | DoubleQuote => 1,
+            DoKeyword | CommaSpace | LonelyOperator | ColonColon => 2,
             DefKeyword | Ellipsis | End => 3, // "def"/"..."/"end"
             ClassKeyword => 5,                // "class"
             ModuleKeyword => 6,               // "module"
