@@ -283,7 +283,7 @@ impl AbstractTokenTarget for BreakableCallChainEntry {
     }
 
     fn is_multiline(&self) -> bool {
-        let mut call_chain_to_check = self.call_chain.clone();
+        let mut call_chain_to_check = self.call_chain.as_slice();
         // We don't always want to multiline blocks if their only usage
         // is at the end of a chain, since it's common to have chains
         // that end with long blocks, but those blocks don't mean we should
@@ -295,17 +295,16 @@ impl AbstractTokenTarget for BreakableCallChainEntry {
         // end
         // ```
         if let Some(CallChainElement::Block(..)) = call_chain_to_check.last() {
-            call_chain_to_check.pop();
+            call_chain_to_check = &call_chain_to_check[..call_chain_to_check.len() - 1];
         }
 
         if self.is_heredoc_call_chain_with_breakables(&call_chain_to_check) {
             return true;
         }
-
         // If the first item in the chain is a multiline expression (like a hash or array),
         // ignore it when checking line length
         if let Some(CallChainElement::Expression(..)) = call_chain_to_check.first() {
-            call_chain_to_check.remove(0);
+            call_chain_to_check = &call_chain_to_check[1..];
         }
 
         let all_element_locations = call_chain_to_check
@@ -323,18 +322,7 @@ impl AbstractTokenTarget for BreakableCallChainEntry {
             }
         }
 
-        let chain_blocks_are_multilined = call_chain_to_check
-            .iter()
-            .filter_map(|elem| match elem {
-                CallChainElement::Block(block) => Some(block.clone()),
-                _ => None,
-            })
-            .any(|block| match block {
-                Block::BraceBlock(brace_block) => brace_block.3.is_multiline(),
-                Block::DoBlock(_) => true,
-            });
-
-        chain_blocks_are_multilined
+        false
     }
 
     fn any_collapsing_newline_has_heredoc_content(&self) -> bool {

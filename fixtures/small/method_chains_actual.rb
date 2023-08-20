@@ -95,6 +95,10 @@ var = MyModule::MyClass.foo.bar.baz.map { |x|
     b: ""
   )
 
+OnlyOneCall
+  # but it's explicitly multilined with a
+  .comment!
+
 Paul::Blart::Mall::Cop::PerformedByTheLegendaryKevinJamesWhoIsAnAbsoluteLegendInAllOfHisFilmsWhichAreAbsolutelyIncredible.consume_pixie_sticks(mall: "downtown").each do |punch_list_type|
 end
 

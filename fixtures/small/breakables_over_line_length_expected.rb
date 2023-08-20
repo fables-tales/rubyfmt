@@ -18,9 +18,7 @@
   ReallyLongThing
 ]
 
-if Opus::Foo::Bar::Baz::ReallyLongName::Example::ExampleExampleExampleExampleExampleExampleExampleExample.calls_a_thing(
-    a,
-    b
-  )
+if Opus::Foo::Bar::Baz::ReallyLongName::Example::ExampleExampleExampleExampleExampleExampleExampleExample
+    .calls_a_thing(a, b)
   puts("")
 end
