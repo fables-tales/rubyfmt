@@ -1301,10 +1301,6 @@ impl StartEnd {
         self.1
     }
 
-    pub fn is_multiline(&self) -> bool {
-        self.start_line() != self.end_line()
-    }
-
     pub fn unknown() -> Self {
         StartEnd(0, 0)
     }

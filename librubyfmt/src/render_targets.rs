@@ -1,10 +1,9 @@
 use crate::delimiters::BreakableDelims;
 use crate::line_tokens::{AbstractLineToken, ConcreteLineToken, ConcreteLineTokenAndTargets};
 use crate::parser_state::FormattingContext;
-use crate::ripper_tree_types::{Block, CallChainElement, Expression, StringLiteral};
+use crate::ripper_tree_types::{CallChainElement, Expression, StringLiteral};
 use crate::types::LineNumber;
 use std::collections::HashSet;
-use std::iter;
 
 fn insert_at<T>(idx: usize, target: &mut Vec<T>, input: &mut Vec<T>) {
     let mut tail = target.split_off(idx);
@@ -301,9 +300,14 @@ impl AbstractTokenTarget for BreakableCallChainEntry {
         if self.is_heredoc_call_chain_with_breakables(&call_chain_to_check) {
             return true;
         }
+
+        let has_leading_expression = matches!(
+            call_chain_to_check.first(),
+            Some(CallChainElement::Expression(..))
+        );
         // If the first item in the chain is a multiline expression (like a hash or array),
         // ignore it when checking line length
-        if let Some(CallChainElement::Expression(..)) = call_chain_to_check.first() {
+        if has_leading_expression {
             call_chain_to_check = &call_chain_to_check[1..];
         }
 
@@ -370,19 +374,6 @@ impl BreakableCallChainEntry {
         });
     }
 
-    pub fn is_single_call(&self) -> bool {
-        let op_count = self
-            .call_chain
-            .iter()
-            .filter(|cc_elem| match cc_elem {
-                CallChainElement::DotTypeOrOp(..) => true,
-                _ => false,
-            })
-            .count();
-
-        op_count == 1
-    }
-
     pub fn in_string_embexpr(&self) -> bool {
         self.context
             .iter()
@@ -394,47 +385,51 @@ impl BreakableCallChainEntry {
         // have multiline blocks (which will often be quite long vertically, even if
         // they're under 120 characters horizontally). In this case, look for the longest
         // individual line and get _that_ max length
-        iter::once(&AbstractLineToken::ConcreteLineToken(
-            // Push the starting indentation for the first line -- other
-            // lines will already have the appropriate indentation
-            ConcreteLineToken::Indent {
-                depth: starting_padding as u32,
-            },
-        ))
-        .chain(&self.tokens)
-        .map(|tok| {
-            let forced_multiline = match tok {
-                AbstractLineToken::BreakableCallChainEntry(bcce) => bcce.is_multiline(),
-                AbstractLineToken::BreakableEntry(be) => be.is_multiline(),
-                _ => false,
-            };
-            if forced_multiline {
-                RenderItem {
-                    tokens: tok.clone().into_multi_line(),
-                    convert_type: ConvertType::MultiLine,
-                }
-            } else {
-                RenderItem {
-                    tokens: tok.clone().into_single_line(),
-                    convert_type: ConvertType::SingleLine,
+        let mut tokens = self.tokens.clone();
+        if tokens.len() > 2 {
+            if let Some(AbstractLineToken::ConcreteLineToken(ConcreteLineToken::End)) =
+                tokens.get(tokens.len() - 2)
+            {
+                while let Some(token) = tokens.last() {
+                    if matches!(
+                        token,
+                        AbstractLineToken::ConcreteLineToken(ConcreteLineToken::DoKeyword)
+                    ) {
+                        break;
+                    }
+                    tokens.pop();
                 }
             }
-        })
-        .flat_map(
-            |RenderItem {
-                 tokens,
-                 convert_type,
-             }| {
-                tokens
-                    .into_iter()
-                    .map(move |tok| tok.into_ruby(convert_type))
-            },
-        )
-        .collect::<String>()
-        .split('\n')
-        .map(|st| st.len())
-        .max()
-        .unwrap()
+        }
+
+        if let Some(AbstractLineToken::BreakableEntry(_)) = tokens.first() {
+            tokens.remove(0);
+        }
+        // EndCallChainIndent, which we don't care about
+        tokens.pop();
+        if let Some(AbstractLineToken::BreakableEntry(_)) = tokens.last() {
+            tokens.pop();
+        }
+        tokens.insert(
+            0,
+            AbstractLineToken::ConcreteLineToken(
+                // Push the starting indentation for the first line -- other
+                // lines will already have the appropriate indentation
+                ConcreteLineToken::Indent {
+                    depth: starting_padding as u32,
+                },
+            ),
+        );
+
+        tokens
+            .into_iter()
+            .flat_map(|t| t.into_single_line())
+            .map(|t| t.into_ruby(ConvertType::SingleLine))
+            .collect::<String>()
+            .split('\n')
+            .map(|s| s.len())
+            .max()
+            .unwrap()
     }
 
     /// In practice, this generally means something like the call chain having something
@@ -457,38 +452,4 @@ impl BreakableCallChainEntry {
 
         false
     }
-
-    pub fn must_single_line(&self) -> bool {
-        // Ignore chains that are basically only method calls, e.g.
-        // ````ruby
-        // Thing.foo(args)
-        // Thing.foo(args) { block! }
-        // ```
-        match self.call_chain.as_slice() {
-            [CallChainElement::VarRef(..) | CallChainElement::IdentOrOpOrKeywordOrConst(..), CallChainElement::DotTypeOrOp(..), CallChainElement::IdentOrOpOrKeywordOrConst(..)]
-            | [CallChainElement::VarRef(..) | CallChainElement::IdentOrOpOrKeywordOrConst(..), CallChainElement::DotTypeOrOp(..), CallChainElement::IdentOrOpOrKeywordOrConst(..), CallChainElement::ArgsAddStarOrExpressionListOrArgsForward(..)]
-            | [CallChainElement::VarRef(..) | CallChainElement::IdentOrOpOrKeywordOrConst(..), CallChainElement::DotTypeOrOp(..), CallChainElement::IdentOrOpOrKeywordOrConst(..), CallChainElement::Block(..)]
-            | [CallChainElement::VarRef(..) | CallChainElement::IdentOrOpOrKeywordOrConst(..), CallChainElement::DotTypeOrOp(..), CallChainElement::IdentOrOpOrKeywordOrConst(..), CallChainElement::ArgsAddStarOrExpressionListOrArgsForward(..), CallChainElement::Block(..)] =>
-            {
-                return true;
-            }
-            [CallChainElement::Expression(maybe_const_ref), CallChainElement::DotTypeOrOp(dot), CallChainElement::IdentOrOpOrKeywordOrConst(..)]
-            | [CallChainElement::Expression(maybe_const_ref), CallChainElement::DotTypeOrOp(dot), CallChainElement::IdentOrOpOrKeywordOrConst(..), CallChainElement::ArgsAddStarOrExpressionListOrArgsForward(..)]
-            | [CallChainElement::Expression(maybe_const_ref), CallChainElement::DotTypeOrOp(dot), CallChainElement::IdentOrOpOrKeywordOrConst(..), CallChainElement::Block(..)]
-            | [CallChainElement::Expression(maybe_const_ref), CallChainElement::DotTypeOrOp(dot), CallChainElement::IdentOrOpOrKeywordOrConst(..), CallChainElement::ArgsAddStarOrExpressionListOrArgsForward(..), CallChainElement::Block(..)] => {
-                if matches!(maybe_const_ref.as_ref(), Expression::ConstPathRef(..))
-                    && maybe_const_ref.start_line() == dot.start_line()
-                {
-                    return true;
-                }
-            }
-            _ => {}
-        }
-        false
-    }
-}
-
-struct RenderItem {
-    tokens: Vec<ConcreteLineTokenAndTargets>,
-    convert_type: ConvertType,
 }
