@@ -103,6 +103,16 @@ OnlyOneCall
   # but it's explicitly multilined with a
   .comment!
 
+  [
+    # foo
+  ]
+    # bar
+    .baz
+
+  []
+    # Please don't do this
+    .freeze
+
 Paul::Blart::Mall::Cop::PerformedByTheLegendaryKevinJamesWhoIsAnAbsoluteLegendInAllOfHisFilmsWhichAreAbsolutelyIncredible.consume_pixie_sticks(mall: "downtown").each do |punch_list_type|
 end
 

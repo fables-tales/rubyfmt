@@ -305,9 +305,18 @@ impl AbstractTokenTarget for BreakableCallChainEntry {
             Some(CallChainElement::Expression(expr)) => !expr.is_constant_reference(),
             _ => false,
         };
+        let has_comments = self.tokens.iter().any(|t| {
+            matches!(
+                t,
+                AbstractLineToken::ConcreteLineToken(ConcreteLineToken::Comment { .. })
+            )
+        });
+
         // If the first item in the chain is a multiline expression (like a hash or array),
-        // ignore it when checking line length
-        if has_leading_expression {
+        // ignore it when checking line length.
+        // Don't ignore this if there are comments in the call chain though; that may
+        // cause it to single-lined, which breaks comment rendering.
+        if has_leading_expression && !has_comments {
             call_chain_to_check = &call_chain_to_check[1..];
         }
 
