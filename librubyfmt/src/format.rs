@@ -3044,25 +3044,28 @@ fn render_block_contents(
             ps.emit_soft_newline();
             ps.emit_soft_indent()
         }
-        BraceBlockRenderMethod::MultipleExpressions => ps.emit_newline(),
+        BraceBlockRenderMethod::MultipleExpressions => {
+            ps.emit_newline();
+            ps.emit_indent()
+        }
     }
 
-    let always_multiline = brace_block_render_method == BraceBlockRenderMethod::MultipleExpressions;
-
     ps.with_start_of_line(
-        always_multiline,
+        false,
         Box::new(|ps| {
-            for expr in body.into_iter() {
-                format_expression(ps, expr);
+            let mut peekable = body.into_iter().peekable();
+            while peekable.peek().is_some() {
+                format_expression(ps, peekable.next().unwrap());
+                ps.emit_soft_newline();
+                if peekable.peek().is_some() {
+                    ps.emit_soft_indent();
+                }
             }
             ps.shift_comments();
         }),
     );
     // This is assuming that we're always inside of an `inline_breakable_of` block, which
     // doesn't handle the indentation for the closing delimeter for us.
-    if !always_multiline {
-        ps.emit_soft_newline();
-    }
     ps.dedent(Box::new(|ps| ps.emit_soft_indent()));
 
     ps.wind_dumping_comments_until_line(end_line);
