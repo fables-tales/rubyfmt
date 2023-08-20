@@ -3248,20 +3248,8 @@ pub fn format_multilinable_mod(
     body: Box<Expression>,
     name: String,
 ) {
-    let new_body = body.clone();
-
     let is_multiline = ps.will_render_as_multiline(Box::new(|next_ps| {
-        let exprs = match *new_body {
-            Expression::Paren(p) => match p.1 {
-                ParenExpressionOrExpressions::Expressions(exprs) => exprs,
-                ParenExpressionOrExpressions::Expression(e) => vec![*e],
-            },
-            e => vec![e],
-        };
-
-        for expr in exprs {
-            format_expression(next_ps, expr);
-        }
+        format_inline_mod(next_ps, conditional.clone(), body.clone(), name.clone())
     }));
 
     if is_multiline {

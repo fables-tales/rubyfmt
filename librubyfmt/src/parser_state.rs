@@ -280,7 +280,7 @@ impl ConcreteParserState for BaseParserState {
         let data = next_ps.render_to_buffer();
 
         let s = str::from_utf8(&data).expect("string is utf8").to_string();
-        s.trim().contains('\n')
+        s.trim().contains('\n') || s.len() > MAX_LINE_LENGTH
     }
 
     fn will_render_beyond_max_line_length<'a>(&mut self, f: RenderFunc) -> bool {
