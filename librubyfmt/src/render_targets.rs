@@ -301,10 +301,10 @@ impl AbstractTokenTarget for BreakableCallChainEntry {
             return true;
         }
 
-        let has_leading_expression = matches!(
-            call_chain_to_check.first(),
-            Some(CallChainElement::Expression(..))
-        );
+        let has_leading_expression = match call_chain_to_check.first() {
+            Some(CallChainElement::Expression(expr)) => !expr.is_constant_reference(),
+            _ => false,
+        };
         // If the first item in the chain is a multiline expression (like a hash or array),
         // ignore it when checking line length
         if has_leading_expression {

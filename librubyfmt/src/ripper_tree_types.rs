@@ -161,6 +161,14 @@ pub enum Expression {
 }
 
 impl Expression {
+    pub fn is_constant_reference(&self) -> bool {
+        use Expression::*;
+        match self {
+            VarRef(..) | TopConstRef(..) | Ident(..) | Const(..) => true,
+            _ => false,
+        }
+    }
+
     pub fn start_line(&self) -> Option<u64> {
         match self {
             // Expressions with a StartEnd (ideally most/all of them would end up here)
