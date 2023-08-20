@@ -155,3 +155,9 @@ My::Error.soft(
     value: id_or_email.name
   }
 )
+
+# rubocop:disable PrisonGuard/PrivateModule
+(foo.load_one
+  # rubocop:enable PrisonGuard/PrivateModule
+  .bar)
+  .thing

@@ -1621,16 +1621,16 @@ impl CallLeft {
             | CallLeft::Yield0(Yield0(.., start_end))
             | CallLeft::Super(Super(.., start_end))
             | CallLeft::MethodAddArg(MethodAddArg(.., start_end))
-            | CallLeft::VCall(VCall(.., start_end))
-            | CallLeft::Call(Call(.., start_end))
             | CallLeft::Paren(ParenExpr(.., start_end)) => Some(start_end.start_line()),
             CallLeft::SingleParen(_, expr) => expr.start_line(),
             CallLeft::Command(Command(_, ident_or_const, ..))
+            | CallLeft::VCall(VCall(_, ident_or_const, _))
             | CallLeft::FCall(FCall(_, ident_or_const)) => Some(match ident_or_const {
                 IdentOrConst::Ident(Ident(.., linecol))
                 | IdentOrConst::Const(Const(.., linecol)) => linecol.0,
             }),
             CallLeft::CommandCall(CommandCall(_, call_left, ..))
+            | CallLeft::Call(Call(_, call_left, ..))
             | CallLeft::MethodAddBlock(MethodAddBlock(_, call_left, ..)) => call_left.start_line(),
             CallLeft::VarRef(VarRef(_, var_ref_type)) => Some(var_ref_type.start_line()),
             CallLeft::Expression(expr) => expr.start_line(),
