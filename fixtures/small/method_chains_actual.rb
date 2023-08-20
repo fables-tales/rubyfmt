@@ -95,6 +95,10 @@ var = MyModule::MyClass.foo.bar.baz.map { |x|
     b: ""
   )
 
+ThisIs::OnlyOneCall
+  # but it's explicitly multilined with a
+  .comment!
+
 OnlyOneCall
   # but it's explicitly multilined with a
   .comment!

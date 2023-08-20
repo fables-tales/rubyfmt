@@ -121,6 +121,10 @@ var = MyModule::MyClass
     b: ""
   )
 
+ThisIs::OnlyOneCall
+  # but it's explicitly multilined with a
+  .comment!
+
 OnlyOneCall
   # but it's explicitly multilined with a
   .comment!

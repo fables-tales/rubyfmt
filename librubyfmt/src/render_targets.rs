@@ -311,19 +311,15 @@ impl AbstractTokenTarget for BreakableCallChainEntry {
             call_chain_to_check = &call_chain_to_check[1..];
         }
 
-        let all_element_locations = call_chain_to_check
+        let chain_is_user_multilined = call_chain_to_check
             .iter()
             .filter_map(|cc_elem| cc_elem.start_line())
-            .collect::<Vec<u64>>();
+            .collect::<HashSet<_>>()
+            .len()
+            > 1;
 
-        // Multiline the chain if all the call chain elements are not on the same line
-        if let Some(first_op_start_end) = all_element_locations.first() {
-            let chain_is_user_multilined = !all_element_locations
-                .iter()
-                .all(|op_start_end| op_start_end == first_op_start_end);
-            if chain_is_user_multilined {
-                return true;
-            }
+        if chain_is_user_multilined {
+            return true;
         }
 
         false

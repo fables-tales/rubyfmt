@@ -164,7 +164,7 @@ impl Expression {
     pub fn is_constant_reference(&self) -> bool {
         use Expression::*;
         match self {
-            VarRef(..) | TopConstRef(..) | Ident(..) | Const(..) => true,
+            VarRef(..) | TopConstRef(..) | Ident(..) | Const(..) | ConstPathRef(..) => true,
             _ => false,
         }
     }
