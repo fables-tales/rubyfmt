@@ -798,7 +798,7 @@ impl ConcreteParserState for BaseParserState {
                 self.push_concrete_token(ConcreteLineToken::HardNewLine);
             }
 
-            let kind = next_heredoc.kind.clone();
+            let kind = next_heredoc.kind;
             let symbol = next_heredoc.closing_symbol();
             let space_count = next_heredoc.indent;
             let string_contents = next_heredoc.render_as_string();

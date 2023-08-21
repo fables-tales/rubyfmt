@@ -328,7 +328,7 @@ impl AbstractLineToken {
         if let Some(values) = heredoc_strings {
             for hds in values {
                 let indent = hds.indent;
-                let kind = hds.kind.clone();
+                let kind = hds.kind;
                 let symbol = hds.closing_symbol();
 
                 let s = hds.render_as_string();

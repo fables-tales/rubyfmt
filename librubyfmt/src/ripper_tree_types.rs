@@ -163,10 +163,10 @@ pub enum Expression {
 impl Expression {
     pub fn is_constant_reference(&self) -> bool {
         use Expression::*;
-        match self {
-            VarRef(..) | TopConstRef(..) | Ident(..) | Const(..) | ConstPathRef(..) => true,
-            _ => false,
-        }
+        matches!(
+            self,
+            VarRef(..) | TopConstRef(..) | Ident(..) | Const(..) | ConstPathRef(..)
+        )
     }
 
     pub fn start_line(&self) -> Option<u64> {
@@ -227,31 +227,29 @@ impl Expression {
             Expression::VoidStmt(..) => None,
             Expression::Paren(ParenExpr(.., paren_expr, _)) => paren_expr.start_line(),
             Expression::MLhs(MLhs(mlhs_inners)) => {
-                mlhs_inners.first().map(|mlhs| mlhs.start_line()).flatten()
+                mlhs_inners.first().and_then(|mlhs| mlhs.start_line())
             }
             Expression::MethodAddBlock(MethodAddBlock(_, call_left, ..)) => call_left.start_line(),
             Expression::RegexpLiteral(RegexpLiteral(_, string_content_parts, _)) => {
                 string_content_parts
                     .first()
-                    .map(|scp| scp.start_line())
-                    .flatten()
+                    .and_then(|scp| scp.start_line())
             }
             Expression::OpAssign(OpAssign(_, assignable, ..)) => assignable.start_line(),
             Expression::Params(params) => Some(params.as_ref().8.start_line()),
-            Expression::MethodCall(MethodCall(_, call_chain_elements, ..)) => call_chain_elements
-                .first()
-                .map(|cce| cce.start_line())
-                .flatten(),
+            Expression::MethodCall(MethodCall(_, call_chain_elements, ..)) => {
+                call_chain_elements.first().and_then(|cce| cce.start_line())
+            }
             Expression::MethodAddArg(MethodAddArg(_, call_left, ..))
             | Expression::CommandCall(CommandCall(_, call_left, ..))
             | Expression::Call(Call(_, call_left, ..)) => call_left.start_line(),
             Expression::BareAssocHash(BareAssocHash(_, assocs)) => {
-                assocs.first().map(|a| a.start_line()).flatten()
+                assocs.first().and_then(|a| a.start_line())
             }
             Expression::Symbol(Symbol(_, symbol_type)) => symbol_type.start_line(),
             Expression::BeginBlock(BeginBlock(_, exprs))
             | Expression::EndBlock(EndBlock(_, exprs)) => {
-                exprs.first().map(|expr| expr.start_line()).flatten()
+                exprs.first().and_then(|expr| expr.start_line())
             }
             // Pick the first of either expression, since these can be e.g. `foo..bar` or `foo..` or `..bar`
             Expression::Dot2(Dot2(_, maybe_first_expr, maybe_second_expr))
@@ -263,7 +261,7 @@ impl Expression {
             Expression::Alias(Alias(_, symbol, ..)) => Some(symbol.start_line()),
             Expression::StringLiteral(string_literal) => Some(string_literal.start_line()),
             Expression::XStringLiteral(XStringLiteral(_, string_parts)) => {
-                string_parts.first().map(|sp| sp.start_line()).flatten()
+                string_parts.first().and_then(|sp| sp.start_line())
             }
             Expression::VarRef(VarRef(_, var_ref_type)) => Some(var_ref_type.start_line()),
             Expression::Assign(Assign(_, assignable, ..)) => assignable.start_line(),
@@ -307,15 +305,13 @@ impl MLhsInner {
             MLhsInner::Field(Field(_, expr, ..)) => expr.start_line(),
             MLhsInner::RestParam(RestParam(.., rest_param_assignable)) => rest_param_assignable
                 .as_ref()
-                .map(|rpa| rpa.start_line())
-                .flatten(),
+                .and_then(|rpa| rpa.start_line()),
             MLhsInner::Ident(Ident(_, _, linecol)) => Some(linecol.0),
             MLhsInner::MLhs(mlhs) => mlhs
                 .as_ref()
                 .0
                 .first()
-                .map(|mlhs_inner| mlhs_inner.start_line())
-                .flatten(),
+                .and_then(|mlhs_inner| mlhs_inner.start_line()),
         }
     }
 }
@@ -455,7 +451,7 @@ impl MRHSNewFromArgsOrEmpty {
             MRHSNewFromArgsOrEmpty::MRHSNewFromArgs(MRHSNewFromArgs(_, args_add_star, ..)) => {
                 args_add_star.start_line()
             }
-            MRHSNewFromArgsOrEmpty::Empty(exprs) => exprs.first().map(|e| e.start_line()).flatten(),
+            MRHSNewFromArgsOrEmpty::Empty(exprs) => exprs.first().and_then(|e| e.start_line()),
         }
     }
 }
@@ -562,13 +558,10 @@ pub enum AssignableListOrMLhs {
 impl AssignableListOrMLhs {
     pub fn start_line(&self) -> Option<u64> {
         match self {
-            AssignableListOrMLhs::AssignableList(al) => al
-                .first()
-                .map(|assignable| assignable.start_line())
-                .flatten(),
-            AssignableListOrMLhs::MLhs(mlhs) => {
-                mlhs.0.first().map(|inner| inner.start_line()).flatten()
+            AssignableListOrMLhs::AssignableList(al) => {
+                al.first().and_then(|assignable| assignable.start_line())
             }
+            AssignableListOrMLhs::MLhs(mlhs) => mlhs.0.first().and_then(|inner| inner.start_line()),
         }
     }
 }
@@ -617,8 +610,7 @@ impl Assignable {
             Assignable::VarField(VarField(.., var_ref_type)) => Some(var_ref_type.start_line()),
             Assignable::RestParam(RestParam(.., rest_param_assignable)) => rest_param_assignable
                 .as_ref()
-                .map(|rpa| rpa.start_line())
-                .flatten(),
+                .and_then(|rpa| rpa.start_line()),
             Assignable::ConstPathField(ConstPathField(.., Const(.., linecol)))
             | Assignable::Ident(Ident(.., linecol))
             | Assignable::TopConstField(TopConstField(.., Const(.., linecol))) => Some(linecol.0),
@@ -626,8 +618,7 @@ impl Assignable {
             Assignable::Field(Field(_, expr, ..)) => expr.start_line(),
             Assignable::MLhs(MLhs(mlhs_inners)) => mlhs_inners
                 .first()
-                .map(|mlhs_inner| mlhs_inner.start_line())
-                .flatten(),
+                .and_then(|mlhs_inner| mlhs_inner.start_line()),
         }
     }
 }
@@ -797,7 +788,7 @@ impl StringContentPart {
         match self {
             StringContentPart::TStringContent(TStringContent(.., linecol)) => Some(linecol.0),
             StringContentPart::StringEmbexpr(StringEmbexpr(_, exprs)) => {
-                exprs.first().map(|expr| expr.start_line()).flatten()
+                exprs.first().and_then(|expr| expr.start_line())
             }
             StringContentPart::StringDVar(StringDVar(_, expr)) => expr.as_ref().start_line(),
         }
@@ -878,7 +869,7 @@ impl ArgsAddStarOrExpressionListOrArgsForward {
     pub fn start_line(&self) -> Option<u64> {
         match self {
             ArgsAddStarOrExpressionListOrArgsForward::ExpressionList(exprs) => {
-                exprs.first().map(|e| e.start_line()).flatten()
+                exprs.first().and_then(|e| e.start_line())
             }
             ArgsAddStarOrExpressionListOrArgsForward::ArgsAddStar(ArgsAddStar(_, aas, ..)) => {
                 aas.start_line()
@@ -971,7 +962,7 @@ impl ParenExpressionOrExpressions {
     pub fn start_line(&self) -> Option<u64> {
         match self {
             ParenExpressionOrExpressions::Expressions(exprs) => {
-                exprs.first().map(|e| e.start_line()).flatten()
+                exprs.first().and_then(|e| e.start_line())
             }
             ParenExpressionOrExpressions::Expression(expr) => expr.as_ref().start_line(),
         }
@@ -1620,7 +1611,9 @@ impl CallLeft {
             | CallLeft::Yield(Yield(.., start_end))
             | CallLeft::Yield0(Yield0(.., start_end))
             | CallLeft::Super(Super(.., start_end)) => Some(start_end.start_line()),
-            CallLeft::Paren(ParenExpr(_, paren_expr_or_exprs, ..)) => paren_expr_or_exprs.start_line(),
+            CallLeft::Paren(ParenExpr(_, paren_expr_or_exprs, ..)) => {
+                paren_expr_or_exprs.start_line()
+            }
             CallLeft::SingleParen(_, expr) => expr.start_line(),
             CallLeft::Command(Command(_, ident_or_const, ..))
             | CallLeft::VCall(VCall(_, ident_or_const, _))

@@ -338,7 +338,7 @@ impl AbstractTokenTarget for BreakableCallChainEntry {
             call_chain_to_check = &call_chain_to_check[..call_chain_to_check.len() - 1];
         }
 
-        if self.is_heredoc_call_chain_with_breakables(&call_chain_to_check) {
+        if self.is_heredoc_call_chain(call_chain_to_check) {
             return true;
         }
 
@@ -437,7 +437,7 @@ impl BreakableCallChainEntry {
     ///
     /// Breakables don't play very nicely with heredoc rendering in call chains,
     /// and it would likely be a pretty hefty refactor to properly support this.
-    fn is_heredoc_call_chain_with_breakables(&self, cc_elements: &[CallChainElement]) -> bool {
+    fn is_heredoc_call_chain(&self, cc_elements: &[CallChainElement]) -> bool {
         if let Some(CallChainElement::Expression(expr)) = cc_elements.first() {
             if let Expression::StringLiteral(string_literal) = &**expr {
                 return matches!(string_literal, StringLiteral::Heredoc(..));

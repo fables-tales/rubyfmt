@@ -1643,7 +1643,7 @@ pub fn format_heredoc_string_literal(
             let heredoc_type = (hd.1).0;
             let heredoc_symbol = (hd.1).1;
             let kind = HeredocKind::from_string(&heredoc_type);
-            ps.emit_heredoc_start(heredoc_type, heredoc_symbol.clone(), kind.clone());
+            ps.emit_heredoc_start(heredoc_type, heredoc_symbol.clone(), kind);
 
             ps.push_heredoc_content(heredoc_symbol, kind, parts, end_line);
         }),
