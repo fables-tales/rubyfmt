@@ -169,6 +169,21 @@ impl Expression {
         )
     }
 
+    /// This _is_ a lot of boilerplate, but there's some method to this madness.
+    /// Notably, not all expressions have a "trustworthy" `StartEnd`. There's an
+    /// important distinction between which of these contructs that come from the parser
+    /// and which are lexical constructions. For example, a hash will have an accurate
+    /// StartEnd because it's beginning and end are clearly defined in the grammar.
+    ///
+    /// However, some things -- take a Command for example -- are ambiguous by design.
+    /// In the case of Commands, since they don't use parens, their StartEnd will continue
+    /// all the way until the next expression, since technically a method argument could
+    /// be anywhere in the interim, so it's StartEnd is far longer than the actual call.
+    ///
+    /// Many such constructs here are unreliable and thus use a proxy instead, e.g. the first
+    /// nested expression, the nearest identifier, etc. These are broadly grouped into "categories",
+    /// but there are unfortunately many cases of ambiguity, hence this gigantic match statement
+    /// (and the similar functions on other related structs).
     pub fn start_line(&self) -> Option<u64> {
         match self {
             // Expressions with a StartEnd (ideally most/all of them would end up here)

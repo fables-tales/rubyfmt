@@ -400,11 +400,6 @@ impl ConcreteParserState for BaseParserState {
 
         f(self);
 
-        // The last newline is in the old block, so we need
-        // to reset to ensure that any comments between now and the
-        // next newline are at the right indentation level
-        self.reset_space_count();
-
         let insert_bcce = self
             .breakable_entry_stack
             .pop()

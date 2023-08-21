@@ -2766,6 +2766,10 @@ fn format_call_chain(
 fn format_call_chain_elements(
     ps: &mut dyn ConcreteParserState,
     cc: Vec<CallChainElement>,
+    // Whether or not to force the last call to use parens. By default, falls back to normal call chain rules.
+    // This is necessary for supporting things like parenthesized methods in `self.method` method chains where
+    // the parens are sometimes semantically meaningful. However, we leave this as optional since not all callers
+    // require this (e.g. `MethodAddArg` doesn't enforce invariants like those).
     last_call_use_parens: Option<bool>,
 ) {
     let elide_parens = can_elide_parens_for_reserved_names(&cc);

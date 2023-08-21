@@ -53,12 +53,33 @@ pub trait AbstractTokenTarget: std::fmt::Debug {
     fn is_multiline(&self) -> bool;
     fn push_line_number(&mut self, number: LineNumber);
     fn single_line_string_length(&self, current_line_length: usize) -> usize;
-    fn index_of_prev_newline(&self) -> Option<usize>;
     fn to_breakable_entry(self: Box<Self>) -> BreakableEntry;
     fn to_breakable_call_chain(self: Box<Self>) -> BreakableCallChainEntry;
-    fn len(&self) -> usize;
     fn tokens(&self) -> &Vec<AbstractLineToken>;
     fn any_collapsing_newline_has_heredoc_content(&self) -> bool;
+
+    fn len(&self) -> usize {
+        self.tokens().len()
+    }
+
+    fn index_of_prev_newline(&self) -> Option<usize> {
+        let first_idx = self
+            .tokens()
+            .iter()
+            .rposition(|v| v.is_newline() || v.is_comment());
+        match first_idx {
+            Some(x) => {
+                if matches!(self.tokens()[x], AbstractLineToken::CollapsingNewLine(_))
+                    || matches!(self.tokens()[x], AbstractLineToken::SoftNewline(_))
+                {
+                    Some(x + 1)
+                } else {
+                    Some(x)
+                }
+            }
+            None => None,
+        }
+    }
 
     fn last_token_is_a_newline(&self) -> bool {
         match self.tokens().last() {
@@ -118,25 +139,6 @@ impl AbstractTokenTarget for BreakableEntry {
         }
     }
 
-    fn index_of_prev_newline(&self) -> Option<usize> {
-        let first_idx = self
-            .tokens
-            .iter()
-            .rposition(|v| v.is_newline() || v.is_comment());
-        match first_idx {
-            Some(x) => {
-                if matches!(self.tokens[x], AbstractLineToken::CollapsingNewLine(_))
-                    || matches!(self.tokens[x], AbstractLineToken::SoftNewline(_))
-                {
-                    Some(x + 1)
-                } else {
-                    Some(x)
-                }
-            }
-            None => None,
-        }
-    }
-
     fn single_line_string_length(&self, current_line_length: usize) -> usize {
         self.tokens
             .iter()
@@ -155,10 +157,6 @@ impl AbstractTokenTarget for BreakableEntry {
         self.line_numbers.len() > 1
             || self.any_collapsing_newline_has_heredoc_content()
             || self.contains_hard_newline()
-    }
-
-    fn len(&self) -> usize {
-        self.tokens.len()
     }
 
     fn tokens(&self) -> &Vec<AbstractLineToken> {
@@ -247,25 +245,6 @@ impl AbstractTokenTarget for BreakableCallChainEntry {
         }
     }
 
-    fn index_of_prev_newline(&self) -> Option<usize> {
-        let first_idx = self
-            .tokens
-            .iter()
-            .rposition(|v| v.is_newline() || v.is_comment());
-        match first_idx {
-            Some(x) => {
-                if matches!(self.tokens[x], AbstractLineToken::CollapsingNewLine(_))
-                    || matches!(self.tokens[x], AbstractLineToken::SoftNewline(_))
-                {
-                    Some(x + 1)
-                } else {
-                    Some(x)
-                }
-            }
-            None => None,
-        }
-    }
-
     fn single_line_string_length(&self, current_line_length: usize) -> usize {
         // Render all tokens to strings, but since these are call chains, they may
         // have multiline blocks (which will often be quite long vertically, even if
@@ -276,6 +255,9 @@ impl AbstractTokenTarget for BreakableCallChainEntry {
             if let Some(AbstractLineToken::ConcreteLineToken(ConcreteLineToken::End)) =
                 tokens.get(tokens.len() - 2)
             {
+                // Pop off all tokens that make up the `do`/`end` block (but not `do`!),
+                // since we assume that the block contents will handle their own line
+                // length appropriately.
                 while let Some(token) = tokens.last() {
                     if matches!(
                         token,
@@ -293,6 +275,12 @@ impl AbstractTokenTarget for BreakableCallChainEntry {
         }
         // EndCallChainIndent, which we don't care about
         tokens.pop();
+        // If the last breakable extends beyond the line length but the call chain doesn't,
+        // the breakable will break itself, e.g.
+        // ```ruby
+        // #                                              ↓ if the break is here, we'll break the parens instead of the call chain
+        // AssumeThisIs.one_hundred_twenty_characters(breaks_here)
+        // ```
         if let Some(AbstractLineToken::BreakableEntry(_)) = tokens.last() {
             tokens.pop();
         }
@@ -312,10 +300,7 @@ impl AbstractTokenTarget for BreakableCallChainEntry {
             .flat_map(|t| t.into_single_line())
             .map(|t| t.into_ruby())
             .collect::<String>()
-            .split('\n')
-            .map(|s| s.len())
-            .max()
-            .unwrap()
+            .len()
     }
 
     fn push_line_number(&mut self, number: LineNumber) {
@@ -323,6 +308,10 @@ impl AbstractTokenTarget for BreakableCallChainEntry {
     }
 
     fn is_multiline(&self) -> bool {
+        if self.begins_with_heredoc() {
+            return true;
+        }
+
         let mut call_chain_to_check = self.call_chain.as_slice();
         // We don't always want to multiline blocks if their only usage
         // is at the end of a chain, since it's common to have chains
@@ -338,10 +327,6 @@ impl AbstractTokenTarget for BreakableCallChainEntry {
             call_chain_to_check = &call_chain_to_check[..call_chain_to_check.len() - 1];
         }
 
-        if self.is_heredoc_call_chain(call_chain_to_check) {
-            return true;
-        }
-
         let has_leading_expression = match call_chain_to_check.first() {
             Some(CallChainElement::Expression(expr)) => !expr.is_constant_reference(),
             _ => false,
@@ -355,7 +340,7 @@ impl AbstractTokenTarget for BreakableCallChainEntry {
 
         // If the first item in the chain is a multiline expression (like a hash or array),
         // ignore it when checking line length.
-        // Don't ignore this if there are comments in the call chain though; that may
+        // Don't ignore this if there are comments in the call chain though; this check may
         // cause it to single-lined, which breaks comment rendering.
         if has_leading_expression && !has_comments {
             call_chain_to_check = &call_chain_to_check[1..];
@@ -384,6 +369,9 @@ impl AbstractTokenTarget for BreakableCallChainEntry {
             }
             _ => false,
         }) || self.call_chain.iter().any(|cce| match cce {
+            // In cases where the heredoc is the first item in the call chain,
+            // it won't get stored in an abstract token; instead, it'll be directly
+            // in the call chain as a concrete token.
             CallChainElement::Expression(expr) => {
                 matches!(
                     expr.as_ref(),
@@ -392,10 +380,6 @@ impl AbstractTokenTarget for BreakableCallChainEntry {
             }
             _ => false,
         })
-    }
-
-    fn len(&self) -> usize {
-        self.tokens.len()
     }
 }
 
@@ -409,6 +393,9 @@ impl BreakableCallChainEntry {
         }
     }
 
+    /// Removes `BeginCallChainIndent` and `EndCallChainIndent`, which is only really
+    /// necessary when rendering a call chain as single-line. This prevents unnecessariliy
+    /// increasing the indentation for a trailing block in e.g. `thing.each do; /* block */; end`
     pub fn remove_call_chain_magic_tokens(&mut self) {
         self.tokens.retain(|t| {
             !matches!(
@@ -426,19 +413,8 @@ impl BreakableCallChainEntry {
             .any(|fc| fc == &FormattingContext::StringEmbexpr)
     }
 
-    /// In practice, this generally means something like the call chain having something
-    /// like a method call with args or a block, e.g.
-    ///
-    /// ```ruby
-    /// # `|line|` here is the breakable
-    /// <<~FOO.lines.map { |line| p(line) }
-    /// FOO
-    /// ```
-    ///
-    /// Breakables don't play very nicely with heredoc rendering in call chains,
-    /// and it would likely be a pretty hefty refactor to properly support this.
-    fn is_heredoc_call_chain(&self, cc_elements: &[CallChainElement]) -> bool {
-        if let Some(CallChainElement::Expression(expr)) = cc_elements.first() {
+    fn begins_with_heredoc(&self) -> bool {
+        if let Some(CallChainElement::Expression(expr)) = self.call_chain.first() {
             if let Expression::StringLiteral(string_literal) = &**expr {
                 return matches!(string_literal, StringLiteral::Heredoc(..));
             }
