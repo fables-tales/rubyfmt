@@ -31,18 +31,20 @@ impl RenderQueueWriter {
 
     fn render_as(accum: &mut Intermediary, tokens: Vec<ConcreteLineTokenAndTargets>) {
         use ConcreteLineToken::*;
-        let tokens_copy = tokens.clone();
+        let token_len = tokens.len();
+        let mut peekable = tokens.into_iter().enumerate().peekable();
         let mut current_heredoc_kind: Option<HeredocKind> = None;
 
-        for (index, mut next_token) in tokens.into_iter().enumerate() {
+        while let Some((index, mut next_token)) = peekable.next() {
             // Do any additional indentation changes caused by call chain rendering
             match &next_token {
                 ConcreteLineTokenAndTargets::ConcreteLineToken(Indent { depth }) => {
-                    let is_ending_heredoc_token = tokens_copy.len() > index
+                    let is_ending_heredoc_token = token_len > index
                         && matches!(
-                            tokens_copy.get(index + 1),
-                            Some(ConcreteLineTokenAndTargets::ConcreteLineToken(
-                                HeredocClose { .. }
+                            peekable.peek(),
+                            Some((
+                                _,
+                                ConcreteLineTokenAndTargets::ConcreteLineToken(HeredocClose { .. })
                             ))
                         );
                     if !is_ending_heredoc_token {

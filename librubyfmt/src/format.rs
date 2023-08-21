@@ -2913,7 +2913,6 @@ pub fn format_method_add_block(ps: &mut dyn ConcreteParserState, mab: MethodAddB
     ps.with_start_of_line(
         false,
         Box::new(|ps| {
-            // let has_empty_chain = chain.is_empty();
             format_call_chain(ps, chain, None);
         }),
     );
