@@ -2895,41 +2895,6 @@ fn format_call_chain_elements(
     }
 }
 
-/// Checks whether a call chain both starts with a heredoc expression
-/// *and* contains a call chain element with a breakable.
-///
-/// In practice, this generally means something like the call chain having something
-/// like a method call with args or a block, e.g.
-///
-/// ```ruby
-/// # `|line|` here is the breakable
-/// <<~FOO.lines.map { |line| p(line) }
-/// FOO
-/// ```
-///
-/// Breakables don't play very nicely with heredoc rendering in call chains,
-/// and it would likely be a pretty hefty refactor to properly support this.
-#[allow(dead_code)]
-fn is_heredoc_call_chain_with_breakables(cc_elements: &[CallChainElement]) -> bool {
-    if let Some(CallChainElement::Expression(expr)) = cc_elements.first() {
-        if let Expression::StringLiteral(string_literal) = &**expr {
-            if matches!(string_literal, StringLiteral::Heredoc(..)) {
-                let contains_breakables = cc_elements.iter().any(|cc_elem| match cc_elem {
-                    CallChainElement::ArgsAddStarOrExpressionListOrArgsForward(
-                        ArgsAddStarOrExpressionListOrArgsForward::ExpressionList(list),
-                        ..,
-                    ) => !list.is_empty(),
-                    CallChainElement::Block(..) => true,
-                    _ => false,
-                });
-                return contains_breakables;
-            }
-        }
-    }
-
-    false
-}
-
 pub fn format_block(ps: &mut dyn ConcreteParserState, b: Block) {
     match b {
         Block::BraceBlock(bb) => format_brace_block(ps, bb),
