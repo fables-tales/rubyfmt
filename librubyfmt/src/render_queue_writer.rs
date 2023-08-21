@@ -69,6 +69,7 @@ impl RenderQueueWriter {
                     if current_heredoc_kind
                         .map(|k| k.is_squiggly())
                         .unwrap_or(false)
+                        && !part.is_empty()
                     {
                         let indent: String =
                             (0..(accum.additional_indent * 2)).map(|_| ' ').collect();
