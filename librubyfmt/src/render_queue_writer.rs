@@ -69,13 +69,15 @@ impl RenderQueueWriter {
                     if current_heredoc_kind
                         .map(|k| k.is_squiggly())
                         .unwrap_or(false)
-                        && !part.is_empty()
                     {
                         let indent: String =
                             (0..(accum.additional_indent * 2)).map(|_| ' ').collect();
                         let new_contents = part
                             .split('\n')
                             .map(|p| {
+                                if p.is_empty() {
+                                    return p.to_string();
+                                }
                                 let mut line = indent.clone();
                                 line.push_str(p);
                                 line
@@ -96,7 +98,7 @@ impl RenderQueueWriter {
                     if current_heredoc_kind.map(|k| !k.is_bare()).unwrap_or(false) {
                         let mut new_contents: String =
                             (0..(accum.additional_indent * 2)).map(|_| ' ').collect();
-                        new_contents.push_str(symbol.clone().as_str());
+                        new_contents.push_str(symbol.as_str());
                         next_token = clats_heredoc_close(new_contents);
                     }
                     current_heredoc_kind = None;
