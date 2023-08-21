@@ -190,7 +190,7 @@ impl RenderQueueWriter {
     }
 
     fn format_breakable_entry(accum: &mut Intermediary, be: BreakableEntry) {
-        let length = accum.current_line_length() + be.single_line_string_length();
+        let length = be.single_line_string_length(accum.current_line_length());
         // We generally will force expressions embedded in strings to be on a single line,
         // but if that expression has a heredoc nested in it, we should let it render across lines
         // so that the collapsing newlines render properly.
@@ -213,9 +213,7 @@ impl RenderQueueWriter {
         accum: &mut Intermediary,
         mut bcce: BreakableCallChainEntry,
     ) {
-        // N.B. longest_multiline_string_length will include the additional indentation
-        // while rendering, so we don't add the accum.current_line_length() here
-        let length = bcce.longest_multiline_string_length(accum.current_line_length());
+        let length = bcce.single_line_string_length(accum.current_line_length());
         let must_multiline =
             bcce.any_collapsing_newline_has_heredoc_content() && bcce.in_string_embexpr();
         if must_multiline

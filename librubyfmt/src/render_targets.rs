@@ -52,7 +52,7 @@ pub trait AbstractTokenTarget: std::fmt::Debug {
     fn into_tokens(self, ct: ConvertType) -> Vec<ConcreteLineTokenAndTargets>;
     fn is_multiline(&self) -> bool;
     fn push_line_number(&mut self, number: LineNumber);
-    fn single_line_string_length(&self) -> usize;
+    fn single_line_string_length(&self, current_line_length: usize) -> usize;
     fn index_of_prev_newline(&self) -> Option<usize>;
     fn to_breakable_entry(self: Box<Self>) -> BreakableEntry;
     fn to_breakable_call_chain(self: Box<Self>) -> BreakableCallChainEntry;
@@ -137,13 +137,14 @@ impl AbstractTokenTarget for BreakableEntry {
         }
     }
 
-    fn single_line_string_length(&self) -> usize {
+    fn single_line_string_length(&self, current_line_length: usize) -> usize {
         self.tokens
             .iter()
             .flat_map(|tok| tok.clone().into_single_line())
             .map(|tok| tok.into_ruby().len())
             .sum::<usize>()
             + self.delims.single_line_len()
+            + current_line_length
     }
 
     fn push_line_number(&mut self, number: LineNumber) {
@@ -265,16 +266,56 @@ impl AbstractTokenTarget for BreakableCallChainEntry {
         }
     }
 
-    fn single_line_string_length(&self) -> usize {
+    fn single_line_string_length(&self, current_line_length: usize) -> usize {
         // Render all tokens to strings, but since these are call chains, they may
         // have multiline blocks (which will often be quite long vertically, even if
         // they're under 120 characters horizontally). In this case, look for the longest
-        // individual line and get _that_ max length
-        self.tokens
-            .iter()
-            .flat_map(|tok| tok.clone().into_single_line())
-            .map(|tok| tok.into_ruby().len())
-            .sum::<usize>()
+        // individual line and get _that_ max length.
+        let mut tokens = self.tokens.clone();
+        if tokens.len() > 2 {
+            if let Some(AbstractLineToken::ConcreteLineToken(ConcreteLineToken::End)) =
+                tokens.get(tokens.len() - 2)
+            {
+                while let Some(token) = tokens.last() {
+                    if matches!(
+                        token,
+                        AbstractLineToken::ConcreteLineToken(ConcreteLineToken::DoKeyword)
+                    ) {
+                        break;
+                    }
+                    tokens.pop();
+                }
+            }
+        }
+
+        if let Some(AbstractLineToken::BreakableEntry(_)) = tokens.first() {
+            tokens.remove(0);
+        }
+        // EndCallChainIndent, which we don't care about
+        tokens.pop();
+        if let Some(AbstractLineToken::BreakableEntry(_)) = tokens.last() {
+            tokens.pop();
+        }
+        tokens.insert(
+            0,
+            AbstractLineToken::ConcreteLineToken(
+                // Push the starting indentation for the first line -- other
+                // lines will already have the appropriate indentation
+                ConcreteLineToken::Indent {
+                    depth: current_line_length as u32,
+                },
+            ),
+        );
+
+        tokens
+            .into_iter()
+            .flat_map(|t| t.into_single_line())
+            .map(|t| t.into_ruby())
+            .collect::<String>()
+            .split('\n')
+            .map(|s| s.len())
+            .max()
+            .unwrap()
     }
 
     fn push_line_number(&mut self, number: LineNumber) {
@@ -383,58 +424,6 @@ impl BreakableCallChainEntry {
         self.context
             .iter()
             .any(|fc| fc == &FormattingContext::StringEmbexpr)
-    }
-
-    pub fn longest_multiline_string_length(&self, starting_padding: usize) -> usize {
-        // Render all tokens to strings, but since these are call chains, they may
-        // have multiline blocks (which will often be quite long vertically, even if
-        // they're under 120 characters horizontally). In this case, look for the longest
-        // individual line and get _that_ max length
-        let mut tokens = self.tokens.clone();
-        if tokens.len() > 2 {
-            if let Some(AbstractLineToken::ConcreteLineToken(ConcreteLineToken::End)) =
-                tokens.get(tokens.len() - 2)
-            {
-                while let Some(token) = tokens.last() {
-                    if matches!(
-                        token,
-                        AbstractLineToken::ConcreteLineToken(ConcreteLineToken::DoKeyword)
-                    ) {
-                        break;
-                    }
-                    tokens.pop();
-                }
-            }
-        }
-
-        if let Some(AbstractLineToken::BreakableEntry(_)) = tokens.first() {
-            tokens.remove(0);
-        }
-        // EndCallChainIndent, which we don't care about
-        tokens.pop();
-        if let Some(AbstractLineToken::BreakableEntry(_)) = tokens.last() {
-            tokens.pop();
-        }
-        tokens.insert(
-            0,
-            AbstractLineToken::ConcreteLineToken(
-                // Push the starting indentation for the first line -- other
-                // lines will already have the appropriate indentation
-                ConcreteLineToken::Indent {
-                    depth: starting_padding as u32,
-                },
-            ),
-        );
-
-        tokens
-            .into_iter()
-            .flat_map(|t| t.into_single_line())
-            .map(|t| t.into_ruby())
-            .collect::<String>()
-            .split('\n')
-            .map(|s| s.len())
-            .max()
-            .unwrap()
     }
 
     /// In practice, this generally means something like the call chain having something
