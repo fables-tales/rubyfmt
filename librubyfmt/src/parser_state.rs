@@ -952,7 +952,7 @@ impl BaseParserState {
         next_ps
     }
 
-    pub fn render_to_buffer(self) -> Vec<u8> {
+    fn render_to_buffer(self) -> Vec<u8> {
         let mut bufio = Cursor::new(Vec::new());
         self.write(&mut bufio).expect("in memory io cannot fail");
         bufio.set_position(0);

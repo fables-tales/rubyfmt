@@ -197,10 +197,7 @@ impl RenderQueueWriter {
         let force_single_line =
             !be.any_collapsing_newline_has_heredoc_content() && be.in_string_embexpr();
 
-        if force_single_line {
-            Self::render_as(accum, be.into_tokens(ConvertType::SingleLine));
-            accum.clear_breakable_garbage();
-        } else if length > MAX_LINE_LENGTH || be.is_multiline() {
+        if !force_single_line && (length > MAX_LINE_LENGTH || be.is_multiline()) {
             Self::render_as(accum, be.into_tokens(ConvertType::MultiLine));
         } else {
             Self::render_as(accum, be.into_tokens(ConvertType::SingleLine));

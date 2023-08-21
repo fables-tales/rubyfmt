@@ -68,7 +68,7 @@ impl ConcreteLineToken {
     pub fn into_ruby(self) -> String {
         match self {
             Self::HardNewLine => "\n".to_string(),
-            Self::Indent { depth, .. } => (0..depth).map(|_| ' ').collect(),
+            Self::Indent { depth } => (0..depth).map(|_| ' ').collect(),
             Self::Keyword { keyword } => keyword,
             Self::ModKeyword { contents } => contents,
             Self::ConditionalKeyword { contents } => contents,
@@ -116,7 +116,7 @@ impl ConcreteLineToken {
         // by an order of magnitude
         match self {
             AfterCallChain | BeginCallChainIndent | EndCallChainIndent | HeredocStart { .. } => 0, // purely semantic tokens, don't render
-            Indent { depth, .. } => *depth as usize,
+            Indent { depth } => *depth as usize,
             Keyword { keyword: contents }
             | Op { op: contents }
             | DirectPart { part: contents }
@@ -235,19 +235,19 @@ impl ConcreteLineTokenAndTargets {
         }
     }
 
-    pub fn into_ruby(self, convert_type: ConvertType) -> String {
+    pub fn into_ruby(self) -> String {
         match self {
             Self::BreakableEntry(be) => be
-                .into_tokens(convert_type)
+                .into_tokens(ConvertType::SingleLine)
                 .into_iter()
                 .fold("".to_string(), |accum, tok| {
-                    format!("{}{}", accum, tok.into_ruby(convert_type))
+                    format!("{}{}", accum, tok.into_ruby())
                 }),
             Self::BreakableCallChainEntry(bcce) => bcce
-                .into_tokens(convert_type)
+                .into_tokens(ConvertType::SingleLine)
                 .into_iter()
                 .fold("".to_string(), |accum, tok| {
-                    format!("{}{}", accum, tok.into_ruby(convert_type))
+                    format!("{}{}", accum, tok.into_ruby())
                 }),
             Self::ConcreteLineToken(clt) => clt.into_ruby(),
         }

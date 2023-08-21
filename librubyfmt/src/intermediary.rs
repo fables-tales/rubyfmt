@@ -18,7 +18,6 @@ pub struct Intermediary {
     current_line_metadata: LineMetadata,
     previous_line_metadata: Option<LineMetadata>,
     pub additional_indent: u32,
-    pub skip_next_end: Vec<bool>,
 }
 
 impl Intermediary {
@@ -29,7 +28,6 @@ impl Intermediary {
             previous_line_metadata: None,
             index_of_last_hard_newline: 0,
             additional_indent: 0,
-            skip_next_end: Vec::new(),
         }
     }
 
@@ -284,10 +282,7 @@ impl Intermediary {
         }
         match self.tokens.get(self.index_of_last_hard_newline) {
             Some(&ConcreteLineToken::HardNewLine) => {}
-            x => panic!(
-                "newlines are fucked {:?}, {:#?}",
-                self.index_of_last_hard_newline, x
-            ),
+            _ => panic!("newlines are fucked"),
         }
     }
 

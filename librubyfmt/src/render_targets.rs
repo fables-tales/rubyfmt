@@ -141,7 +141,7 @@ impl AbstractTokenTarget for BreakableEntry {
         self.tokens
             .iter()
             .flat_map(|tok| tok.clone().into_single_line())
-            .map(|tok| tok.into_ruby(ConvertType::SingleLine).len())
+            .map(|tok| tok.into_ruby().len())
             .sum::<usize>()
             + self.delims.single_line_len()
     }
@@ -273,7 +273,7 @@ impl AbstractTokenTarget for BreakableCallChainEntry {
         self.tokens
             .iter()
             .flat_map(|tok| tok.clone().into_single_line())
-            .map(|tok| tok.into_ruby(ConvertType::SingleLine).len())
+            .map(|tok| tok.into_ruby().len())
             .sum::<usize>()
     }
 
@@ -429,7 +429,7 @@ impl BreakableCallChainEntry {
         tokens
             .into_iter()
             .flat_map(|t| t.into_single_line())
-            .map(|t| t.into_ruby(ConvertType::SingleLine))
+            .map(|t| t.into_ruby())
             .collect::<String>()
             .split('\n')
             .map(|s| s.len())
