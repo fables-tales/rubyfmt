@@ -7,3 +7,12 @@ other_cool_method((a + b).round(4))
   foo
 ))
   .flatten
+
+# rubocop:disable Style/Stuff
+(MyModel::InSomeNamespace
+  .load_one(
+    # rubocop:enable Style/Stuff
+    {name: "name"}
+  )
+  &.rules)
+  .freeze
