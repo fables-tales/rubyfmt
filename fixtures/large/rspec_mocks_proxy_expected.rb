@@ -110,12 +110,16 @@ module RSpec
       def check_for_unexpected_arguments(expectation)
         @messages_received_mutex.synchronize do
           return if @messages_received.empty?
-           return if @messages_received.any? { |method_name, args, _| expectation.matches?(method_name, *args) }
-           name_but_not_args, others = @messages_received.partition do |(method_name, args, _)|
+
+          return if @messages_received.any? { |method_name, args, _| expectation.matches?(method_name, *args) }
+
+          name_but_not_args, others = @messages_received.partition do |(method_name, args, _)|
             expectation.matches_name_but_not_args(method_name, *args)
           end
-           return if name_but_not_args.empty? && !others.empty?
-           expectation.raise_unexpected_message_args_error(name_but_not_args.map { |args| args[1] })
+
+          return if name_but_not_args.empty? && !others.empty?
+
+          expectation.raise_unexpected_message_args_error(name_but_not_args.map { |args| args[1] })
         end
       end
 
