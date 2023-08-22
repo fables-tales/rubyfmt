@@ -357,7 +357,8 @@ impl ConcreteParserState for BaseParserState {
             .breakable_entry_stack
             .pop()
             .expect("cannot have empty here because we just pushed")
-            .to_breakable_entry();
+            .to_breakable_entry()
+            .expect("This should be the BreakableEntry we just pushed");
         self.push_target(ConcreteLineTokenAndTargets::BreakableEntry(insert_be));
     }
 
@@ -383,7 +384,8 @@ impl ConcreteParserState for BaseParserState {
             .breakable_entry_stack
             .pop()
             .expect("cannot have empty here because we just pushed")
-            .to_breakable_entry();
+            .to_breakable_entry()
+            .expect("This should be the BreakableEntry we just pushed");
         self.push_target(ConcreteLineTokenAndTargets::BreakableEntry(insert_be));
     }
 
@@ -404,7 +406,8 @@ impl ConcreteParserState for BaseParserState {
             .breakable_entry_stack
             .pop()
             .expect("cannot have empty here because we just pushed")
-            .to_breakable_call_chain();
+            .to_breakable_call_chain()
+            .expect("This should be the BreakableCallChainEntry we just pushed");
         self.push_target(ConcreteLineTokenAndTargets::BreakableCallChainEntry(
             insert_bcce,
         ));

@@ -53,8 +53,8 @@ pub trait AbstractTokenTarget: std::fmt::Debug {
     fn is_multiline(&self) -> bool;
     fn push_line_number(&mut self, number: LineNumber);
     fn single_line_string_length(&self, current_line_length: usize) -> usize;
-    fn to_breakable_entry(self: Box<Self>) -> BreakableEntry;
-    fn to_breakable_call_chain(self: Box<Self>) -> BreakableCallChainEntry;
+    fn to_breakable_entry(self: Box<Self>) -> Option<BreakableEntry>;
+    fn to_breakable_call_chain(self: Box<Self>) -> Option<BreakableCallChainEntry>;
     fn tokens(&self) -> &Vec<AbstractLineToken>;
     fn any_collapsing_newline_has_heredoc_content(&self) -> bool;
 
@@ -98,12 +98,12 @@ pub struct BreakableEntry {
 }
 
 impl AbstractTokenTarget for BreakableEntry {
-    fn to_breakable_entry(self: Box<Self>) -> BreakableEntry {
-        *self
+    fn to_breakable_entry(self: Box<Self>) -> Option<BreakableEntry> {
+        Some(*self)
     }
 
-    fn to_breakable_call_chain(self: Box<Self>) -> BreakableCallChainEntry {
-        unreachable!()
+    fn to_breakable_call_chain(self: Box<Self>) -> Option<BreakableCallChainEntry> {
+        None
     }
 
     fn push(&mut self, lt: AbstractLineToken) {
@@ -210,16 +210,16 @@ pub struct BreakableCallChainEntry {
 }
 
 impl AbstractTokenTarget for BreakableCallChainEntry {
-    fn to_breakable_entry(self: Box<Self>) -> BreakableEntry {
-        unreachable!()
+    fn to_breakable_entry(self: Box<Self>) -> Option<BreakableEntry> {
+        None
     }
 
     fn tokens(&self) -> &Vec<AbstractLineToken> {
         &self.tokens
     }
 
-    fn to_breakable_call_chain(self: Box<Self>) -> BreakableCallChainEntry {
-        *self
+    fn to_breakable_call_chain(self: Box<Self>) -> Option<BreakableCallChainEntry> {
+        Some(*self)
     }
 
     fn push(&mut self, lt: AbstractLineToken) {
