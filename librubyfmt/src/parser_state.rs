@@ -97,6 +97,7 @@ where
     fn emit_after_call_chain(&mut self);
     fn emit_data_end(&mut self);
     fn emit_data(&mut self, data: &str);
+    fn emit_single_line_delims(&mut self, delims: BreakableDelims);
 
     // other state changers
     fn bind_variable(&mut self, s: String);
@@ -656,6 +657,11 @@ impl ConcreteParserState for BaseParserState {
 
     fn emit_open_paren(&mut self) {
         self.push_concrete_token(ConcreteLineToken::OpenParen);
+    }
+
+    fn emit_single_line_delims(&mut self, delims: BreakableDelims) {
+        self.push_concrete_token(delims.single_line_open());
+        self.push_concrete_token(delims.single_line_close());
     }
 
     fn emit_comma_space(&mut self) {

@@ -2860,8 +2860,7 @@ fn format_call_chain_elements(
                         }
                     }
                 } else if is_last_call_args && last_call_use_parens.unwrap_or(false) {
-                    ps.emit_open_paren();
-                    ps.emit_close_paren();
+                    ps.emit_single_line_delims(BreakableDelims::for_method_call());
                 }
             }
             CallChainElement::DotTypeOrOp(d) => {
