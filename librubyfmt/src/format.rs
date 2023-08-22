@@ -2806,6 +2806,8 @@ fn format_call_chain_elements(
             CallChainElement::Block(b) => {
                 ps.emit_space();
                 format_block(ps, b)
+                // Shifting comments should be handled by `format_block`, so we don't
+                // need to shift again here.
             }
             CallChainElement::VarRef(vr) => {
                 format_var_ref(ps, vr);
