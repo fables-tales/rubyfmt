@@ -61,7 +61,7 @@ pub enum ConcreteLineToken {
     AfterCallChain,
     BeginCallChainIndent,
     EndCallChainIndent,
-    HeredocStart { kind: HeredocKind },
+    HeredocStart { kind: HeredocKind, symbol: String },
 }
 
 impl ConcreteLineToken {
@@ -99,12 +99,20 @@ impl ConcreteLineToken {
             Self::End => "end".to_string(),
             Self::HeredocClose { symbol } => symbol,
             Self::DataEnd => "__END__".to_string(),
+            Self::HeredocStart { kind, symbol } => {
+                let mut kind_str = match kind {
+                    HeredocKind::Bare => "<<".to_string(),
+                    HeredocKind::Dash => "<<-".to_string(),
+                    HeredocKind::Squiggly => "<<~".to_string(),
+                };
+                kind_str.push_str(&symbol);
+                kind_str
+            }
             // no-op, this is purely semantic information
             // for the render queue
-            Self::AfterCallChain
-            | Self::BeginCallChainIndent
-            | Self::EndCallChainIndent
-            | Self::HeredocStart { .. } => "".to_string(),
+            Self::AfterCallChain | Self::BeginCallChainIndent | Self::EndCallChainIndent => {
+                "".to_string()
+            }
         }
     }
 
@@ -115,7 +123,14 @@ impl ConcreteLineToken {
         // each individual string token, which would increase the allocations of rubyfmt
         // by an order of magnitude
         match self {
-            AfterCallChain | BeginCallChainIndent | EndCallChainIndent | HeredocStart { .. } => 0, // purely semantic tokens, don't render
+            AfterCallChain | BeginCallChainIndent | EndCallChainIndent => 0, // purely semantic tokens, don't render
+            HeredocStart { kind, symbol } => {
+                symbol.len()
+                    + match kind {
+                        HeredocKind::Bare => 2,                         // <<
+                        HeredocKind::Dash | HeredocKind::Squiggly => 3, // <<- or <<~
+                    }
+            }
             Indent { depth } => *depth as usize,
             Keyword { keyword: contents }
             | Op { op: contents }

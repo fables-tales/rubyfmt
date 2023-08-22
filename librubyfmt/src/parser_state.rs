@@ -93,7 +93,7 @@ where
     fn emit_op(&mut self, op: String);
     fn emit_def(&mut self, def_name: String);
     fn emit_indent(&mut self);
-    fn emit_heredoc_start(&mut self, hd_type: String, symbol: String, kind: HeredocKind);
+    fn emit_heredoc_start(&mut self, symbol: String, kind: HeredocKind);
     fn emit_after_call_chain(&mut self);
     fn emit_data_end(&mut self);
     fn emit_data(&mut self, data: &str);
@@ -226,10 +226,8 @@ impl ConcreteParserState for BaseParserState {
         ));
     }
 
-    fn emit_heredoc_start(&mut self, hd_type: String, symbol: String, kind: HeredocKind) {
-        self.push_concrete_token(ConcreteLineToken::DirectPart { part: hd_type });
-        self.push_concrete_token(ConcreteLineToken::DirectPart { part: symbol });
-        self.push_concrete_token(ConcreteLineToken::HeredocStart { kind });
+    fn emit_heredoc_start(&mut self, symbol: String, kind: HeredocKind) {
+        self.push_concrete_token(ConcreteLineToken::HeredocStart { kind, symbol });
     }
 
     fn magic_handle_comments_for_multiline_arrays<'a>(

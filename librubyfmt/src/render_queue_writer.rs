@@ -90,7 +90,7 @@ impl RenderQueueWriter {
                     }
                 }
                 ConcreteLineTokenAndTargets::ConcreteLineToken(
-                    ConcreteLineToken::HeredocStart { kind },
+                    ConcreteLineToken::HeredocStart { kind, .. },
                 ) => current_heredoc_kind = Some(*kind),
                 ConcreteLineTokenAndTargets::ConcreteLineToken(
                     ConcreteLineToken::HeredocClose { symbol },
