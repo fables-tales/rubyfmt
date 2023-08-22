@@ -2782,7 +2782,6 @@ fn format_call_chain_elements(
     let mut has_indented = false;
 
     for (index, cc_elem) in cc.into_iter().enumerate() {
-        let mut element_must_use_parens = false;
         let is_last_call_args = if let Some(last_call_index) = last_call_index {
             index == (last_call_index + 1)
         } else {
@@ -2793,11 +2792,10 @@ fn format_call_chain_elements(
             CallChainElement::Paren(p) => format_paren(ps, p),
             CallChainElement::IdentOrOpOrKeywordOrConst(i) => {
                 let ident = i.into_ident();
-                element_must_use_parens = ident.1 == "super";
+                next_args_list_must_use_parens = ident.1 == "super" || ident.1 == ".()";
 
                 if ident.1 == ".()" {
                     ps.emit_ident(".".to_string());
-                    element_must_use_parens = true;
                 } else {
                     format_ident(ps, ident);
                 }
@@ -2818,6 +2816,8 @@ fn format_call_chain_elements(
 
                 if !aas.is_empty() || next_args_list_must_use_parens {
                     let use_parens = if next_args_list_must_use_parens {
+                        // Reset for next call
+                        next_args_list_must_use_parens = false;
                         true
                     } else if is_last_call_args && last_call_use_parens.is_some() {
                         last_call_use_parens.unwrap()
@@ -2889,7 +2889,6 @@ fn format_call_chain_elements(
                 ps.render_heredocs(true);
             }
         }
-        next_args_list_must_use_parens = element_must_use_parens;
     }
     if has_indented {
         ps.end_indent_for_call_chain();
