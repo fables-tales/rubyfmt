@@ -2832,10 +2832,9 @@ fn format_call_chain_elements(
                     if args_has_single_def_expression(&aas) {
                         ps.emit_space();
 
-                        if let ArgsAddStarOrExpressionListOrArgsForward::ExpressionList(mut el) =
-                            aas.clone()
-                        {
-                            let expr = el.pop().expect("checked the list is not empty");
+                        if let ArgsAddStarOrExpressionListOrArgsForward::ExpressionList(el) = aas {
+                            // Cloning here so format_def{s} can take ownership
+                            let expr = el.last().expect("checked the list is not empty").clone();
 
                             if let Expression::Def(def_expression) = expr {
                                 format_def(ps, def_expression);
