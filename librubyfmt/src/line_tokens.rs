@@ -1,5 +1,7 @@
-use crate::heredoc_string::HeredocString;
-use crate::render_targets::{AbstractTokenTarget, BreakableEntry, ConvertType};
+use crate::heredoc_string::{HeredocKind, HeredocString};
+use crate::render_targets::{
+    AbstractTokenTarget, BreakableCallChainEntry, BreakableEntry, ConvertType,
+};
 use crate::types::ColNumber;
 
 pub fn cltats_hard_newline() -> ConcreteLineTokenAndTargets {
@@ -51,10 +53,15 @@ pub enum ConcreteLineToken {
     SingleSlash,
     Comment { contents: String },
     Delim { contents: String },
-    AfterCallChain,
     End,
     HeredocClose { symbol: String },
     DataEnd,
+    // These are "magic" tokens. They have no concrete representation,
+    // but they're meaningful inside of the render queue
+    AfterCallChain,
+    BeginCallChainIndent,
+    EndCallChainIndent,
+    HeredocStart { kind: HeredocKind, symbol: String },
 }
 
 impl ConcreteLineToken {
@@ -92,9 +99,20 @@ impl ConcreteLineToken {
             Self::End => "end".to_string(),
             Self::HeredocClose { symbol } => symbol,
             Self::DataEnd => "__END__".to_string(),
+            Self::HeredocStart { kind, symbol } => {
+                let mut kind_str = match kind {
+                    HeredocKind::Bare => "<<".to_string(),
+                    HeredocKind::Dash => "<<-".to_string(),
+                    HeredocKind::Squiggly => "<<~".to_string(),
+                };
+                kind_str.push_str(&symbol);
+                kind_str
+            }
             // no-op, this is purely semantic information
             // for the render queue
-            Self::AfterCallChain => "".to_string(),
+            Self::AfterCallChain | Self::BeginCallChainIndent | Self::EndCallChainIndent => {
+                "".to_string()
+            }
         }
     }
 
@@ -105,7 +123,14 @@ impl ConcreteLineToken {
         // each individual string token, which would increase the allocations of rubyfmt
         // by an order of magnitude
         match self {
-            AfterCallChain => 0, // purely semantic token, doesn't render
+            AfterCallChain | BeginCallChainIndent | EndCallChainIndent => 0, // purely semantic tokens, don't render
+            HeredocStart { kind, symbol } => {
+                symbol.len()
+                    + match kind {
+                        HeredocKind::Bare => 2,                         // <<
+                        HeredocKind::Dash | HeredocKind::Squiggly => 3, // <<- or <<~
+                    }
+            }
             Indent { depth } => *depth as usize,
             Keyword { keyword: contents }
             | Op { op: contents }
@@ -117,8 +142,9 @@ impl ConcreteLineToken {
             | HeredocClose { symbol: contents }
             | ModKeyword { contents } => contents.len(),
             HardNewLine | Comma | Space | Dot | OpenSquareBracket | CloseSquareBracket
-            | OpenCurlyBracket | CloseCurlyBracket | OpenParen | CloseParen | SingleSlash => 1,
-            DoKeyword | CommaSpace | LonelyOperator | ColonColon | DoubleQuote => 2,
+            | OpenCurlyBracket | CloseCurlyBracket | OpenParen | CloseParen | SingleSlash
+            | DoubleQuote => 1,
+            DoKeyword | CommaSpace | LonelyOperator | ColonColon => 2,
             DefKeyword | Ellipsis | End => 3, // "def"/"..."/"end"
             ClassKeyword => 5,                // "class"
             ModuleKeyword => 6,               // "module"
@@ -195,6 +221,9 @@ impl From<ConcreteLineTokenAndTargets> for AbstractLineToken {
             ConcreteLineTokenAndTargets::ConcreteLineToken(clt) => {
                 AbstractLineToken::ConcreteLineToken(clt)
             }
+            ConcreteLineTokenAndTargets::BreakableCallChainEntry(bcce) => {
+                AbstractLineToken::BreakableCallChainEntry(bcce)
+            }
         }
     }
 }
@@ -203,6 +232,7 @@ impl From<ConcreteLineTokenAndTargets> for AbstractLineToken {
 pub enum ConcreteLineTokenAndTargets {
     ConcreteLineToken(ConcreteLineToken),
     BreakableEntry(BreakableEntry),
+    BreakableCallChainEntry(BreakableCallChainEntry),
 }
 
 impl ConcreteLineTokenAndTargets {
@@ -228,6 +258,12 @@ impl ConcreteLineTokenAndTargets {
                 .fold("".to_string(), |accum, tok| {
                     format!("{}{}", accum, tok.into_ruby())
                 }),
+            Self::BreakableCallChainEntry(bcce) => bcce
+                .into_tokens(ConvertType::SingleLine)
+                .into_iter()
+                .fold("".to_string(), |accum, tok| {
+                    format!("{}{}", accum, tok.into_ruby())
+                }),
             Self::ConcreteLineToken(clt) => clt.into_ruby(),
         }
     }
@@ -241,31 +277,35 @@ pub enum AbstractLineToken {
     SoftNewline(Option<Vec<HeredocString>>),
     SoftIndent { depth: u32 },
     BreakableEntry(BreakableEntry),
+    BreakableCallChainEntry(BreakableCallChainEntry),
 }
 
 impl AbstractLineToken {
-    pub fn into_single_line(self) -> ConcreteLineTokenAndTargets {
+    pub fn into_single_line(self) -> Vec<ConcreteLineTokenAndTargets> {
         match self {
-            Self::CollapsingNewLine(_) => {
-                // we ignore the heredoc part of the collapsing newline here because the
-                // line length check is only used to calculate if we're going to render
-                // the breakable as multiline, and we always render heredoc strings as
-                // multiline
-                ConcreteLineTokenAndTargets::ConcreteLineToken(ConcreteLineToken::DirectPart {
-                    part: "".to_string(),
-                })
+            Self::CollapsingNewLine(heredoc_strings) => {
+                let mut res = Vec::new();
+                if heredoc_strings.is_some() {
+                    res.push(cltats_hard_newline());
+                }
+                res.extend(Self::shimmy_and_shake_heredocs(heredoc_strings));
+                res
             }
-            Self::SoftNewline(_) => {
-                // see comment above
-                ConcreteLineTokenAndTargets::ConcreteLineToken(ConcreteLineToken::Space)
+            Self::SoftNewline(heredoc_strings) => {
+                let mut res = vec![ConcreteLineTokenAndTargets::ConcreteLineToken(
+                    ConcreteLineToken::Space,
+                )];
+                res.extend(Self::shimmy_and_shake_heredocs(heredoc_strings));
+                res
             }
-            Self::SoftIndent { .. } => {
-                ConcreteLineTokenAndTargets::ConcreteLineToken(ConcreteLineToken::DirectPart {
-                    part: "".to_string(),
-                })
+            Self::SoftIndent { .. } => Vec::new(),
+            Self::ConcreteLineToken(clt) => {
+                vec![ConcreteLineTokenAndTargets::ConcreteLineToken(clt)]
             }
-            Self::ConcreteLineToken(clt) => ConcreteLineTokenAndTargets::ConcreteLineToken(clt),
-            Self::BreakableEntry(be) => ConcreteLineTokenAndTargets::BreakableEntry(be),
+            Self::BreakableEntry(be) => vec![ConcreteLineTokenAndTargets::BreakableEntry(be)],
+            Self::BreakableCallChainEntry(bcce) => {
+                vec![ConcreteLineTokenAndTargets::BreakableCallChainEntry(bcce)]
+            }
         }
     }
 
@@ -290,6 +330,9 @@ impl AbstractLineToken {
                 vec![ConcreteLineTokenAndTargets::ConcreteLineToken(clt)]
             }
             Self::BreakableEntry(be) => vec![ConcreteLineTokenAndTargets::BreakableEntry(be)],
+            Self::BreakableCallChainEntry(bcce) => {
+                vec![ConcreteLineTokenAndTargets::BreakableCallChainEntry(bcce)]
+            }
         }
     }
 
@@ -300,7 +343,7 @@ impl AbstractLineToken {
         if let Some(values) = heredoc_strings {
             for hds in values {
                 let indent = hds.indent;
-                let kind = hds.kind.clone();
+                let kind = hds.kind;
                 let symbol = hds.closing_symbol();
 
                 let s = hds.render_as_string();

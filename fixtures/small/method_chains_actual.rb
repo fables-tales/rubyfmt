@@ -18,8 +18,6 @@ foo.bar.baz
 foo.bar
 .baz
 
-# If they're all on the same line but different from
-# the first receiver, consider that "on one line"
 foo
 .bar.baz
 
@@ -97,6 +95,24 @@ var = MyModule::MyClass.foo.bar.baz.map { |x|
     b: ""
   )
 
+ThisIs::OnlyOneCall
+  # but it's explicitly multilined with a
+  .comment!
+
+OnlyOneCall
+  # but it's explicitly multilined with a
+  .comment!
+
+  [
+    # foo
+  ]
+    # bar
+    .baz
+
+  []
+    # Please don't do this
+    .freeze
+
 Paul::Blart::Mall::Cop::PerformedByTheLegendaryKevinJamesWhoIsAnAbsoluteLegendInAllOfHisFilmsWhichAreAbsolutelyIncredible.consume_pixie_sticks(mall: "downtown").each do |punch_list_type|
 end
 
@@ -129,3 +145,19 @@ x.hello_there&.map do |x|
   puts "h"
   end
   &.foo
+
+My::Error.soft(
+  "",
+  stuff: {
+    message_token: message.token,
+
+    # Some comments!
+    value: id_or_email.name
+  }
+)
+
+# rubocop:disable PrisonGuard/PrivateModule
+(foo.load_one
+  # rubocop:enable PrisonGuard/PrivateModule
+  .bar)
+  .thing

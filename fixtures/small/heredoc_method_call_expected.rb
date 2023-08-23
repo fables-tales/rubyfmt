@@ -30,3 +30,14 @@ class William::Carlos::Williams
     Williams
   )
 end
+
+optp
+  .on do |value|
+    <<~EOF
+      There's some lines here
+
+      But that one's a blank line!
+
+      There shouldn't be any whitespace on those
+    EOF
+  end

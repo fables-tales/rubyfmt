@@ -32,7 +32,8 @@ sig(:final) do
   params(
     a: String,
     b: String
-  ).void
+  )
+    .void
 end
 def example(a, b)
 end
@@ -95,7 +96,8 @@ class Bees
       first_param: MyClass,
       # This one is the second one, nice
       second_param: YourClass
-    ).void
+    )
+      .void
     # Please not the bees!
   }
   def not_the_bees!

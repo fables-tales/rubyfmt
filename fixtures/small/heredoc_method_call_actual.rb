@@ -25,3 +25,14 @@ class William::Carlos::Williams
     Icarus drowning
   LANDSCAPE
 end
+
+optp
+  .on do |value|
+    <<~EOF
+      There's some lines here
+
+      But that one's a blank line!
+
+      There shouldn't be any whitespace on those
+    EOF
+  end

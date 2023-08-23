@@ -6,6 +6,12 @@ class Foo
   private def baz(a, b, c)
     a + b + c
   end
+
+  private def with_comments
+    # beginning
+    stuff!
+    # end
+  end
 end
 
 module WhiteTeaBowl

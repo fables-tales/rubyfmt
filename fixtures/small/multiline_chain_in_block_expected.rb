@@ -1,7 +1,8 @@
 sig {
   params(
     route: String
-  ).void
+  )
+    .void
 }
 def ajax_get(route)
   super

@@ -17,6 +17,7 @@ pub struct Intermediary {
     index_of_last_hard_newline: usize,
     current_line_metadata: LineMetadata,
     previous_line_metadata: Option<LineMetadata>,
+    pub additional_indent: u32,
 }
 
 impl Intermediary {
@@ -26,6 +27,7 @@ impl Intermediary {
             current_line_metadata: LineMetadata::new(),
             previous_line_metadata: None,
             index_of_last_hard_newline: 0,
+            additional_indent: 0,
         }
     }
 
@@ -53,12 +55,7 @@ impl Intermediary {
         self.index_of_last_hard_newline = self.tokens.len() - 1;
     }
 
-    pub fn fix_heredoc_delim_indent_mistake(&mut self) {
-        // Remove duplicate indent
-        self.tokens.remove(self.tokens.len() - 2);
-    }
-
-    pub fn fix_heredoc_direct_part_indent_mistake(&mut self) {
+    pub fn fix_heredoc_duplicate_indent_mistake(&mut self) {
         // Remove duplicate indent
         self.tokens.remove(self.tokens.len() - 3);
     }
@@ -228,7 +225,9 @@ impl Intermediary {
         // [.., Comma, Space, DirectPart {part: ""}, <close_delimiter>]
         // so we remove items at positions length-2 until there is nothing
         // in that position that is garbage.
-        while self.tokens[self.len() - 2].is_single_line_breakable_garbage() {
+        while self.tokens.len() > 2
+            && self.tokens[self.len() - 2].is_single_line_breakable_garbage()
+        {
             self.tokens.remove(self.len() - 2);
         }
     }

@@ -7,3 +7,7 @@ def foo
     puts("hi")
   end
 end
+
+do_stuff! if it_isnt_dangerous(
+  i_promise: true
+)

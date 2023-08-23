@@ -32,8 +32,11 @@ ASSIGNED_MESSAGE = lambda do |assignee|
 end
 
 ASSIGNED_MESSAGE = lambda do |assignee|
-  <<-END.lines.join.strip
+  <<-END
     This heredoc chains together in a weird way, talk to [~#{assignee}] about it.
     Otherwise, it's probably in your best interest not to write things like this.
   END
+    .lines
+    .join
+    .strip
 end

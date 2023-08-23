@@ -65,14 +65,8 @@ class Parser < Ripper::SexpBuilderPP
     @rbracket_stack = []
     @lbrace_stack = []
     @comments = {}
-    @last_ln = 0
     # binary contents comming after a `__END__` node
     @data_contents_start_line = nil
-  end
-
-  def on_nl(*args)
-    @last_ln = lineno+1
-    super(*args)
   end
 
   # This method has incorrect behavior inside Ripper,
@@ -112,7 +106,7 @@ class Parser < Ripper::SexpBuilderPP
         nil
       end
 
-      [res, @comments, @lines_with_any_ruby, @last_ln, data_contents]
+      [res, @comments, @lines_with_any_ruby, @file_lines.count, data_contents]
     end
   end
 

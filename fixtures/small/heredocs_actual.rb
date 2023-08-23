@@ -68,6 +68,27 @@ add_offense(
   rubocop.smash(bad_thing)
 end
 
+this_one_is
+  .in_a_call_chain {
+    # some stuff
+  }
+  .each do
+    <<~MYHEREDOC
+    Words are pale shadows of forgotten names.
+    As names have power, words have power.
+    Words can light fires in the minds of men.
+    Words can wring tears from the hardest hearts.
+    MYHEREDOC
+  end
+
+def foo
+  "#{stuff.each do
+  <<~MESSAGE.strip
+    #{message.text}
+  MESSAGE
+  end.join("\n\n")}"
+end
+
 
 puts a
 puts b
