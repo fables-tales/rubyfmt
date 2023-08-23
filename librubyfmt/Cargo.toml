@@ -1,6 +1,6 @@
 [package]
 name = "rubyfmt"
-version = "0.9.5-pre"
+version = "0.10.0-pre"
 authors = ["Penelope Phippen <penelopedotzone@gmail.com>"]
 edition = "2018"
 build = "build.rs"
