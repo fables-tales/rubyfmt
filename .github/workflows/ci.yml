@@ -3,7 +3,7 @@ on:
   push:
     branches: [ trunk ]
   pull_request:
-    branches: [ trunk ]
+    branches: [ "**" ]
 
 env:
     BUNDLE_PATH: /tmp/.bundle
