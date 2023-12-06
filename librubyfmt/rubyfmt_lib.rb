@@ -9,6 +9,8 @@ end
 
 class Parser < Ripper::SexpBuilderPP
   ARRAY_SYMBOLS = {qsymbols: "%i", qwords: "%w", symbols: "%I", words: "%W"}.freeze
+  OPERATOR_KEYWORDS = ["and", "or"].freeze
+
 
   def self.is_percent_array?(rest)
     return false if rest.nil?
@@ -355,6 +357,13 @@ class Parser < Ripper::SexpBuilderPP
     if stack = @kw_stacks[kw]
       stack << lineno
     end
+
+    # `or` and `and` should register their locations like other binary operators
+    if OPERATOR_KEYWORDS.include?(kw)
+      @op_locations << lineno
+      return super + [[lineno, lineno]]
+    end
+
     super
   end
 
