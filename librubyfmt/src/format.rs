@@ -2496,7 +2496,7 @@ pub fn format_binary(ps: &mut dyn ConcreteParserState, binary: Binary) {
 }
 
 // Performs the actual formatting for binary operators. This method assumes that it's
-// inside of a breakable, but it's separated out so that it can recurse inside of 
+// inside of a breakable, but it's separated out so that it can recurse inside of
 // nested breakables so that nested breakables stay at the same indentation level.
 fn format_binary_inner(ps: &mut dyn ConcreteParserState, binary: Binary) {
     ps.with_formatting_context(
