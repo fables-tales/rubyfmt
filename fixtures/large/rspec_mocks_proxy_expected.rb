@@ -393,9 +393,8 @@ module RSpec
       # That's what this method (together with `original_unbound_method_handle_from_ancestor_for`)
       # does.
       def original_method_handle_for(message)
-        unbound_method = superclass_proxy && superclass_proxy.original_unbound_method_handle_from_ancestor_for(
-          message.to_sym
-        )
+        unbound_method = superclass_proxy &&
+          superclass_proxy.original_unbound_method_handle_from_ancestor_for(message.to_sym)
 
         return super unless unbound_method
         unbound_method.bind(object)
@@ -427,7 +426,8 @@ module RSpec
           # The fact that there is no method double for this message indicates
           # that it has not been redefined by rspec-mocks. We need to continue
           # looking up the ancestor chain.
-          return superclass_proxy && superclass_proxy.method_double_from_ancestor_for(message)
+          return superclass_proxy &&
+            superclass_proxy.method_double_from_ancestor_for(message)
         end
       end
 

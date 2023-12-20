@@ -1,6 +1,7 @@
 foo || bar
 
-foo || bar
+foo ||
+  bar
 
 if foo || bar
 end
@@ -27,7 +28,9 @@ a ||
   b &&
   c
 
-a || (b && c)
+a ||
+  (b &&
+    c)
 
 a ||
   b &&
