@@ -6,7 +6,7 @@ on:
       - completed
   push:
     # Run only on trunk pushes that aren't a new tag release
-    branches: "*"
+    branches: [trunk]
     tags-ignore: "*"
 
 env:
@@ -114,13 +114,11 @@ jobs:
           name: rubyfmt-release-artifact-macos-latest-native
       - uses: actions-ecosystem/action-get-latest-tag@v1
         id: get-latest-tag
-      - run: |
-          echo "${{ steps.get-latest-tag.outputs.tag }}"
-      # - name: Upload Release
-      #   uses: softprops/action-gh-release@v1
-      #   with:
-      #     files: rubyfmt-*.tar.gz
-      #     fail_on_unmatched_files: true
-      #     generate_release_notes: true
-      #     prerelease: true
-      #     tag_name: ${{ steps.get-latest-tag.outputs.tag }}
+      - name: Upload Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: rubyfmt-*.tar.gz
+          fail_on_unmatched_files: true
+          generate_release_notes: true
+          prerelease: true
+          tag_name: ${{ steps.get-latest-tag.outputs.tag }}
