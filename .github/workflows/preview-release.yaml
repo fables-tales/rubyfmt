@@ -100,20 +100,24 @@ jobs:
       - source-release
     steps:
       - uses: actions/checkout@v2
+      - uses: actions-ecosystem/action-get-latest-tag@v1
+        id: get-latest-tag
       - uses: actions/download-artifact@v3
         with:
           name: rubyfmt-source-release
       - uses: actions/download-artifact@v3
         with:
+          name: rubyfmt-release-artifact-ubuntu-20.04-aarch64-unknown-linux-gnu
+      - run: |
+          # The arch part of this path is set with uname, but we cross-compile the arm build on
+          # an x86 machine, so we want to make sure the name is correct for the release
+          mv rubyfmt-${{ steps.get-latest-tag.outputs.tag }}-Linux-x86_64.tar.gz rubyfmt-${{ steps.get-latest-tag.outputs.tag }}-Linux-aarch64.tar.gz
+      - uses: actions/download-artifact@v3
+        with:
           name: rubyfmt-release-artifact-ubuntu-20.04-native
       - uses: actions/download-artifact@v3
         with:
-          name: rubyfmt-release-artifact-ubuntu-20.04-aarch64-unknown-linux-gnu
-      - uses: actions/download-artifact@v3
-        with:
           name: rubyfmt-release-artifact-macos-latest-native
-      - uses: actions-ecosystem/action-get-latest-tag@v1
-        id: get-latest-tag
       - name: Upload Release
         uses: softprops/action-gh-release@v1
         with:
