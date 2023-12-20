@@ -1,8 +1,13 @@
-name: Release
+name: Preview Release
 on:
+  workflow_run:
+    workflows: ["CI"]
+    types:
+      - completed
   push:
-    tags:
-      - "*"
+    # Run only on trunk pushes that aren't a new tag release
+    branches: [trunk]
+    tags-ignore: "*"
 
 env:
   BUNDLE_PATH: /tmp/.bundle
@@ -74,24 +79,39 @@ jobs:
           name: rubyfmt-source-release
           path: "out/release/source"
   release:
-    runs-on: macos-latest
+    runs-on: ubuntu-latest
     needs:
       - build
       - source-release
     steps:
+      - uses: actions/checkout@v2
       - uses: actions/download-artifact@v3
         with:
           name: rubyfmt-source-release
       - uses: actions/download-artifact@v3
         with:
-          name: rubyfmt-release-artifact-ubuntu-latest
+          name: rubyfmt-release-artifact-ubuntu-20.04-native
       - uses: actions/download-artifact@v3
         with:
-          name: rubyfmt-release-artifact-macos-latest
-      - name: Ship It 🚢
+          name: rubyfmt-release-artifact-ubuntu-20.04-aarch64-unknown-linux-gnu
+      - uses: actions/download-artifact@v3
+        with:
+          name: rubyfmt-release-artifact-macos-latest-native
+      - uses: actions-ecosystem/action-get-latest-tag@v1
+        id: get-latest-tag
+      - uses: actions-ecosystem/action-bump-semver@v1
+        id: bump-semver
+        with:
+          current_version: ${{ steps.get-latest-tag.outputs.tag }}
+          level: prepatch
+      - uses: actions-ecosystem/action-push-tag@v1
+        with:
+          tag: ${{ steps.bump-semver.outputs.new_version }}
+      - name: Upload Release
         uses: softprops/action-gh-release@v1
-        if: startsWith(github.ref, 'refs/tags/')
         with:
           files: rubyfmt-*.tar.gz
           fail_on_unmatched_files: true
           generate_release_notes: true
+          prerelease: true
+          tag_name: ${{steps.bump-semver.outputs.new_version}}
