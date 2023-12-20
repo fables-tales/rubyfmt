@@ -7,7 +7,7 @@ if [[ $OSTYPE == "darwin"* ]]; then
 fi
 bison --version
 
-TAG=$(git describe --tags --abbrev=0)
+TAG=$(git describe --exact-match HEAD)
 RELEASE_DIR=${RELEASE_DIR:-"tmp/releases/${TAG}-$(uname -s)/"}
 
 ./script/test.sh

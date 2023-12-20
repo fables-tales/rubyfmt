@@ -6,7 +6,7 @@ on:
       - completed
   push:
     # Run only on trunk pushes that aren't a new tag release
-    branches: [trunk]
+    branches: "*"
     tags-ignore: "*"
 
 env:
@@ -16,8 +16,23 @@ env:
   TERM: xterm256
 
 jobs:
+  bump-tag:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-ecosystem/action-get-latest-tag@v1
+        id: get-latest-tag
+      - uses: actions-ecosystem/action-bump-semver@v1
+        id: bump-semver
+        with:
+          current_version: ${{ steps.get-latest-tag.outputs.tag }}
+          level: prepatch
+      - uses: actions-ecosystem/action-push-tag@v1
+        with:
+          tag: ${{ steps.bump-semver.outputs.new_version }}
   build:
     runs-on: ${{ matrix.os }}
+    needs: [bump-tag]
     strategy:
       fail-fast: false
       matrix:
@@ -99,19 +114,13 @@ jobs:
           name: rubyfmt-release-artifact-macos-latest-native
       - uses: actions-ecosystem/action-get-latest-tag@v1
         id: get-latest-tag
-      - uses: actions-ecosystem/action-bump-semver@v1
-        id: bump-semver
-        with:
-          current_version: ${{ steps.get-latest-tag.outputs.tag }}
-          level: prepatch
-      - uses: actions-ecosystem/action-push-tag@v1
-        with:
-          tag: ${{ steps.bump-semver.outputs.new_version }}
-      - name: Upload Release
-        uses: softprops/action-gh-release@v1
-        with:
-          files: rubyfmt-*.tar.gz
-          fail_on_unmatched_files: true
-          generate_release_notes: true
-          prerelease: true
-          tag_name: ${{steps.bump-semver.outputs.new_version}}
+      - run: |
+          echo "${{ steps.get-latest-tag.outputs.tag }}"
+      # - name: Upload Release
+      #   uses: softprops/action-gh-release@v1
+      #   with:
+      #     files: rubyfmt-*.tar.gz
+      #     fail_on_unmatched_files: true
+      #     generate_release_notes: true
+      #     prerelease: true
+      #     tag_name: ${{ steps.get-latest-tag.outputs.tag }}
