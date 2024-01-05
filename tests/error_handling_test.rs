@@ -141,3 +141,17 @@ fn test_input_file_doesnt_exist() {
         .code(3)
         .failure();
 }
+
+// We don't really have a great way to test for regressions that caused
+// failures in rubyfmt_lib.rb, but this test is here to prevent a specific
+// regression caused by invalid syntax
+#[test]
+fn test_potential_internal_failure_stdin() {
+    Command::new(cargo_bin("rubyfmt-main"))
+        .write_stdin("\"\"}")
+        .assert()
+        // Make sure this is a `1` for syntax error instead of a
+        // `4` for internal Ruby failure
+        .code(1)
+        .failure();
+}
