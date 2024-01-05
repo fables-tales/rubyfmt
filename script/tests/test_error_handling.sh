@@ -16,6 +16,26 @@ test_syntax_error_stdin() {
     )
 }
 
+# We don't really have a great way to test for regressions that caused
+# failures in rubyfmt_lib.rb, but this test is here to test something
+test_potential_internal_failure_stdin() {
+    (
+    cd "$(mktemp -d)"
+
+    set +e
+    echo '""}' | f_rubyfmt
+    rubyfmt_result=$?
+    set -e
+
+    # We expect an error code of 1 for syntax error
+    if [ "$rubyfmt_result" -ne "1" ]
+    then
+        echo "rubyfmt didn't break as expected"
+        exit 1
+    fi
+    )
+}
+
 test_syntax_error_file() {
     (
     cd "$(mktemp -d)"
@@ -138,6 +158,7 @@ test_input_file_doesnt_exist() {
 }
 
 test_syntax_error_stdin
+test_potential_internal_failure_stdin
 test_syntax_error_file
 test_syntax_error_files
 test_syntax_error_file_fail_fast
