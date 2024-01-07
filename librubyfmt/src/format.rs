@@ -3372,7 +3372,7 @@ fn format_in_or_else(ps: &mut dyn ConcreteParserState, in_or_else: InOrElse) {
             ps.with_start_of_line(
                 false,
                 Box::new(|ps| {
-                    format_pattern(ps, pattern);
+                    format_pattern(ps, *pattern);
                 }),
             );
 
@@ -3406,24 +3406,25 @@ fn format_pattern(ps: &mut dyn ConcreteParserState, pattern_node: PatternNode) {
     }
 }
 
-fn format_aryptn(ps: &mut dyn ConcreteParserState, aryptn: Aryptn) {
+fn format_aryptn(ps: &mut dyn ConcreteParserState, mut aryptn: Aryptn) {
+    // Making this `mut` for
     let Aryptn(_, maybe_collection_name, maybe_pre_star_list, maybe_star, maybe_post_star_list) =
-        aryptn;
+        &mut aryptn;
     if let Some(collection_name) = maybe_collection_name {
-        format_var_ref(ps, collection_name);
+        format_var_ref(ps, collection_name.clone());
     }
     ps.breakable_of(
         BreakableDelims::for_array(),
         Box::new(|ps| {
             let mut vals = Vec::new();
             if let Some(pre_star_list) = maybe_pre_star_list {
-                vals.append(&mut pre_star_list.clone());
+                vals.append(pre_star_list);
             }
             if let Some(star) = maybe_star {
-                vals.push(pattern_splat_as_expr(star));
+                vals.push(pattern_splat_as_expr(star.clone()));
             }
             if let Some(post_star_list) = maybe_post_star_list {
-                vals.append(&mut post_star_list.clone());
+                vals.append(post_star_list);
             }
             format_list_like_thing_items(ps, vals, None, false);
         }),

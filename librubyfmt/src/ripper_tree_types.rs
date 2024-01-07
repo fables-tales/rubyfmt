@@ -269,8 +269,7 @@ impl Expression {
             }
             Expression::Aryptn(Aryptn(_, _, exprs, star, ..)) => exprs
                 .as_ref()
-                .map(|exprs| exprs.first().map(|expr| expr.start_line()).flatten())
-                .flatten()
+                .and_then(|exprs| exprs.first().and_then(|expr| expr.start_line()))
                 .or_else(|| {
                     Some(
                         star.as_ref()
@@ -2375,7 +2374,7 @@ def_tag!(in_tag, "in");
 #[derive(Deserialize, Debug, Clone)]
 pub struct In(
     pub in_tag,
-    pub PatternNode,           // current pattern
+    pub Box<PatternNode>,      // current pattern
     pub Vec<Expression>,       // body
     pub Option<Box<InOrElse>>, // next in/else
     pub StartEnd,
