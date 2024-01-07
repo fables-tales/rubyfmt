@@ -407,7 +407,10 @@ pub fn format_mlhs(ps: &mut dyn ConcreteParserState, mlhs: MLhs) {
 }
 
 fn bind_var_field(ps: &mut dyn ConcreteParserState, vf: &VarField) {
-    ps.bind_variable((vf.1).clone().to_local_string())
+    ps.bind_variable((vf.1).clone().expect(
+        "Var ref fields are only nilable in pattern matching, and we don't do var binding there",
+    )
+    .to_local_string())
 }
 
 fn bind_ident(ps: &mut dyn ConcreteParserState, id: &Ident) {
@@ -1732,7 +1735,12 @@ pub fn format_top_const_field(ps: &mut dyn ConcreteParserState, tcf: TopConstFie
 
 pub fn format_var_field(ps: &mut dyn ConcreteParserState, vf: VarField) {
     let left = vf.1;
-    format_var_ref_type(ps, left);
+    if let Some(var_ref_type) = left {
+        format_var_ref_type(ps, var_ref_type);
+    } else {
+        // Nil var fields are used for "*" matchers in patterns
+        ps.emit_ident("*".to_string());
+    }
 }
 
 pub fn format_aref_field(ps: &mut dyn ConcreteParserState, af: ArefField) {
@@ -3337,7 +3345,10 @@ pub fn format_case(ps: &mut dyn ConcreteParserState, case: Case) {
     ps.with_start_of_line(
         true,
         Box::new(|ps| {
-            format_when_or_else(ps, WhenOrElse::When(tail));
+            match tail {
+                WhenOrIn::When(when) => format_when_or_else(ps, WhenOrElse::When(when)),
+                WhenOrIn::In(in_node) => format_in_or_else(ps, InOrElse::In(in_node)),
+            }
             ps.emit_end();
         }),
     );
@@ -3347,6 +3358,78 @@ pub fn format_case(ps: &mut dyn ConcreteParserState, case: Case) {
         ps.emit_newline();
     }
     ps.on_line(case.3 .1);
+}
+
+fn format_in_or_else(ps: &mut dyn ConcreteParserState, in_or_else: InOrElse) {
+    match in_or_else {
+        InOrElse::In(in_node) => {
+            let In(_, pattern, body, next_in_or_else, start_end) = in_node;
+            ps.on_line(start_end.start_line());
+            ps.emit_indent();
+            ps.emit_in_keyword();
+            ps.emit_space();
+
+            ps.with_start_of_line(
+                false,
+                Box::new(|ps| {
+                    format_pattern(ps, pattern);
+                }),
+            );
+
+            ps.new_block(Box::new(|ps| {
+                ps.with_start_of_line(
+                    true,
+                    Box::new(|ps| {
+                        ps.emit_newline();
+                        for expr in body {
+                            format_expression(ps, expr);
+                        }
+                    }),
+                );
+            }));
+
+            if let Some(in_or_else) = next_in_or_else {
+                format_in_or_else(ps, *in_or_else);
+            }
+        }
+        InOrElse::Else(else_node) => {
+            // `else` blocks are the same for `when` and `in` case statements
+            format_when_or_else(ps, WhenOrElse::Else(else_node));
+        }
+    }
+}
+
+fn format_pattern(ps: &mut dyn ConcreteParserState, pattern_node: PatternNode) {
+    match pattern_node {
+        PatternNode::Aryptn(aryptn) => format_aryptn(ps, aryptn),
+    }
+}
+
+fn format_aryptn(ps: &mut dyn ConcreteParserState, aryptn: Aryptn) {
+    let Aryptn(_, maybe_collection_name, maybe_pre_star_list, maybe_star, maybe_post_star_list) =
+        aryptn;
+    if let Some(collection_name) = maybe_collection_name {
+        format_var_ref(ps, collection_name);
+    }
+    ps.breakable_of(
+        BreakableDelims::for_array(),
+        Box::new(|ps| {
+            let mut vals = Vec::new();
+            if let Some(pre_star_list) = maybe_pre_star_list {
+                vals.append(&mut pre_star_list.clone());
+            }
+            if let Some(star) = maybe_star {
+                vals.push(Expression::Ident(Ident::new(
+                    "*".to_string(),
+                    LineCol(star.2.start_line(), 0),
+                )));
+            }
+            if let Some(post_star_list) = maybe_post_star_list {
+                vals.append(&mut post_star_list.clone());
+            }
+            format_list_like_thing_items(ps, vals, None, false);
+        }),
+    );
 }
 
 pub fn format_retry(ps: &mut dyn ConcreteParserState, r: Retry) {
@@ -3772,6 +3855,7 @@ pub fn format_expression(ps: &mut dyn ConcreteParserState, expression: Expressio
         Expression::IfMod(wm) => format_multilinable_mod(ps, wm.1, wm.2, "if".to_string()),
         Expression::UnlessMod(um) => format_multilinable_mod(ps, um.1, um.2, "unless".to_string()),
         Expression::Case(c) => format_case(ps, c),
+        Expression::Aryptn(arrayptn) => format_aryptn(ps, arrayptn),
         Expression::Retry(r) => format_retry(ps, r),
         Expression::Redo(r) => format_redo(ps, r),
         Expression::SClass(sc) => format_sclass(ps, sc),

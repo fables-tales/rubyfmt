@@ -44,6 +44,7 @@ class Parser < Ripper::SexpBuilderPP
       "next" => [],
       "return" => [],
       "when" => [],
+      "in" => [],
       "case" => [],
       "yield" => [],
       "break" => [],
@@ -374,6 +375,10 @@ class Parser < Ripper::SexpBuilderPP
     [:when, cond, body, tail, start_end_for_keyword('when')]
   end
 
+  def on_in(cond, body, tail)
+    [:in, cond, body, tail, start_end_for_keyword('in')]
+  end
+
   def on_case(cond, body)
     [:case, cond, body, start_end_for_keyword('case')]
   end
@@ -384,6 +389,10 @@ class Parser < Ripper::SexpBuilderPP
 
   def on_break(arg)
     [:break, arg, start_end_for_keyword('break')]
+  end
+
+  def on_var_field(*args)
+    with_lineno { super }
   end
 
   def on_tlambda(*args)

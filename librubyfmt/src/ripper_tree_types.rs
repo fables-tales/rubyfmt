@@ -143,6 +143,7 @@ pub enum Expression {
     IfMod(IfMod),
     UnlessMod(UnlessMod),
     Case(Case),
+    Aryptn(Aryptn),
     Retry(Retry),
     Redo(Redo),
     SClass(SClass),
@@ -266,6 +267,18 @@ impl Expression {
             | Expression::EndBlock(EndBlock(_, exprs)) => {
                 exprs.first().and_then(|expr| expr.start_line())
             }
+            Expression::Aryptn(Aryptn(_, _, exprs, star, ..)) => exprs
+                .as_ref()
+                .map(|exprs| exprs.first().map(|expr| expr.start_line()).flatten())
+                .flatten()
+                .or_else(|| {
+                    Some(
+                        star.as_ref()
+                            .expect("If first exprs list is empty, there must be a * pattern")
+                            .2
+                            .start_line(),
+                    )
+                }),
             // Pick the first of either expression, since these can be e.g. `foo..bar` or `foo..` or `..bar`
             Expression::Dot2(Dot2(_, maybe_first_expr, maybe_second_expr))
             | Expression::Dot3(Dot3(_, maybe_first_expr, maybe_second_expr)) => maybe_first_expr
@@ -316,7 +329,7 @@ pub enum MLhsInner {
 impl MLhsInner {
     pub fn start_line(&self) -> Option<u64> {
         match self {
-            MLhsInner::VarField(VarField(_, var_ref_type)) => Some(var_ref_type.start_line()),
+            MLhsInner::VarField(VarField(.., start_end)) => Some(start_end.start_line()),
             MLhsInner::Field(Field(_, expr, ..)) => expr.start_line(),
             MLhsInner::RestParam(RestParam(.., rest_param_assignable)) => rest_param_assignable
                 .as_ref()
@@ -599,9 +612,7 @@ impl RestParamAssignable {
         match self {
             RestParamAssignable::ArefField(ArefField(.., linecol))
             | RestParamAssignable::Ident(Ident(.., linecol)) => Some(linecol.0),
-            RestParamAssignable::VarField(VarField(.., var_ref_type)) => {
-                Some(var_ref_type.start_line())
-            }
+            RestParamAssignable::VarField(VarField(.., start_end)) => Some(start_end.start_line()),
         }
     }
 }
@@ -622,7 +633,7 @@ pub enum Assignable {
 impl Assignable {
     pub fn start_line(&self) -> Option<u64> {
         match self {
-            Assignable::VarField(VarField(.., var_ref_type)) => Some(var_ref_type.start_line()),
+            Assignable::VarField(VarField(.., start_end)) => Some(start_end.start_line()),
             Assignable::RestParam(RestParam(.., rest_param_assignable)) => rest_param_assignable
                 .as_ref()
                 .and_then(|rpa| rpa.start_line()),
@@ -661,7 +672,7 @@ pub struct ConstPathField(pub const_path_field_tag, pub Box<Expression>, pub Con
 
 def_tag!(var_field_tag, "var_field");
 #[derive(Deserialize, Debug, Clone)]
-pub struct VarField(pub var_field_tag, pub VarRefType);
+pub struct VarField(pub var_field_tag, pub Option<VarRefType>, pub StartEnd);
 
 def_tag!(field_tag, "field");
 #[derive(Deserialize, Debug, Clone)]
@@ -2340,7 +2351,7 @@ def_tag!(case_tag, "case");
 pub struct Case(
     case_tag,
     pub Option<Box<Expression>>,
-    pub When,
+    pub WhenOrIn,
     pub StartEnd,
 );
 
@@ -2355,8 +2366,45 @@ pub struct When(
 );
 
 #[derive(RipperDeserialize, Debug, Clone)]
+pub enum WhenOrIn {
+    When(When),
+    In(In),
+}
+
+def_tag!(in_tag, "in");
+#[derive(Deserialize, Debug, Clone)]
+pub struct In(
+    pub in_tag,
+    pub PatternNode,           // current pattern
+    pub Vec<Expression>,       // body
+    pub Option<Box<InOrElse>>, // next in/else
+    pub StartEnd,
+);
+
+#[derive(RipperDeserialize, Debug, Clone)]
+pub enum PatternNode {
+    Aryptn(Aryptn),
+}
+
+def_tag!(arrayptn_tag, "aryptn");
+#[derive(Deserialize, Debug, Clone)]
+pub struct Aryptn(
+    pub arrayptn_tag,
+    pub Option<VarRef>,          // Container type, e.g. `in Foo["a", "b"]`
+    pub Option<Vec<Expression>>, // list of values before the first *
+    pub Option<VarField>,        // "*" pattern
+    pub Option<Vec<Expression>>, // list of values the first *
+);
+
+#[derive(RipperDeserialize, Debug, Clone)]
 pub enum WhenOrElse {
     When(When),
+    Else(CaseElse),
+}
+
+#[derive(RipperDeserialize, Debug, Clone)]
+pub enum InOrElse {
+    In(In),
     Else(CaseElse),
 }
 
