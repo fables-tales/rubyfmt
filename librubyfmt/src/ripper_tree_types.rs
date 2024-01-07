@@ -2384,16 +2384,27 @@ pub struct In(
 #[derive(RipperDeserialize, Debug, Clone)]
 pub enum PatternNode {
     Aryptn(Aryptn),
+    Fndptn(Fndptn),
 }
 
-def_tag!(arrayptn_tag, "aryptn");
+def_tag!(aryptn_tag, "aryptn");
 #[derive(Deserialize, Debug, Clone)]
 pub struct Aryptn(
-    pub arrayptn_tag,
+    pub aryptn_tag,
     pub Option<VarRef>,          // Container type, e.g. `in Foo["a", "b"]`
     pub Option<Vec<Expression>>, // list of values before the first *
     pub Option<VarField>,        // "*" pattern
     pub Option<Vec<Expression>>, // list of values the first *
+);
+
+def_tag!(fndptn_tag, "fndptn");
+#[derive(Deserialize, Debug, Clone)]
+pub struct Fndptn(
+    pub fndptn_tag,
+    pub Option<VarRef>,  // Container type, e.g. `in Foo["a", "b"]`
+    pub VarField,        // leading "*" pattern
+    pub Vec<Expression>, // inner values
+    pub VarField,        // trailing "*" pattern
 );
 
 #[derive(RipperDeserialize, Debug, Clone)]

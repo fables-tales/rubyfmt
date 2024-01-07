@@ -3402,6 +3402,7 @@ fn format_in_or_else(ps: &mut dyn ConcreteParserState, in_or_else: InOrElse) {
 fn format_pattern(ps: &mut dyn ConcreteParserState, pattern_node: PatternNode) {
     match pattern_node {
         PatternNode::Aryptn(aryptn) => format_aryptn(ps, aryptn),
+        PatternNode::Fndptn(fndptn) => format_fndptn(ps, fndptn),
     }
 }
 
@@ -3419,10 +3420,7 @@ fn format_aryptn(ps: &mut dyn ConcreteParserState, aryptn: Aryptn) {
                 vals.append(&mut pre_star_list.clone());
             }
             if let Some(star) = maybe_star {
-                vals.push(Expression::Ident(Ident::new(
-                    "*".to_string(),
-                    LineCol(star.2.start_line(), 0),
-                )));
+                vals.push(pattern_splat_as_expr(star));
             }
             if let Some(post_star_list) = maybe_post_star_list {
                 vals.append(&mut post_star_list.clone());
@@ -3430,6 +3428,31 @@ fn format_aryptn(ps: &mut dyn ConcreteParserState, aryptn: Aryptn) {
             format_list_like_thing_items(ps, vals, None, false);
         }),
     );
+}
+
+fn format_fndptn(ps: &mut dyn ConcreteParserState, fndptn: Fndptn) {
+    let Fndptn(_, maybe_collection_name, pre_splat, values, post_splat) = fndptn;
+    if let Some(collection_name) = maybe_collection_name {
+        format_var_ref(ps, collection_name);
+    }
+    ps.breakable_of(
+        BreakableDelims::for_array(),
+        Box::new(|ps| {
+            let mut vals = values.clone();
+            vals.insert(0, pattern_splat_as_expr(pre_splat));
+            vals.push(pattern_splat_as_expr(post_splat));
+
+            format_list_like_thing_items(ps, vals, None, false);
+        }),
+    );
+}
+
+fn pattern_splat_as_expr(var_field: VarField) -> Expression {
+    let mut ident = "*".to_string();
+    if let Some(name) = var_field.1 {
+        ident.push_str(name.to_local_string().as_str());
+    }
+    Expression::Ident(Ident::new(ident, LineCol(var_field.2.start_line(), 0)))
 }
 
 pub fn format_retry(ps: &mut dyn ConcreteParserState, r: Retry) {

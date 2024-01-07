@@ -10,7 +10,7 @@ end
 case ["And I shall have some peace there", "for peace", "comes dropping slow"]
 in [String, *]
   "Dropping from the veils of the morning to where the cricket sings;"
-in Midnight[*]
+in Midnight[*glow]
   "There midnight's all a glimmer, and noon a purple glow,"
 in [1, *, 2]
   "And evening full of the linnet's wings."
