@@ -2386,24 +2386,55 @@ pub enum PatternNode {
     Fndptn(Fndptn),
 }
 
+#[derive(RipperDeserialize, Debug, Clone)]
+pub enum ExpressionOrVarField {
+    Expression(Expression),
+    VarField(VarField),
+}
+
+impl ExpressionOrVarField {
+    pub fn into_expression(self) -> Expression {
+        match self {
+            ExpressionOrVarField::Expression(expr) => expr,
+            ExpressionOrVarField::VarField(var_field) => {
+                let start_line = var_field.2.start_line();
+                Expression::Ident(Ident::new(
+                    var_field
+                        .1
+                        .map(|ref_type| ref_type.to_local_string())
+                        .unwrap_or_else(|| "".to_string()),
+                    LineCol(start_line, 0),
+                ))
+            }
+        }
+    }
+
+    pub fn start_line(&self) -> Option<u64> {
+        match self {
+            ExpressionOrVarField::Expression(expr) => expr.start_line(),
+            ExpressionOrVarField::VarField(var_field) => Some(var_field.2.start_line()),
+        }
+    }
+}
+
 def_tag!(aryptn_tag, "aryptn");
 #[derive(Deserialize, Debug, Clone)]
 pub struct Aryptn(
     pub aryptn_tag,
-    pub Option<VarRef>,          // Container type, e.g. `in Foo["a", "b"]`
-    pub Option<Vec<Expression>>, // list of values before the first *
-    pub Option<VarField>,        // "*" pattern
-    pub Option<Vec<Expression>>, // list of values the first *
+    pub Option<VarRef>, // Container type, e.g. `in Foo["a", "b"]`
+    pub Option<Vec<ExpressionOrVarField>>, // list of values before the first *
+    pub Option<VarField>, // "*" pattern
+    pub Option<Vec<ExpressionOrVarField>>, // list of values the first *
 );
 
 def_tag!(fndptn_tag, "fndptn");
 #[derive(Deserialize, Debug, Clone)]
 pub struct Fndptn(
     pub fndptn_tag,
-    pub Option<VarRef>,  // Container type, e.g. `in Foo["a", "b"]`
-    pub VarField,        // leading "*" pattern
-    pub Vec<Expression>, // inner values
-    pub VarField,        // trailing "*" pattern
+    pub Option<VarRef>,            // Container type, e.g. `in Foo["a", "b"]`
+    pub VarField,                  // leading "*" pattern
+    pub Vec<ExpressionOrVarField>, // inner values
+    pub VarField,                  // trailing "*" pattern
 );
 
 #[derive(RipperDeserialize, Debug, Clone)]

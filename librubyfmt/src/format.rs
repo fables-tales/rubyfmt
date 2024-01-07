@@ -3406,10 +3406,10 @@ fn format_pattern(ps: &mut dyn ConcreteParserState, pattern_node: PatternNode) {
     }
 }
 
-fn format_aryptn(ps: &mut dyn ConcreteParserState, mut aryptn: Aryptn) {
+fn format_aryptn(ps: &mut dyn ConcreteParserState, aryptn: Aryptn) {
     // Making this `mut` for
     let Aryptn(_, maybe_collection_name, maybe_pre_star_list, maybe_star, maybe_post_star_list) =
-        &mut aryptn;
+        aryptn;
     if let Some(collection_name) = maybe_collection_name {
         format_var_ref(ps, collection_name.clone());
     }
@@ -3418,13 +3418,23 @@ fn format_aryptn(ps: &mut dyn ConcreteParserState, mut aryptn: Aryptn) {
         Box::new(|ps| {
             let mut vals = Vec::new();
             if let Some(pre_star_list) = maybe_pre_star_list {
-                vals.append(pre_star_list);
+                vals.append(
+                    &mut pre_star_list
+                        .into_iter()
+                        .map(|item| item.into_expression())
+                        .collect::<Vec<_>>(),
+                );
             }
             if let Some(star) = maybe_star {
                 vals.push(pattern_splat_as_expr(star.clone()));
             }
             if let Some(post_star_list) = maybe_post_star_list {
-                vals.append(post_star_list);
+                vals.append(
+                    &mut post_star_list
+                        .into_iter()
+                        .map(|item| item.into_expression())
+                        .collect::<Vec<_>>(),
+                );
             }
             format_list_like_thing_items(ps, vals, None, false);
         }),
@@ -3439,7 +3449,10 @@ fn format_fndptn(ps: &mut dyn ConcreteParserState, fndptn: Fndptn) {
     ps.breakable_of(
         BreakableDelims::for_array(),
         Box::new(|ps| {
-            let mut vals = values.clone();
+            let mut vals = values
+                .into_iter()
+                .map(|item| item.into_expression())
+                .collect::<Vec<_>>();
             vals.insert(0, pattern_splat_as_expr(pre_splat));
             vals.push(pattern_splat_as_expr(post_splat));
 
