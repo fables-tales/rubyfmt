@@ -3411,34 +3411,36 @@ fn format_aryptn(ps: &mut dyn ConcreteParserState, aryptn: Aryptn) {
     let Aryptn(_, maybe_collection_name, maybe_pre_star_list, maybe_star, maybe_post_star_list) =
         aryptn;
     if let Some(collection_name) = maybe_collection_name {
-        format_var_ref(ps, collection_name.clone());
+        format_var_ref(ps, collection_name);
     }
-    ps.breakable_of(
-        BreakableDelims::for_array(),
-        Box::new(|ps| {
-            let mut vals = Vec::new();
-            if let Some(pre_star_list) = maybe_pre_star_list {
-                vals.append(
-                    &mut pre_star_list
-                        .into_iter()
-                        .map(|item| item.into_expression())
-                        .collect::<Vec<_>>(),
-                );
-            }
-            if let Some(star) = maybe_star {
-                vals.push(pattern_splat_as_expr(star.clone()));
-            }
-            if let Some(post_star_list) = maybe_post_star_list {
-                vals.append(
-                    &mut post_star_list
-                        .into_iter()
-                        .map(|item| item.into_expression())
-                        .collect::<Vec<_>>(),
-                );
-            }
-            format_list_like_thing_items(ps, vals, None, false);
-        }),
-    );
+    ps.new_block(Box::new(|ps| {
+        ps.breakable_of(
+            BreakableDelims::for_array(),
+            Box::new(|ps| {
+                let mut vals = Vec::new();
+                if let Some(pre_star_list) = maybe_pre_star_list {
+                    vals.append(
+                        &mut pre_star_list
+                            .into_iter()
+                            .map(|item| item.into_expression())
+                            .collect::<Vec<_>>(),
+                    );
+                }
+                if let Some(star) = maybe_star {
+                    vals.push(pattern_splat_as_expr(star));
+                }
+                if let Some(post_star_list) = maybe_post_star_list {
+                    vals.append(
+                        &mut post_star_list
+                            .into_iter()
+                            .map(|item| item.into_expression())
+                            .collect::<Vec<_>>(),
+                    );
+                }
+                format_list_like_thing_items(ps, vals, None, false);
+            }),
+        );
+    }));
 }
 
 fn format_fndptn(ps: &mut dyn ConcreteParserState, fndptn: Fndptn) {
@@ -3446,19 +3448,21 @@ fn format_fndptn(ps: &mut dyn ConcreteParserState, fndptn: Fndptn) {
     if let Some(collection_name) = maybe_collection_name {
         format_var_ref(ps, collection_name);
     }
-    ps.breakable_of(
-        BreakableDelims::for_array(),
-        Box::new(|ps| {
-            let mut vals = values
-                .into_iter()
-                .map(|item| item.into_expression())
-                .collect::<Vec<_>>();
-            vals.insert(0, pattern_splat_as_expr(pre_splat));
-            vals.push(pattern_splat_as_expr(post_splat));
+    ps.new_block(Box::new(|ps| {
+        ps.breakable_of(
+            BreakableDelims::for_array(),
+            Box::new(|ps| {
+                let mut vals = values
+                    .into_iter()
+                    .map(|item| item.into_expression())
+                    .collect::<Vec<_>>();
+                vals.insert(0, pattern_splat_as_expr(pre_splat));
+                vals.push(pattern_splat_as_expr(post_splat));
 
-            format_list_like_thing_items(ps, vals, None, false);
-        }),
-    );
+                format_list_like_thing_items(ps, vals, None, false);
+            }),
+        );
+    }));
 }
 
 fn pattern_splat_as_expr(var_field: VarField) -> Expression {
@@ -3466,7 +3470,10 @@ fn pattern_splat_as_expr(var_field: VarField) -> Expression {
     if let Some(name) = var_field.1 {
         ident.push_str(name.to_local_string().as_str());
     }
-    Expression::Ident(Ident::new(ident, LineCol(var_field.2.start_line(), 0)))
+    Expression::Ident(Ident::new(
+        ident,
+        LineCol(var_field.2.map(|se| se.start_line()).unwrap_or(0), 0),
+    ))
 }
 
 pub fn format_retry(ps: &mut dyn ConcreteParserState, r: Retry) {

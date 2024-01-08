@@ -271,12 +271,11 @@ impl Expression {
                 .as_ref()
                 .and_then(|exprs| exprs.first().and_then(|expr| expr.start_line()))
                 .or_else(|| {
-                    Some(
-                        star.as_ref()
-                            .expect("If first exprs list is empty, there must be a * pattern")
-                            .2
-                            .start_line(),
-                    )
+                    star.as_ref()
+                        .expect("If first exprs list is empty, there must be a * pattern")
+                        .2
+                        .as_ref()
+                        .map(|se| se.start_line())
                 }),
             // Pick the first of either expression, since these can be e.g. `foo..bar` or `foo..` or `..bar`
             Expression::Dot2(Dot2(_, maybe_first_expr, maybe_second_expr))
@@ -328,7 +327,9 @@ pub enum MLhsInner {
 impl MLhsInner {
     pub fn start_line(&self) -> Option<u64> {
         match self {
-            MLhsInner::VarField(VarField(.., start_end)) => Some(start_end.start_line()),
+            MLhsInner::VarField(VarField(.., start_end)) => {
+                start_end.as_ref().map(|se| se.start_line())
+            }
             MLhsInner::Field(Field(_, expr, ..)) => expr.start_line(),
             MLhsInner::RestParam(RestParam(.., rest_param_assignable)) => rest_param_assignable
                 .as_ref()
@@ -611,7 +612,9 @@ impl RestParamAssignable {
         match self {
             RestParamAssignable::ArefField(ArefField(.., linecol))
             | RestParamAssignable::Ident(Ident(.., linecol)) => Some(linecol.0),
-            RestParamAssignable::VarField(VarField(.., start_end)) => Some(start_end.start_line()),
+            RestParamAssignable::VarField(VarField(.., start_end)) => {
+                start_end.as_ref().map(|se| se.start_line())
+            }
         }
     }
 }
@@ -632,7 +635,9 @@ pub enum Assignable {
 impl Assignable {
     pub fn start_line(&self) -> Option<u64> {
         match self {
-            Assignable::VarField(VarField(.., start_end)) => Some(start_end.start_line()),
+            Assignable::VarField(VarField(.., start_end)) => {
+                start_end.as_ref().map(|se| se.start_line())
+            }
             Assignable::RestParam(RestParam(.., rest_param_assignable)) => rest_param_assignable
                 .as_ref()
                 .and_then(|rpa| rpa.start_line()),
@@ -671,7 +676,11 @@ pub struct ConstPathField(pub const_path_field_tag, pub Box<Expression>, pub Con
 
 def_tag!(var_field_tag, "var_field");
 #[derive(Deserialize, Debug, Clone)]
-pub struct VarField(pub var_field_tag, pub Option<VarRefType>, pub StartEnd);
+pub struct VarField(
+    pub var_field_tag,
+    pub Option<VarRefType>,
+    pub Option<StartEnd>, // In rare cases, this can be nil, see `on_var_field` in rubyfmt_lib
+);
 
 def_tag!(field_tag, "field");
 #[derive(Deserialize, Debug, Clone)]
@@ -2397,7 +2406,7 @@ impl ExpressionOrVarField {
         match self {
             ExpressionOrVarField::Expression(expr) => expr,
             ExpressionOrVarField::VarField(var_field) => {
-                let start_line = var_field.2.start_line();
+                let start_line = var_field.2.map(|se| se.start_line()).unwrap_or(0);
                 Expression::Ident(Ident::new(
                     var_field
                         .1
@@ -2412,7 +2421,9 @@ impl ExpressionOrVarField {
     pub fn start_line(&self) -> Option<u64> {
         match self {
             ExpressionOrVarField::Expression(expr) => expr.start_line(),
-            ExpressionOrVarField::VarField(var_field) => Some(var_field.2.start_line()),
+            ExpressionOrVarField::VarField(var_field) => {
+                var_field.2.as_ref().map(|se| se.start_line())
+            }
         }
     }
 }

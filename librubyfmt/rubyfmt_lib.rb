@@ -391,8 +391,28 @@ class Parser < Ripper::SexpBuilderPP
     [:break, arg, start_end_for_keyword('break')]
   end
 
-  def on_var_field(*args)
-    with_lineno { super }
+  def on_var_field(ident)
+    line = if ident
+      # ident.last = [line, col]
+      ident.last.first
+    else
+      # When ident is nil, this represents a "*" pattern, which
+      # is lexed as an op. *However*, this can also happen during
+      # an "implicit" splat, e.g. `in String,` (with a trailing comma),
+      # in which case there's not a last op_location either, so at that
+      # point we give up because `lineno` would be incorrect
+      #
+      # Important to note: in this case, we must `shift` and not `pop`,
+      # because in the case of fndptn, this isn't run until after both
+      # splats have been lexed, so their op locations will be in the reverse order
+      @op_locations.shift
+    end
+    start_end = if line
+      [[line, line]]
+    else
+      [nil]
+    end
+    super + start_end
   end
 
   def on_tlambda(*args)
