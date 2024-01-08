@@ -3403,6 +3403,7 @@ fn format_pattern(ps: &mut dyn ConcreteParserState, pattern_node: PatternNode) {
     match pattern_node {
         PatternNode::Aryptn(aryptn) => format_aryptn(ps, aryptn),
         PatternNode::Fndptn(fndptn) => format_fndptn(ps, fndptn),
+        PatternNode::Hshptn(hshptn) => format_hshptn(ps, hshptn),
     }
 }
 
@@ -3467,6 +3468,88 @@ fn format_fndptn(ps: &mut dyn ConcreteParserState, fndptn: Fndptn) {
                 vals.push(pattern_splat_as_expr(post_splat));
 
                 format_list_like_thing_items(ps, vals, None, false);
+            }),
+        );
+    }));
+    ps.wind_dumping_comments_until_line(start_end.end_line());
+}
+
+fn format_hshptn(ps: &mut dyn ConcreteParserState, hshptn: Hshptn) {
+    let Hshptn(_, maybe_collection_name, keys, var_field_or_nil, start_end) = hshptn;
+    let delims = if maybe_collection_name.is_some() {
+        // Use parens for collections, e.g. `in Class(key: val)`
+        BreakableDelims::for_method_call()
+    } else {
+        BreakableDelims::for_hash()
+    };
+    if let Some(collection_name) = maybe_collection_name {
+        format_var_ref(ps, collection_name);
+    }
+    ps.new_block(Box::new(|ps| {
+        ps.breakable_of(
+            delims,
+            Box::new(|ps| {
+                let mut assocs = keys
+                    .map(|keys| {
+                        keys.iter()
+                            .map(|(key, expr)| {
+                                let expr = match expr {
+                                    Some(expr) => match expr.clone() {
+                                        ExpressionOrVarField::Expression(expr) => Some(expr),
+                                        ExpressionOrVarField::VarField(VarField(
+                                            _,
+                                            var_ref_type,
+                                            start_end,
+                                        )) => Some(Expression::Ident(Ident::new(
+                                            var_ref_type
+                                                .expect("Var refs as bound names must be non-nil")
+                                                .to_local_string(),
+                                            LineCol(
+                                                start_end.map(|se| se.start_line()).unwrap_or(0),
+                                                0,
+                                            ),
+                                        ))),
+                                    },
+                                    None => None,
+                                };
+
+                                AssocNewOrAssocSplat::AssocNew(Box::new(AssocNew(
+                                    assoc_new_tag,
+                                    key.clone(),
+                                    expr.clone(),
+                                )))
+                            })
+                            .collect::<Vec<_>>()
+                    })
+                    .unwrap_or_else(|| Vec::new());
+                if let Some(var_field_or_nil) = var_field_or_nil {
+                    let ident = match var_field_or_nil {
+                        VarFieldOrNil::VarField(VarField(_, ref var_ref_type, ..)) => {
+                            if let Some(var_ref_type) = var_ref_type {
+                                Some(var_ref_type.clone().to_local_string())
+                            } else {
+                                None
+                            }
+                        }
+                        VarFieldOrNil::NilVarField(NilVarField(_, ref nil, ..)) => {
+                            Some(nil.clone())
+                        }
+                    };
+                    let lineno = match var_field_or_nil {
+                        VarFieldOrNil::VarField(VarField(.., start_end))
+                        | VarFieldOrNil::NilVarField(NilVarField(.., start_end)) => {
+                            start_end.map(|se| se.start_line())
+                        }
+                    };
+                    assocs.push(AssocNewOrAssocSplat::AssocSplat(Box::new(AssocSplat(
+                        assoc_splat_tag,
+                        Expression::Ident(Ident::new(
+                            ident.unwrap_or_else(|| String::new()),
+                            LineCol(lineno.unwrap_or(0), 0),
+                        )),
+                    ))));
+                }
+                format_assocs(ps, assocs, SpecialCase::NoSpecialCase);
             }),
         );
     }));

@@ -392,7 +392,8 @@ class Parser < Ripper::SexpBuilderPP
   end
 
   def on_var_field(ident)
-    line = if ident
+    # `ident` is `nil` for **nil in hshptn
+    line = if ident && ident != :nil
       # ident.last = [line, col]
       ident.last.first
     else
@@ -407,11 +408,13 @@ class Parser < Ripper::SexpBuilderPP
       # splats have been lexed, so their op locations will be in the reverse order
       @op_locations.shift
     end
+
     start_end = if line
       [[line, line]]
     else
       [nil]
     end
+
     super + start_end
   end
 
@@ -420,6 +423,10 @@ class Parser < Ripper::SexpBuilderPP
   end
 
   def on_fndptn(*_)
+    with_lineno { super }
+  end
+
+  def on_hshptn(*_)
     with_lineno { super }
   end
 

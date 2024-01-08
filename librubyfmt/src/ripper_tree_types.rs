@@ -682,6 +682,15 @@ pub struct VarField(
     pub Option<StartEnd>, // In rare cases, this can be nil, see `on_var_field` in rubyfmt_lib
 );
 
+/// This is a special-case of `VarField` that represents
+/// the `[:var_field, :nil, [_, _]]` node used in `**nil` patterns
+#[derive(Deserialize, Debug, Clone)]
+pub struct NilVarField(
+    pub var_field_tag,
+    pub String,
+    pub Option<StartEnd>, // In rare cases, this can be nil, see `on_var_field` in rubyfmt_lib
+);
+
 def_tag!(field_tag, "field");
 #[derive(Deserialize, Debug, Clone)]
 pub struct Field(
@@ -2393,6 +2402,7 @@ pub struct In(
 pub enum PatternNode {
     Aryptn(Aryptn),
     Fndptn(Fndptn),
+    Hshptn(Hshptn),
 }
 
 #[derive(RipperDeserialize, Debug, Clone)]
@@ -2443,12 +2453,28 @@ def_tag!(fndptn_tag, "fndptn");
 #[derive(Deserialize, Debug, Clone)]
 pub struct Fndptn(
     pub fndptn_tag,
-    pub Option<VarRef>,            // Container type, e.g. `in Foo["a", "b"]`
+    pub Option<VarRef>,            // Container type
     pub VarField,                  // leading "*" pattern
     pub Vec<ExpressionOrVarField>, // inner values
     pub VarField,                  // trailing "*" pattern
     pub StartEnd,
 );
+
+def_tag!(hshptn_tag, "hshptn");
+#[derive(Deserialize, Debug, Clone)]
+pub struct Hshptn(
+    pub hshptn_tag,
+    pub Option<VarRef>,                                        // Container type
+    pub Option<Vec<(AssocKey, Option<ExpressionOrVarField>)>>, // keywords
+    pub Option<VarFieldOrNil>,                                 // trailing kw splat or `**nil`
+    pub StartEnd,
+);
+
+#[derive(RipperDeserialize, Debug, Clone)]
+pub enum VarFieldOrNil {
+    VarField(VarField),
+    NilVarField(NilVarField), // The symbol `:nil`
+}
 
 #[derive(RipperDeserialize, Debug, Clone)]
 pub enum WhenOrElse {
