@@ -14,7 +14,8 @@ Test::FakeData.make_name_and_id(
   created: now + 5
 )
 
-# We've got all these sorts of reasons
-# we need to filter these out, but
-# someone will probably document that elsewhere, not here
-RELATIVE_EXCLUDES.any? { |str| things.include?(str) } || !relative.end_with?(".rb")
+RELATIVE_EXCLUDES.any? { |str| things.include?(str) } ||
+  # We've got all these sorts of reasons
+  # we need to filter these out, but
+  # someone will probably document that elsewhere, not here
+  !relative.end_with?(".rb")

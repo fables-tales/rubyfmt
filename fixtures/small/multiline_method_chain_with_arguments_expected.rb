@@ -9,9 +9,10 @@ end
 
 {
   "original_fields" => foo,
-  "alternative_fields" => (thing_one(id, api) + thing_two(
-    id,
-    api
-  ))
+  "alternative_fields" => (thing_one(id, api) +
+    thing_two(
+      id,
+      api
+    ))
     .sort
 }
