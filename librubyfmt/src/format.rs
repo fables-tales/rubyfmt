@@ -3521,15 +3521,11 @@ fn format_hshptn(ps: &mut dyn ConcreteParserState, hshptn: Hshptn) {
                             })
                             .collect::<Vec<_>>()
                     })
-                    .unwrap_or_else(|| Vec::new());
+                    .unwrap_or_else(Vec::new);
                 if let Some(var_field_or_nil) = var_field_or_nil {
                     let ident = match var_field_or_nil {
                         VarFieldOrNil::VarField(VarField(_, ref var_ref_type, ..)) => {
-                            if let Some(var_ref_type) = var_ref_type {
-                                Some(var_ref_type.clone().to_local_string())
-                            } else {
-                                None
-                            }
+                            var_ref_type.clone().map(|vrt| vrt.to_local_string())
                         }
                         VarFieldOrNil::NilVarField(NilVarField(_, ref nil, ..)) => {
                             Some(nil.clone())
@@ -3544,7 +3540,7 @@ fn format_hshptn(ps: &mut dyn ConcreteParserState, hshptn: Hshptn) {
                     assocs.push(AssocNewOrAssocSplat::AssocSplat(Box::new(AssocSplat(
                         assoc_splat_tag,
                         Expression::Ident(Ident::new(
-                            ident.unwrap_or_else(|| String::new()),
+                            ident.unwrap_or_else(String::new),
                             LineCol(lineno.unwrap_or(0), 0),
                         )),
                     ))));
