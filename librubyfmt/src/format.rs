@@ -3408,8 +3408,14 @@ fn format_pattern(ps: &mut dyn ConcreteParserState, pattern_node: PatternNode) {
 
 fn format_aryptn(ps: &mut dyn ConcreteParserState, aryptn: Aryptn) {
     // Making this `mut` for
-    let Aryptn(_, maybe_collection_name, maybe_pre_star_list, maybe_star, maybe_post_star_list) =
-        aryptn;
+    let Aryptn(
+        _,
+        maybe_collection_name,
+        maybe_pre_star_list,
+        maybe_star,
+        maybe_post_star_list,
+        start_end,
+    ) = aryptn;
     if let Some(collection_name) = maybe_collection_name {
         format_var_ref(ps, collection_name);
     }
@@ -3441,10 +3447,11 @@ fn format_aryptn(ps: &mut dyn ConcreteParserState, aryptn: Aryptn) {
             }),
         );
     }));
+    ps.wind_dumping_comments_until_line(start_end.end_line());
 }
 
 fn format_fndptn(ps: &mut dyn ConcreteParserState, fndptn: Fndptn) {
-    let Fndptn(_, maybe_collection_name, pre_splat, values, post_splat) = fndptn;
+    let Fndptn(_, maybe_collection_name, pre_splat, values, post_splat, start_end) = fndptn;
     if let Some(collection_name) = maybe_collection_name {
         format_var_ref(ps, collection_name);
     }
@@ -3463,6 +3470,7 @@ fn format_fndptn(ps: &mut dyn ConcreteParserState, fndptn: Fndptn) {
             }),
         );
     }));
+    ps.wind_dumping_comments_until_line(start_end.end_line());
 }
 
 fn pattern_splat_as_expr(var_field: VarField) -> Expression {

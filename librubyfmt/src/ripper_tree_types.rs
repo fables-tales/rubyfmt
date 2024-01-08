@@ -2436,6 +2436,7 @@ pub struct Aryptn(
     pub Option<Vec<ExpressionOrVarField>>, // list of values before the first *
     pub Option<VarField>, // "*" pattern
     pub Option<Vec<ExpressionOrVarField>>, // list of values the first *
+    pub StartEnd,
 );
 
 def_tag!(fndptn_tag, "fndptn");
@@ -2446,6 +2447,7 @@ pub struct Fndptn(
     pub VarField,                  // leading "*" pattern
     pub Vec<ExpressionOrVarField>, // inner values
     pub VarField,                  // trailing "*" pattern
+    pub StartEnd,
 );
 
 #[derive(RipperDeserialize, Debug, Clone)]

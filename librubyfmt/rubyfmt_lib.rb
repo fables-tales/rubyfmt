@@ -415,6 +415,14 @@ class Parser < Ripper::SexpBuilderPP
     super + start_end
   end
 
+  def on_aryptn(*_)
+    with_lineno { super }
+  end
+
+  def on_fndptn(*_)
+    with_lineno { super }
+  end
+
   def on_tlambda(*args)
     @tlambda_stack << lineno
     super
