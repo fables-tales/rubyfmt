@@ -1,6 +1,7 @@
 true and false
 true or false
-false or true
+false or
+  true
 
 true and
   false or
