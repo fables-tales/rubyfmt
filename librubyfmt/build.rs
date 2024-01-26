@@ -46,9 +46,10 @@ fn main() -> Output {
     let new_checkout_sha = get_ruby_checkout_sha();
 
     // Only rerun this build if the ruby_checkout has changed
+    // boop
     match old_checkout_sha {
         Some(old_sha)
-            if old_sha == new_checkout_sha && !env::var("FORCE_FULL_RUBY_BUILD").is_ok() => {}
+            if old_sha == new_checkout_sha && env::var("FORCE_FULL_RUBY_BUILD").is_err() => {}
         _ => {
             make_configure(&ruby_checkout_path)?;
             run_configure(&ruby_checkout_path)?;
