@@ -6,7 +6,7 @@ on:
       - completed
   push:
     # Run only on trunk pushes that aren't a new tag release
-    branches: [trunk]
+    branches: [trunk, reese-preview-release]
     tags-ignore: "*"
 
 env:
@@ -14,6 +14,7 @@ env:
   GEM_HOME: /tmp/.bundle
   GEM_PATH: /tmp/.bundle
   TERM: xterm256
+  FORCE_FULL_RUBY_BUILD: 1
 
 jobs:
   bump-tag:
@@ -118,11 +119,11 @@ jobs:
       - uses: actions/download-artifact@v3
         with:
           name: rubyfmt-release-artifact-macos-latest-native
-      - name: Upload Release
-        uses: softprops/action-gh-release@v1
-        with:
-          files: rubyfmt-*.tar.gz
-          fail_on_unmatched_files: true
-          generate_release_notes: true
-          prerelease: true
-          tag_name: ${{ steps.get-latest-tag.outputs.tag }}
+      # - name: Upload Release
+      #   uses: softprops/action-gh-release@v1
+      #   with:
+      #     files: rubyfmt-*.tar.gz
+      #     fail_on_unmatched_files: true
+      #     generate_release_notes: true
+      #     prerelease: true
+      #     tag_name: ${{ steps.get-latest-tag.outputs.tag }}
