@@ -49,3 +49,17 @@ def bees!
   # Maybe there should be the same amount of bees
   equal_amount_of_bees?
 end
+
+MyClass.calculate_stuff / 2
+MyClass
+  .calculate_stuff / 2
+{1 => "", 2 => ""}.keys.sum / 5
+{1 => "",
+  2 => ""}.keys.sum / 5
+
+Foo.new(
+  a: Calculator.calculate_stuff
+    .map { _1.do_things! }
+    .sum +
+     1000.to_f
+)
