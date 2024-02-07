@@ -14,6 +14,7 @@ env:
   GEM_HOME: /tmp/.bundle
   GEM_PATH: /tmp/.bundle
   TERM: xterm256
+  FORCE_FULL_RUBY_BUILD: 1
 
 jobs:
   bump-tag:
