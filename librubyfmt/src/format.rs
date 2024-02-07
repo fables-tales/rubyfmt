@@ -2506,11 +2506,14 @@ fn format_binary_inner(ps: &mut dyn ConcreteParserState, binary: Binary) {
                 false,
                 Box::new(|ps| {
                     let op = binary.2;
+                    let left_hand_side = *binary.1;
 
-                    if let Expression::Binary(bin) = *binary.1 {
+                    if let Expression::Binary(bin) = left_hand_side {
                         format_binary_inner(ps, bin);
                     } else {
-                        format_expression(ps, *binary.1);
+                        ps.dedent(Box::new(|ps| {
+                            format_expression(ps, left_hand_side);
+                        }));
                     }
 
                     let comparison_operators = vec![">", ">=", "===", "==", "<", "<=", "<=>", "!="];
