@@ -477,7 +477,11 @@ class Parser < Ripper::SexpBuilderPP
 
   def on_embexpr_end(*args)
     # Append end line to make a StartEnd
-    @embexpr_stack.last << lineno
+    #
+    # We defensively check that `#embexpr_stack` has something in it,
+    # although this should only happen while looking at invalid syntax.
+    # For example, `""}` would run this with an empty stack.
+    @embexpr_stack.last << lineno if !@embexpr_stack.empty?
     super
   end
 
