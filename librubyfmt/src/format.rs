@@ -407,7 +407,10 @@ pub fn format_mlhs(ps: &mut dyn ConcreteParserState, mlhs: MLhs) {
 }
 
 fn bind_var_field(ps: &mut dyn ConcreteParserState, vf: &VarField) {
-    ps.bind_variable((vf.1).clone().to_local_string())
+    ps.bind_variable((vf.1).clone().expect(
+        "Var ref fields are only nilable in pattern matching, and we don't do var binding there",
+    )
+    .to_local_string())
 }
 
 fn bind_ident(ps: &mut dyn ConcreteParserState, id: &Ident) {
@@ -1732,7 +1735,12 @@ pub fn format_top_const_field(ps: &mut dyn ConcreteParserState, tcf: TopConstFie
 
 pub fn format_var_field(ps: &mut dyn ConcreteParserState, vf: VarField) {
     let left = vf.1;
-    format_var_ref_type(ps, left);
+    if let Some(var_ref_type) = left {
+        format_var_ref_type(ps, var_ref_type);
+    } else {
+        // Nil var fields are used for "*" matchers in patterns
+        ps.emit_ident("*".to_string());
+    }
 }
 
 pub fn format_aref_field(ps: &mut dyn ConcreteParserState, af: ArefField) {
@@ -3316,7 +3324,10 @@ pub fn format_case(ps: &mut dyn ConcreteParserState, case: Case) {
     ps.with_start_of_line(
         true,
         Box::new(|ps| {
-            format_when_or_else(ps, WhenOrElse::When(tail));
+            match tail {
+                WhenOrIn::When(when) => format_when_or_else(ps, WhenOrElse::When(when)),
+                WhenOrIn::In(in_node) => format_in_or_else(ps, InOrElse::In(in_node)),
+            }
             ps.emit_end();
         }),
     );
@@ -3326,6 +3337,209 @@ pub fn format_case(ps: &mut dyn ConcreteParserState, case: Case) {
         ps.emit_newline();
     }
     ps.on_line(case.3 .1);
+}
+
+fn format_in_or_else(ps: &mut dyn ConcreteParserState, in_or_else: InOrElse) {
+    match in_or_else {
+        InOrElse::In(in_node) => {
+            let In(_, pattern, body, next_in_or_else, start_end) = in_node;
+            ps.on_line(start_end.start_line());
+            ps.emit_indent();
+            ps.emit_in_keyword();
+            ps.emit_space();
+
+            ps.with_start_of_line(
+                false,
+                Box::new(|ps| {
+                    format_pattern(ps, *pattern);
+                }),
+            );
+
+            ps.new_block(Box::new(|ps| {
+                ps.with_start_of_line(
+                    true,
+                    Box::new(|ps| {
+                        ps.emit_newline();
+                        for expr in body {
+                            format_expression(ps, expr);
+                        }
+                    }),
+                );
+            }));
+
+            if let Some(in_or_else) = next_in_or_else {
+                format_in_or_else(ps, *in_or_else);
+            }
+        }
+        InOrElse::Else(else_node) => {
+            // `else` blocks are the same for `when` and `in` case statements
+            format_when_or_else(ps, WhenOrElse::Else(else_node));
+        }
+    }
+}
+
+fn format_pattern(ps: &mut dyn ConcreteParserState, pattern_node: PatternNode) {
+    match pattern_node {
+        PatternNode::Aryptn(aryptn) => format_aryptn(ps, aryptn),
+        PatternNode::Fndptn(fndptn) => format_fndptn(ps, fndptn),
+        PatternNode::Hshptn(hshptn) => format_hshptn(ps, hshptn),
+    }
+}
+
+fn format_aryptn(ps: &mut dyn ConcreteParserState, aryptn: Aryptn) {
+    // Making this `mut` for
+    let Aryptn(
+        _,
+        maybe_collection_name,
+        maybe_pre_star_list,
+        maybe_star,
+        maybe_post_star_list,
+        start_end,
+    ) = aryptn;
+    if let Some(collection_name) = maybe_collection_name {
+        format_var_ref(ps, collection_name);
+    }
+    ps.new_block(Box::new(|ps| {
+        ps.breakable_of(
+            BreakableDelims::for_array(),
+            Box::new(|ps| {
+                let mut vals = Vec::new();
+                if let Some(pre_star_list) = maybe_pre_star_list {
+                    vals.append(
+                        &mut pre_star_list
+                            .into_iter()
+                            .map(|item| item.into_expression())
+                            .collect::<Vec<_>>(),
+                    );
+                }
+                if let Some(star) = maybe_star {
+                    vals.push(pattern_splat_as_expr(star));
+                }
+                if let Some(post_star_list) = maybe_post_star_list {
+                    vals.append(
+                        &mut post_star_list
+                            .into_iter()
+                            .map(|item| item.into_expression())
+                            .collect::<Vec<_>>(),
+                    );
+                }
+                format_list_like_thing_items(ps, vals, None, false);
+            }),
+        );
+    }));
+    ps.wind_dumping_comments_until_line(start_end.end_line());
+}
+
+fn format_fndptn(ps: &mut dyn ConcreteParserState, fndptn: Fndptn) {
+    let Fndptn(_, maybe_collection_name, pre_splat, values, post_splat, start_end) = fndptn;
+    if let Some(collection_name) = maybe_collection_name {
+        format_var_ref(ps, collection_name);
+    }
+    ps.new_block(Box::new(|ps| {
+        ps.breakable_of(
+            BreakableDelims::for_array(),
+            Box::new(|ps| {
+                let mut vals = values
+                    .into_iter()
+                    .map(|item| item.into_expression())
+                    .collect::<Vec<_>>();
+                vals.insert(0, pattern_splat_as_expr(pre_splat));
+                vals.push(pattern_splat_as_expr(post_splat));
+
+                format_list_like_thing_items(ps, vals, None, false);
+            }),
+        );
+    }));
+    ps.wind_dumping_comments_until_line(start_end.end_line());
+}
+
+fn format_hshptn(ps: &mut dyn ConcreteParserState, hshptn: Hshptn) {
+    let Hshptn(_, maybe_collection_name, keys, var_field_or_nil, start_end) = hshptn;
+    let delims = if maybe_collection_name.is_some() {
+        // Use parens for collections, e.g. `in Class(key: val)`
+        BreakableDelims::for_method_call()
+    } else {
+        BreakableDelims::for_hash()
+    };
+    if let Some(collection_name) = maybe_collection_name {
+        format_var_ref(ps, collection_name);
+    }
+    ps.new_block(Box::new(|ps| {
+        ps.breakable_of(
+            delims,
+            Box::new(|ps| {
+                let mut assocs = keys
+                    .map(|keys| {
+                        keys.iter()
+                            .map(|(key, expr)| {
+                                let expr = match expr {
+                                    Some(expr) => match expr.clone() {
+                                        ExpressionOrVarField::Expression(expr) => Some(expr),
+                                        ExpressionOrVarField::VarField(VarField(
+                                            _,
+                                            var_ref_type,
+                                            start_end,
+                                        )) => Some(Expression::Ident(Ident::new(
+                                            var_ref_type
+                                                .expect("Var refs as bound names must be non-nil")
+                                                .to_local_string(),
+                                            LineCol(
+                                                start_end.map(|se| se.start_line()).unwrap_or(0),
+                                                0,
+                                            ),
+                                        ))),
+                                    },
+                                    None => None,
+                                };
+
+                                AssocNewOrAssocSplat::AssocNew(Box::new(AssocNew(
+                                    assoc_new_tag,
+                                    key.clone(),
+                                    expr.clone(),
+                                )))
+                            })
+                            .collect::<Vec<_>>()
+                    })
+                    .unwrap_or_else(Vec::new);
+                if let Some(var_field_or_nil) = var_field_or_nil {
+                    let ident = match var_field_or_nil {
+                        VarFieldOrNil::VarField(VarField(_, ref var_ref_type, ..)) => {
+                            var_ref_type.clone().map(|vrt| vrt.to_local_string())
+                        }
+                        VarFieldOrNil::NilVarField(NilVarField(_, ref nil, ..)) => {
+                            Some(nil.clone())
+                        }
+                    };
+                    let lineno = match var_field_or_nil {
+                        VarFieldOrNil::VarField(VarField(.., start_end))
+                        | VarFieldOrNil::NilVarField(NilVarField(.., start_end)) => {
+                            start_end.map(|se| se.start_line())
+                        }
+                    };
+                    assocs.push(AssocNewOrAssocSplat::AssocSplat(Box::new(AssocSplat(
+                        assoc_splat_tag,
+                        Expression::Ident(Ident::new(
+                            ident.unwrap_or_else(String::new),
+                            LineCol(lineno.unwrap_or(0), 0),
+                        )),
+                    ))));
+                }
+                format_assocs(ps, assocs, SpecialCase::NoSpecialCase);
+            }),
+        );
+    }));
+    ps.wind_dumping_comments_until_line(start_end.end_line());
+}
+
+fn pattern_splat_as_expr(var_field: VarField) -> Expression {
+    let mut ident = "*".to_string();
+    if let Some(name) = var_field.1 {
+        ident.push_str(name.to_local_string().as_str());
+    }
+    Expression::Ident(Ident::new(
+        ident,
+        LineCol(var_field.2.map(|se| se.start_line()).unwrap_or(0), 0),
+    ))
 }
 
 pub fn format_retry(ps: &mut dyn ConcreteParserState, r: Retry) {
@@ -3751,6 +3965,7 @@ pub fn format_expression(ps: &mut dyn ConcreteParserState, expression: Expressio
         Expression::IfMod(wm) => format_multilinable_mod(ps, wm.1, wm.2, "if".to_string()),
         Expression::UnlessMod(um) => format_multilinable_mod(ps, um.1, um.2, "unless".to_string()),
         Expression::Case(c) => format_case(ps, c),
+        Expression::Aryptn(arrayptn) => format_aryptn(ps, arrayptn),
         Expression::Retry(r) => format_retry(ps, r),
         Expression::Redo(r) => format_redo(ps, r),
         Expression::SClass(sc) => format_sclass(ps, sc),

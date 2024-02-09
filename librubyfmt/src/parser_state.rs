@@ -73,6 +73,7 @@ where
     fn emit_class_keyword(&mut self);
     fn emit_do_keyword(&mut self);
     fn emit_when_keyword(&mut self);
+    fn emit_in_keyword(&mut self);
     fn emit_case_keyword(&mut self);
     fn emit_rescue(&mut self);
     fn emit_open_square_bracket(&mut self);
@@ -707,6 +708,12 @@ impl ConcreteParserState for BaseParserState {
     fn emit_when_keyword(&mut self) {
         self.push_concrete_token(ConcreteLineToken::Keyword {
             keyword: "when".to_string(),
+        });
+    }
+
+    fn emit_in_keyword(&mut self) {
+        self.push_concrete_token(ConcreteLineToken::Keyword {
+            keyword: "in".to_string(),
         });
     }
 

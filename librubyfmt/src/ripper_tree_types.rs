@@ -143,6 +143,7 @@ pub enum Expression {
     IfMod(IfMod),
     UnlessMod(UnlessMod),
     Case(Case),
+    Aryptn(Aryptn),
     Retry(Retry),
     Redo(Redo),
     SClass(SClass),
@@ -266,6 +267,16 @@ impl Expression {
             | Expression::EndBlock(EndBlock(_, exprs)) => {
                 exprs.first().and_then(|expr| expr.start_line())
             }
+            Expression::Aryptn(Aryptn(_, _, exprs, star, ..)) => exprs
+                .as_ref()
+                .and_then(|exprs| exprs.first().and_then(|expr| expr.start_line()))
+                .or_else(|| {
+                    star.as_ref()
+                        .expect("If first exprs list is empty, there must be a * pattern")
+                        .2
+                        .as_ref()
+                        .map(|se| se.start_line())
+                }),
             // Pick the first of either expression, since these can be e.g. `foo..bar` or `foo..` or `..bar`
             Expression::Dot2(Dot2(_, maybe_first_expr, maybe_second_expr))
             | Expression::Dot3(Dot3(_, maybe_first_expr, maybe_second_expr)) => maybe_first_expr
@@ -316,7 +327,9 @@ pub enum MLhsInner {
 impl MLhsInner {
     pub fn start_line(&self) -> Option<u64> {
         match self {
-            MLhsInner::VarField(VarField(_, var_ref_type)) => Some(var_ref_type.start_line()),
+            MLhsInner::VarField(VarField(.., start_end)) => {
+                start_end.as_ref().map(|se| se.start_line())
+            }
             MLhsInner::Field(Field(_, expr, ..)) => expr.start_line(),
             MLhsInner::RestParam(RestParam(.., rest_param_assignable)) => rest_param_assignable
                 .as_ref()
@@ -599,8 +612,8 @@ impl RestParamAssignable {
         match self {
             RestParamAssignable::ArefField(ArefField(.., linecol))
             | RestParamAssignable::Ident(Ident(.., linecol)) => Some(linecol.0),
-            RestParamAssignable::VarField(VarField(.., var_ref_type)) => {
-                Some(var_ref_type.start_line())
+            RestParamAssignable::VarField(VarField(.., start_end)) => {
+                start_end.as_ref().map(|se| se.start_line())
             }
         }
     }
@@ -622,7 +635,9 @@ pub enum Assignable {
 impl Assignable {
     pub fn start_line(&self) -> Option<u64> {
         match self {
-            Assignable::VarField(VarField(.., var_ref_type)) => Some(var_ref_type.start_line()),
+            Assignable::VarField(VarField(.., start_end)) => {
+                start_end.as_ref().map(|se| se.start_line())
+            }
             Assignable::RestParam(RestParam(.., rest_param_assignable)) => rest_param_assignable
                 .as_ref()
                 .and_then(|rpa| rpa.start_line()),
@@ -661,7 +676,20 @@ pub struct ConstPathField(pub const_path_field_tag, pub Box<Expression>, pub Con
 
 def_tag!(var_field_tag, "var_field");
 #[derive(Deserialize, Debug, Clone)]
-pub struct VarField(pub var_field_tag, pub VarRefType);
+pub struct VarField(
+    pub var_field_tag,
+    pub Option<VarRefType>,
+    pub Option<StartEnd>, // In rare cases, this can be nil, see `on_var_field` in rubyfmt_lib
+);
+
+/// This is a special-case of `VarField` that represents
+/// the `[:var_field, :nil, [_, _]]` node used in `**nil` patterns
+#[derive(Deserialize, Debug, Clone)]
+pub struct NilVarField(
+    pub var_field_tag,
+    pub String,
+    pub Option<StartEnd>, // In rare cases, this can be nil, see `on_var_field` in rubyfmt_lib
+);
 
 def_tag!(field_tag, "field");
 #[derive(Deserialize, Debug, Clone)]
@@ -2340,7 +2368,7 @@ def_tag!(case_tag, "case");
 pub struct Case(
     case_tag,
     pub Option<Box<Expression>>,
-    pub When,
+    pub WhenOrIn,
     pub StartEnd,
 );
 
@@ -2355,8 +2383,108 @@ pub struct When(
 );
 
 #[derive(RipperDeserialize, Debug, Clone)]
+pub enum WhenOrIn {
+    When(When),
+    In(In),
+}
+
+def_tag!(in_tag, "in");
+#[derive(Deserialize, Debug, Clone)]
+pub struct In(
+    pub in_tag,
+    pub Box<PatternNode>,      // current pattern
+    pub Vec<Expression>,       // body
+    pub Option<Box<InOrElse>>, // next in/else
+    pub StartEnd,
+);
+
+#[derive(RipperDeserialize, Debug, Clone)]
+pub enum PatternNode {
+    Aryptn(Aryptn),
+    Fndptn(Fndptn),
+    Hshptn(Hshptn),
+}
+
+#[derive(RipperDeserialize, Debug, Clone)]
+pub enum ExpressionOrVarField {
+    Expression(Expression),
+    VarField(VarField),
+}
+
+impl ExpressionOrVarField {
+    pub fn into_expression(self) -> Expression {
+        match self {
+            ExpressionOrVarField::Expression(expr) => expr,
+            ExpressionOrVarField::VarField(var_field) => {
+                let start_line = var_field.2.map(|se| se.start_line()).unwrap_or(0);
+                Expression::Ident(Ident::new(
+                    var_field
+                        .1
+                        .map(|ref_type| ref_type.to_local_string())
+                        .unwrap_or_else(|| "".to_string()),
+                    LineCol(start_line, 0),
+                ))
+            }
+        }
+    }
+
+    pub fn start_line(&self) -> Option<u64> {
+        match self {
+            ExpressionOrVarField::Expression(expr) => expr.start_line(),
+            ExpressionOrVarField::VarField(var_field) => {
+                var_field.2.as_ref().map(|se| se.start_line())
+            }
+        }
+    }
+}
+
+def_tag!(aryptn_tag, "aryptn");
+#[derive(Deserialize, Debug, Clone)]
+pub struct Aryptn(
+    pub aryptn_tag,
+    pub Option<VarRef>, // Container type, e.g. `in Foo["a", "b"]`
+    pub Option<Vec<ExpressionOrVarField>>, // list of values before the first *
+    pub Option<VarField>, // "*" pattern
+    pub Option<Vec<ExpressionOrVarField>>, // list of values the first *
+    pub StartEnd,
+);
+
+def_tag!(fndptn_tag, "fndptn");
+#[derive(Deserialize, Debug, Clone)]
+pub struct Fndptn(
+    pub fndptn_tag,
+    pub Option<VarRef>,            // Container type
+    pub VarField,                  // leading "*" pattern
+    pub Vec<ExpressionOrVarField>, // inner values
+    pub VarField,                  // trailing "*" pattern
+    pub StartEnd,
+);
+
+def_tag!(hshptn_tag, "hshptn");
+#[derive(Deserialize, Debug, Clone)]
+pub struct Hshptn(
+    pub hshptn_tag,
+    pub Option<VarRef>,                                        // Container type
+    pub Option<Vec<(AssocKey, Option<ExpressionOrVarField>)>>, // keywords
+    pub Option<VarFieldOrNil>,                                 // trailing kw splat or `**nil`
+    pub StartEnd,
+);
+
+#[derive(RipperDeserialize, Debug, Clone)]
+pub enum VarFieldOrNil {
+    VarField(VarField),
+    NilVarField(NilVarField), // The symbol `:nil`
+}
+
+#[derive(RipperDeserialize, Debug, Clone)]
 pub enum WhenOrElse {
     When(When),
+    Else(CaseElse),
+}
+
+#[derive(RipperDeserialize, Debug, Clone)]
+pub enum InOrElse {
+    In(In),
     Else(CaseElse),
 }
 
