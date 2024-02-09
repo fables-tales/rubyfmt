@@ -390,10 +390,16 @@ pub fn format_mlhs(ps: &mut dyn ConcreteParserState, mlhs: MLhs) {
                     MLhsInner::Field(f) => format_field(ps, f),
                     MLhsInner::Ident(i) => format_ident(ps, i),
                     MLhsInner::RestParam(rp) => {
+                        let special_case =
+                            if ps.current_formatting_context() == FormattingContext::Assign {
+                                SpecialCase::RestParamOutsideOfParamDef
+                            } else {
+                                SpecialCase::NoSpecialCase
+                            };
                         format_rest_param(
                             ps,
                             Some(RestParamOr0OrExcessedComma::RestParam(rp)),
-                            SpecialCase::NoSpecialCase,
+                            special_case,
                         );
                     }
                     MLhsInner::VarField(vf) => format_var_field(ps, vf),
@@ -1863,41 +1869,46 @@ pub fn format_massign(ps: &mut dyn ConcreteParserState, massign: MAssign) {
         ps.emit_indent();
     }
 
-    ps.with_start_of_line(
-        false,
+    ps.with_formatting_context(
+        FormattingContext::Assign,
         Box::new(|ps| {
-            match massign.1 {
-                AssignableListOrMLhs::AssignableList(al) => {
-                    let length = al.len();
-                    for (idx, v) in al.into_iter().enumerate() {
-                        let is_rest_param = matches!(v, Assignable::RestParam(..));
-                        format_assignable(ps, v);
-                        let last = idx == length - 1;
-                        if !last {
-                            ps.emit_comma_space();
+            ps.with_start_of_line(
+                false,
+                Box::new(|ps| {
+                    match massign.1 {
+                        AssignableListOrMLhs::AssignableList(al) => {
+                            let length = al.len();
+                            for (idx, v) in al.into_iter().enumerate() {
+                                let is_rest_param = matches!(v, Assignable::RestParam(..));
+                                format_assignable(ps, v);
+                                let last = idx == length - 1;
+                                if !last {
+                                    ps.emit_comma_space();
+                                }
+                                // `*foo = []` is valid ruby, but
+                                // `*foo, = []` is not (but `foo, = []` is!),
+                                // so in cases where the only assignable is a rest param,
+                                // leave the comma out
+                                if length == 1 && !is_rest_param {
+                                    ps.emit_comma();
+                                }
+                            }
                         }
-                        // `*foo = []` is valid ruby, but
-                        // `*foo, = []` is not (but `foo, = []` is!),
-                        // so in cases where the only assignable is a rest param,
-                        // leave the comma out
-                        if length == 1 && !is_rest_param {
-                            ps.emit_comma();
+                        AssignableListOrMLhs::MLhs(mlhs) => format_mlhs(ps, mlhs),
+                    }
+                    ps.emit_space();
+                    ps.emit_ident("=".to_string());
+                    ps.emit_space();
+                    match massign.2 {
+                        MRHSOrArray::MRHS(mrhs) => {
+                            format_mrhs(ps, Some(mrhs));
+                        }
+                        MRHSOrArray::Array(array) => {
+                            format_array(ps, array);
                         }
                     }
-                }
-                AssignableListOrMLhs::MLhs(mlhs) => format_mlhs(ps, mlhs),
-            }
-            ps.emit_space();
-            ps.emit_ident("=".to_string());
-            ps.emit_space();
-            match massign.2 {
-                MRHSOrArray::MRHS(mrhs) => {
-                    format_mrhs(ps, Some(mrhs));
-                }
-                MRHSOrArray::Array(array) => {
-                    format_array(ps, array);
-                }
-            }
+                }),
+            );
         }),
     );
 
