@@ -6,7 +6,7 @@ on:
       - completed
   push:
     # Run only on trunk pushes that aren't a new tag release
-    branches: [trunk, fix-aarch-builds]
+    branches: [trunk]
     tags-ignore: "*"
 
 env:
