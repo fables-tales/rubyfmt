@@ -252,20 +252,46 @@ impl AbstractTokenTarget for BreakableCallChainEntry {
         // individual line and get _that_ max length.
         let mut tokens = self.tokens.clone();
         if tokens.len() > 2 {
-            if let Some(AbstractLineToken::ConcreteLineToken(ConcreteLineToken::End)) =
-                tokens.get(tokens.len() - 2)
-            {
-                // Pop off all tokens that make up the `do`/`end` block (but not `do`!),
+            let index = tokens.len() - 2;
+            let token = tokens.get_mut(index).unwrap();
+            if matches!(
+                token,
+                AbstractLineToken::ConcreteLineToken(ConcreteLineToken::End)
+            ) {
+                // Pop off all tokens that make up the block (but not the block params!),
                 // since we assume that the block contents will handle their own line
                 // length appropriately.
                 while let Some(token) = tokens.last() {
                     if matches!(
                         token,
-                        AbstractLineToken::ConcreteLineToken(ConcreteLineToken::DoKeyword)
+                        AbstractLineToken::BreakableEntry(BreakableEntry { delims, .. }) if *delims == BreakableDelims::for_block_params()
                     ) {
                         break;
                     }
                     tokens.pop();
+                }
+            } else if let AbstractLineToken::BreakableEntry(BreakableEntry {
+                delims,
+                ref mut tokens,
+                ..
+            }) = token
+            {
+                if *delims == BreakableDelims::for_brace_block() {
+                    if let Some(AbstractLineToken::BreakableEntry(BreakableEntry {
+                        delims, ..
+                    })) = tokens.first()
+                    {
+                        if *delims == BreakableDelims::for_block_params() {
+                            // Wipe away the body of the block and leave only the params
+                            *tokens = vec![tokens.first().unwrap().clone()];
+                        } else {
+                            // No params, so wipe away the whole thing
+                            *tokens = Vec::new();
+                        }
+                    } else {
+                        // No params, so wipe away the whole thing
+                        *tokens = Vec::new();
+                    }
                 }
             }
         }
@@ -273,16 +299,17 @@ impl AbstractTokenTarget for BreakableCallChainEntry {
         if let Some(AbstractLineToken::BreakableEntry(_)) = tokens.first() {
             tokens.remove(0);
         }
-        // EndCallChainIndent, which we don't care about
-        tokens.pop();
-        // If the last breakable extends beyond the line length but the call chain doesn't,
-        // the breakable will break itself, e.g.
-        // ```ruby
-        // #                                              ↓ if the break is here, we'll break the parens instead of the call chain
-        // AssumeThisIs.one_hundred_twenty_characters(breaks_here)
-        // ```
-        if let Some(AbstractLineToken::BreakableEntry(_)) = tokens.last() {
+        if let Some(AbstractLineToken::ConcreteLineToken(ConcreteLineToken::EndCallChainIndent)) =
+            tokens.last()
+        {
             tokens.pop();
+        }
+        // If the last breakable is multiline (and not a block), ignore it. The user likely
+        // intentionally chose a line break strategy, so try our best to respect it
+        if let Some(AbstractLineToken::BreakableEntry(be)) = tokens.last() {
+            if be.is_multiline() && be.delims != BreakableDelims::for_brace_block() {
+                tokens.pop();
+            }
         }
         tokens.insert(
             0,
