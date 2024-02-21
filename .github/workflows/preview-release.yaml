@@ -20,7 +20,7 @@ jobs:
   bump-tag:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - uses: actions-ecosystem/action-get-latest-tag@v1
         id: get-latest-tag
       - uses: actions-ecosystem/action-bump-semver@v1
@@ -45,25 +45,20 @@ jobs:
           - os: ubuntu-20.04
             target: aarch64-unknown-linux-gnu
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
         with:
           submodules: true
           fetch-depth: 0
       - if: runner.os == 'macOS'
-        uses: actions-rs/toolchain@v1
+        uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: 1.63.0
-          target: aarch64-apple-darwin
-          default: true
-          override: true
-          profile: minimal
+          targets: [aarch64-apple-darwin]
       - if: runner.os != 'macOS'
-        uses: actions-rs/toolchain@v1
+        uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: 1.63.0
-          override: true
-          profile: minimal
-          target: aarch64-unknown-linux-gnu
+          targets: [aarch64-unknown-linux-gnu]
       - uses: actions/cache@v2
         with:
           path: |
@@ -81,7 +76,7 @@ jobs:
   source-release:
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
         with:
           submodules: true
           fetch-depth: 0
@@ -100,7 +95,7 @@ jobs:
       - build
       - source-release
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - uses: actions-ecosystem/action-get-latest-tag@v1
         id: get-latest-tag
       - uses: actions/download-artifact@v3
