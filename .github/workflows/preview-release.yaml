@@ -6,7 +6,7 @@ on:
       - completed
   push:
     # Run only on trunk pushes that aren't a new tag release
-    branches: [trunk]
+    branches: [trunk, reese-hack-special-release]
     tags-ignore: "*"
 
 env:
@@ -30,7 +30,7 @@ jobs:
           level: prepatch
       - uses: actions-ecosystem/action-push-tag@v1
         with:
-          tag: ${{ steps.bump-semver.outputs.new_version }}
+          tag: v0.10.18-0
   build:
     runs-on: ${{ matrix.os }}
     needs: [bump-tag]
