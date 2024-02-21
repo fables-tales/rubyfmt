@@ -6,7 +6,7 @@ on:
       - completed
   push:
     # Run only on trunk pushes that aren't a new tag release
-    branches: [trunk]
+    branches: [trunk, fix-aarch-builds]
     tags-ignore: "*"
 
 env:
@@ -64,16 +64,13 @@ jobs:
           override: true
           profile: minimal
           target: aarch64-unknown-linux-gnu
-      - uses: actions/cache@v2
-        with:
-          path: |
-            librubyfmt/ruby_checkout
-          key: ${{ runner.os }}-${{matrix.target}}-ruby-v1-${{ hashFiles('.git/modules/librubyfmt/ruby_checkout/HEAD') }}
       - if: runner.os == 'macOS'
         run: |
           brew install automake bison
           echo "/usr/local/opt/bison/bin:$PATH" >> $GITHUB_PATH
       - run: ./script/make_release
+        env:
+          TARGET: ${{ matrix.target }}
       - uses: actions/upload-artifact@v3
         with:
           name: rubyfmt-release-artifact-${{ matrix.os }}-${{ matrix.target }}
@@ -109,10 +106,6 @@ jobs:
       - uses: actions/download-artifact@v3
         with:
           name: rubyfmt-release-artifact-ubuntu-20.04-aarch64-unknown-linux-gnu
-      - run: |
-          # The arch part of this path is set with uname, but we cross-compile the arm build on
-          # an x86 machine, so we want to make sure the name is correct for the release
-          mv rubyfmt-${{ steps.get-latest-tag.outputs.tag }}-Linux-x86_64.tar.gz rubyfmt-${{ steps.get-latest-tag.outputs.tag }}-Linux-aarch64.tar.gz
       - uses: actions/download-artifact@v3
         with:
           name: rubyfmt-release-artifact-ubuntu-20.04-native
