@@ -284,7 +284,13 @@ impl AbstractTokenTarget for BreakableCallChainEntry {
                         if *delims == BreakableDelims::for_block_params() {
                             // Wipe away the body of the block and leave only the params
                             *tokens = vec![tokens.first().unwrap().clone()];
+                        } else {
+                            // No params, so wipe away the whole thing
+                            *tokens = Vec::new();
                         }
+                    } else {
+                        // No params, so wipe away the whole thing
+                        *tokens = Vec::new();
                     }
                 }
             }
@@ -298,18 +304,10 @@ impl AbstractTokenTarget for BreakableCallChainEntry {
         {
             tokens.pop();
         }
-        // If the last breakable extends beyond the line length but the call chain doesn't,
-        // the breakable will break itself, e.g.
-        // ```ruby
-        // #                                              ↓ if the break is here, we'll break the parens instead of the call chain
-        // AssumeThisIs.one_hundred_twenty_characters(breaks_here)
-        // ```
+        // If the last breakable is multiline (and not a block), ignore it. The user likely
+        // intentionally chose a line break strategy, so try our best to respect it
         if let Some(AbstractLineToken::BreakableEntry(be)) = tokens.last() {
-            // For block params, always pop it if it's multiline, otherwise we'd *always* multiline the whole block regardless of the contents.
-            // Never pop brace blocks, since we've already cleared their contents above, so now we're only looking at the params, which are still relevant.
-            if (be.delims != BreakableDelims::for_block_params() || be.is_multiline())
-                && be.delims != BreakableDelims::for_brace_block()
-            {
+            if be.is_multiline() && be.delims != BreakableDelims::for_brace_block() {
                 tokens.pop();
             }
         }
