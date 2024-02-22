@@ -304,10 +304,14 @@ impl AbstractTokenTarget for BreakableCallChainEntry {
         {
             tokens.pop();
         }
-        // If the last breakable is multiline (and not a block), ignore it. The user likely
-        // intentionally chose a line break strategy, so try our best to respect it
+        let call_count = tokens.iter().filter(|t| matches!(t, AbstractLineToken::ConcreteLineToken(ConcreteLineToken::Dot | ConcreteLineToken::LonelyOperator))).count();
+        // If the last breakable is multiline (and not a block/block params), ignore it. The user likely
+        // intentionally chose a line break strategy, so try our best to respect it.
+        //
+        // However, if there's only one item in the chain, try our best to leave that in place.
+        // `foo\n.bar` is always a little awkward.
         if let Some(AbstractLineToken::BreakableEntry(be)) = tokens.last() {
-            if be.is_multiline() && be.delims != BreakableDelims::for_brace_block() {
+            if (call_count == 1 || be.is_multiline()) && be.delims != BreakableDelims::for_brace_block() && be.delims != BreakableDelims::for_block_params() {
                 tokens.pop();
             }
         }
