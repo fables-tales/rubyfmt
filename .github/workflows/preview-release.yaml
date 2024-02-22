@@ -30,7 +30,7 @@ jobs:
           level: prepatch
       - uses: actions-ecosystem/action-push-tag@v1
         with:
-          tag: v0.10.18-0
+          tag: v0.10.19-0
   build:
     runs-on: ${{ matrix.os }}
     needs: [bump-tag]
