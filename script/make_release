@@ -44,7 +44,7 @@ case "$target" in
       TARGET_AR=aarch64-linux-gnu-ar \
       cargo build --release --target aarch64-unknown-linux-gnu
 
-    cargo_target_dir_prefix="aarch64-unknown-linux-gnu"
+    cargo_target_dir_prefix="aarch64-unknown-linux-gnu/"
     # This is kind of a hack, since we're assuming we're on a Linux host.
     release_tarball_os="Linux"
     release_tarball_arch="aarch64"
