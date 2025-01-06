@@ -36,11 +36,12 @@ impl CommentBlock {
     }
 
     pub fn apply_spaces(mut self, indent_depth: ColNumber) -> Self {
+        let indent = str::repeat(" ", indent_depth as _);
         for comment in &mut self.comments {
             // Ignore empty strings -- these represent blank lines between
             // groups of comments
             if !comment.is_empty() {
-                *comment = str::repeat(" ", indent_depth as _) + comment
+                comment.insert_str(0, &indent);
             }
         }
         self
