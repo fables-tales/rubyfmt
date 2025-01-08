@@ -124,12 +124,17 @@ where
     fn current_formatting_context(&self) -> FormattingContext;
     fn is_absorbing_indents(&self) -> bool;
     fn has_comments_in_line(&self, start_line: LineNumber, end_line: LineNumber) -> bool;
+
+    #[allow(unused)]
     fn current_line_number(&self) -> u64;
 
     // blocks
+    #[allow(unused)]
     fn start_indent(&mut self);
     fn start_indent_for_call_chain(&mut self);
+    #[allow(unused)]
     fn end_indent_for_call_chain(&mut self);
+    #[allow(unused)]
     fn end_indent(&mut self);
     fn with_formatting_context(&mut self, fc: FormattingContext, f: RenderFunc);
     fn new_scope(&mut self, f: RenderFunc);
@@ -153,6 +158,7 @@ where
     fn with_suppress_comments(&mut self, suppress: bool, f: RenderFunc);
     fn will_render_as_multiline(&mut self, f: RenderFunc) -> bool;
 
+    #[allow(unused)]
     fn will_render_beyond_max_line_length(&mut self, f: RenderFunc) -> bool;
 
     // stuff to remove from this enum

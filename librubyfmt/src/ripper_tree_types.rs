@@ -1248,6 +1248,7 @@ impl Params {
 //   we have for some reason.
 #[derive(RipperDeserialize, Debug, Clone)]
 pub enum RestParamOr0OrExcessedComma {
+    #[allow(unused)]
     Zero(i64),
     RestParam(RestParam),
     ExcessedComma(ExcessedComma),
@@ -1279,6 +1280,7 @@ impl Params {
 #[allow(clippy::large_enum_variant)]
 pub enum ExpressionOrFalse {
     Expression(Expression),
+    #[allow(unused)]
     False(bool),
 }
 
@@ -1301,6 +1303,7 @@ def_tag!(blockarg_tag, "blockarg");
 pub struct BlockArg(pub blockarg_tag, pub Ident);
 
 #[derive(Deserialize, Debug, Clone)]
+#[allow(unused)]
 pub struct LineCol(pub LineNumber, pub u64);
 
 #[derive(Deserialize, Debug, Clone, Eq, PartialEq)]
@@ -1400,16 +1403,19 @@ pub enum ArgNode {
     Exprs(Vec<Expression>),
     Const(Const),
     Ident(Ident),
+    #[allow(unused)]
     Null(Option<String>),
 }
 
 def_tag!(arg_paren_tag, "arg_paren");
 #[derive(Deserialize, Debug, Clone)]
+#[allow(unused)]
 pub struct ArgParen(pub arg_paren_tag, pub Box<ArgNode>, pub StartEnd);
 
 // See: https://dev.to/penelope_zone/understanding-ruby-s-block-proc-parsing-4a89
 #[derive(RipperDeserialize, Debug, Clone)]
 pub enum ToProcExpr {
+    #[allow(unused)]
     NotPresent(bool),
     Present(Box<Expression>),
 }
@@ -1421,12 +1427,13 @@ pub struct ArgsAddBlock(
     pub args_add_block_tag,
     pub ArgsAddBlockInner,
     pub ToProcExpr,
-    pub StartEnd,
+    #[allow(unused)] pub StartEnd,
 );
 
 #[derive(RipperDeserialize, Debug, Clone)]
 pub enum AABParen {
     Paren((paren_tag, Box<Expression>)),
+    #[allow(unused)]
     EmptyParen((paren_tag, bool)),
     Expression(Box<Expression>),
 }
@@ -1930,6 +1937,7 @@ impl DotTypeOrOp {
 
 def_tag!(period_tag, "@period");
 #[derive(Deserialize, Debug, Clone)]
+#[allow(unused)]
 pub struct Period(pub period_tag, pub String, pub LineCol);
 
 def_tag!(equals_tag, "==");
@@ -2088,7 +2096,7 @@ def_tag!(defs_tag, "defs");
 pub struct Defs(
     pub defs_tag,
     pub Singleton,
-    pub DotOrColon,
+    #[allow(unused)] pub DotOrColon,
     pub IdentOrOpOrKeywordOrConst,
     pub ParenOrParams,
     pub Box<DefBodyStmt>,
@@ -2097,7 +2105,9 @@ pub struct Defs(
 
 #[derive(RipperDeserialize, Debug, Clone)]
 pub enum IdentOrKw {
+    #[allow(unused)]
     Ident(Ident),
+    #[allow(unused)]
     Kw(Kw),
 }
 
@@ -2111,7 +2121,9 @@ pub enum Singleton {
 // can only occur in defs, Op is always `::`
 #[derive(RipperDeserialize, Debug, Clone)]
 pub enum DotOrColon {
+    #[allow(unused)]
     Period(Period),
+    #[allow(unused)]
     Op(Operator),
 }
 
@@ -2277,7 +2289,9 @@ impl Block {
 //    variables are present
 #[derive(RipperDeserialize, Debug, Clone)]
 pub enum BlockLocalVariables {
+    #[allow(unused)]
     EmptyBecauseParamsWerePresent(bool),
+    #[allow(unused)]
     NilBecauseParamsWereNotPresent(Option<()>),
     Present(Vec<Ident>),
 }
