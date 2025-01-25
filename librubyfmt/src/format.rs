@@ -251,8 +251,10 @@ pub fn format_block_arg(
                 Box::new(|ps| {
                     ps.emit_soft_indent();
                     ps.emit_ident("&".to_string());
-                    bind_ident(ps, &ba.1);
-                    format_ident(ps, ba.1);
+                    if let Some(ident) = ba.1 {
+                        bind_ident(ps, &ident);
+                        format_ident(ps, ident);
+                    }
                 }),
             );
 

@@ -1298,7 +1298,7 @@ pub struct KwRestParam(pub kw_rest_param_tag, pub Option<Ident>);
 
 def_tag!(blockarg_tag, "blockarg");
 #[derive(Deserialize, Debug, Clone)]
-pub struct BlockArg(pub blockarg_tag, pub Ident);
+pub struct BlockArg(pub blockarg_tag, pub Option<Ident>);
 
 #[derive(Deserialize, Debug, Clone)]
 pub struct LineCol(pub LineNumber, pub u64);
