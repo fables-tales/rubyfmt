@@ -1368,7 +1368,10 @@ pub fn normalize_args_add_block(aab: ArgsAddBlock) -> ArgsAddStarOrExpressionLis
         }
         Some(ToProcExpr::Present(e)) => Expression::ToProc(ToProc(undeserializable, e)),
         // anonymous block
-        None => Expression::AnonBlockArg(AnonBlockArg(undeserializable_anon_block_arg, aab.3.end_line())),
+        None => Expression::AnonBlockArg(AnonBlockArg(
+            undeserializable_anon_block_arg,
+            aab.3.end_line(),
+        )),
     };
 
     match (aab.1).into_args_add_star_or_expression_list() {
