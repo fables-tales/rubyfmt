@@ -86,6 +86,7 @@ jobs:
     - if: runner.os == 'macOS'
       run: |
         brew install automake bison
+	brew link bison --force 
         echo "/usr/local/opt/bison/bin:$PATH" >> $GITHUB_PATH
     - run: ./script/test.sh
       env:
