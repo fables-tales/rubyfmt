@@ -79,9 +79,17 @@ def_tag!(undeserializable, "oiqjweoifjqwoeifjwqoiefjqwoiej");
 #[derive(Deserialize, Debug, Clone)]
 pub struct ToProc(pub undeserializable, pub Box<Expression>);
 
+def_tag!(
+    undeserializable_anon_block_arg,
+    "oiqjweoifjqwoeifjwqoiefjqwoiej_anon_block_arg"
+);
+#[derive(Deserialize, Debug, Clone)]
+pub struct AnonBlockArg(pub undeserializable_anon_block_arg, pub u64);
+
 #[derive(RipperDeserialize, Debug, Clone)]
 pub enum Expression {
     ToProc(ToProc),
+    AnonBlockArg(AnonBlockArg),
     Class(Class),
     If(If),
     Unary(Unary),
@@ -296,6 +304,9 @@ impl Expression {
             // Arefs only have an accurate closing line and not a starting line,
             // so don't use it here
             Expression::Aref(Aref(_, expr, ..)) => expr.start_line(),
+            // Anonymous block arguments have no location information, so we use the end of the
+            // original enclosing `args_add_block` node.
+            Expression::AnonBlockArg(AnonBlockArg(.., line_start)) => Some(*line_start),
         }
     }
 }
@@ -1300,7 +1311,7 @@ pub struct KwRestParam(pub kw_rest_param_tag, pub Option<Ident>);
 
 def_tag!(blockarg_tag, "blockarg");
 #[derive(Deserialize, Debug, Clone)]
-pub struct BlockArg(pub blockarg_tag, pub Ident);
+pub struct BlockArg(pub blockarg_tag, pub Option<Ident>);
 
 #[derive(Deserialize, Debug, Clone)]
 #[allow(unused)]
@@ -1353,26 +1364,30 @@ pub fn normalize_args_add_block_or_expression_list(
 pub fn normalize_args_add_block(aab: ArgsAddBlock) -> ArgsAddStarOrExpressionListOrArgsForward {
     // .1 is expression list
     // .2 is block
-    match aab.2 {
-        ToProcExpr::NotPresent(_) => (aab.1).into_args_add_star_or_expression_list(),
-        ToProcExpr::Present(e) => {
-            let trailing_expr_as_vec = vec![Expression::ToProc(ToProc(undeserializable, e))];
 
-            match (aab.1).into_args_add_star_or_expression_list() {
-                ArgsAddStarOrExpressionListOrArgsForward::ExpressionList(items) => {
-                    ArgsAddStarOrExpressionListOrArgsForward::ExpressionList(
-                        vec![items, trailing_expr_as_vec].concat(),
-                    )
-                }
-                ArgsAddStarOrExpressionListOrArgsForward::ArgsAddStar(aas) => {
-                    let mut new_aas = aas;
-                    new_aas.3 = vec![new_aas.3, trailing_expr_as_vec].concat();
-                    ArgsAddStarOrExpressionListOrArgsForward::ArgsAddStar(new_aas)
-                }
-                ArgsAddStarOrExpressionListOrArgsForward::ArgsForward(af) => {
-                    ArgsAddStarOrExpressionListOrArgsForward::ArgsForward(af)
-                }
-            }
+    let trailing_expr = match aab.2 {
+        Some(ToProcExpr::NotPresent(_)) => {
+            return (aab.1).into_args_add_star_or_expression_list();
+        }
+        Some(ToProcExpr::Present(e)) => Expression::ToProc(ToProc(undeserializable, e)),
+        // anonymous block
+        None => Expression::AnonBlockArg(AnonBlockArg(
+            undeserializable_anon_block_arg,
+            aab.3.end_line(),
+        )),
+    };
+
+    match (aab.1).into_args_add_star_or_expression_list() {
+        ArgsAddStarOrExpressionListOrArgsForward::ExpressionList(mut items) => {
+            items.push(trailing_expr);
+            ArgsAddStarOrExpressionListOrArgsForward::ExpressionList(items)
+        }
+        ArgsAddStarOrExpressionListOrArgsForward::ArgsAddStar(mut aas) => {
+            aas.3.push(trailing_expr);
+            ArgsAddStarOrExpressionListOrArgsForward::ArgsAddStar(aas)
+        }
+        ArgsAddStarOrExpressionListOrArgsForward::ArgsForward(af) => {
+            ArgsAddStarOrExpressionListOrArgsForward::ArgsForward(af)
         }
     }
 }
@@ -1426,7 +1441,7 @@ def_tag!(args_add_block_tag, "args_add_block");
 pub struct ArgsAddBlock(
     pub args_add_block_tag,
     pub ArgsAddBlockInner,
-    pub ToProcExpr,
+    pub Option<ToProcExpr>,
     #[allow(unused)] pub StartEnd,
 );
 
