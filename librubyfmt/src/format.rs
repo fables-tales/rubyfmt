@@ -251,8 +251,10 @@ pub fn format_block_arg(
                 Box::new(|ps| {
                     ps.emit_soft_indent();
                     ps.emit_ident("&".to_string());
-                    bind_ident(ps, &ba.1);
-                    format_ident(ps, ba.1);
+                    if let Some(ident) = ba.1 {
+                        bind_ident(ps, &ident);
+                        format_ident(ps, ident);
+                    }
                 }),
             );
 
@@ -2067,10 +2069,11 @@ pub fn format_next(ps: &mut dyn ConcreteParserState, next: Next) {
                     }
                 }
                 ArgsAddBlockOrExpressionList::ArgsAddBlock(aab) => match aab.2 {
-                    ToProcExpr::Present(_) => {
+                    Some(ToProcExpr::Present(_)) => {
                         panic!("got a block in a next, should be impossible");
                     }
-                    ToProcExpr::NotPresent(_) => {
+                    None => unreachable!("got an anonymous block in a next, should be impossible"),
+                    Some(ToProcExpr::NotPresent(_)) => {
                         ps.emit_space();
                         format_list_like_thing(
                             ps,
@@ -3103,7 +3106,7 @@ pub fn format_keyword(
                 ArgsAddBlockInner::ArgsAddStarOrExpressionListOrArgsForward(
                     ArgsAddStarOrExpressionListOrArgsForward::ExpressionList(vec![]),
                 ),
-                ToProcExpr::NotPresent(false),
+                Some(ToProcExpr::NotPresent(false)),
                 start_end.clone(),
             )
         }
@@ -3599,6 +3602,10 @@ pub fn format_to_proc(ps: &mut dyn ConcreteParserState, e: Box<Expression>) {
     ps.with_start_of_line(false, Box::new(|ps| format_expression(ps, *e)));
 }
 
+pub fn format_anon_block_arg(ps: &mut dyn ConcreteParserState) {
+    ps.emit_ident("&".to_string());
+}
+
 pub fn format_zsuper(ps: &mut dyn ConcreteParserState, start_end: StartEnd) {
     format_keyword(
         ps,
@@ -3764,6 +3771,7 @@ pub fn format_expression(ps: &mut dyn ConcreteParserState, expression: Expressio
         Expression::OpAssign(op) => format_opassign(ps, op),
         Expression::Unless(u) => format_unless(ps, u),
         Expression::ToProc(ToProc(_, e)) => format_to_proc(ps, e),
+        Expression::AnonBlockArg(AnonBlockArg(_, _)) => format_anon_block_arg(ps),
         Expression::ZSuper(ZSuper(_, se)) => format_zsuper(ps, se),
         Expression::Yield0(Yield0(_, se)) => format_yield0(ps, se),
         Expression::Return(ret) => format_return(ps, ret),
