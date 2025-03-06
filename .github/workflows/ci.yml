@@ -81,13 +81,13 @@ jobs:
         override: true
         profile: minimal
         target: aarch64-unknown-linux-gnu
-    - uses: actions/cache@v2
+    - uses: actions/cache@v4
       with:
         path: |
           ~/.cargo/registry
           ~/.cargo/git
         key: ${{ runner.os }}-${{ matrix.target }}-cargo-2-${{ hashFiles('**/Cargo.lock') }}
-    - uses: actions/cache@v2
+    - uses: actions/cache@v4
       with:
         path: |
           librubyfmt/ruby_checkout
@@ -101,7 +101,7 @@ jobs:
     - run: ./script/test.sh
       env:
         TARGET: ${{ matrix.target }}
-    - uses: actions/upload-artifact@v3
+    - uses: actions/upload-artifact@v4
       with:
         name: rubyfmt-artifact-${{ matrix.os }}-${{ matrix.target }}
         path: target/${{ matrix.target == 'native' && 'release' || format('{0}/release', matrix.target) }}/rubyfmt-main
