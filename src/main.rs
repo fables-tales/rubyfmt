@@ -70,6 +70,7 @@ struct CommandlineOpts {
     /// - File paths (i.e lib/foo/bar.rb){n}
     /// - Directories (i.e. lib/foo/){n}
     /// - Input files (i.e. @/tmp/files.txt). These files must contain one file path or directory per line
+    ///
     /// rubyfmt will use these as input.{n}
     #[clap(name = "include-paths")]
     include_paths: Vec<String>,
@@ -79,7 +80,7 @@ struct CommandlineOpts {
 /* Error handling                                     */
 /******************************************************/
 
-fn handle_io_error(err: io::Error, source: &String, error_exit: ErrorExit) {
+fn handle_io_error(err: io::Error, source: &str, error_exit: ErrorExit) {
     let msg = format!("Rubyfmt experienced an IO error: {}", err);
     print_error(&msg, Some(source));
 
@@ -96,7 +97,7 @@ fn handle_ignore_error(err: ignore::Error, error_exit: ErrorExit) {
     }
 }
 
-fn handle_rubyfmt_error(err: rubyfmt::RichFormatError, source: &String, error_exit: ErrorExit) {
+fn handle_rubyfmt_error(err: rubyfmt::RichFormatError, source: &str, error_exit: ErrorExit) {
     use rubyfmt::RichFormatError::*;
     let exit_code = err.as_exit_code();
     let e = || {
