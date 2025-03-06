@@ -2,6 +2,12 @@
 * en: Ruby format
 * jp: ルビーフォーマット
 
+## Maintenance policy
+
+* I (fables-tales) am no longer working in spare time on open source
+* Folks who have commit bits are free to merge anything they'd like as long as it passes CI
+* I review important patches for my day job at request of a co-worker
+
 ## How do I use it
 
 
