@@ -101,7 +101,7 @@ jobs:
     - run: ./script/test.sh
       env:
         TARGET: ${{ matrix.target }}
-    - uses: actions/upload-artifact@v3
+    - uses: actions/upload-artifact@v4
       with:
         name: rubyfmt-artifact-${{ matrix.os }}-${{ matrix.target }}
         path: target/${{ matrix.target == 'native' && 'release' || format('{0}/release', matrix.target) }}/rubyfmt-main

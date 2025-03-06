@@ -76,7 +76,7 @@ jobs:
       - run: ./script/make_release
         env:
           TARGET: ${{ matrix.target }}
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
           name: rubyfmt-release-artifact-${{ matrix.os }}-${{ matrix.target }}
           path: rubyfmt-*.tar.gz
@@ -92,7 +92,7 @@ jobs:
           RELEASE_DIR="out/release"
           mkdir -p ${RELEASE_DIR}
           ./script/make_source_release ${TAG}
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
           name: rubyfmt-source-release
           path: "out/release/source"
@@ -105,16 +105,16 @@ jobs:
       - uses: actions/checkout@v2
       - uses: actions-ecosystem/action-get-latest-tag@v1
         id: get-latest-tag
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         with:
           name: rubyfmt-source-release
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         with:
           name: rubyfmt-release-artifact-ubuntu-20.04-aarch64-unknown-linux-gnu
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         with:
           name: rubyfmt-release-artifact-ubuntu-20.04-native
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         with:
           name: rubyfmt-release-artifact-macos-latest-native
       - name: Upload Release

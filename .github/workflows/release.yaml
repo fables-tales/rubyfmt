@@ -53,7 +53,7 @@ jobs:
           brew install automake bison
           echo "/usr/local/opt/bison/bin:$PATH" >> $GITHUB_PATH
       - run: ./script/make_release
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
           name: rubyfmt-release-artifact-${{ matrix.os }}-${{ matrix.target }}
           path: rubyfmt-*.tar.gz
@@ -69,7 +69,7 @@ jobs:
           RELEASE_DIR="out/release"
           mkdir -p ${RELEASE_DIR}
           ./script/make_source_release ${TAG}
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
           name: rubyfmt-source-release
           path: "out/release/source"
@@ -79,13 +79,13 @@ jobs:
       - build
       - source-release
     steps:
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         with:
           name: rubyfmt-source-release
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         with:
           name: rubyfmt-release-artifact-ubuntu-latest
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         with:
           name: rubyfmt-release-artifact-macos-latest
       - name: Ship It 🚢
