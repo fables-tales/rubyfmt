@@ -6,7 +6,7 @@ use regex::Regex;
 use similar::TextDiff;
 use std::ffi::OsStr;
 use std::fs::{read_to_string, File, OpenOptions};
-use std::io::{self, BufRead, BufReader, Read, Write};
+use std::io::{self, BufRead, BufReader, IsTerminal, Read, Write};
 use std::path::Path;
 use std::process::{exit, Command};
 use std::sync::{Arc, Mutex};
@@ -276,7 +276,7 @@ fn iterate_input_files(opts: &CommandlineOpts, f: &dyn Fn((&Path, &String))) {
         // If not include paths are present, assume user is passing via STDIN
         let mut buffer = String::new();
 
-        if atty::is(atty::Stream::Stdin) {
+        if io::stdin().is_terminal() {
             // Call executable with `--help` args to print help statement
             let mut command = Command::new(std::env::current_exe().unwrap());
             command.arg("--help");
