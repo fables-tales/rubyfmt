@@ -81,6 +81,6 @@ impl HeredocString {
     /// quotes, so we must strip them from the symbol when
     /// rendering the closing symbol.
     pub fn closing_symbol(&self) -> String {
-        self.symbol.replace('\'', "").replace('"', "")
+        self.symbol.replace(['\'', '"'], "")
     }
 }
