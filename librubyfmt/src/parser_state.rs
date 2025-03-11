@@ -799,8 +799,7 @@ impl ConcreteParserState for BaseParserState {
     }
 
     fn render_heredocs(&mut self, skip: bool) {
-        while !self.heredoc_strings.is_empty() {
-            let next_heredoc = self.heredoc_strings.pop().expect("we checked it's there");
+        while let Some(next_heredoc) = self.heredoc_strings.pop() {
             let want_newline = !self.last_token_is_a_newline();
             if want_newline {
                 self.push_concrete_token(ConcreteLineToken::HardNewLine);
@@ -879,12 +878,8 @@ impl BaseParserState {
             None
         } else {
             let mut hds = vec![];
-            while !self.heredoc_strings.is_empty() {
-                hds.push(
-                    self.heredoc_strings
-                        .pop()
-                        .expect("we checked it's not empty"),
-                );
+            while let Some(element) = self.heredoc_strings.pop() {
+                hds.push(element);
             }
             Some(hds)
         }

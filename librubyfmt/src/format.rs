@@ -2519,7 +2519,7 @@ fn format_binary_inner(ps: &mut dyn ConcreteParserState, binary: Binary) {
                         }));
                     }
 
-                    let comparison_operators = vec![">", ">=", "===", "==", "<", "<=", "<=>", "!="];
+                    let comparison_operators = [">", ">=", "===", "==", "<", "<=", "<=>", "!="];
                     let is_not_comparison = !comparison_operators.iter().any(|o| o == &op.0);
 
                     let next_expr = *binary.3;
@@ -2695,7 +2695,7 @@ fn can_elide_parens_for_reserved_names(cc: &[CallChainElement]) -> bool {
         .iter()
         .any(|e| matches!(e, CallChainElement::DotTypeOrOp(..)));
     let is_bare_reserved_method_name = is_bare_call
-        && match cc.get(0) {
+        && match cc.first() {
             Some(CallChainElement::IdentOrOpOrKeywordOrConst(
                 IdentOrOpOrKeywordOrConst::Ident(Ident(_, ident, _)),
             )) => {
@@ -2709,7 +2709,7 @@ fn can_elide_parens_for_reserved_names(cc: &[CallChainElement]) -> bool {
         return true;
     }
 
-    let is_rspec_describe = match (cc.get(0), cc.get(2)) {
+    let is_rspec_describe = match (cc.first(), cc.get(2)) {
         (
             Some(CallChainElement::VarRef(VarRef(_, VarRefType::Const(Const(_, c, _))))),
             Some(CallChainElement::IdentOrOpOrKeywordOrConst(IdentOrOpOrKeywordOrConst::Ident(
@@ -2903,7 +2903,7 @@ pub fn format_method_add_block(ps: &mut dyn ConcreteParserState, mab: MethodAddB
     }
 }
 
-pub fn is_empty_bodystmt(bodystmt: &Vec<Expression>) -> bool {
+pub fn is_empty_bodystmt(bodystmt: &[Expression]) -> bool {
     bodystmt.len() == 1 && matches!(bodystmt[0], Expression::VoidStmt(..))
 }
 
@@ -3024,7 +3024,7 @@ fn get_brace_block_render_method(
     ps: &mut dyn ConcreteParserState,
     start_line: u64,
     end_line: u64,
-    body: &Vec<Expression>,
+    body: &[Expression],
 ) -> BraceBlockRenderMethod {
     let has_multiple_expressions = body.len() > 1;
     if has_multiple_expressions {
@@ -3132,12 +3132,12 @@ pub fn format_keyword(
 
 pub fn format_while(
     ps: &mut dyn ConcreteParserState,
-    conditional: Box<Expression>,
+    conditional: Expression,
     exprs: Vec<Expression>,
     kw: String,
     start_end: StartEnd,
 ) {
-    format_conditional(ps, *conditional, exprs, kw, None, Some(start_end));
+    format_conditional(ps, conditional, exprs, kw, None, Some(start_end));
 
     ps.with_start_of_line(
         true,
@@ -3751,8 +3751,8 @@ pub fn format_expression(ps: &mut dyn ConcreteParserState, expression: Expressio
         Expression::Yield(y) => format_yield(ps, y),
         Expression::Break(b) => format_keyword(ps, b.1, "break".to_string(), b.2),
         Expression::MethodAddBlock(mab) => format_method_add_block(ps, mab),
-        Expression::While(w) => format_while(ps, w.1, w.2, "while".to_string(), w.3),
-        Expression::Until(u) => format_while(ps, u.1, u.2, "until".to_string(), u.3),
+        Expression::While(w) => format_while(ps, *w.1, w.2, "while".to_string(), w.3),
+        Expression::Until(u) => format_while(ps, *u.1, u.2, "until".to_string(), u.3),
         Expression::WhileMod(wm) => format_inline_mod(ps, wm.1, wm.2, "while".to_string()),
         Expression::UntilMod(um) => format_inline_mod(ps, um.1, um.2, "until".to_string()),
         Expression::IfMod(wm) => format_multilinable_mod(ps, wm.1, wm.2, "if".to_string()),

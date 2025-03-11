@@ -40,7 +40,7 @@ fn main() -> Output {
     };
 
     let _ = Command::new("git")
-        .args(&["submodule", "update", "--init"])
+        .args(["submodule", "update", "--init"])
         .status();
 
     let new_checkout_sha = get_ruby_checkout_sha();
@@ -59,7 +59,7 @@ fn main() -> Output {
 
     cc::Build::new()
         .file("src/rubyfmt.c")
-        .object(ruby_checkout_path.join(&ripper))
+        .object(ruby_checkout_path.join(ripper))
         .include(ruby_checkout_path.join("include"))
         .include(ruby_checkout_path.join(format!(".ext/include/{}", arch)))
         .warnings(false)
@@ -229,7 +229,7 @@ fn check_process_success(command: &str, code: ExitStatus) -> Output {
 fn get_ruby_checkout_sha() -> String {
     String::from_utf8(
         Command::new("git")
-            .args(&["rev-parse", "HEAD"])
+            .args(["rev-parse", "HEAD"])
             .current_dir("./ruby_checkout")
             .output()
             .expect("git rev-parse shouldn't fail")
