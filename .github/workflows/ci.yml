@@ -87,11 +87,6 @@ jobs:
           ~/.cargo/registry
           ~/.cargo/git
         key: ${{ runner.os }}-${{ matrix.target }}-cargo-2-${{ hashFiles('**/Cargo.lock') }}
-    - uses: actions/cache@v4
-      with:
-        path: |
-          librubyfmt/ruby_checkout
-        key: ${{ runner.os }}-${{ matrix.target }}-ruby-v1-${{ hashFiles('.git/modules/librubyfmt/ruby_checkout/HEAD') }}
     - if: runner.os == 'macOS'
       run: |
         brew install automake bison
