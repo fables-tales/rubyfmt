@@ -40,7 +40,7 @@ use ruby_ops::{load_rubyfmt, ParseError, Parser, RipperTree};
 #[cfg(debug_assertions)]
 use log::debug;
 #[cfg(debug_assertions)]
-use simplelog::{ConfigBuilder, LevelFilter, TermLogger, TerminalMode};
+use simplelog::{ColorChoice, ConfigBuilder, LevelFilter, TermLogger, TerminalMode};
 
 extern "C" {
     pub fn Init_ripper();
@@ -231,6 +231,7 @@ fn init_logger() {
                 .set_time_level(LevelFilter::Off)
                 .build(),
             TerminalMode::Stderr,
+            ColorChoice::Auto,
         )
         .expect("making a term logger");
         debug!("logger works");
