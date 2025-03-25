@@ -16,6 +16,5 @@ uname -a
 # ./script/tests/test_cli_interface.sh
 # ./script/tests/test_c_main.sh
 # ./script/tests/test_error_handling.sh
-# ./script/tests/test_fixtures.sh
-FIXTURE_NAME=numbers ./script/tests/test_fixtures.sh
+cargo test --release test_small_numbers
 # ./script/tests/test_formatting_locks.sh
