@@ -74,6 +74,9 @@ struct CommandlineOpts {
     /// rubyfmt will use these as input.{n}
     #[clap(name = "include-paths")]
     include_paths: Vec<String>,
+
+    #[clap(long)]
+    prism: bool,
 }
 
 /******************************************************/
@@ -172,6 +175,7 @@ fn rubyfmt_string(
         ..
     }: &CommandlineOpts,
     buffer: &str,
+    use_prism: bool,
 ) -> Result<Option<String>, rubyfmt::RichFormatError> {
     if header_opt_in || header_opt_out {
         // Only look at the first 500 bytes for the magic header.
@@ -205,7 +209,7 @@ fn rubyfmt_string(
         }
     }
 
-    rubyfmt::format_buffer(buffer).map(Some)
+    rubyfmt::format_buffer(buffer, use_prism).map(Some)
 }
 
 fn initialize_rubyfmt() {
@@ -349,9 +353,10 @@ fn iterate_input_files(opts: &CommandlineOpts, f: &dyn Fn((&Path, &String))) {
 type FormattingFunc<'a> = &'a dyn Fn((&Path, &String, Option<String>));
 
 fn iterate_formatted(opts: &CommandlineOpts, f: FormattingFunc) {
+    let use_prism = should_use_prism(opts);
     iterate_input_files(
         opts,
-        &|(file_path, before)| match rubyfmt_string(opts, before) {
+        &|(file_path, before)| match rubyfmt_string(opts, before, use_prism) {
             Ok(r) => f((file_path, before, r)),
             Err(e) => handle_execution_error(
                 opts,
@@ -366,6 +371,10 @@ fn puts_stdout(input: &String) {
     io::stdout().flush().expect("flush works");
 }
 
+fn should_use_prism(opts: &CommandlineOpts) -> bool {
+    opts.prism || std::env::var("RUBYFMT_PRISM").is_ok()
+}
+
 fn main() {
     ctrlc::set_handler(move || {
         eprintln!("`rubyfmt` process was terminated. Exiting...");
@@ -374,10 +383,12 @@ fn main() {
     .expect("Error setting Ctrl-C handler");
 
     let opts = get_command_line_options();
+    if !should_use_prism(&opts) {
+        initialize_rubyfmt();
+    }
 
     match opts {
         CommandlineOpts { check: true, .. } => {
-            initialize_rubyfmt();
             let text_diffs: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(Vec::new()));
 
             iterate_formatted(&opts, &|(file_path, before, after)| match after {
@@ -410,7 +421,6 @@ fn main() {
         }
 
         CommandlineOpts { in_place: true, .. } => {
-            initialize_rubyfmt();
             iterate_formatted(&opts, &|(file_path, before, after)| match after {
                 None => {}
                 Some(fmtted) => {
@@ -433,12 +443,9 @@ fn main() {
             })
         }
 
-        _ => {
-            initialize_rubyfmt();
-            iterate_formatted(&opts, &|(_, before, after)| match after {
-                Some(fmtted) => puts_stdout(&fmtted),
-                None => puts_stdout(before),
-            })
-        }
+        _ => iterate_formatted(&opts, &|(_, before, after)| match after {
+            Some(fmtted) => puts_stdout(&fmtted),
+            None => puts_stdout(before),
+        }),
     }
 }
