@@ -22,6 +22,7 @@ mod de;
 mod delimiters;
 mod file_comments;
 mod format;
+mod format_prism;
 mod heredoc_string;
 mod intermediary;
 mod line_metadata;
@@ -32,6 +33,7 @@ mod render_targets;
 mod ripper_tree_types;
 mod ruby_ops;
 mod types;
+mod util;
 
 use file_comments::FileComments;
 use parser_state::BaseParserState;
@@ -89,11 +91,25 @@ pub enum FormatError {
     DiffDetected = 5,
 }
 
-pub fn format_buffer(buf: &str) -> Result<String, RichFormatError> {
-    let (tree, file_comments, end_data) = run_parser_on(buf)?;
+pub fn format_buffer(buf: &str, use_prism: bool) -> Result<String, RichFormatError> {
     let out_data = vec![];
     let mut output = Cursor::new(out_data);
-    toplevel_format_program(&mut output, tree, file_comments, end_data)?;
+
+    if use_prism {
+        let parse_result = ruby_prism::parse(buf.as_bytes());
+        if parse_result.errors().next().is_some() {
+            return Err(RichFormatError::SyntaxError);
+        }
+        toplevel_format_program_with_prism(
+            &mut output,
+            parse_result.node(),
+            parse_result.comments(),
+            buf.as_bytes(),
+        )?;
+    } else {
+        let (tree, file_comments, end_data) = run_parser_on(buf)?;
+        toplevel_format_program(&mut output, tree, file_comments, end_data)?;
+    }
     output.flush().expect("flushing to a vec should never fail");
     Ok(String::from_utf8(output.into_inner()).expect("we never write invalid UTF-8"))
 }
@@ -131,7 +147,7 @@ pub unsafe extern "C" fn rubyfmt_format_buffer(
     err: *mut i64,
 ) -> *mut RubyfmtString {
     let input = str::from_utf8_unchecked(slice::from_raw_parts(ptr, len));
-    let output = format_buffer(input);
+    let output = format_buffer(input, false);
     match output {
         Ok(o) => {
             *err = FormatError::OK as i64;
@@ -215,6 +231,22 @@ pub fn toplevel_format_program<W: Write>(
     Ok(())
 }
 
+pub fn toplevel_format_program_with_prism<W: Write>(
+    writer: &mut W,
+    tree: ruby_prism::Node,
+    comments: ruby_prism::Comments,
+    source: &[u8],
+) -> Result<(), RichFormatError> {
+    let mut ps = BaseParserState::new(FileComments::from_prism_comments(comments, source));
+    ps.flush_start_of_file_comments();
+
+    format_prism::format_node(&mut ps, tree);
+
+    ps.write(writer).map_err(RichFormatError::IOError)?;
+    writer.flush().map_err(RichFormatError::IOError)?;
+    Ok(())
+}
+
 fn run_parser_on(buf: &str) -> Result<(RipperTree, FileComments, Option<&str>), RichFormatError> {
     Parser::new(buf).parse().map_err(|e| match e {
         ParseError::SyntaxError => RichFormatError::SyntaxError,
@@ -222,7 +254,7 @@ fn run_parser_on(buf: &str) -> Result<(RipperTree, FileComments, Option<&str>), 
     })
 }
 
-fn init_logger() {
+pub fn init_logger() {
     #[cfg(debug_assertions)]
     {
         TermLogger::init(

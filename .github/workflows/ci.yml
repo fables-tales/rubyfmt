@@ -46,6 +46,32 @@ jobs:
           ./script/lints/lint_fixtures.sh
           ./script/lints/lint_scripts.sh
 
+  prism:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          submodules: true
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: 1.85.0
+          override: true
+          target: aarch64-unknown-linux-gnu
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+          key: ${{ runner.os }}-native-cargo-2-${{ hashFiles('**/Cargo.lock') }}
+      - if: runner.os == 'macOS'
+        run: |
+          brew install automake bison
+          brew link bison --force
+          echo "/usr/local/opt/bison/bin:$PATH" >> $GITHUB_PATH
+      - run: ./script/test.sh
+        env:
+          TARGET: native
+
   test:
     runs-on: ${{ matrix.os }}
     strategy:
@@ -85,9 +111,11 @@ jobs:
     - if: runner.os == 'macOS'
       run: |
         brew install automake bison
-        echo "bees"
-        brew link bison --force 
+        brew link bison --force
         echo "/usr/local/opt/bison/bin:$PATH" >> $GITHUB_PATH
+    - if: matrix.target == 'aarch64-unknown-linux-gnu'
+      run: |
+        echo "BINDGEN_EXTRA_CLANG_ARGS_aarch64-unknown-linux-gnu=--sysroot=/usr/aarch64-linux-gnu" >> $GITHUB_ENV
     - run: ./script/test.sh
       env:
         TARGET: ${{ matrix.target }}

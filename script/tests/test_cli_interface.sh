@@ -671,6 +671,27 @@ DIFF
     )
 }
 
+test_formats_with_prism() {
+    (
+        cd "$(mktemp -d)"
+        echo "1
+
+2.34" >test.rb
+
+        f_rubyfmt --prism -i test.rb
+
+        cat >test_expected.rb <<-DIFF
+1
+
+2.34
+DIFF
+
+        cat test.rb
+
+        diff_files o test_expected.rb test.rb
+    )
+}
+
 test_simple_stdout
 test_i_flag
 test_i_flag_no_changes
@@ -710,3 +731,5 @@ test_includes_gitignore
 test_respects_rubyfmt_ignore_file
 
 test_formats_non_rb_files
+
+test_formats_with_prism
