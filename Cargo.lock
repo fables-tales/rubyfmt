@@ -486,7 +486,7 @@ dependencies = [
 
 [[package]]
 name = "rubyfmt"
-version = "0.10.0-pre"
+version = "0.11.0-pre"
 dependencies = [
  "backtrace",
  "cc",
@@ -504,7 +504,7 @@ dependencies = [
 
 [[package]]
 name = "rubyfmt-main"
-version = "0.10.0"
+version = "0.11.0"
 dependencies = [
  "clap",
  "ctrlc",
