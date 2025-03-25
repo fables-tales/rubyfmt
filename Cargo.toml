@@ -25,3 +25,6 @@ regex = "1.6.0"
 rubyfmt = { path = "./librubyfmt" }
 serde = { version = "1.0", features = ["derive"] }
 similar = "2.1.0"
+
+[dev-dependencies]
+assert_cmd = "2"
