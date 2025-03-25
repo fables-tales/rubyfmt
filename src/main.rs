@@ -3,6 +3,7 @@
 use clap::Parser;
 use ignore::WalkBuilder;
 use regex::Regex;
+use rubyfmt::init_logger;
 use similar::TextDiff;
 use std::ffi::OsStr;
 use std::fs::{read_to_string, File, OpenOptions};
@@ -383,7 +384,9 @@ fn main() {
     .expect("Error setting Ctrl-C handler");
 
     let opts = get_command_line_options();
-    if !should_use_prism(&opts) {
+    if should_use_prism(&opts) {
+        init_logger();
+    } else {
         initialize_rubyfmt();
     }
 

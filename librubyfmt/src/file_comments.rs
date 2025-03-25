@@ -7,6 +7,60 @@ use crate::comment_block::CommentBlock;
 use crate::parser_state::line_difference_requires_newline;
 use crate::ruby::*;
 use crate::types::LineNumber;
+use crate::util::u8_to_string;
+
+/// A vector of offsets in the source code where lines start, which
+/// we use to detect what line a given offset is one.
+///
+/// Note: The Prism Ruby API does track lines, but it's currently not exposed
+/// by the Rust crate, so this is our alternative while we're building Prism support
+/// and can always clean it up later.
+#[derive(Debug, Clone, Default)]
+pub struct LineIndex {
+    // Stores the byte offset of each line's start position
+    line_starts: Vec<usize>,
+}
+
+impl LineIndex {
+    pub fn new(file_contents: &[u8]) -> Self {
+        let mut line_starts = Vec::new();
+
+        // First line always starts at position 0
+        line_starts.push(0);
+
+        for (i, &byte) in file_contents.iter().enumerate() {
+            if byte == b'\n' {
+                line_starts.push(i + 1);
+            }
+        }
+
+        LineIndex { line_starts }
+    }
+
+    // Get the line number (1-based) for a given byte offset
+    pub fn get_line_number(&self, offset: usize) -> usize {
+        let line = match self.line_starts.binary_search(&offset) {
+            // Exact match means we're at the start of a line
+            Ok(line) => line,
+
+            // No exact match, so the insertion_point is the index of the next line.
+            // We want the current line, which is insertion_point - 1
+            Err(insertion_point) => {
+                // Should only happen if we're checking an offset
+                // in the middle of the first line
+                if insertion_point == 0 {
+                    0
+                } else {
+                    insertion_point - 1
+                }
+            }
+        };
+        // These are one-offset to be equivalent to Ripper's behavior.
+        // Once we remove the Ripper version, we can 0-index these,
+        // since they're not user-facing anywhere
+        line + 1
+    }
+}
 
 #[derive(Clone, Debug, Default)]
 pub struct FileComments {
@@ -14,9 +68,25 @@ pub struct FileComments {
     other_comments: BTreeMap<LineNumber, String>,
     lines_with_ruby: BTreeSet<LineNumber>,
     last_lineno: LineNumber,
+    line_index: LineIndex,
 }
 
 impl FileComments {
+    pub fn from_prism_comments(comments: ruby_prism::Comments, source: &[u8]) -> FileComments {
+        let line_index = LineIndex::new(source);
+        let mut file_comments = FileComments::default();
+        for comment in comments {
+            file_comments.push_comment(
+                line_index.get_line_number(comment.location().start_offset()) as u64,
+                u8_to_string(comment.text()),
+            );
+        }
+
+        file_comments.last_lineno = line_index.line_starts.iter().count() as u64;
+        file_comments.line_index = line_index;
+        file_comments
+    }
+
     pub fn from_ruby_hash(h: VALUE, rl: VALUE, last_lineno: VALUE) -> Self {
         let mut fc = FileComments::default();
         let keys;
@@ -152,5 +222,11 @@ impl FileComments {
                     last_line.unwrap(),
                 )
             })
+    }
+
+    // Note: this is currently only used for Prism support, see the details
+    // on the `LineIndex` struct for context
+    pub fn get_line_number_for_offset(&self, source_offset: usize) -> u64 {
+        self.line_index.get_line_number(source_offset) as u64
     }
 }

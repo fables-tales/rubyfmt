@@ -9,7 +9,7 @@ use crate::render_targets::{
     AbstractTokenTarget, BaseQueue, BreakableCallChainEntry, BreakableEntry,
 };
 use crate::ripper_tree_types::{CallChainElement, StringContentPart};
-use crate::types::{ColNumber, LineNumber};
+use crate::types::{ColNumber, LineNumber, SourceOffset};
 use log::debug;
 use std::io::{self, Cursor, Write};
 use std::str;
@@ -104,6 +104,7 @@ where
     fn scope_has_variable(&self, s: &str) -> bool;
     fn insert_comment_collection(&mut self, comments: CommentBlock);
     fn on_line(&mut self, line_number: LineNumber);
+    fn at_offset(&mut self, source_offset: SourceOffset);
     fn wind_dumping_comments_until_line(&mut self, line_number: LineNumber);
     fn wind_dumping_comments(&mut self, maybe_max_line_number: Option<LineNumber>);
     fn shift_comments(&mut self);
@@ -480,6 +481,10 @@ impl ConcreteParserState for BaseParserState {
             "set current orig line number: {}",
             self.current_orig_line_number
         );
+    }
+
+    fn at_offset(&mut self, source_offset: SourceOffset) {
+        self.on_line(self.comments_hash.get_line_number_for_offset(source_offset));
     }
 
     fn emit_indent(&mut self) {
