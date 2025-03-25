@@ -82,7 +82,7 @@ impl FileComments {
             );
         }
 
-        file_comments.last_lineno = line_index.line_starts.iter().count() as u64;
+        file_comments.last_lineno = line_index.line_starts.len() as u64;
         file_comments.line_index = line_index;
         file_comments
     }
