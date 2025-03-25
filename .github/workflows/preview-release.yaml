@@ -1,9 +1,5 @@
 name: Preview Release
 on:
-  workflow_run:
-    workflows: ["CI"]
-    types:
-      - completed
   push:
     # Run only on trunk pushes that aren't a new tag release
     branches: [trunk]
