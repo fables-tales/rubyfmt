@@ -674,14 +674,16 @@ DIFF
 test_formats_with_prism() {
     (
         cd "$(mktemp -d)"
-        echo "1\n\n2" >test.rb
+        echo "1
+
+2.34" >test.rb
 
         f_rubyfmt --prism -i test.rb
 
-        cat >test_expected.rake <<-DIFF
+        cat >test_expected.rb <<-DIFF
 1
 
-2
+2.34
 DIFF
 
         cat test.rb
