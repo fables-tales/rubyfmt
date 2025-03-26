@@ -15,6 +15,6 @@ uname -a
 # ./script/tests/test_methods.sh
 # ./script/tests/test_cli_interface.sh
 # ./script/tests/test_c_main.sh
-# ./script/tests/test_error_handling.sh
+# cargo test --test error_handling_test
 cargo test --release test_small_numbers
 # ./script/tests/test_formatting_locks.sh
