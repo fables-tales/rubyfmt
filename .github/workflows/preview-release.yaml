@@ -69,6 +69,7 @@ jobs:
           path: rubyfmt-*.tar.gz
   source-release:
     runs-on: macos-latest
+    needs: [bump-tag]
     steps:
       - uses: actions/checkout@v2
         with:
