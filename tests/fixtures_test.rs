@@ -577,3 +577,52 @@ fixture!(
 // due to some newline shenanigans, we should investigate why
 #[cfg(not(debug_assertions))]
 fixture!(test_rspec_mocks_proxy, "large/rspec_mocks_proxy");
+
+/* concurrent-ruby examples */
+
+// TODO: This test fails in debug but works in release
+// due to some newline shenanigans, we should investigate why
+#[cfg(not(debug_assertions))]
+fixture!(
+    test_concurrent_ruby_non_concurrent_map_backend,
+    "large/concurrent-ruby/non_concurrent_map_backend"
+);
+
+fixture!(test_concurrent_ruby_atom, "large/concurrent-ruby/atom");
+fixture!(
+    test_concurrent_ruby_copy_on_notify_observer_set,
+    "large/concurrent-ruby/copy_on_notify_observer_set"
+);
+fixture!(test_concurrent_ruby_ivar, "large/concurrent-ruby/ivar");
+fixture!(
+    test_concurrent_ruby_java_non_concurrent_priority_queue,
+    "large/concurrent-ruby/java_non_concurrent_priority_queue"
+);
+fixture!(
+    test_concurrent_ruby_mutex_atomic,
+    "large/concurrent-ruby/mutex_atomic"
+);
+fixture!(
+    test_concurrent_ruby_non_concurrent_priority_queue,
+    "large/concurrent-ruby/non_concurrent_priority_queue"
+);
+fixture!(
+    test_concurrent_ruby_numeric_cas_wrapper,
+    "large/concurrent-ruby/numeric_cas_wrapper"
+);
+fixture!(
+    test_concurrent_ruby_ruby_non_concurrent_priority_queue,
+    "large/concurrent-ruby/ruby_non_concurrent_priority_queue"
+);
+fixture!(
+    test_concurrent_ruby_synchronized_map_backend,
+    "large/concurrent-ruby/synchronized_map_backend"
+);
+fixture!(
+    test_concurrent_ruby_truffleruby_map_backend,
+    "large/concurrent-ruby/truffleruby_map_backend"
+);
+fixture!(
+    test_concurrent_ruby_version,
+    "large/concurrent-ruby/version"
+);
