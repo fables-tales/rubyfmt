@@ -28,3 +28,4 @@ similar = "2.1.0"
 
 [dev-dependencies]
 assert_cmd = "2"
+tempfile = "3.19"
