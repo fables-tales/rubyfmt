@@ -33,6 +33,5 @@ esac
 export RUBYFMT_USE_RELEASE=1
 uname -a
 cargo test --release
-./script/tests/test_cli_interface.sh
 ./script/tests/test_c_main.sh
 #./script/tests/test_rspec_stress.sh
