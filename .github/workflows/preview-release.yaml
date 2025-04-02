@@ -33,11 +33,11 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: ubuntu-20.04
+          - os: ubuntu-22.04
             target: native
           - os: macos-latest
             target: native
-          - os: ubuntu-20.04
+          - os: ubuntu-22.04
             target: aarch64-unknown-linux-gnu
     steps:
       - uses: actions/checkout@v2
@@ -98,10 +98,10 @@ jobs:
           name: rubyfmt-source-release
       - uses: actions/download-artifact@v4
         with:
-          name: rubyfmt-release-artifact-ubuntu-20.04-aarch64-unknown-linux-gnu
+          name: rubyfmt-release-artifact-ubuntu-22.04-aarch64-unknown-linux-gnu
       - uses: actions/download-artifact@v4
         with:
-          name: rubyfmt-release-artifact-ubuntu-20.04-native
+          name: rubyfmt-release-artifact-ubuntu-22.04-native
       - uses: actions/download-artifact@v4
         with:
           name: rubyfmt-release-artifact-macos-latest-native
