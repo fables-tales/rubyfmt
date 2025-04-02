@@ -1,7 +1,5 @@
 #![allow(clippy::wrong_self_convention)]
 
-#[cfg(debug_assertions)]
-use log::debug;
 use ripper_deserialize::RipperDeserialize;
 use serde::*;
 
@@ -49,16 +47,8 @@ macro_rules! def_tag {
                         E: de::Error,
                     {
                         if s == $tag {
-                            #[cfg(debug_assertions)]
-                            {
-                                debug!("accepted at {:?} {:?}", s, $tag);
-                            }
                             Ok(())
                         } else {
-                            #[cfg(debug_assertions)]
-                            {
-                                debug!("rejected at {:?} {:?}", s, $tag);
-                            }
                             Err(E::custom("mismatched tag"))
                         }
                     }

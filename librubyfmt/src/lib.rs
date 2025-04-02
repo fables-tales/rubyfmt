@@ -40,8 +40,6 @@ use parser_state::BaseParserState;
 use ruby_ops::{load_rubyfmt, ParseError, Parser, RipperTree};
 
 #[cfg(debug_assertions)]
-use log::debug;
-#[cfg(debug_assertions)]
 use simplelog::{ColorChoice, ConfigBuilder, LevelFilter, TermLogger, TerminalMode};
 
 extern "C" {
@@ -266,6 +264,5 @@ pub fn init_logger() {
             ColorChoice::Auto,
         )
         .expect("making a term logger");
-        debug!("logger works");
     }
 }

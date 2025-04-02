@@ -5,7 +5,6 @@ use crate::heredoc_string::HeredocKind;
 use crate::parser_state::{BaseParserState, ConcreteParserState, FormattingContext, RenderFunc};
 use crate::ripper_tree_types::*;
 use crate::types::LineNumber;
-use log::debug;
 
 pub fn format_def(ps: &mut dyn ConcreteParserState, def: Def) {
     let def_expression = (def.1).to_def_parts();
@@ -721,7 +720,6 @@ pub fn use_parens_for_method_call(
     context: FormattingContext,
 ) -> bool {
     let name = method.get_name();
-    debug!("name: {:?}", name);
 
     // If the calling method is a const, the parens become
     // semantically important, e.g.
@@ -751,7 +749,6 @@ pub fn use_parens_for_method_call(
     }
 
     if name == "yield" {
-        debug!("yield paren: {:?}", original_used_parens);
         return ps.current_formatting_context_requires_parens() || original_used_parens;
     }
 
@@ -834,7 +831,6 @@ pub fn format_method_call(ps: &mut dyn ConcreteParserState, method_call: MethodC
 
     let MethodCall(_, mut chain, method, original_used_parens, args, start_end) = method_call;
 
-    debug!("method call!!");
     let use_parens = use_parens_for_method_call(
         ps,
         &chain,
@@ -3707,7 +3703,6 @@ pub fn format_bare_return_args(
 
 pub fn format_expression(ps: &mut dyn ConcreteParserState, expression: Expression) {
     let expression = normalize(expression);
-    debug!("normalized expression: {:?}", expression);
     match expression {
         Expression::Def(def) => format_def(ps, def),
         Expression::MethodCall(mc) => format_method_call(ps, mc),
@@ -3785,7 +3780,6 @@ pub fn format_expression(ps: &mut dyn ConcreteParserState, expression: Expressio
 
 pub fn format_program(ps: &mut BaseParserState, program: Program, end_data: Option<&str>) {
     ps.flush_start_of_file_comments();
-    debug!("{:?}", program);
     for expression in program.1 {
         format_expression(ps, expression);
     }

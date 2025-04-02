@@ -1,5 +1,4 @@
 #![allow(non_camel_case_types, dead_code)]
-use log::debug;
 use std::ffi::CString;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -117,25 +116,6 @@ pub unsafe fn eval_str(s: &str) -> Result<VALUE, ()> {
         Err(())
     } else {
         Ok(v)
-    }
-}
-
-extern "C" fn real_debug_inspect(v: VALUE) -> VALUE {
-    unsafe {
-        let inspect = rb_funcall(v, intern!("inspect"), 0);
-        debug!("{}", ruby_string_to_str(inspect));
-        Qnil
-    }
-}
-
-pub fn debug_inspect(v: VALUE) {
-    unsafe {
-        let mut state = 0;
-        rb_protect(real_debug_inspect as _, v, &mut state);
-        if state != 0 {
-            let s = current_exception_as_rust_string();
-            panic!("blew us: {}", s);
-        }
     }
 }
 

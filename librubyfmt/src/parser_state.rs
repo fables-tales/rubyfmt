@@ -472,15 +472,10 @@ impl ConcreteParserState for BaseParserState {
         if line_difference_requires_newline(line_number, self.current_orig_line_number)
             && self.insert_user_newlines
         {
-            debug!("extra line");
             self.insert_extra_newline_at_last_newline();
         }
 
         self.current_orig_line_number = line_number;
-        debug!(
-            "set current orig line number: {}",
-            self.current_orig_line_number
-        );
     }
 
     fn at_offset(&mut self, source_offset: SourceOffset) {
@@ -537,19 +532,10 @@ impl ConcreteParserState for BaseParserState {
     }
 
     fn emit_ident(&mut self, ident: String) {
-        if ident == "example" {
-            debug!("--------- boogaloo ------------");
-            debug!("ps: {:?}", self);
-            debug!("---------------------");
-        }
         self.push_concrete_token(ConcreteLineToken::DirectPart { part: ident });
     }
 
     fn emit_newline(&mut self) {
-        debug!("---------------------");
-        debug!("ps: {:?}", self);
-        debug!("---------------------");
-
         self.shift_comments();
         self.push_concrete_token(ConcreteLineToken::HardNewLine);
         self.render_heredocs(false);
@@ -572,7 +558,6 @@ impl ConcreteParserState for BaseParserState {
 
         self.on_line(self.current_orig_line_number + 1);
         let should_iter = |ps: &BaseParserState, ln| {
-            debug!("{}", ln);
             // If we have a max line number, it will be the last token
             // of an expression (e.g. the `end` of a `do`/`end` block), so it's
             // fine if we wind forward to that line
@@ -598,7 +583,6 @@ impl ConcreteParserState for BaseParserState {
                     .is_empty_line(self.current_orig_line_number + 1)
                 && self.comments_to_insert.is_some()
             {
-                debug!("{}", self.current_orig_line_number);
                 let mr = self.comments_to_insert.as_mut().expect("it's not nil");
                 if mr.len() == 0 {
                     break;
@@ -606,7 +590,6 @@ impl ConcreteParserState for BaseParserState {
                 mr.add_line("".to_string());
             }
             self.on_line(self.current_orig_line_number + 1);
-            debug!("{}", self.current_orig_line_number);
         }
     }
 
@@ -901,7 +884,6 @@ impl BaseParserState {
             self.insert_comment_collection(comments);
             if !trailing_comment {
                 self.current_orig_line_number += len as u64;
-                debug!("pe coln: {}", len);
             }
         }
     }
@@ -1002,7 +984,6 @@ impl BaseParserState {
                     self.push_concrete_token(comment);
                 }
                 self.current_orig_line_number = len as LineNumber;
-                debug!("rq: {:?}", self.render_queue);
             }
         }
     }
