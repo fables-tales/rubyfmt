@@ -14,8 +14,6 @@ RELEASE_DIR=${RELEASE_DIR:-"tmp/releases/${TAG}-$(uname -s)/"}
 rm -rf "${RELEASE_DIR}"
 
 mkdir -p "${RELEASE_DIR}"
-mkdir -p "${RELEASE_DIR}/lib/"
-mkdir -p "${RELEASE_DIR}/include/"
 
 target="${TARGET:-native}"
 
@@ -61,16 +59,6 @@ cargo_dir="target/${cargo_target_dir_prefix}"
 cp "${cargo_dir}release/rubyfmt-main" "${RELEASE_DIR}/rubyfmt"
 pwd
 cp "${cargo_dir}debug/rubyfmt-main" "${RELEASE_DIR}/rubyfmt-debug"
-pwd
-# shellcheck disable=2012
-RELEASE_LIB=$(find ${cargo_dir}release/ | grep -i 'librubyfmt-.*\.a$')
-cp "$RELEASE_LIB" "${RELEASE_DIR}/lib/librubyfmt.a"
-pwd
-# shellcheck disable=2012
-DEBUG_LIB=$(find ${cargo_dir}debug/ | grep -i 'librubyfmt-.*\.a$')
-cp "$DEBUG_LIB" "${RELEASE_DIR}/lib/librubyfmt-debug.a"
-pwd
-cp librubyfmt/include/rubyfmt.h "${RELEASE_DIR}/include/rubyfmt.h"
 pwd
 cp RELEASE_README.md "${RELEASE_DIR}/RELEASE_README"
 
