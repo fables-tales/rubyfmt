@@ -1,8 +1,6 @@
 use std::collections::{BTreeMap, BTreeSet};
 use std::mem;
 
-use log::debug;
-
 use crate::comment_block::CommentBlock;
 use crate::parser_state::line_difference_requires_newline;
 use crate::ruby::*;
@@ -156,7 +154,6 @@ impl FileComments {
     }
 
     pub fn is_empty_line(&self, line_number: LineNumber) -> bool {
-        debug!("{:?}", self.lines_with_ruby);
         !self.lines_with_ruby.contains(&line_number)
     }
 
