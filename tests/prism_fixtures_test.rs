@@ -461,10 +461,10 @@ fixture!(test_small_rest_param, "small/rest_param");
 //     "small/separated_statements_with_trailing_comment"
 // );
 // fixture!(test_small_shorthand_hash, "small/shorthand_hash");
-// fixture!(
-//     test_small_single_line_method_call_chain,
-//     "small/single_line_method_call_chain"
-// );
+fixture!(
+    test_small_single_line_method_call_chain,
+    "small/single_line_method_call_chain"
+);
 // fixture!(test_small_single_massign, "small/single_massign");
 // fixture!(
 //     test_small_single_quoted_string_with_embexpr,

@@ -192,6 +192,7 @@ fn format_program(ps: &mut dyn ConcreteParserState, program_node: prism::Program
             format_statements(ps, program_node.statements());
         }),
     );
+    ps.emit_newline();
     ps.on_line(10000000000);
     ps.shift_comments();
 }
@@ -476,7 +477,6 @@ fn format_call_node(
     }
 
     ps.at_offset(call_node.location().start_offset());
-    let end_offset = call_node.location().end_offset();
 
     if skip_receiver || call_node.receiver().is_none() {
         handle_string_at_offset(
@@ -534,11 +534,9 @@ fn format_call_node(
                                 for element in call_chain_elements {
                                     let element = element.as_call_node().unwrap();
                                     let call_operator = loc_to_string(
-                                // `call_operator_loc` is the `.`/`::`/`&.` etc.
-                                element.call_operator_loc().expect(
-                                    "We're in the middle of the chain, there must be an operator",
-                                ),
-                            );
+                                        // `call_operator_loc` is the `.`/`::`/`&.` etc.
+                                        element.call_operator_loc().expect("We're in the middle of the chain, there must be an operator"),
+                                    );
                                     if call_operator != *"::" {
                                         ps.emit_collapsing_newline();
                                         ps.emit_soft_indent();
@@ -547,14 +545,12 @@ fn format_call_node(
 
                                     ps.at_offset(element.location().start_offset());
                                     format_call_node(ps, element, true);
-                                    ps.shift_comments();
                                 }
                             }),
                         );
                         ps.end_indent_for_call_chain();
                     }),
                 );
-                ps.wind_dumping_comments_until_offset(end_offset);
             }),
         );
 
@@ -608,13 +604,23 @@ fn call_chain_elements_are_user_multilined(
         }
     }
 
-    // We have to use the end offsets here instead of the beginning, because technically
-    // all the receivers are nested inside each other at the same start offset
-    let end_line =
-        ps.get_line_number_for_offset(call_chain_elements.first().unwrap().location().end_offset());
-    !call_chain_elements[1..]
-        .iter()
-        .all(|cce| ps.get_line_number_for_offset(cce.location().end_offset()) == end_line)
+    let start_line = ps.get_line_number_for_offset(
+        call_chain_elements
+            .first()
+            .unwrap()
+            .location()
+            .start_offset(),
+    );
+    !call_chain_elements[1..].iter().all(|cce| {
+        start_line
+            == ps.get_line_number_for_offset(
+                cce.as_call_node()
+                    .unwrap()
+                    .call_operator_loc()
+                    .unwrap()
+                    .start_offset(),
+            )
+    })
 }
 
 fn format_symbol_node(ps: &mut dyn ConcreteParserState, symbol_node: prism::SymbolNode) {
@@ -1041,7 +1047,9 @@ fn format_list_like_thing(
                 ps.with_start_of_line(
                     false,
                     Box::new(|ps| {
-                        ps.emit_soft_indent();
+                        if expr.as_assoc_node().is_none() {
+                            ps.emit_soft_indent();
+                        }
                         format_node(ps, expr);
 
                         if idx != args_count - 1 {
