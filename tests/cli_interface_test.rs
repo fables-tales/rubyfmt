@@ -629,7 +629,7 @@ fn test_includes_gitignored() {
     writeln!(file_two, "a 4, 5, 6").unwrap();
     fs::write(
         dir.path().join(".gitignore"),
-        dbg!(file_two.path().file_name().unwrap().to_str().unwrap()),
+        file_two.path().file_name().unwrap().to_str().unwrap(),
     )
     .unwrap();
     assert_eq!(
@@ -708,7 +708,7 @@ fn test_respects_gitignore() {
     writeln!(file_two, "a 4, 5, 6").unwrap();
     fs::write(
         dir.path().join(".gitignore"),
-        dbg!(file_two.path().file_name().unwrap().to_str().unwrap()),
+        file_two.path().file_name().unwrap().to_str().unwrap(),
     )
     .unwrap();
 
