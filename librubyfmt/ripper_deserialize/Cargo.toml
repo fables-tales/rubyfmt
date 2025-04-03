@@ -6,7 +6,7 @@ license = "MIT OR Apache-2.0"
 edition = "2018"
 
 [dependencies]
-syn = { version = "1", features = ["full"] }
+syn = { version = "2" }
 quote = "1"
 
 [lib]
