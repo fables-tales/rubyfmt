@@ -1,4 +1,10 @@
-use ruby_prism::*;
+use ruby_prism::{
+    ArgumentsNode, BlockParameterNode, ClassNode, ConstantPathNode, ConstantReadNode, DefNode,
+    FloatNode, IntegerNode, KeywordHashNode, KeywordRestParameterNode, LocalVariableReadNode,
+    LocalVariableWriteNode, Node, NodeList, ParametersNode, ProgramNode,
+    RequiredKeywordParameterNode, RequiredParameterNode, RestParameterNode, SelfNode, SplatNode,
+    StatementsNode,
+};
 
 use crate::{
     delimiters::BreakableDelims,
