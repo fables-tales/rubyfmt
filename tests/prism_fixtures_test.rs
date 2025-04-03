@@ -58,7 +58,7 @@ fixture!(
 //     test_small_arg_list_with_bare_assoc_hash,
 //     "small/arg_list_with_bare_assoc_hash"
 // );
-// fixture!(test_small_arg_trailing_comma, "small/arg_trailing_comma");
+fixture!(test_small_arg_trailing_comma, "small/arg_trailing_comma");
 // fixture!(test_small_args_forwarding, "small/args_forwarding");
 // fixture!(
 //     test_small_args_forwarding_multiline,
@@ -75,7 +75,7 @@ fixture!(
 //     test_small_bare_assoc_hash_trailing_comma,
 //     "small/bare_assoc_hash_trailing_comma"
 // );
-// fixture!(test_small_bare_assoc_multiple, "small/bare_assoc_multiple");
+fixture!(test_small_bare_assoc_multiple, "small/bare_assoc_multiple");
 // fixture!(
 //     test_small_bare_rescue_comments,
 //     "small/bare_rescue_comments"
@@ -142,7 +142,7 @@ fixture!(test_small_blockarg, "small/blockarg");
 // fixture!(test_small_cannibalization_1, "small/cannibalization_1");
 // fixture!(test_small_cannibalization_2, "small/cannibalization_2");
 // fixture!(test_small_cannibalization_3, "small/cannibalization_3");
-// fixture!(test_small_cannibalization_4, "small/cannibalization_4");
+fixture!(test_small_cannibalization_4, "small/cannibalization_4");
 // fixture!(test_small_case, "small/case");
 // fixture!(test_small_case_else, "small/case_else");
 // fixture!(test_small_case_multi, "small/case_multi");
@@ -156,7 +156,7 @@ fixture!(test_small_blockarg, "small/blockarg");
 // fixture!(test_small_coloncoloncalldot, "small/coloncoloncalldot");
 // fixture!(test_small_command_call_raise, "small/command_call_raise");
 // fixture!(test_small_command_paren, "small/command_paren");
-// fixture!(test_small_commas_trailing, "small/commas_trailing");
+fixture!(test_small_commas_trailing, "small/commas_trailing");
 // fixture!(
 //     test_small_comment_in_block_inside_array,
 //     "small/comment_in_block_inside_array"
@@ -214,8 +214,8 @@ fixture!(test_small_def_with_kw, "small/def_with_kw");
 //     test_small_definitions_with_comments,
 //     "small/definitions_with_comments"
 // );
-// fixture!(test_small_defs_comment, "small/defs_comment");
-// fixture!(test_small_defs_end_comment, "small/defs_end_comment");
+fixture!(test_small_defs_comment, "small/defs_comment");
+fixture!(test_small_defs_end_comment, "small/defs_end_comment");
 fixture!(test_small_defs_kw, "small/defs_kw");
 // fixture!(test_small_disambiguated_range, "small/disambiguated_range");
 // fixture!(test_small_dot2, "small/dot2");
@@ -327,10 +327,10 @@ fixture!(test_small_defs_kw, "small/defs_kw");
 //     "small/method_add_block_command_call"
 // );
 // fixture!(test_small_method_annotation, "small/method_annotation");
-// fixture!(
-//     test_small_method_call_with_trailing_comma,
-//     "small/method_call_with_trailing_comma"
-// );
+fixture!(
+    test_small_method_call_with_trailing_comma,
+    "small/method_call_with_trailing_comma"
+);
 // fixture!(test_small_method_chains, "small/method_chains");
 // fixture!(test_small_missing_parens, "small/missing_parens");
 // fixture!(test_small_mlhs_params, "small/mlhs_params");
@@ -385,7 +385,7 @@ fixture!(test_small_defs_kw, "small/defs_kw");
 //     "small/multiline_when_with_comment"
 // );
 // fixture!(test_small_nbsp, "small/nbsp");
-// fixture!(test_small_nested_command, "small/nested_command");
+fixture!(test_small_nested_command, "small/nested_command");
 // fixture!(test_small_nested_conditionals, "small/nested_conditionals");
 // fixture!(
 //     test_small_nested_destructuring,
@@ -425,10 +425,10 @@ fixture!(test_small_op_defs, "small/op_defs");
 //     test_small_private_class_method,
 //     "small/private_class_method"
 // );
-// fixture!(
-//     test_small_private_gets_trailing_blankline,
-//     "small/private_gets_trailing_blankline"
-// );
+fixture!(
+    test_small_private_gets_trailing_blankline,
+    "small/private_gets_trailing_blankline"
+);
 // fixture!(test_small_procs, "small/procs");
 // fixture!(test_small_quoted_heredoc, "small/quoted_heredoc");
 // fixture!(test_small_raise_star, "small/raise_star");
@@ -475,7 +475,7 @@ fixture!(test_small_rest_param, "small/rest_param");
 //     "small/single_quoted_string_with_slash_escape"
 // );
 // fixture!(test_small_splat_case, "small/splat_case");
-// fixture!(test_small_splat_in_argument, "small/splat_in_argument");
+fixture!(test_small_splat_in_argument, "small/splat_in_argument");
 // fixture!(test_small_splat_rescue, "small/splat_rescue");
 // fixture!(test_small_sqb_no_parens, "small/sqb_no_parens");
 // fixture!(
@@ -483,11 +483,11 @@ fixture!(test_small_rest_param, "small/rest_param");
 //     "small/squiggly_heredoc_interpolation"
 // );
 // fixture!(test_small_stabby_lambda, "small/stabby_lambda");
-// fixture!(test_small_star, "small/star");
-// fixture!(
-//     test_small_start_of_file_comments,
-//     "small/start_of_file_comments"
-// );
+fixture!(test_small_star, "small/star");
+fixture!(
+    test_small_start_of_file_comments,
+    "small/start_of_file_comments"
+);
 // fixture!(test_small_static_call, "small/static_call");
 // fixture!(
 //     test_small_stmt_followed_by_do_block,
