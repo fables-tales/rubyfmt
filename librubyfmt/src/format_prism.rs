@@ -563,7 +563,7 @@ fn call_chain_elements_are_user_multilined(
     call_chain_elements: Vec<&prism::Node>,
 ) -> bool {
     // Making a mutable copy since we may pop some items off later
-    let mut call_chain_elements = call_chain_elements.clone();
+    let mut call_chain_elements = call_chain_elements.as_slice();
 
     if call_chain_elements.len() > 1 {
         // If the first item in the chain is a multiline expression (like a hash or array),
@@ -596,7 +596,7 @@ fn call_chain_elements_are_user_multilined(
                 .start_offset(),
         );
         if is_literal_expression && !has_comment {
-            call_chain_elements.remove(0);
+            call_chain_elements = &call_chain_elements[1..];
         }
     }
 
