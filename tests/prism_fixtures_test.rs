@@ -33,7 +33,7 @@ fn test_fixture(name: &str) {
         .stdout(expected);
 }
 
-// fixture!(test_small_two_five, "small/2.5/2.5");
+fixture!(test_small_two_five, "small/2.5/2.5");
 // fixture!(test_small_two_five_lambda_do_end, "small/2.5/lambda_do_end");
 fixture!(
     test_small_two_five_unnamed_kwrest_param_def,
@@ -65,16 +65,16 @@ fixture!(test_small_arg_trailing_comma, "small/arg_trailing_comma");
 //     "small/args_forwarding_multiline"
 // );
 // fixture!(test_small_array_with_splat, "small/array_with_splat");
-// fixture!(test_small_assign_field, "small/assign_field");
+// fixture!(test_test_small_backtick_symbolsmall_assign_field, "small/assign_field");
 // fixture!(test_small_assoc_double_splat, "small/assoc_double_splat");
 // fixture!(test_small_backref, "small/backref");
-// fixture!(test_small_backtick_symbol, "small/backtick_symbol");
+fixture!(test_small_backtick_symbol, "small/backtick_symbol");
 // fixture!(test_small_backticks, "small/backticks");
 // fixture!(test_small_bare_alias, "small/bare_alias");
-// fixture!(
-//     test_small_bare_assoc_hash_trailing_comma,
-//     "small/bare_assoc_hash_trailing_comma"
-// );
+fixture!(
+    test_small_bare_assoc_hash_trailing_comma,
+    "small/bare_assoc_hash_trailing_comma"
+);
 fixture!(test_small_bare_assoc_multiple, "small/bare_assoc_multiple");
 // fixture!(
 //     test_small_bare_rescue_comments,
@@ -205,9 +205,9 @@ fixture!(test_small_commas_trailing, "small/commas_trailing");
 // fixture!(test_small_curly_line_breaking, "small/curly_line_breaking");
 // fixture!(test_small_cursed_call_01, "small/cursed_call_01");
 // fixture!(test_small_cvar, "small/cvar");
-// fixture!(test_small_cvar_symbol, "small/cvar_symbol");
+fixture!(test_small_cvar_symbol, "small/cvar_symbol");
 fixture!(test_small_def_const, "small/def_const");
-// fixture!(test_small_def_scope, "small/def_scope");
+fixture!(test_small_def_scope, "small/def_scope");
 fixture!(test_small_def_with_kw, "small/def_with_kw");
 // fixture!(test_small_defined, "small/defined");
 // fixture!(
@@ -242,16 +242,16 @@ fixture!(test_small_defs_kw, "small/defs_kw");
 // );
 // fixture!(test_small_end_block, "small/end_block");
 // fixture!(test_small_end_data, "small/end_data");
-// fixture!(
-//     test_small_end_of_file_comments,
-//     "small/end_of_file_comments"
-// );
+fixture!(
+    test_small_end_of_file_comments,
+    "small/end_of_file_comments"
+);
 // fixture!(test_small_endless_methods, "small/endless_methods");
 // fixture!(test_small_fib, "small/fib");
 // fixture!(test_small_first_rest_param, "small/first_rest_param");
 // fixture!(test_small_for_loop, "small/for_loop");
 // fixture!(test_small_gemfile, "small/gemfile");
-// fixture!(test_small_gvar_symbol, "small/gvar_symbol");
+fixture!(test_small_gvar_symbol, "small/gvar_symbol");
 // fixture!(test_small_hash_breaking, "small/hash_breaking");
 // fixture!(test_small_hash_comments, "small/hash_comments");
 // fixture!(test_small_hash_heredoc, "small/hash_heredoc");
@@ -294,10 +294,10 @@ fixture!(test_small_defs_kw, "small/defs_kw");
 // );
 // fixture!(test_small_inline_comments, "small/inline_comments");
 // fixture!(test_small_inline_rescue, "small/inline_rescue");
-// fixture!(test_small_ivar_symbol, "small/ivar_symbol");
-// fixture!(test_small_kw_symbol, "small/kw_symbol");
+fixture!(test_small_ivar_symbol, "small/ivar_symbol");
+fixture!(test_small_kw_symbol, "small/kw_symbol");
 // fixture!(test_small_kwargs, "small/kwargs");
-// fixture!(test_small_kwargs_multiline, "small/kwargs_multiline");
+fixture!(test_small_kwargs_multiline, "small/kwargs_multiline");
 // fixture!(test_small_lambda, "small/lambda");
 // fixture!(
 //     test_small_line_broken_top_const_field,
@@ -540,7 +540,7 @@ fixture!(
 //     "small/super_with_trailing_comma"
 // );
 // fixture!(test_small_symbol_arg, "small/symbol_arg");
-// fixture!(test_small_symbol_op, "small/symbol_op");
+fixture!(test_small_symbol_op, "small/symbol_op");
 // fixture!(test_small_ternary, "small/ternary");
 // fixture!(test_small_to_proc_operator, "small/to_proc_operator");
 // fixture!(
