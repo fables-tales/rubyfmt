@@ -1,7 +1,7 @@
 use crate::delimiters::BreakableDelims;
 use crate::line_tokens::{AbstractLineToken, ConcreteLineToken, ConcreteLineTokenAndTargets};
 use crate::parser_state::FormattingContext;
-use crate::ripper_tree_types::{CallChainElement, Expression, StringLiteral};
+use crate::ripper_tree_types::CallChainElement;
 use crate::types::LineNumber;
 use std::collections::HashSet;
 
@@ -201,11 +201,23 @@ impl BreakableEntry {
     }
 }
 
+/// This struct is a bit of a hack to support both
+/// the Ripper tree and the Prism tree at the same time.
+/// The Prism tree has more accurate offset handling that obviates
+/// the hacks put in to support Ripper, but for now we need to support
+/// and I didn't want to have to fork the implementation of BreakableCallChainEntry.
+/// Once Prism is fully featured, we should delete this Ripper handling entirely.
+#[derive(Debug, Clone)]
+pub enum MultilineHandling {
+    Ripper(Vec<CallChainElement>),
+    Prism(bool),
+}
+
 #[derive(Debug, Clone)]
 pub struct BreakableCallChainEntry {
     tokens: Vec<AbstractLineToken>,
     line_numbers: HashSet<LineNumber>,
-    call_chain: Vec<CallChainElement>,
+    multiline_handling: MultilineHandling,
     context: Vec<FormattingContext>,
 }
 
@@ -356,52 +368,53 @@ impl AbstractTokenTarget for BreakableCallChainEntry {
             return true;
         }
 
-        let mut call_chain_to_check = self.call_chain.as_slice();
-        // We don't always want to multiline blocks if their only usage
-        // is at the end of a chain, since it's common to have chains
-        // that end with long blocks, but those blocks don't mean we should
-        // multiline the rest of the chain.
-        //
-        // example:
-        // ```
-        // items.get_all.each do
-        // end
-        // ```
-        if let Some(CallChainElement::Block(..)) = call_chain_to_check.last() {
-            call_chain_to_check = &call_chain_to_check[..call_chain_to_check.len() - 1];
+        match &self.multiline_handling {
+            MultilineHandling::Prism(is_user_multilined) => *is_user_multilined,
+            MultilineHandling::Ripper(call_chain_elements) => {
+                let mut call_chain_to_check = call_chain_elements.as_slice();
+                // We don't always want to multiline blocks if their only usage
+                // is at the end of a chain, since it's common to have chains
+                // that end with long blocks, but those blocks don't mean we should
+                // multiline the rest of the chain.
+                //
+                // example:
+                // ```
+                // items.get_all.each do
+                // end
+                // ```
+                if let Some(CallChainElement::Block(..)) = call_chain_to_check.last() {
+                    call_chain_to_check = &call_chain_to_check[..call_chain_to_check.len() - 1];
+                }
+
+                let has_leading_expression = match call_chain_to_check.first() {
+                    Some(CallChainElement::Expression(expr)) => !expr.is_constant_reference(),
+                    _ => false,
+                };
+                let has_comments = self.tokens.iter().any(|t| {
+                    matches!(
+                        t,
+                        AbstractLineToken::ConcreteLineToken(ConcreteLineToken::Comment { .. })
+                    )
+                });
+
+                // If the first item in the chain is a multiline expression (like a hash or array),
+                // ignore it when checking line length.
+                // Don't ignore this if there are comments in the call chain though; this check may
+                // cause it to single-lined, which breaks comment rendering.
+                if has_leading_expression && !has_comments {
+                    call_chain_to_check = &call_chain_to_check[1..];
+                }
+
+                let chain_is_user_multilined = call_chain_to_check
+                    .iter()
+                    .filter_map(|cc_elem| cc_elem.start_line())
+                    .collect::<HashSet<_>>()
+                    .len()
+                    > 1;
+
+                chain_is_user_multilined
+            }
         }
-
-        let has_leading_expression = match call_chain_to_check.first() {
-            Some(CallChainElement::Expression(expr)) => !expr.is_constant_reference(),
-            _ => false,
-        };
-        let has_comments = self.tokens.iter().any(|t| {
-            matches!(
-                t,
-                AbstractLineToken::ConcreteLineToken(ConcreteLineToken::Comment { .. })
-            )
-        });
-
-        // If the first item in the chain is a multiline expression (like a hash or array),
-        // ignore it when checking line length.
-        // Don't ignore this if there are comments in the call chain though; this check may
-        // cause it to single-lined, which breaks comment rendering.
-        if has_leading_expression && !has_comments {
-            call_chain_to_check = &call_chain_to_check[1..];
-        }
-
-        let chain_is_user_multilined = call_chain_to_check
-            .iter()
-            .filter_map(|cc_elem| cc_elem.start_line())
-            .collect::<HashSet<_>>()
-            .len()
-            > 1;
-
-        if chain_is_user_multilined {
-            return true;
-        }
-
-        false
     }
 
     fn any_collapsing_newline_has_heredoc_content(&self) -> bool {
@@ -412,28 +425,22 @@ impl AbstractTokenTarget for BreakableCallChainEntry {
                 be.any_collapsing_newline_has_heredoc_content()
             }
             _ => false,
-        }) || self.call_chain.iter().any(|cce| match cce {
-            // In cases where the heredoc is the first item in the call chain,
-            // it won't get stored in an abstract token; instead, it'll be directly
-            // in the call chain as a concrete token.
-            CallChainElement::Expression(expr) => {
-                matches!(
-                    expr.as_ref(),
-                    Expression::StringLiteral(StringLiteral::Heredoc(..))
-                )
-            }
-            _ => false,
-        })
+        }) || matches!(
+            self.tokens.first(),
+            Some(AbstractLineToken::ConcreteLineToken(
+                ConcreteLineToken::HeredocStart { .. }
+            ))
+        )
     }
 }
 
 impl BreakableCallChainEntry {
-    pub fn new(context: Vec<FormattingContext>, call_chain: Vec<CallChainElement>) -> Self {
+    pub fn new(context: Vec<FormattingContext>, multiline_handling: MultilineHandling) -> Self {
         BreakableCallChainEntry {
             tokens: Vec::new(),
             line_numbers: HashSet::new(),
             context,
-            call_chain,
+            multiline_handling,
         }
     }
 
@@ -458,12 +465,11 @@ impl BreakableCallChainEntry {
     }
 
     fn begins_with_heredoc(&self) -> bool {
-        if let Some(CallChainElement::Expression(expr)) = self.call_chain.first() {
-            if let Expression::StringLiteral(string_literal) = &**expr {
-                return matches!(string_literal, StringLiteral::Heredoc(..));
-            }
-        }
-
-        false
+        matches!(
+            self.tokens.first(),
+            Some(AbstractLineToken::ConcreteLineToken(
+                ConcreteLineToken::HeredocStart { .. }
+            ))
+        )
     }
 }

@@ -6,9 +6,9 @@ use crate::heredoc_string::{HeredocKind, HeredocString};
 use crate::line_tokens::*;
 use crate::render_queue_writer::{RenderQueueWriter, MAX_LINE_LENGTH};
 use crate::render_targets::{
-    AbstractTokenTarget, BaseQueue, BreakableCallChainEntry, BreakableEntry,
+    AbstractTokenTarget, BaseQueue, BreakableCallChainEntry, BreakableEntry, MultilineHandling,
 };
-use crate::ripper_tree_types::{CallChainElement, StringContentPart};
+use crate::ripper_tree_types::StringContentPart;
 use crate::types::{ColNumber, LineNumber, SourceOffset};
 use log::debug;
 use std::io::{self, Cursor, Write};
@@ -26,6 +26,13 @@ pub enum FormattingContext {
     ArgsList,
     IfOp,
     StringEmbexpr,
+    HashType(HashType),
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum HashType {
+    SymbolKey,
+    HashRocket,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -123,6 +130,7 @@ where
     // queries
     fn at_start_of_line(&self) -> bool;
     fn current_formatting_context_requires_parens(&self) -> bool;
+    fn hash_type_from_formatting_context(&self) -> Option<&HashType>;
     fn current_formatting_context(&self) -> FormattingContext;
     fn get_line_number_for_offset(&self, source_offset: SourceOffset) -> LineNumber;
     fn is_absorbing_indents(&self) -> bool;
@@ -144,11 +152,7 @@ where
     fn with_start_of_line(&mut self, start_of_line: bool, f: RenderFunc);
     fn breakable_of(&mut self, delims: BreakableDelims, f: RenderFunc);
     fn inline_breakable_of(&mut self, delims: BreakableDelims, f: RenderFunc);
-    fn breakable_call_chain_of(
-        &mut self,
-        call_chain_elements: Vec<CallChainElement>,
-        f: RenderFunc,
-    );
+    fn breakable_call_chain_of(&mut self, multiline_handling: MultilineHandling, f: RenderFunc);
     fn dedent(&mut self, f: RenderFunc);
     fn reset_space_count(&mut self);
     fn with_absorbing_indent_block(&mut self, f: RenderFunc);
@@ -159,6 +163,11 @@ where
     );
     fn with_suppress_comments(&mut self, suppress: bool, f: RenderFunc);
     fn will_render_as_multiline(&mut self, f: RenderFunc) -> bool;
+    fn has_comment_in_offset_span(
+        &self,
+        start_offset: SourceOffset,
+        end_offset: SourceOffset,
+    ) -> bool;
 
     #[allow(unused)]
     fn will_render_beyond_max_line_length(&mut self, f: RenderFunc) -> bool;
@@ -290,6 +299,15 @@ impl ConcreteParserState for BaseParserState {
         s.trim().contains('\n') || s.len() > MAX_LINE_LENGTH
     }
 
+    fn has_comment_in_offset_span(
+        &self,
+        start_offset: SourceOffset,
+        end_offset: SourceOffset,
+    ) -> bool {
+        self.comments_hash
+            .has_comment_in_offsets(start_offset, end_offset)
+    }
+
     fn will_render_beyond_max_line_length<'a>(&mut self, f: RenderFunc) -> bool {
         let mut next_ps = BaseParserState::new_with_depth_stack_from(self);
         // Ignore commments when determining line length
@@ -398,12 +416,12 @@ impl ConcreteParserState for BaseParserState {
 
     fn breakable_call_chain_of<'a>(
         &mut self,
-        call_chain_elements: Vec<CallChainElement>,
+        mulitiline_handling: MultilineHandling,
         f: RenderFunc,
     ) {
         self.shift_comments();
         let mut be =
-            BreakableCallChainEntry::new(self.formatting_context.clone(), call_chain_elements);
+            BreakableCallChainEntry::new(self.formatting_context.clone(), mulitiline_handling);
         be.push_line_number(self.current_orig_line_number);
         self.breakable_entry_stack.push(Box::new(be));
 
@@ -480,7 +498,7 @@ impl ConcreteParserState for BaseParserState {
     }
 
     fn at_offset(&mut self, source_offset: SourceOffset) {
-        self.on_line(self.comments_hash.get_line_number_for_offset(source_offset));
+        self.on_line(self.get_line_number_for_offset(source_offset));
     }
 
     fn emit_indent(&mut self) {
@@ -760,6 +778,16 @@ impl ConcreteParserState for BaseParserState {
     fn current_formatting_context_requires_parens(&self) -> bool {
         self.current_formatting_context() == FormattingContext::Binary
             || self.current_formatting_context() == FormattingContext::IfOp
+    }
+
+    fn hash_type_from_formatting_context(&self) -> Option<&HashType> {
+        self.formatting_context
+            .iter()
+            .filter_map(|fc| match fc {
+                FormattingContext::HashType(hash_type) => Some(hash_type),
+                _ => None,
+            })
+            .last()
     }
 
     fn emit_dot(&mut self) {
