@@ -1,4 +1,4 @@
-use ruby_prism::*;
+use ruby_prism as prism;
 
 use crate::{
     delimiters::BreakableDelims,
@@ -8,7 +8,8 @@ use crate::{
     util::{const_to_string, loc_to_string},
 };
 
-pub fn format_node(ps: &mut dyn ConcreteParserState, node: Node) {
+pub fn format_node(ps: &mut dyn ConcreteParserState, node: prism::Node) {
+    use prism::Node;
     match node {
         Node::AliasGlobalVariableNode { .. } => todo!(),
         Node::AliasMethodNode { .. } => todo!(),
@@ -181,7 +182,7 @@ pub fn format_node(ps: &mut dyn ConcreteParserState, node: Node) {
     }
 }
 
-fn format_program(ps: &mut dyn ConcreteParserState, program_node: ProgramNode) {
+fn format_program(ps: &mut dyn ConcreteParserState, program_node: prism::ProgramNode) {
     ps.with_start_of_line(
         true,
         Box::new(|ps| {
@@ -192,13 +193,13 @@ fn format_program(ps: &mut dyn ConcreteParserState, program_node: ProgramNode) {
     ps.shift_comments();
 }
 
-fn format_statements(ps: &mut dyn ConcreteParserState, statements_node: StatementsNode) {
+fn format_statements(ps: &mut dyn ConcreteParserState, statements_node: prism::StatementsNode) {
     for node in statements_node.body().iter() {
         format_node(ps, node);
     }
 }
 
-fn format_class_node(ps: &mut dyn ConcreteParserState, class_node: ClassNode) {
+fn format_class_node(ps: &mut dyn ConcreteParserState, class_node: prism::ClassNode) {
     if ps.at_start_of_line() {
         ps.emit_indent();
     }
@@ -245,7 +246,7 @@ fn format_class_node(ps: &mut dyn ConcreteParserState, class_node: ClassNode) {
     }
 }
 
-fn format_def_node(ps: &mut dyn ConcreteParserState, def_node: DefNode) {
+fn format_def_node(ps: &mut dyn ConcreteParserState, def_node: prism::DefNode) {
     ps.at_offset(def_node.def_keyword_loc().start_offset());
     if ps.at_start_of_line() {
         ps.emit_indent();
@@ -288,8 +289,8 @@ fn format_def_node(ps: &mut dyn ConcreteParserState, def_node: DefNode) {
 
 fn format_def_body(
     ps: &mut dyn ConcreteParserState,
-    parameters_node: Option<ParametersNode>,
-    bodystmt: Option<Node>,
+    parameters_node: Option<prism::ParametersNode>,
+    bodystmt: Option<prism::Node>,
     end_offset: SourceOffset,
     has_end_keyword: bool,
 ) {
@@ -349,7 +350,7 @@ fn format_def_body(
 
 type ParamFormattingFunc<'a> = Box<dyn FnOnce(&mut dyn ConcreteParserState) + 'a>;
 
-fn format_parameters_node(ps: &mut dyn ConcreteParserState, params: ParametersNode) {
+fn format_parameters_node(ps: &mut dyn ConcreteParserState, params: prism::ParametersNode) {
     let non_null_positions = non_null_positions(&params);
 
     //def foo(a, b=nil, *args, d, e:, **kwargs, &blk)
@@ -439,7 +440,10 @@ fn format_parameters_node(ps: &mut dyn ConcreteParserState, params: ParametersNo
     }
 }
 
-fn format_block_parameter_node(ps: &mut dyn ConcreteParserState, block_arg: BlockParameterNode) {
+fn format_block_parameter_node(
+    ps: &mut dyn ConcreteParserState,
+    block_arg: prism::BlockParameterNode,
+) {
     ps.with_start_of_line(
         false,
         Box::new(|ps| {
@@ -456,7 +460,7 @@ fn format_block_parameter_node(ps: &mut dyn ConcreteParserState, block_arg: Bloc
 
 fn format_rest_param(
     ps: &mut dyn ConcreteParserState,
-    rest_param: RestParameterNode,
+    rest_param: prism::RestParameterNode,
     special_case: SpecialCase,
 ) {
     ps.with_start_of_line(
@@ -480,7 +484,7 @@ fn format_rest_param(
     );
 }
 
-fn format_arguments_node(ps: &mut dyn ConcreteParserState, arguments_node: ArgumentsNode) {
+fn format_arguments_node(ps: &mut dyn ConcreteParserState, arguments_node: prism::ArgumentsNode) {
     format_list_like_thing(
         ps,
         arguments_node.arguments(),
@@ -489,7 +493,10 @@ fn format_arguments_node(ps: &mut dyn ConcreteParserState, arguments_node: Argum
     );
 }
 
-fn format_keyword_hash_node(ps: &mut dyn ConcreteParserState, keyword_hash_node: KeywordHashNode) {
+fn format_keyword_hash_node(
+    ps: &mut dyn ConcreteParserState,
+    keyword_hash_node: prism::KeywordHashNode,
+) {
     if ps.at_start_of_line() {
         ps.emit_indent();
     }
@@ -508,7 +515,7 @@ fn format_keyword_hash_node(ps: &mut dyn ConcreteParserState, keyword_hash_node:
 
 fn format_keyword_rest_parameter_node(
     ps: &mut dyn ConcreteParserState,
-    keyword_rest_parameter_node: KeywordRestParameterNode,
+    keyword_rest_parameter_node: prism::KeywordRestParameterNode,
 ) {
     ps.at_offset(keyword_rest_parameter_node.location().start_offset());
 
@@ -522,7 +529,7 @@ fn format_keyword_rest_parameter_node(
 
 fn format_required_keyword_parameter_node(
     ps: &mut dyn ConcreteParserState,
-    required_keyword_parameter_node: RequiredKeywordParameterNode,
+    required_keyword_parameter_node: prism::RequiredKeywordParameterNode,
 ) {
     ps.at_offset(required_keyword_parameter_node.location().start_offset());
 
@@ -534,7 +541,7 @@ fn format_required_keyword_parameter_node(
 
 fn format_required_parameter_node(
     ps: &mut dyn ConcreteParserState,
-    required_parameter_node: RequiredParameterNode,
+    required_parameter_node: prism::RequiredParameterNode,
 ) {
     ps.at_offset(required_parameter_node.location().start_offset());
 
@@ -545,7 +552,7 @@ fn format_required_parameter_node(
 
 fn format_local_variable_read_node(
     ps: &mut dyn ConcreteParserState,
-    local_variable_read_node: LocalVariableReadNode,
+    local_variable_read_node: prism::LocalVariableReadNode,
 ) {
     if ps.at_start_of_line() {
         ps.emit_indent();
@@ -564,7 +571,7 @@ fn format_local_variable_read_node(
 
 fn format_local_variable_write_node(
     ps: &mut dyn ConcreteParserState,
-    local_variable_write_node: LocalVariableWriteNode,
+    local_variable_write_node: prism::LocalVariableWriteNode,
 ) {
     if ps.at_start_of_line() {
         ps.emit_indent();
@@ -588,7 +595,7 @@ fn format_local_variable_write_node(
     }
 }
 
-fn format_splat_node(ps: &mut dyn ConcreteParserState, splat_node: SplatNode) {
+fn format_splat_node(ps: &mut dyn ConcreteParserState, splat_node: prism::SplatNode) {
     ps.at_offset(splat_node.location().start_offset());
 
     ps.emit_ident("*".to_string());
@@ -614,7 +621,7 @@ fn format_ident(ps: &mut dyn ConcreteParserState, ident: String, offset: usize) 
     }
 }
 
-fn format_integer_node(ps: &mut dyn ConcreteParserState, integer_node: IntegerNode) {
+fn format_integer_node(ps: &mut dyn ConcreteParserState, integer_node: prism::IntegerNode) {
     if ps.at_start_of_line() {
         ps.emit_indent();
     }
@@ -630,7 +637,7 @@ fn format_integer_node(ps: &mut dyn ConcreteParserState, integer_node: IntegerNo
     }
 }
 
-fn format_float_node(ps: &mut dyn ConcreteParserState, float_node: FloatNode) {
+fn format_float_node(ps: &mut dyn ConcreteParserState, float_node: prism::FloatNode) {
     if ps.at_start_of_line() {
         ps.emit_indent();
     }
@@ -648,7 +655,7 @@ fn format_float_node(ps: &mut dyn ConcreteParserState, float_node: FloatNode) {
 
 fn format_constant_read_node(
     ps: &mut dyn ConcreteParserState,
-    constant_read_node: ConstantReadNode,
+    constant_read_node: prism::ConstantReadNode,
 ) {
     if ps.at_start_of_line() {
         ps.emit_indent();
@@ -667,7 +674,7 @@ fn format_constant_read_node(
 
 fn format_constant_path_node(
     ps: &mut dyn ConcreteParserState,
-    constant_path_node: ConstantPathNode,
+    constant_path_node: prism::ConstantPathNode,
 ) {
     if ps.at_start_of_line() {
         ps.emit_indent();
@@ -694,7 +701,7 @@ fn format_constant_path_node(
     }
 }
 
-fn format_self_node(ps: &mut dyn ConcreteParserState, self_node: SelfNode) {
+fn format_self_node(ps: &mut dyn ConcreteParserState, self_node: prism::SelfNode) {
     if ps.at_start_of_line() {
         ps.emit_indent();
     }
@@ -712,7 +719,7 @@ fn handle_string_at_offset(ps: &mut dyn ConcreteParserState, ident: String, offs
     ps.emit_ident(ident);
 }
 
-fn non_null_positions(params: &ParametersNode) -> Vec<bool> {
+fn non_null_positions(params: &prism::ParametersNode) -> Vec<bool> {
     vec![
         !node_list_is_empty(&params.requireds()),
         !node_list_is_empty(&params.optionals()),
@@ -724,13 +731,13 @@ fn non_null_positions(params: &ParametersNode) -> Vec<bool> {
     ]
 }
 
-fn node_list_is_empty(node_list: &NodeList) -> bool {
+fn node_list_is_empty(node_list: &prism::NodeList) -> bool {
     node_list.iter().next().is_none()
 }
 
 fn format_list_like_thing(
     ps: &mut dyn ConcreteParserState,
-    node_list: NodeList,
+    node_list: prism::NodeList,
     end_offset: SourceOffset,
     single_line: bool,
 ) -> bool {
