@@ -65,7 +65,7 @@ fixture!(test_small_arg_trailing_comma, "small/arg_trailing_comma");
 //     "small/args_forwarding_multiline"
 // );
 // fixture!(test_small_array_with_splat, "small/array_with_splat");
-// fixture!(test_test_small_backtick_symbolsmall_assign_field, "small/assign_field");
+// fixture!(test_small_assign_field, "small/assign_field");
 // fixture!(test_small_assoc_double_splat, "small/assoc_double_splat");
 // fixture!(test_small_backref, "small/backref");
 fixture!(test_small_backtick_symbol, "small/backtick_symbol");
