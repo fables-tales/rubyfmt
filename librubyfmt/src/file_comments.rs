@@ -80,6 +80,23 @@ impl FileComments {
             );
         }
 
+        // Lookup lines that have any Ruby, which we broadly equate to
+        // a line that isn't empty and that doesn't start with a comment ("#")
+        u8_to_string(source)
+            .lines()
+            .enumerate()
+            .filter(|(_lineno, line_contents)| {
+                let contents = line_contents.trim();
+                !(contents.starts_with("#") || contents.is_empty())
+            })
+            .for_each(|(lineno, _)| {
+                file_comments
+                    .lines_with_ruby
+                    // Insert as one-offset to work with Ripper.
+                    // This (and elsewhere) can be zero-offset once Ripper is removed
+                    .insert((lineno + 1) as u64);
+            });
+
         file_comments.last_lineno = line_index.line_starts.len() as u64;
         file_comments.line_index = line_index;
         file_comments

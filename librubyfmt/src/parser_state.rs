@@ -106,6 +106,7 @@ where
     fn on_line(&mut self, line_number: LineNumber);
     fn at_offset(&mut self, source_offset: SourceOffset);
     fn wind_dumping_comments_until_line(&mut self, line_number: LineNumber);
+    fn wind_dumping_comments_until_offset(&mut self, source_offset: SourceOffset);
     fn wind_dumping_comments(&mut self, maybe_max_line_number: Option<LineNumber>);
     fn shift_comments(&mut self);
     fn shift_comments_at_index(&mut self, index: usize);
@@ -123,6 +124,7 @@ where
     fn at_start_of_line(&self) -> bool;
     fn current_formatting_context_requires_parens(&self) -> bool;
     fn current_formatting_context(&self) -> FormattingContext;
+    fn get_line_number_for_offset(&self, source_offset: SourceOffset) -> LineNumber;
     fn is_absorbing_indents(&self) -> bool;
     fn has_comments_in_line(&self, start_line: LineNumber, end_line: LineNumber) -> bool;
 
@@ -133,7 +135,6 @@ where
     #[allow(unused)]
     fn start_indent(&mut self);
     fn start_indent_for_call_chain(&mut self);
-    #[allow(unused)]
     fn end_indent_for_call_chain(&mut self);
     #[allow(unused)]
     fn end_indent(&mut self);
@@ -546,6 +547,10 @@ impl ConcreteParserState for BaseParserState {
         self.wind_dumping_comments(Some(line_number))
     }
 
+    fn wind_dumping_comments_until_offset(&mut self, source_offset: SourceOffset) {
+        self.wind_dumping_comments_until_line(self.get_line_number_for_offset(source_offset))
+    }
+
     fn wind_dumping_comments(&mut self, maybe_max_line_number: Option<LineNumber>) {
         // Return early if we're already at/past
         // the max line number
@@ -778,6 +783,10 @@ impl ConcreteParserState for BaseParserState {
             .formatting_context
             .last()
             .expect("formatting context is never empty")
+    }
+
+    fn get_line_number_for_offset(&self, source_offset: SourceOffset) -> LineNumber {
+        self.comments_hash.get_line_number_for_offset(source_offset)
     }
 
     fn emit_end_block(&mut self) {
