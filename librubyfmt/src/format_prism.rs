@@ -507,14 +507,10 @@ fn format_call_node(
             );
         }
     } else {
-        let receiver = call_node
-            .receiver()
-            .expect("We checked for a present receiver in `format_call_node`");
         ps.with_start_of_line(
             false,
             Box::new(|ps| {
-                let mut call_chain_elements = collapse_nodes_to_call_chain(receiver);
-                call_chain_elements.push(call_node.as_node());
+                let mut call_chain_elements = collapse_nodes_to_call_chain(call_node.as_node());
                 ps.breakable_call_chain_of(
                     MultilineHandling::Prism(call_chain_elements_are_user_multilined(
                         ps,
