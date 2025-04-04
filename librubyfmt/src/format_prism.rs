@@ -208,7 +208,10 @@ fn format_class_node(ps: &mut dyn ConcreteParserState, class_node: prism::ClassN
 
     ps.emit_class_keyword();
     ps.emit_space();
-    ps.emit_ident(const_to_string(class_node.name()));
+    ps.with_start_of_line(
+        false,
+        Box::new(|ps| format_node(ps, class_node.constant_path())),
+    );
 
     if let Some(superclass) = class_node.superclass() {
         ps.at_offset(superclass.location().start_offset());
