@@ -11,6 +11,14 @@ use crate::{
 
 pub fn format_node(ps: &mut dyn ConcreteParserState, node: prism::Node) {
     use prism::Node;
+    // StatementsNode is the only real "wrapper" node, meaning it purely contains
+    // other statements which themselves would be at the start of a line.
+    // We just ignore it here -- the alternative would be callers might need to have
+    // `ps.with_start_of_line(false, ...` for statements, which is semantically confusing
+    if ps.at_start_of_line() && !matches!(node, Node::StatementsNode { .. }) {
+        ps.emit_indent();
+    }
+
     match node {
         Node::AliasGlobalVariableNode { .. } => todo!(),
         Node::AliasMethodNode { .. } => todo!(),
@@ -183,6 +191,10 @@ pub fn format_node(ps: &mut dyn ConcreteParserState, node: prism::Node) {
         Node::XStringNode { .. } => todo!(),
         Node::YieldNode { .. } => todo!(),
     }
+
+    if ps.at_start_of_line() && !matches!(node, Node::StatementsNode { .. }) {
+        ps.emit_newline();
+    }
 }
 
 pub fn format_program(
@@ -206,16 +218,17 @@ pub fn format_program(
 }
 
 fn format_statements(ps: &mut dyn ConcreteParserState, statements_node: prism::StatementsNode) {
-    for node in statements_node.body().iter() {
-        format_node(ps, node);
-    }
+    ps.with_start_of_line(
+        true,
+        Box::new(|ps| {
+            for node in statements_node.body().iter() {
+                format_node(ps, node);
+            }
+        }),
+    );
 }
 
 fn format_class_node(ps: &mut dyn ConcreteParserState, class_node: prism::ClassNode) {
-    if ps.at_start_of_line() {
-        ps.emit_indent();
-    }
-
     ps.at_offset(class_node.location().start_offset());
 
     ps.emit_class_keyword();
@@ -256,16 +269,10 @@ fn format_class_node(ps: &mut dyn ConcreteParserState, class_node: prism::ClassN
             ps.emit_end();
         }),
     );
-    if ps.at_start_of_line() {
-        ps.emit_newline();
-    }
 }
 
 fn format_def_node(ps: &mut dyn ConcreteParserState, def_node: prism::DefNode) {
     ps.at_offset(def_node.def_keyword_loc().start_offset());
-    if ps.at_start_of_line() {
-        ps.emit_indent();
-    }
 
     ps.emit_keyword("def".to_string());
     ps.emit_space();
@@ -296,10 +303,6 @@ fn format_def_node(ps: &mut dyn ConcreteParserState, def_node: prism::DefNode) {
             .unwrap(),
         def_node.end_keyword_loc().is_some(),
     );
-
-    if ps.at_start_of_line() {
-        ps.emit_newline();
-    }
 }
 
 fn format_def_body(
@@ -483,10 +486,6 @@ fn format_call_node(
     call_node: prism::CallNode,
     skip_receiver: bool,
 ) {
-    if ps.at_start_of_line() {
-        ps.emit_indent();
-    }
-
     ps.at_offset(call_node.location().start_offset());
 
     if skip_receiver || call_node.receiver().is_none() {
@@ -563,10 +562,6 @@ fn format_call_node(
 
         ps.emit_after_call_chain();
     }
-
-    if ps.at_start_of_line() {
-        ps.emit_newline();
-    }
 }
 
 fn call_chain_elements_are_user_multilined(
@@ -631,19 +626,11 @@ fn call_chain_elements_are_user_multilined(
 }
 
 fn format_symbol_node(ps: &mut dyn ConcreteParserState, symbol_node: prism::SymbolNode) {
-    if ps.at_start_of_line() {
-        ps.emit_indent();
-    }
-
     if let Some(opening_loc) = symbol_node.opening_loc() {
         ps.emit_ident(loc_to_string(opening_loc));
     }
     if let Some(value_loc) = symbol_node.value_loc() {
         ps.emit_ident(loc_to_string(value_loc));
-    }
-
-    if ps.at_start_of_line() {
-        ps.emit_newline();
     }
 }
 
@@ -672,10 +659,6 @@ fn format_assoc_node(ps: &mut dyn ConcreteParserState, assoc_node: prism::AssocN
 }
 
 fn format_array_node(ps: &mut dyn ConcreteParserState, array_node: prism::ArrayNode) {
-    if ps.at_start_of_line() {
-        ps.emit_indent();
-    }
-
     ps.at_offset(array_node.location().start_offset());
 
     ps.with_start_of_line(
@@ -695,20 +678,12 @@ fn format_array_node(ps: &mut dyn ConcreteParserState, array_node: prism::ArrayN
             );
         }),
     );
-
-    if ps.at_start_of_line() {
-        ps.emit_newline();
-    }
 }
 
 fn format_parentheses_node(
     ps: &mut dyn ConcreteParserState,
     parentheses_node: prism::ParenthesesNode,
 ) {
-    if ps.at_start_of_line() {
-        ps.emit_indent();
-    }
-
     ps.at_offset(parentheses_node.location().start_offset());
 
     ps.emit_open_paren();
@@ -722,10 +697,6 @@ fn format_parentheses_node(
         ps.at_offset(parentheses_node.location().end_offset());
     }
     ps.emit_close_paren();
-
-    if ps.at_start_of_line() {
-        ps.emit_newline();
-    }
 }
 
 fn collapse_nodes_to_call_chain(node: prism::Node) -> Vec<prism::Node> {
@@ -768,11 +739,16 @@ fn format_rest_param(
 }
 
 fn format_arguments_node(ps: &mut dyn ConcreteParserState, arguments_node: prism::ArgumentsNode) {
-    format_list_like_thing(
-        ps,
-        arguments_node.arguments(),
-        arguments_node.location().end_offset(),
+    ps.with_start_of_line(
         false,
+        Box::new(|ps| {
+            format_list_like_thing(
+                ps,
+                arguments_node.arguments(),
+                arguments_node.location().end_offset(),
+                false,
+            );
+        }),
     );
 }
 
@@ -780,10 +756,6 @@ fn format_keyword_hash_node(
     ps: &mut dyn ConcreteParserState,
     keyword_hash_node: prism::KeywordHashNode,
 ) {
-    if ps.at_start_of_line() {
-        ps.emit_indent();
-    }
-
     let all_symbol_keys = keyword_hash_node
         .elements()
         .iter()
@@ -807,10 +779,6 @@ fn format_keyword_hash_node(
             );
         }),
     );
-
-    if ps.at_start_of_line() {
-        ps.emit_newline();
-    }
 }
 
 fn format_keyword_rest_parameter_node(
@@ -854,29 +822,17 @@ fn format_local_variable_read_node(
     ps: &mut dyn ConcreteParserState,
     local_variable_read_node: prism::LocalVariableReadNode,
 ) {
-    if ps.at_start_of_line() {
-        ps.emit_indent();
-    }
-
     ps.at_offset(local_variable_read_node.location().start_offset());
 
     let name = const_to_string(local_variable_read_node.name());
     ps.bind_variable(name.clone());
     ps.emit_ident(name);
-
-    if ps.at_start_of_line() {
-        ps.emit_newline();
-    }
 }
 
 fn format_local_variable_write_node(
     ps: &mut dyn ConcreteParserState,
     local_variable_write_node: prism::LocalVariableWriteNode,
 ) {
-    if ps.at_start_of_line() {
-        ps.emit_indent();
-    }
-
     ps.at_offset(local_variable_write_node.location().start_offset());
 
     let name = const_to_string(local_variable_write_node.name());
@@ -889,10 +845,6 @@ fn format_local_variable_write_node(
         false,
         Box::new(|ps| format_node(ps, local_variable_write_node.value())),
     );
-
-    if ps.at_start_of_line() {
-        ps.emit_newline();
-    }
 }
 
 fn format_splat_node(ps: &mut dyn ConcreteParserState, splat_node: prism::SplatNode) {
@@ -910,76 +862,40 @@ fn format_splat_node(ps: &mut dyn ConcreteParserState, splat_node: prism::SplatN
 }
 
 fn format_ident(ps: &mut dyn ConcreteParserState, ident: String, offset: usize) {
-    if ps.at_start_of_line() {
-        ps.emit_indent();
-    }
-
     handle_string_at_offset(ps, ident, offset);
-
-    if ps.at_start_of_line() {
-        ps.emit_newline();
-    }
 }
 
 fn format_integer_node(ps: &mut dyn ConcreteParserState, integer_node: prism::IntegerNode) {
-    if ps.at_start_of_line() {
-        ps.emit_indent();
-    }
-
     handle_string_at_offset(
         ps,
         loc_to_string(integer_node.location()),
         integer_node.location().start_offset(),
     );
-
-    if ps.at_start_of_line() {
-        ps.emit_newline();
-    }
 }
 
 fn format_float_node(ps: &mut dyn ConcreteParserState, float_node: prism::FloatNode) {
-    if ps.at_start_of_line() {
-        ps.emit_indent();
-    }
-
     handle_string_at_offset(
         ps,
         loc_to_string(float_node.location()),
         float_node.location().start_offset(),
     );
-
-    if ps.at_start_of_line() {
-        ps.emit_newline();
-    }
 }
 
 fn format_constant_read_node(
     ps: &mut dyn ConcreteParserState,
     constant_read_node: prism::ConstantReadNode,
 ) {
-    if ps.at_start_of_line() {
-        ps.emit_indent();
-    }
-
     handle_string_at_offset(
         ps,
         const_to_string(constant_read_node.name()),
         constant_read_node.location().start_offset(),
     );
-
-    if ps.at_start_of_line() {
-        ps.emit_newline();
-    }
 }
 
 fn format_constant_path_node(
     ps: &mut dyn ConcreteParserState,
     constant_path_node: prism::ConstantPathNode,
 ) {
-    if ps.at_start_of_line() {
-        ps.emit_indent();
-    }
-
     ps.with_start_of_line(
         false,
         Box::new(|ps| {
@@ -995,23 +911,11 @@ fn format_constant_path_node(
             );
         }),
     );
-
-    if ps.at_start_of_line() {
-        ps.emit_newline();
-    }
 }
 
 fn format_self_node(ps: &mut dyn ConcreteParserState, self_node: prism::SelfNode) {
-    if ps.at_start_of_line() {
-        ps.emit_indent();
-    }
-
     ps.at_offset(self_node.location().start_offset());
     ps.emit_ident("self".to_string());
-
-    if ps.at_start_of_line() {
-        ps.emit_newline();
-    }
 }
 
 fn handle_string_at_offset(ps: &mut dyn ConcreteParserState, ident: String, offset: usize) {
