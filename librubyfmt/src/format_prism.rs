@@ -143,7 +143,7 @@ pub fn format_node(ps: &mut dyn ConcreteParserState, node: prism::Node) {
         Node::PinnedVariableNode { .. } => todo!(),
         Node::PostExecutionNode { .. } => todo!(),
         Node::PreExecutionNode { .. } => todo!(),
-        Node::ProgramNode { .. } => format_program(ps, node.as_program_node().unwrap()),
+        Node::ProgramNode { .. } => format_program(ps, node.as_program_node().unwrap(), None),
         Node::RangeNode { .. } => todo!(),
         Node::RationalNode { .. } => todo!(),
         Node::RedoNode { .. } => todo!(),
@@ -182,7 +182,11 @@ pub fn format_node(ps: &mut dyn ConcreteParserState, node: prism::Node) {
     }
 }
 
-fn format_program(ps: &mut dyn ConcreteParserState, program_node: prism::ProgramNode) {
+pub fn format_program(
+    ps: &mut dyn ConcreteParserState,
+    program_node: prism::ProgramNode,
+    data_loc: Option<prism::Location>,
+) {
     ps.with_start_of_line(
         true,
         Box::new(|ps| {
@@ -191,6 +195,10 @@ fn format_program(ps: &mut dyn ConcreteParserState, program_node: prism::Program
     );
     ps.on_line(10000000000);
     ps.shift_comments();
+
+    if let Some(data) = data_loc {
+        ps.emit_data(&loc_to_string(data));
+    }
 }
 
 fn format_statements(ps: &mut dyn ConcreteParserState, statements_node: prism::StatementsNode) {

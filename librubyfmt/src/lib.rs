@@ -98,11 +98,14 @@ pub fn format_buffer(buf: &str, use_prism: bool) -> Result<String, RichFormatErr
         if parse_result.errors().next().is_some() {
             return Err(RichFormatError::SyntaxError);
         }
+        let end_data = parse_result.data_loc();
+
         toplevel_format_program_with_prism(
             &mut output,
             parse_result.node(),
             parse_result.comments(),
             buf.as_bytes(),
+            end_data,
         )?;
     } else {
         let (tree, file_comments, end_data) = run_parser_on(buf)?;
@@ -234,11 +237,12 @@ pub fn toplevel_format_program_with_prism<W: Write>(
     tree: ruby_prism::Node,
     comments: ruby_prism::Comments,
     source: &[u8],
+    data: Option<ruby_prism::Location>,
 ) -> Result<(), RichFormatError> {
     let mut ps = BaseParserState::new(FileComments::from_prism_comments(comments, source));
     ps.flush_start_of_file_comments();
 
-    format_prism::format_node(&mut ps, tree);
+    format_prism::format_program(&mut ps, tree.as_program_node().unwrap(), data);
 
     ps.write(writer).map_err(RichFormatError::IOError)?;
     writer.flush().map_err(RichFormatError::IOError)?;
