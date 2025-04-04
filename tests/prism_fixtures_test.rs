@@ -198,10 +198,10 @@ fixture!(test_small_blockarg, "small/blockarg");
 //     test_small_const_path_field_assignment,
 //     "small/const_path_field_assignment"
 // );
-// fixture!(
-//     test_small_const_path_ref_class_definition,
-//     "small/const_path_ref_class_definition"
-// );
+fixture!(
+    test_small_const_path_ref_class_definition,
+    "small/const_path_ref_class_definition"
+);
 // fixture!(test_small_curly_line_breaking, "small/curly_line_breaking");
 // fixture!(test_small_cursed_call_01, "small/cursed_call_01");
 // fixture!(test_small_cvar, "small/cvar");
