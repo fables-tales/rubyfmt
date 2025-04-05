@@ -141,7 +141,7 @@ pub fn format_node(ps: &mut dyn ConcreteParserState, node: prism::Node) {
         Node::MatchRequiredNode { .. } => todo!(),
         Node::MatchWriteNode { .. } => todo!(),
         Node::MissingNode { .. } => todo!(),
-        Node::ModuleNode { .. } => todo!(),
+        Node::ModuleNode { .. } => format_module_node(ps, node.as_module_node().unwrap()),
         Node::MultiTargetNode { .. } => todo!(),
         Node::MultiWriteNode { .. } => todo!(),
         Node::NextNode { .. } => todo!(),
@@ -260,6 +260,34 @@ fn format_class_node(ps: &mut dyn ConcreteParserState, class_node: prism::ClassN
             true,
             Box::new(|ps| {
                 if let Some(body) = class_node.body() {
+                    format_node(ps, body);
+                }
+            }),
+        )
+    }));
+
+    ps.with_start_of_line(
+        true,
+        Box::new(|ps| {
+            ps.emit_end();
+        }),
+    );
+}
+
+fn format_module_node(ps: &mut dyn ConcreteParserState, module_node: prism::ModuleNode) {
+    ps.emit_module_keyword();
+    ps.emit_space();
+    ps.with_start_of_line(
+        false,
+        Box::new(|ps| format_node(ps, module_node.constant_path())),
+    );
+    ps.emit_newline();
+
+    ps.new_block(Box::new(|ps| {
+        ps.with_start_of_line(
+            true,
+            Box::new(|ps| {
+                if let Some(body) = module_node.body() {
                     format_node(ps, body);
                 }
             }),
