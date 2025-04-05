@@ -685,6 +685,48 @@ fn format_block_node(ps: &mut dyn ConcreteParserState, block_node: prism::BlockN
             }),
         );
     } else {
+        ps.inline_breakable_of(
+            BreakableDelims::for_brace_block(),
+            Box::new(|ps| {
+                if let Some(parameters) = block_node.parameters() {
+                    format_node(ps, parameters);
+                }
+
+                if let Some(body) = block_node.body() {
+                    let has_multiple_statements = body
+                        .as_statements_node()
+                        .map(|statements_node| statements_node.body().iter().count() > 1)
+                        .unwrap_or(false);
+                    if has_multiple_statements {
+                        ps.emit_newline();
+                        ps.with_start_of_line(
+                            true,
+                            Box::new(|ps| {
+                                format_node(ps, body);
+                            }),
+                        );
+                    } else {
+                        ps.with_start_of_line(
+                            false,
+                            Box::new(|ps| {
+                                if let Some(node) =
+                                    body.as_statements_node().unwrap().body().iter().next()
+                                {
+                                    ps.emit_soft_newline();
+                                    ps.emit_soft_indent();
+                                    format_node(ps, node);
+                                    ps.emit_soft_newline();
+                                }
+                            }),
+                        );
+                    }
+                }
+
+                // `inline_breakable_of` doesn't handle the indentation for the closing delimeter for us.
+                ps.dedent(Box::new(|ps| ps.emit_soft_indent()));
+                ps.wind_dumping_comments_until_offset(block_node.location().end_offset());
+            }),
+        );
     }
 }
 
