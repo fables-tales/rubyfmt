@@ -34,11 +34,8 @@ jobs:
       matrix:
         include:
           - os: ubuntu-22.04
-            target: native
           - os: macos-latest
-            target: native
-          - os: ubuntu-22.04
-            target: aarch64-unknown-linux-gnu
+          - os: ubuntu-22.04-arm
     steps:
       - uses: actions/checkout@v2
         with:
@@ -61,11 +58,9 @@ jobs:
           brew install automake bison
           echo "/usr/local/opt/bison/bin:$PATH" >> $GITHUB_PATH
       - run: ./script/make_release
-        env:
-          TARGET: ${{ matrix.target }}
       - uses: actions/upload-artifact@v4
         with:
-          name: rubyfmt-release-artifact-${{ matrix.os }}-${{ matrix.target }}
+          name: rubyfmt-release-artifact-${{ matrix.os }}
           path: rubyfmt-*.tar.gz
   source-release:
     runs-on: macos-latest
@@ -98,13 +93,13 @@ jobs:
           name: rubyfmt-source-release
       - uses: actions/download-artifact@v4
         with:
-          name: rubyfmt-release-artifact-ubuntu-22.04-aarch64-unknown-linux-gnu
+          name: rubyfmt-release-artifact-ubuntu-22.04-arm
       - uses: actions/download-artifact@v4
         with:
-          name: rubyfmt-release-artifact-ubuntu-22.04-native
+          name: rubyfmt-release-artifact-ubuntu-22.04
       - uses: actions/download-artifact@v4
         with:
-          name: rubyfmt-release-artifact-macos-latest-native
+          name: rubyfmt-release-artifact-macos-latest
       - name: Upload Release
         uses: softprops/action-gh-release@v1
         with:

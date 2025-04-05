@@ -3,7 +3,7 @@ set -euxo pipefail
 
 # if darwin, add PATH="/usr/local/opt/bison/bin:$PATH"
 if [[ $OSTYPE == "darwin"* ]]; then
-    export PATH="/opt/homebrew/opt/bison/bin:$PATH"
+  export PATH="/opt/homebrew/opt/bison/bin:$PATH"
 fi
 bison --version
 
@@ -15,45 +15,12 @@ rm -rf "${RELEASE_DIR}"
 
 mkdir -p "${RELEASE_DIR}"
 
-target="${TARGET:-native}"
+cargo build
+cargo build --release
 
-case "$target" in
-  native)
-    cargo build
-    cargo build --release
-
-    release_tarball_os="$(uname -s)"
-    release_tarball_arch="$(uname -m)"
-    cargo_target_dir_prefix=""
-    ;;
-  aarch64-unknown-linux-gnu)
-    sudo apt-get update
-    sudo apt-get install -y gcc-aarch64-linux-gnu libc6-dev-arm64-cross
-
-    env BINDGEN_EXTRA_CLANG_ARGS_aarch64-unknown-linux-gnu="--sysroot=/usr/aarch64-linux-gnu" \
-      CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc \
-      CC_aarch64_unknown_linux_gnu=aarch64-linux-gnu-gcc \
-      TARGET_CC=aarch64-linux-gnu-gcc \
-      TARGET_AR=aarch64-linux-gnu-ar \
-      cargo build --target aarch64-unknown-linux-gnu
-
-    env BINDGEN_EXTRA_CLANG_ARGS_aarch64-unknown-linux-gnu="--sysroot=/usr/aarch64-linux-gnu" \
-      CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc \
-      CC_aarch64_unknown_linux_gnu=aarch64-linux-gnu-gcc \
-      TARGET_CC=aarch64-linux-gnu-gcc \
-      TARGET_AR=aarch64-linux-gnu-ar \
-      cargo build --release --target aarch64-unknown-linux-gnu
-
-    cargo_target_dir_prefix="aarch64-unknown-linux-gnu/"
-    # This is kind of a hack, since we're assuming we're on a Linux host.
-    release_tarball_os="Linux"
-    release_tarball_arch="aarch64"
-    ;;
-  *)
-    echo "Unknown cross-compilation target $target"
-    exit 1
-    ;;
-esac
+release_tarball_os="$(uname -s)"
+release_tarball_arch="$(uname -m)"
+cargo_target_dir_prefix=""
 
 cargo_dir="target/${cargo_target_dir_prefix}"
 cp "${cargo_dir}release/rubyfmt-main" "${RELEASE_DIR}/rubyfmt"
@@ -63,16 +30,10 @@ pwd
 cp RELEASE_README.md "${RELEASE_DIR}/RELEASE_README"
 
 # check the binary
-case "$target" in
-  native)
-    RES=$(echo 'a(1)' | "${RELEASE_DIR}/rubyfmt")
-    if [ "$RES" != "a(1)" ]; then
-      echo "formatting failed"
-      exit 1
-    fi
-    ;;
-  *)
-    ;;
-esac
+RES=$(echo 'a(1)' | "${RELEASE_DIR}/rubyfmt")
+if [ "$RES" != "a(1)" ]; then
+  echo "formatting failed"
+  exit 1
+fi
 
 tar -cvz -f "rubyfmt-${TAG}-${release_tarball_os}-${release_tarball_arch}.tar.gz" "${RELEASE_DIR}"

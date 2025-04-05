@@ -53,13 +53,9 @@ jobs:
       matrix:
         include:
           - os: ubuntu-latest
-            target: native
           - os: ubuntu-22.04
-            target: native
           - os: macos-latest
-            target: native
-          - os: ubuntu-22.04
-            target: aarch64-unknown-linux-gnu
+          - os: ubuntu-22.04-arm
     steps:
     - uses: actions/checkout@v2
       with:
@@ -81,17 +77,15 @@ jobs:
         path: |
           ~/.cargo/registry
           ~/.cargo/git
-        key: ${{ runner.os }}-${{ matrix.target }}-cargo-2-${{ hashFiles('**/Cargo.lock') }}
+        key: ${{ runner.os }}-cargo-2-${{ hashFiles('**/Cargo.lock') }}
     - if: runner.os == 'macOS'
       run: |
         brew install automake bison
         brew link bison --force
         echo "/usr/local/opt/bison/bin:$PATH" >> $GITHUB_PATH
     - run: ./script/test.sh
-      env:
-        TARGET: ${{ matrix.target }}
     - uses: actions/upload-artifact@v4
       with:
-        name: rubyfmt-artifact-${{ matrix.os }}-${{ matrix.target }}
-        path: target/${{ matrix.target == 'native' && 'release' || format('{0}/release', matrix.target) }}/rubyfmt-main
+        name: rubyfmt-artifact-${{ matrix.os }}
+        path: target/release/rubyfmt-main
 
