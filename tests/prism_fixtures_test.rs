@@ -202,7 +202,7 @@ fixture!(
     test_small_const_path_ref_class_definition,
     "small/const_path_ref_class_definition"
 );
-// fixture!(test_small_curly_line_breaking, "small/curly_line_breaking");
+fixture!(test_small_curly_line_breaking, "small/curly_line_breaking");
 // fixture!(test_small_cursed_call_01, "small/cursed_call_01");
 // fixture!(test_small_cvar, "small/cvar");
 fixture!(test_small_cvar_symbol, "small/cvar_symbol");
@@ -229,7 +229,7 @@ fixture!(test_small_defs_kw, "small/defs_kw");
 // );
 // fixture!(test_small_empty_arg_paren, "small/empty_arg_paren");
 // fixture!(test_small_empty_array, "small/empty_array");
-// fixture!(test_small_empty_block, "small/empty_block");
+fixture!(test_small_empty_block, "small/empty_block");
 // fixture!(test_small_empty_comments, "small/empty_comments");
 // fixture!(test_small_empty_heredocs, "small/empty_heredocs");
 // fixture!(
@@ -318,7 +318,7 @@ fixture!(test_small_long_blockvar, "small/long_blockvar");
 // fixture!(test_small_many_opassigns, "small/many_opassigns");
 // fixture!(test_small_many_splats, "small/many_splats");
 // fixture!(test_small_many_weird_args, "small/many_weird_args");
-// fixture!(test_small_map_curly, "small/map_curly");
+fixture!(test_small_map_curly, "small/map_curly");
 // fixture!(test_small_massign, "small/massign");
 // fixture!(test_small_massign_omg, "small/massign_omg");
 // fixture!(test_small_memoist, "small/memoist");
@@ -431,7 +431,7 @@ fixture!(
 );
 // fixture!(test_small_procs, "small/procs");
 // fixture!(test_small_quoted_heredoc, "small/quoted_heredoc");
-// fixture!(test_small_raise_star, "small/raise_star");
+fixture!(test_small_raise_star, "small/raise_star");
 // fixture!(test_small_rationals, "small/rationals");
 // fixture!(test_small_redo, "small/redo");
 // fixture!(test_small_regexp_literal, "small/regexp_literal");
