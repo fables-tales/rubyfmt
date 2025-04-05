@@ -154,22 +154,6 @@ fn run_configure(ruby_checkout_path: &Path) -> Output {
 
     command.arg("--without-gmp").arg("--disable-jit-support");
 
-    // This is gross, because it's very limited, but it is the simplest
-    // thing we can do, and calling other build systems inside build systems
-    // is destined to be gross anyway.
-    #[cfg(all(target_arch = "x86_64", target_os = "linux"))]
-    if env::var("CARGO_CFG_TARGET_ARCH")
-        .map(|v| v == "aarch64")
-        .unwrap_or(false)
-    {
-        command
-            .arg("--target=aarch64-unknown-linux-gnu")
-            .arg("--host=x86_64")
-            .env("CC", "aarch64-linux-gnu-gcc")
-            .env("AR", "aarch64-linux-gnu-ar")
-            .env("RANLIB", "aarch64-linux-gnu-ranlib");
-    }
-
     let o = command.current_dir(ruby_checkout_path).status()?;
     check_process_success("./configure", o)
 }
