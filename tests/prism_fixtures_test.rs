@@ -48,7 +48,7 @@ fixture!(
 // fixture!(test_small_alias_bare_kw, "small/alias_bare_kw");
 // fixture!(test_small_alias_equal, "small/alias_equal");
 // fixture!(test_small_alias_string_symbol, "small/alias_string_symbol");
-// fixture!(test_small_all_method_blocks, "small/all_method_blocks");
+fixture!(test_small_all_method_blocks, "small/all_method_blocks");
 // fixture!(test_small_and_or, "small/and_or");
 // fixture!(test_small_anonymous_blockarg, "small/anonymous_blockarg");
 // fixture!(test_small_aref_field, "small/aref_field");
@@ -241,7 +241,7 @@ fixture!(test_small_defs_kw, "small/defs_kw");
 //     "small/empty_string_literal"
 // );
 // fixture!(test_small_end_block, "small/end_block");
-// fixture!(test_small_end_data, "small/end_data");
+fixture!(test_small_end_data, "small/end_data");
 fixture!(
     test_small_end_of_file_comments,
     "small/end_of_file_comments"
@@ -322,10 +322,10 @@ fixture!(test_small_long_blockvar, "small/long_blockvar");
 // fixture!(test_small_massign, "small/massign");
 // fixture!(test_small_massign_omg, "small/massign_omg");
 // fixture!(test_small_memoist, "small/memoist");
-// fixture!(
-//     test_small_method_add_block_command_call,
-//     "small/method_add_block_command_call"
-// );
+fixture!(
+    test_small_method_add_block_command_call,
+    "small/method_add_block_command_call"
+);
 // fixture!(test_small_method_annotation, "small/method_annotation");
 fixture!(
     test_small_method_call_with_trailing_comma,
@@ -335,7 +335,7 @@ fixture!(
 // fixture!(test_small_missing_parens, "small/missing_parens");
 // fixture!(test_small_mlhs_params, "small/mlhs_params");
 // fixture!(test_small_mlhs_paren, "small/mlhs_paren");
-// fixture!(test_small_more_breaks, "small/more_breaks");
+fixture!(test_small_more_breaks, "small/more_breaks");
 // fixture!(test_small_more_methods, "small/more_methods");
 // fixture!(test_small_mrhs_add_star_2, "small/mrhs_add_star_2");
 // fixture!(test_small_mrhs_add_star, "small/mrhs_add_star");
@@ -355,10 +355,10 @@ fixture!(
 //     test_small_multiline_chain_in_block,
 //     "small/multiline_chain_in_block"
 // );
-// fixture!(
-//     test_small_multiline_chained_call,
-//     "small/multiline_chained_call"
-// );
+fixture!(
+    test_small_multiline_chained_call,
+    "small/multiline_chained_call"
+);
 // fixture!(test_small_multiline_defs, "small/multiline_defs");
 // fixture!(
 //     test_small_multiline_method_call_with_block,
@@ -489,10 +489,10 @@ fixture!(
     "small/start_of_file_comments"
 );
 // fixture!(test_small_static_call, "small/static_call");
-// fixture!(
-//     test_small_stmt_followed_by_do_block,
-//     "small/stmt_followed_by_do_block"
-// );
+fixture!(
+    test_small_stmt_followed_by_do_block,
+    "small/stmt_followed_by_do_block"
+);
 // fixture!(test_small_string_concat, "small/string_concat");
 // fixture!(
 //     test_small_string_concat_indent,
@@ -539,7 +539,7 @@ fixture!(
 //     test_small_super_with_trailing_comma,
 //     "small/super_with_trailing_comma"
 // );
-// fixture!(test_small_symbol_arg, "small/symbol_arg");
+fixture!(test_small_symbol_arg, "small/symbol_arg");
 fixture!(test_small_symbol_op, "small/symbol_op");
 // fixture!(test_small_ternary, "small/ternary");
 // fixture!(test_small_to_proc_operator, "small/to_proc_operator");
