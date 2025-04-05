@@ -308,7 +308,7 @@ fixture!(test_small_kwargs_multiline, "small/kwargs_multiline");
 //     "small/list_like_things_with_comments"
 // );
 // fixture!(test_small_literals_newlines, "small/literals_newlines");
-// fixture!(test_small_long_blockvar, "small/long_blockvar");
+fixture!(test_small_long_blockvar, "small/long_blockvar");
 // fixture!(
 //     test_small_long_line_with_indentation,
 //     "small/long_line_with_indentation"

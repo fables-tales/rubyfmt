@@ -34,10 +34,14 @@ pub fn format_node(ps: &mut dyn ConcreteParserState, node: prism::Node) {
         Node::BackReferenceReadNode { .. } => todo!(),
         Node::BeginNode { .. } => todo!(),
         Node::BlockArgumentNode { .. } => todo!(),
-        Node::BlockLocalVariableNode { .. } => todo!(),
-        Node::BlockNode { .. } => todo!(),
+        Node::BlockLocalVariableNode { .. } => {
+            format_block_local_variable_node(ps, node.as_block_local_variable_node().unwrap())
+        }
+        Node::BlockNode { .. } => format_block_node(ps, node.as_block_node().unwrap()),
         Node::BlockParameterNode { .. } => todo!(),
-        Node::BlockParametersNode { .. } => todo!(),
+        Node::BlockParametersNode { .. } => {
+            format_block_parameters_node(ps, node.as_block_parameters_node().unwrap())
+        }
         Node::BreakNode { .. } => todo!(),
         Node::CallAndWriteNode { .. } => todo!(),
         Node::CallNode { .. } => format_call_node(ps, node.as_call_node().unwrap(), false),
@@ -650,6 +654,79 @@ fn format_assoc_node(ps: &mut dyn ConcreteParserState, assoc_node: prism::AssocN
             ps.emit_space();
             format_node(ps, assoc_node.value());
         }),
+    );
+}
+
+fn format_block_node(ps: &mut dyn ConcreteParserState, block_node: prism::BlockNode) {
+    if &loc_to_string(block_node.opening_loc()) == "do" {
+        ps.new_block(Box::new(|ps| {
+            ps.emit_do_keyword();
+            if let Some(block_parameters) = block_node.parameters() {
+                format_node(ps, block_parameters);
+            }
+
+            if let Some(body) = block_node.body() {
+                ps.emit_newline();
+                ps.with_start_of_line(
+                    true,
+                    Box::new(|ps| {
+                        format_node(ps, body);
+                    }),
+                );
+            }
+        }));
+
+        ps.with_start_of_line(
+            true,
+            Box::new(|ps| {
+                ps.wind_dumping_comments_until_offset(block_node.location().end_offset());
+                ps.emit_end();
+                ps.shift_comments();
+            }),
+        );
+    } else {
+    }
+}
+
+fn format_block_parameters_node(
+    ps: &mut dyn ConcreteParserState,
+    block_parameters_node: prism::BlockParametersNode,
+) {
+    ps.breakable_of(
+        BreakableDelims::for_block_params(),
+        Box::new(|ps| {
+            let has_locals = !node_list_is_empty(&block_parameters_node.locals());
+
+            if let Some(parameters) = block_parameters_node.parameters() {
+                format_parameters_node(ps, parameters);
+            }
+            if has_locals {
+                ps.emit_ident(";".to_string());
+                ps.emit_space();
+                ps.with_start_of_line(
+                    false,
+                    Box::new(|ps| {
+                        format_list_like_thing(
+                            ps,
+                            block_parameters_node.locals(),
+                            block_parameters_node.location().end_offset(),
+                            false,
+                        );
+                    }),
+                );
+            }
+        }),
+    );
+}
+
+fn format_block_local_variable_node(
+    ps: &mut dyn ConcreteParserState,
+    block_local_variable_node: prism::BlockLocalVariableNode,
+) {
+    handle_string_at_offset(
+        ps,
+        const_to_string(block_local_variable_node.name()),
+        block_local_variable_node.location().start_offset(),
     );
 }
 
