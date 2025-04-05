@@ -11,6 +11,8 @@ use crate::{
 
 pub fn format_node(ps: &mut dyn ConcreteParserState, node: prism::Node) {
     use prism::Node;
+
+    ps.at_offset(node.location().start_offset());
     // StatementsNode is the only real "wrapper" node, meaning it purely contains
     // other statements which themselves would be at the start of a line.
     // We just ignore it here -- the alternative would be callers might need to have
@@ -32,10 +34,14 @@ pub fn format_node(ps: &mut dyn ConcreteParserState, node: prism::Node) {
         Node::BackReferenceReadNode { .. } => todo!(),
         Node::BeginNode { .. } => todo!(),
         Node::BlockArgumentNode { .. } => todo!(),
-        Node::BlockLocalVariableNode { .. } => todo!(),
-        Node::BlockNode { .. } => todo!(),
+        Node::BlockLocalVariableNode { .. } => {
+            format_block_local_variable_node(ps, node.as_block_local_variable_node().unwrap())
+        }
+        Node::BlockNode { .. } => format_block_node(ps, node.as_block_node().unwrap()),
         Node::BlockParameterNode { .. } => todo!(),
-        Node::BlockParametersNode { .. } => todo!(),
+        Node::BlockParametersNode { .. } => {
+            format_block_parameters_node(ps, node.as_block_parameters_node().unwrap())
+        }
         Node::BreakNode { .. } => todo!(),
         Node::CallAndWriteNode { .. } => todo!(),
         Node::CallNode { .. } => format_call_node(ps, node.as_call_node().unwrap(), false),
@@ -135,7 +141,7 @@ pub fn format_node(ps: &mut dyn ConcreteParserState, node: prism::Node) {
         Node::MatchRequiredNode { .. } => todo!(),
         Node::MatchWriteNode { .. } => todo!(),
         Node::MissingNode { .. } => todo!(),
-        Node::ModuleNode { .. } => todo!(),
+        Node::ModuleNode { .. } => format_module_node(ps, node.as_module_node().unwrap()),
         Node::MultiTargetNode { .. } => todo!(),
         Node::MultiWriteNode { .. } => todo!(),
         Node::NextNode { .. } => todo!(),
@@ -192,6 +198,7 @@ pub fn format_node(ps: &mut dyn ConcreteParserState, node: prism::Node) {
         Node::YieldNode { .. } => todo!(),
     }
 
+    ps.at_offset(node.location().end_offset());
     if ps.at_start_of_line() && !matches!(node, Node::StatementsNode { .. }) {
         ps.emit_newline();
     }
@@ -229,8 +236,6 @@ fn format_statements(ps: &mut dyn ConcreteParserState, statements_node: prism::S
 }
 
 fn format_class_node(ps: &mut dyn ConcreteParserState, class_node: prism::ClassNode) {
-    ps.at_offset(class_node.location().start_offset());
-
     ps.emit_class_keyword();
     ps.emit_space();
     ps.with_start_of_line(
@@ -239,8 +244,6 @@ fn format_class_node(ps: &mut dyn ConcreteParserState, class_node: prism::ClassN
     );
 
     if let Some(superclass) = class_node.superclass() {
-        ps.at_offset(superclass.location().start_offset());
-
         ps.emit_ident("<".to_string());
         ps.emit_space();
         ps.with_start_of_line(
@@ -271,9 +274,35 @@ fn format_class_node(ps: &mut dyn ConcreteParserState, class_node: prism::ClassN
     );
 }
 
-fn format_def_node(ps: &mut dyn ConcreteParserState, def_node: prism::DefNode) {
-    ps.at_offset(def_node.def_keyword_loc().start_offset());
+fn format_module_node(ps: &mut dyn ConcreteParserState, module_node: prism::ModuleNode) {
+    ps.emit_module_keyword();
+    ps.emit_space();
+    ps.with_start_of_line(
+        false,
+        Box::new(|ps| format_node(ps, module_node.constant_path())),
+    );
+    ps.emit_newline();
 
+    ps.new_block(Box::new(|ps| {
+        ps.with_start_of_line(
+            true,
+            Box::new(|ps| {
+                if let Some(body) = module_node.body() {
+                    format_node(ps, body);
+                }
+            }),
+        )
+    }));
+
+    ps.with_start_of_line(
+        true,
+        Box::new(|ps| {
+            ps.emit_end();
+        }),
+    );
+}
+
+fn format_def_node(ps: &mut dyn ConcreteParserState, def_node: prism::DefNode) {
     ps.emit_keyword("def".to_string());
     ps.emit_space();
 
@@ -486,8 +515,6 @@ fn format_call_node(
     call_node: prism::CallNode,
     skip_receiver: bool,
 ) {
-    ps.at_offset(call_node.location().start_offset());
-
     if skip_receiver || call_node.receiver().is_none() {
         handle_string_at_offset(
             ps,
@@ -658,9 +685,122 @@ fn format_assoc_node(ps: &mut dyn ConcreteParserState, assoc_node: prism::AssocN
     );
 }
 
-fn format_array_node(ps: &mut dyn ConcreteParserState, array_node: prism::ArrayNode) {
-    ps.at_offset(array_node.location().start_offset());
+fn format_block_node(ps: &mut dyn ConcreteParserState, block_node: prism::BlockNode) {
+    if &loc_to_string(block_node.opening_loc()) == "do" {
+        ps.new_block(Box::new(|ps| {
+            ps.emit_do_keyword();
+            if let Some(block_parameters) = block_node.parameters() {
+                format_node(ps, block_parameters);
+            }
 
+            if let Some(body) = block_node.body() {
+                ps.emit_newline();
+                ps.with_start_of_line(
+                    true,
+                    Box::new(|ps| {
+                        format_node(ps, body);
+                    }),
+                );
+            }
+        }));
+
+        ps.with_start_of_line(
+            true,
+            Box::new(|ps| {
+                ps.wind_dumping_comments_until_offset(block_node.location().end_offset());
+                ps.emit_end();
+                ps.shift_comments();
+            }),
+        );
+    } else {
+        ps.inline_breakable_of(
+            BreakableDelims::for_brace_block(),
+            Box::new(|ps| {
+                if let Some(parameters) = block_node.parameters() {
+                    format_node(ps, parameters);
+                }
+
+                if let Some(body) = block_node.body() {
+                    let has_multiple_statements = body
+                        .as_statements_node()
+                        .map(|statements_node| statements_node.body().iter().count() > 1)
+                        .unwrap_or(false);
+                    if has_multiple_statements {
+                        ps.emit_newline();
+                        ps.with_start_of_line(
+                            true,
+                            Box::new(|ps| {
+                                format_node(ps, body);
+                            }),
+                        );
+                    } else {
+                        ps.with_start_of_line(
+                            false,
+                            Box::new(|ps| {
+                                if let Some(node) =
+                                    body.as_statements_node().unwrap().body().iter().next()
+                                {
+                                    ps.emit_soft_newline();
+                                    ps.emit_soft_indent();
+                                    format_node(ps, node);
+                                    ps.emit_soft_newline();
+                                }
+                            }),
+                        );
+                    }
+                }
+
+                // `inline_breakable_of` doesn't handle the indentation for the closing delimeter for us.
+                ps.dedent(Box::new(|ps| ps.emit_soft_indent()));
+                ps.wind_dumping_comments_until_offset(block_node.location().end_offset());
+            }),
+        );
+    }
+}
+
+fn format_block_parameters_node(
+    ps: &mut dyn ConcreteParserState,
+    block_parameters_node: prism::BlockParametersNode,
+) {
+    ps.breakable_of(
+        BreakableDelims::for_block_params(),
+        Box::new(|ps| {
+            let has_locals = !node_list_is_empty(&block_parameters_node.locals());
+
+            if let Some(parameters) = block_parameters_node.parameters() {
+                format_parameters_node(ps, parameters);
+            }
+            if has_locals {
+                ps.emit_ident(";".to_string());
+                ps.emit_space();
+                ps.with_start_of_line(
+                    false,
+                    Box::new(|ps| {
+                        format_list_like_thing(
+                            ps,
+                            block_parameters_node.locals(),
+                            block_parameters_node.location().end_offset(),
+                            false,
+                        );
+                    }),
+                );
+            }
+        }),
+    );
+}
+
+fn format_block_local_variable_node(
+    ps: &mut dyn ConcreteParserState,
+    block_local_variable_node: prism::BlockLocalVariableNode,
+) {
+    handle_string_at_offset(
+        ps,
+        const_to_string(block_local_variable_node.name()),
+        block_local_variable_node.location().start_offset(),
+    );
+}
+
+fn format_array_node(ps: &mut dyn ConcreteParserState, array_node: prism::ArrayNode) {
     ps.with_start_of_line(
         false,
         Box::new(|ps| {
@@ -684,8 +824,6 @@ fn format_parentheses_node(
     ps: &mut dyn ConcreteParserState,
     parentheses_node: prism::ParenthesesNode,
 ) {
-    ps.at_offset(parentheses_node.location().start_offset());
-
     ps.emit_open_paren();
     if let Some(body) = parentheses_node.body() {
         ps.with_start_of_line(
@@ -694,7 +832,6 @@ fn format_parentheses_node(
                 format_node(ps, body);
             }),
         );
-        ps.at_offset(parentheses_node.location().end_offset());
     }
     ps.emit_close_paren();
 }
@@ -785,8 +922,6 @@ fn format_keyword_rest_parameter_node(
     ps: &mut dyn ConcreteParserState,
     keyword_rest_parameter_node: prism::KeywordRestParameterNode,
 ) {
-    ps.at_offset(keyword_rest_parameter_node.location().start_offset());
-
     ps.emit_ident("**".to_string());
     if let Some(constant_id) = keyword_rest_parameter_node.name() {
         let name = const_to_string(constant_id);
@@ -799,8 +934,6 @@ fn format_required_keyword_parameter_node(
     ps: &mut dyn ConcreteParserState,
     required_keyword_parameter_node: prism::RequiredKeywordParameterNode,
 ) {
-    ps.at_offset(required_keyword_parameter_node.location().start_offset());
-
     let name = const_to_string(required_keyword_parameter_node.name());
     ps.bind_variable(name.clone());
     ps.emit_ident(name);
@@ -811,8 +944,6 @@ fn format_required_parameter_node(
     ps: &mut dyn ConcreteParserState,
     required_parameter_node: prism::RequiredParameterNode,
 ) {
-    ps.at_offset(required_parameter_node.location().start_offset());
-
     let name = const_to_string(required_parameter_node.name());
     ps.bind_variable(name.clone());
     ps.emit_ident(name);
@@ -822,8 +953,6 @@ fn format_local_variable_read_node(
     ps: &mut dyn ConcreteParserState,
     local_variable_read_node: prism::LocalVariableReadNode,
 ) {
-    ps.at_offset(local_variable_read_node.location().start_offset());
-
     let name = const_to_string(local_variable_read_node.name());
     ps.bind_variable(name.clone());
     ps.emit_ident(name);
@@ -833,8 +962,6 @@ fn format_local_variable_write_node(
     ps: &mut dyn ConcreteParserState,
     local_variable_write_node: prism::LocalVariableWriteNode,
 ) {
-    ps.at_offset(local_variable_write_node.location().start_offset());
-
     let name = const_to_string(local_variable_write_node.name());
     ps.bind_variable(name.clone());
     ps.emit_ident(name);
@@ -848,8 +975,6 @@ fn format_local_variable_write_node(
 }
 
 fn format_splat_node(ps: &mut dyn ConcreteParserState, splat_node: prism::SplatNode) {
-    ps.at_offset(splat_node.location().start_offset());
-
     ps.emit_ident("*".to_string());
     if let Some(node) = splat_node.expression() {
         ps.with_start_of_line(
@@ -913,8 +1038,7 @@ fn format_constant_path_node(
     );
 }
 
-fn format_self_node(ps: &mut dyn ConcreteParserState, self_node: prism::SelfNode) {
-    ps.at_offset(self_node.location().start_offset());
+fn format_self_node(ps: &mut dyn ConcreteParserState, _self_node: prism::SelfNode) {
     ps.emit_ident("self".to_string());
 }
 
