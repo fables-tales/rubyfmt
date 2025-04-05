@@ -3,6 +3,7 @@ use std::collections::HashSet;
 use crate::delimiters::BreakableDelims;
 use crate::heredoc_string::HeredocKind;
 use crate::parser_state::{BaseParserState, ConcreteParserState, FormattingContext, RenderFunc};
+use crate::render_targets::MultilineHandling;
 use crate::ripper_tree_types::*;
 use crate::types::LineNumber;
 
@@ -2734,7 +2735,7 @@ fn format_call_chain(
     }
 
     ps.breakable_call_chain_of(
-        cc.clone(),
+        MultilineHandling::Ripper(cc.clone()),
         Box::new(|ps| format_call_chain_elements(ps, cc, last_call_use_parens)),
     );
 

@@ -3,7 +3,8 @@ use ruby_prism as prism;
 use crate::{
     delimiters::BreakableDelims,
     format::SpecialCase,
-    parser_state::{ConcreteParserState, FormattingContext, RenderFunc},
+    parser_state::{ConcreteParserState, FormattingContext, HashType, RenderFunc},
+    render_targets::MultilineHandling,
     types::SourceOffset,
     util::{const_to_string, loc_to_string},
 };
@@ -16,9 +17,9 @@ pub fn format_node(ps: &mut dyn ConcreteParserState, node: prism::Node) {
         Node::AlternationPatternNode { .. } => todo!(),
         Node::AndNode { .. } => todo!(),
         Node::ArgumentsNode { .. } => format_arguments_node(ps, node.as_arguments_node().unwrap()),
-        Node::ArrayNode { .. } => todo!(),
+        Node::ArrayNode { .. } => format_array_node(ps, node.as_array_node().unwrap()),
         Node::ArrayPatternNode { .. } => todo!(),
-        Node::AssocNode { .. } => todo!(),
+        Node::AssocNode { .. } => format_assoc_node(ps, node.as_assoc_node().unwrap()),
         Node::AssocSplatNode { .. } => todo!(),
         Node::BackReferenceReadNode { .. } => todo!(),
         Node::BeginNode { .. } => todo!(),
@@ -29,7 +30,7 @@ pub fn format_node(ps: &mut dyn ConcreteParserState, node: prism::Node) {
         Node::BlockParametersNode { .. } => todo!(),
         Node::BreakNode { .. } => todo!(),
         Node::CallAndWriteNode { .. } => todo!(),
-        Node::CallNode { .. } => todo!(),
+        Node::CallNode { .. } => format_call_node(ps, node.as_call_node().unwrap(), false),
         Node::CallOperatorWriteNode { .. } => todo!(),
         Node::CallOrWriteNode { .. } => todo!(),
         Node::CallTargetNode { .. } => todo!(),
@@ -138,7 +139,9 @@ pub fn format_node(ps: &mut dyn ConcreteParserState, node: prism::Node) {
         Node::OptionalParameterNode { .. } => todo!(),
         Node::OrNode { .. } => todo!(),
         Node::ParametersNode { .. } => todo!(),
-        Node::ParenthesesNode { .. } => todo!(),
+        Node::ParenthesesNode { .. } => {
+            format_parentheses_node(ps, node.as_parentheses_node().unwrap())
+        }
         Node::PinnedExpressionNode { .. } => todo!(),
         Node::PinnedVariableNode { .. } => todo!(),
         Node::PostExecutionNode { .. } => todo!(),
@@ -170,7 +173,7 @@ pub fn format_node(ps: &mut dyn ConcreteParserState, node: prism::Node) {
         Node::StatementsNode { .. } => format_statements(ps, node.as_statements_node().unwrap()),
         Node::StringNode { .. } => todo!(),
         Node::SuperNode { .. } => todo!(),
-        Node::SymbolNode { .. } => todo!(),
+        Node::SymbolNode { .. } => format_symbol_node(ps, node.as_symbol_node().unwrap()),
         Node::TrueNode { .. } => todo!(),
         Node::UndefNode { .. } => todo!(),
         Node::UnlessNode { .. } => todo!(),
@@ -193,6 +196,7 @@ pub fn format_program(
             format_statements(ps, program_node.statements());
         }),
     );
+    ps.emit_newline();
     ps.on_line(10000000000);
     ps.shift_comments();
 
@@ -310,7 +314,12 @@ fn format_def_body(
             ps.breakable_of(
                 BreakableDelims::for_method_call(),
                 Box::new(|ps| {
-                    format_parameters_node(ps, parameters_node);
+                    ps.with_start_of_line(
+                        false,
+                        Box::new(|ps| {
+                            format_parameters_node(ps, parameters_node);
+                        }),
+                    );
                 }),
             );
         }
@@ -469,6 +478,269 @@ fn format_block_parameter_node(
     );
 }
 
+fn format_call_node(
+    ps: &mut dyn ConcreteParserState,
+    call_node: prism::CallNode,
+    skip_receiver: bool,
+) {
+    if ps.at_start_of_line() {
+        ps.emit_indent();
+    }
+
+    ps.at_offset(call_node.location().start_offset());
+
+    if skip_receiver || call_node.receiver().is_none() {
+        handle_string_at_offset(
+            ps,
+            const_to_string(call_node.name()),
+            call_node.message_loc().unwrap().start_offset(),
+        );
+        if let Some(arguments) = call_node.arguments() {
+            ps.with_start_of_line(
+                false,
+                Box::new(|ps| {
+                    ps.breakable_of(
+                        BreakableDelims::for_method_call(),
+                        Box::new(|ps| {
+                            format_arguments_node(ps, arguments);
+                        }),
+                    );
+                }),
+            );
+        }
+        if let Some(block) = call_node.block() {
+            ps.emit_space();
+            ps.with_start_of_line(
+                false,
+                Box::new(|ps| {
+                    format_node(ps, block);
+                }),
+            );
+        }
+    } else {
+        ps.with_start_of_line(
+            false,
+            Box::new(|ps| {
+                let mut call_chain_elements = collapse_nodes_to_call_chain(call_node.as_node());
+                ps.breakable_call_chain_of(
+                    MultilineHandling::Prism(call_chain_elements_are_user_multilined(
+                        ps,
+                        call_chain_elements.iter().clone().collect(),
+                    )),
+                    Box::new(|ps| {
+                        // The first node can be *any* expression, whereas following receivers
+                        // must be additional calls -- you cannot insert literals into call chains
+                        let first_expression = call_chain_elements.remove(0);
+                        format_node(ps, first_expression);
+
+                        ps.start_indent_for_call_chain();
+
+                        ps.with_start_of_line(
+                            false,
+                            Box::new(|ps| {
+                                for element in call_chain_elements {
+                                    let element = element.as_call_node().unwrap();
+                                    let call_operator = loc_to_string(
+                                        // `call_operator_loc` is the `.`/`::`/`&.` etc.
+                                        element.call_operator_loc().expect("We're in the middle of the chain, there must be an operator"),
+                                    );
+                                    if call_operator != *"::" {
+                                        ps.emit_collapsing_newline();
+                                        ps.emit_soft_indent();
+                                    }
+                                    ps.emit_ident(call_operator);
+
+                                    ps.at_offset(element.location().start_offset());
+                                    format_call_node(ps, element, true);
+                                }
+                            }),
+                        );
+                        ps.end_indent_for_call_chain();
+                    }),
+                );
+            }),
+        );
+
+        ps.emit_after_call_chain();
+    }
+
+    if ps.at_start_of_line() {
+        ps.emit_newline();
+    }
+}
+
+fn call_chain_elements_are_user_multilined(
+    ps: &dyn ConcreteParserState,
+    call_chain_elements: Vec<&prism::Node>,
+) -> bool {
+    // Making a mutable copy since we may pop some items off later
+    let mut call_chain_elements = call_chain_elements.as_slice();
+
+    if call_chain_elements.len() > 1 {
+        // If the first item in the chain is a multiline expression (like a hash or array),
+        // ignore it when checking line length.
+        let is_literal_expression = !matches!(
+            call_chain_elements.first().unwrap(),
+            prism::Node::CallNode { .. }
+                | prism::Node::ConstantReadNode { .. }
+                | prism::Node::ConstantPathNode { .. }
+        );
+
+        // _However_, don't ignore this if there are comments in the call chain though; this check may
+        // cause it to single-lined, which breaks comment rendering. Specifically, we're checking
+        // for comments in between the receiver expression and the following message, e.g.
+        // ```ruby
+        // [stuff]
+        //   # spooky comment
+        //   .freeze
+        // ```
+        // For cases without the comment, we'd usually put this all on one line, but if we force
+        // it all on one line, this will break the comment insertion logic, and given the comment's
+        // placement, the user probably intended to break this onto multiple lines anyways.
+        let has_comment = ps.has_comment_in_offset_span(
+            call_chain_elements[0].location().end_offset(),
+            call_chain_elements[1]
+                .as_call_node()
+                .unwrap()
+                .message_loc()
+                .unwrap()
+                .start_offset(),
+        );
+        if is_literal_expression && !has_comment {
+            call_chain_elements = &call_chain_elements[1..];
+        }
+    }
+
+    let start_line = ps.get_line_number_for_offset(
+        call_chain_elements
+            .first()
+            .unwrap()
+            .location()
+            .start_offset(),
+    );
+    !call_chain_elements[1..].iter().all(|cce| {
+        start_line
+            == ps.get_line_number_for_offset(
+                cce.as_call_node()
+                    .unwrap()
+                    .call_operator_loc()
+                    .unwrap()
+                    .start_offset(),
+            )
+    })
+}
+
+fn format_symbol_node(ps: &mut dyn ConcreteParserState, symbol_node: prism::SymbolNode) {
+    if ps.at_start_of_line() {
+        ps.emit_indent();
+    }
+
+    if let Some(opening_loc) = symbol_node.opening_loc() {
+        ps.emit_ident(loc_to_string(opening_loc));
+    }
+    if let Some(value_loc) = symbol_node.value_loc() {
+        ps.emit_ident(loc_to_string(value_loc));
+    }
+
+    if ps.at_start_of_line() {
+        ps.emit_newline();
+    }
+}
+
+fn format_assoc_node(ps: &mut dyn ConcreteParserState, assoc_node: prism::AssocNode) {
+    let as_symbol = if let Some(hash_type) = ps.hash_type_from_formatting_context() {
+        matches!(hash_type, HashType::SymbolKey)
+    } else {
+        // `operator_loc` is only present for hash rockets, not for symbol keys
+        assoc_node.operator_loc().is_none()
+    };
+
+    ps.with_start_of_line(
+        false,
+        Box::new(|ps| {
+            format_node(ps, assoc_node.key());
+            if as_symbol {
+                ps.emit_ident(":".to_string());
+            } else {
+                ps.emit_space();
+                ps.emit_ident("=>".to_string());
+            }
+            ps.emit_space();
+            format_node(ps, assoc_node.value());
+        }),
+    );
+}
+
+fn format_array_node(ps: &mut dyn ConcreteParserState, array_node: prism::ArrayNode) {
+    if ps.at_start_of_line() {
+        ps.emit_indent();
+    }
+
+    ps.at_offset(array_node.location().start_offset());
+
+    ps.with_start_of_line(
+        false,
+        Box::new(|ps| {
+            ps.breakable_of(
+                BreakableDelims::for_array(),
+                Box::new(|ps| {
+                    format_list_like_thing(
+                        ps,
+                        array_node.elements(),
+                        array_node.location().end_offset(),
+                        false,
+                    );
+                    ps.wind_dumping_comments_until_offset(array_node.location().end_offset());
+                }),
+            );
+        }),
+    );
+
+    if ps.at_start_of_line() {
+        ps.emit_newline();
+    }
+}
+
+fn format_parentheses_node(
+    ps: &mut dyn ConcreteParserState,
+    parentheses_node: prism::ParenthesesNode,
+) {
+    if ps.at_start_of_line() {
+        ps.emit_indent();
+    }
+
+    ps.at_offset(parentheses_node.location().start_offset());
+
+    ps.emit_open_paren();
+    if let Some(body) = parentheses_node.body() {
+        ps.with_start_of_line(
+            false,
+            Box::new(|ps| {
+                format_node(ps, body);
+            }),
+        );
+        ps.at_offset(parentheses_node.location().end_offset());
+    }
+    ps.emit_close_paren();
+
+    if ps.at_start_of_line() {
+        ps.emit_newline();
+    }
+}
+
+fn collapse_nodes_to_call_chain(node: prism::Node) -> Vec<prism::Node> {
+    let mut call_chain_elements = vec![];
+    let mut maybe_receiver = Some(node);
+    while let Some(receiver) = maybe_receiver {
+        maybe_receiver = receiver
+            .as_call_node()
+            .and_then(|call_node| call_node.receiver());
+        call_chain_elements.insert(0, receiver);
+    }
+
+    call_chain_elements
+}
+
 fn format_rest_param(
     ps: &mut dyn ConcreteParserState,
     rest_param: prism::RestParameterNode,
@@ -512,11 +784,28 @@ fn format_keyword_hash_node(
         ps.emit_indent();
     }
 
-    format_list_like_thing(
-        ps,
-        keyword_hash_node.elements(),
-        keyword_hash_node.location().end_offset(),
-        false,
+    let all_symbol_keys = keyword_hash_node
+        .elements()
+        .iter()
+        .filter_map(|node| node.as_assoc_node())
+        // The operator loc is empty for symbol keys
+        .all(|assoc| assoc.operator_loc().is_none());
+    let hash_type = if all_symbol_keys {
+        HashType::SymbolKey
+    } else {
+        HashType::HashRocket
+    };
+
+    ps.with_formatting_context(
+        FormattingContext::HashType(hash_type),
+        Box::new(|ps| {
+            format_list_like_thing(
+                ps,
+                keyword_hash_node.elements(),
+                keyword_hash_node.location().end_offset(),
+                false,
+            );
+        }),
     );
 
     if ps.at_start_of_line() {
@@ -765,7 +1054,9 @@ fn format_list_like_thing(
                 ps.with_start_of_line(
                     false,
                     Box::new(|ps| {
-                        ps.emit_soft_indent();
+                        if expr.as_assoc_node().is_none() {
+                            ps.emit_soft_indent();
+                        }
                         format_node(ps, expr);
 
                         if idx != args_count - 1 {

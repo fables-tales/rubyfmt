@@ -5,23 +5,28 @@ use tempfile::NamedTempFile;
 
 #[test]
 fn methods_stress_test() {
-    stress_test("ci/methods_stress_test.rb").unwrap()
+    stress_test("ci/methods_stress_test.rb", false).unwrap()
 }
 
 #[test]
 fn arrays_stress_test() {
-    stress_test("ci/array_literals_stress_test.rb").unwrap()
+    stress_test("ci/array_literals_stress_test.rb", false).unwrap()
 }
 
 #[test]
 fn string_literals_stress_test() {
-    stress_test("ci/string_literals_stress_test.rb").unwrap()
+    stress_test("ci/string_literals_stress_test.rb", false).unwrap()
+}
+
+#[test]
+fn methods_prism_stress_test() {
+    stress_test("ci/methods_stress_test.rb", true).unwrap()
 }
 
 /// Test helper for running "stress tests", tests that
 /// execute a ruby script before and after being formatted
 /// to confirm that its behavior/output is the same.
-fn stress_test(path: &str) -> Result<(), ()> {
+fn stress_test(path: &str, prism: bool) -> Result<(), ()> {
     let methods_expected = {
         let output = Command::new("ruby").arg(path).output().unwrap();
         assert!(output.status.success());
@@ -29,11 +34,14 @@ fn stress_test(path: &str) -> Result<(), ()> {
     };
 
     let methods_actual = {
-        let rubyfmt_output = Command::cargo_bin("rubyfmt-main")
-            .unwrap()
-            .arg(path)
-            .output()
-            .unwrap();
+        let mut command = Command::cargo_bin("rubyfmt-main").unwrap();
+        command.arg(path);
+
+        if prism {
+            command.arg("--prism");
+        }
+
+        let rubyfmt_output = command.output().unwrap();
 
         assert!(rubyfmt_output.status.success());
 
