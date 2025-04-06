@@ -23,155 +23,334 @@ pub fn format_node(ps: &mut dyn ConcreteParserState, node: prism::Node) {
     }
 
     match node {
-        Node::AliasGlobalVariableNode { .. } => todo!(),
-        Node::AliasMethodNode { .. } => todo!(),
-        Node::AlternationPatternNode { .. } => todo!(),
-        Node::AndNode { .. } => todo!(),
+        Node::AliasGlobalVariableNode { .. } => {
+            format_alias_global_variable_node(ps, node.as_alias_global_variable_node().unwrap())
+        }
+        Node::AliasMethodNode { .. } => {
+            format_alias_method_node(ps, node.as_alias_method_node().unwrap())
+        }
+        Node::AlternationPatternNode { .. } => {
+            format_alternation_pattern_node(ps, node.as_alternation_pattern_node().unwrap())
+        }
+        Node::AndNode { .. } => format_and_node(ps, node.as_and_node().unwrap()),
         Node::ArgumentsNode { .. } => format_arguments_node(ps, node.as_arguments_node().unwrap()),
         Node::ArrayNode { .. } => format_array_node(ps, node.as_array_node().unwrap()),
-        Node::ArrayPatternNode { .. } => todo!(),
+        Node::ArrayPatternNode { .. } => {
+            format_array_pattern_node(ps, node.as_array_pattern_node().unwrap())
+        }
         Node::AssocNode { .. } => format_assoc_node(ps, node.as_assoc_node().unwrap()),
-        Node::AssocSplatNode { .. } => todo!(),
-        Node::BackReferenceReadNode { .. } => todo!(),
-        Node::BeginNode { .. } => todo!(),
-        Node::BlockArgumentNode { .. } => todo!(),
+        Node::AssocSplatNode { .. } => {
+            format_assoc_splat_node(ps, node.as_assoc_splat_node().unwrap())
+        }
+        Node::BackReferenceReadNode { .. } => {
+            format_back_reference_read_node(ps, node.as_back_reference_read_node().unwrap())
+        }
+        Node::BeginNode { .. } => format_begin_node(ps, node.as_begin_node().unwrap()),
+        Node::BlockArgumentNode { .. } => {
+            format_block_argument_node(ps, node.as_block_argument_node().unwrap())
+        }
         Node::BlockLocalVariableNode { .. } => {
             format_block_local_variable_node(ps, node.as_block_local_variable_node().unwrap())
         }
         Node::BlockNode { .. } => format_block_node(ps, node.as_block_node().unwrap()),
-        Node::BlockParameterNode { .. } => todo!(),
+        Node::BlockParameterNode { .. } => {
+            format_block_parameter_node(ps, node.as_block_parameter_node().unwrap())
+        }
         Node::BlockParametersNode { .. } => {
             format_block_parameters_node(ps, node.as_block_parameters_node().unwrap())
         }
-        Node::BreakNode { .. } => todo!(),
-        Node::CallAndWriteNode { .. } => todo!(),
+        Node::BreakNode { .. } => format_break_node(ps, node.as_break_node().unwrap()),
+        Node::CallAndWriteNode { .. } => {
+            format_call_and_write_node(ps, node.as_call_and_write_node().unwrap())
+        }
         Node::CallNode { .. } => format_call_node(ps, node.as_call_node().unwrap(), false),
-        Node::CallOperatorWriteNode { .. } => todo!(),
-        Node::CallOrWriteNode { .. } => todo!(),
-        Node::CallTargetNode { .. } => todo!(),
-        Node::CapturePatternNode { .. } => todo!(),
-        Node::CaseMatchNode { .. } => todo!(),
-        Node::CaseNode { .. } => todo!(),
+        Node::CallOperatorWriteNode { .. } => {
+            format_call_operator_write_node(ps, node.as_call_operator_write_node().unwrap())
+        }
+        Node::CallOrWriteNode { .. } => {
+            format_call_or_write_node(ps, node.as_call_or_write_node().unwrap())
+        }
+        Node::CallTargetNode { .. } => {
+            format_call_target_node(ps, node.as_call_target_node().unwrap())
+        }
+        Node::CapturePatternNode { .. } => {
+            format_capture_pattern_node(ps, node.as_capture_pattern_node().unwrap())
+        }
+        Node::CaseMatchNode { .. } => {
+            format_case_match_node(ps, node.as_case_match_node().unwrap())
+        }
+        Node::CaseNode { .. } => format_case_node(ps, node.as_case_node().unwrap()),
         Node::ClassNode { .. } => format_class_node(ps, node.as_class_node().unwrap()),
-        Node::ClassVariableAndWriteNode { .. } => todo!(),
-        Node::ClassVariableOperatorWriteNode { .. } => todo!(),
-        Node::ClassVariableOrWriteNode { .. } => todo!(),
-        Node::ClassVariableReadNode { .. } => todo!(),
-        Node::ClassVariableTargetNode { .. } => todo!(),
-        Node::ClassVariableWriteNode { .. } => todo!(),
-        Node::ConstantAndWriteNode { .. } => todo!(),
-        Node::ConstantOperatorWriteNode { .. } => todo!(),
-        Node::ConstantOrWriteNode { .. } => todo!(),
-        Node::ConstantPathAndWriteNode { .. } => todo!(),
+        Node::ClassVariableAndWriteNode { .. } => format_class_variable_and_write_node(
+            ps,
+            node.as_class_variable_and_write_node().unwrap(),
+        ),
+        Node::ClassVariableOperatorWriteNode { .. } => format_class_variable_operator_write_node(
+            ps,
+            node.as_class_variable_operator_write_node().unwrap(),
+        ),
+        Node::ClassVariableOrWriteNode { .. } => {
+            format_class_variable_or_write_node(ps, node.as_class_variable_or_write_node().unwrap())
+        }
+        Node::ClassVariableReadNode { .. } => {
+            format_class_variable_read_node(ps, node.as_class_variable_read_node().unwrap())
+        }
+        Node::ClassVariableTargetNode { .. } => {
+            format_class_variable_target_node(ps, node.as_class_variable_target_node().unwrap())
+        }
+        Node::ClassVariableWriteNode { .. } => {
+            format_class_variable_write_node(ps, node.as_class_variable_write_node().unwrap())
+        }
+        Node::ConstantAndWriteNode { .. } => {
+            format_constant_and_write_node(ps, node.as_constant_and_write_node().unwrap())
+        }
+        Node::ConstantOperatorWriteNode { .. } => {
+            format_constant_operator_write_node(ps, node.as_constant_operator_write_node().unwrap())
+        }
+        Node::ConstantOrWriteNode { .. } => {
+            format_constant_or_write_node(ps, node.as_constant_or_write_node().unwrap())
+        }
+        Node::ConstantPathAndWriteNode { .. } => {
+            format_constant_path_and_write_node(ps, node.as_constant_path_and_write_node().unwrap())
+        }
         Node::ConstantPathNode { .. } => {
             format_constant_path_node(ps, node.as_constant_path_node().unwrap())
         }
-        Node::ConstantPathOperatorWriteNode { .. } => todo!(),
-        Node::ConstantPathOrWriteNode { .. } => todo!(),
-        Node::ConstantPathTargetNode { .. } => todo!(),
-        Node::ConstantPathWriteNode { .. } => todo!(),
+        Node::ConstantPathOperatorWriteNode { .. } => format_constant_path_operator_write_node(
+            ps,
+            node.as_constant_path_operator_write_node().unwrap(),
+        ),
+        Node::ConstantPathOrWriteNode { .. } => {
+            format_constant_path_or_write_node(ps, node.as_constant_path_or_write_node().unwrap())
+        }
+        Node::ConstantPathTargetNode { .. } => {
+            format_constant_path_target_node(ps, node.as_constant_path_target_node().unwrap())
+        }
+        Node::ConstantPathWriteNode { .. } => {
+            format_constant_path_write_node(ps, node.as_constant_path_write_node().unwrap())
+        }
         Node::ConstantReadNode { .. } => {
             format_constant_read_node(ps, node.as_constant_read_node().unwrap())
         }
-        Node::ConstantTargetNode { .. } => todo!(),
-        Node::ConstantWriteNode { .. } => todo!(),
+        Node::ConstantTargetNode { .. } => {
+            format_constant_target_node(ps, node.as_constant_target_node().unwrap())
+        }
+        Node::ConstantWriteNode { .. } => {
+            format_constant_write_node(ps, node.as_constant_write_node().unwrap())
+        }
         Node::DefNode { .. } => format_def_node(ps, node.as_def_node().unwrap()),
-        Node::DefinedNode { .. } => todo!(),
-        Node::ElseNode { .. } => todo!(),
+        Node::DefinedNode { .. } => format_defined_node(ps, node.as_defined_node().unwrap()),
+        Node::ElseNode { .. } => format_else_node(ps, node.as_else_node().unwrap()),
         Node::EmbeddedStatementsNode { .. } => {
             format_embedded_statements_node(ps, node.as_embedded_statements_node().unwrap())
         }
-        Node::EmbeddedVariableNode { .. } => todo!(),
-        Node::EnsureNode { .. } => todo!(),
-        Node::FalseNode { .. } => todo!(),
-        Node::FindPatternNode { .. } => todo!(),
-        Node::FlipFlopNode { .. } => todo!(),
+        Node::EmbeddedVariableNode { .. } => {
+            format_embedded_variable_node(ps, node.as_embedded_variable_node().unwrap())
+        }
+        Node::EnsureNode { .. } => format_ensure_node(ps, node.as_ensure_node().unwrap()),
+        Node::FalseNode { .. } => format_false_node(ps, node.as_false_node().unwrap()),
+        Node::FindPatternNode { .. } => {
+            format_find_pattern_node(ps, node.as_find_pattern_node().unwrap())
+        }
+        Node::FlipFlopNode { .. } => format_flip_flop_node(ps, node.as_flip_flop_node().unwrap()),
         Node::FloatNode { .. } => format_float_node(ps, node.as_float_node().unwrap()),
-        Node::ForNode { .. } => todo!(),
-        Node::ForwardingArgumentsNode { .. } => todo!(),
-        Node::ForwardingParameterNode { .. } => todo!(),
-        Node::ForwardingSuperNode { .. } => todo!(),
-        Node::GlobalVariableAndWriteNode { .. } => todo!(),
-        Node::GlobalVariableOperatorWriteNode { .. } => todo!(),
-        Node::GlobalVariableOrWriteNode { .. } => todo!(),
-        Node::GlobalVariableReadNode { .. } => todo!(),
-        Node::GlobalVariableTargetNode { .. } => todo!(),
-        Node::GlobalVariableWriteNode { .. } => todo!(),
-        Node::HashNode { .. } => todo!(),
-        Node::HashPatternNode { .. } => todo!(),
-        Node::IfNode { .. } => todo!(),
-        Node::ImaginaryNode { .. } => todo!(),
-        Node::ImplicitNode { .. } => todo!(),
-        Node::ImplicitRestNode { .. } => todo!(),
-        Node::InNode { .. } => todo!(),
-        Node::IndexAndWriteNode { .. } => todo!(),
-        Node::IndexOperatorWriteNode { .. } => todo!(),
-        Node::IndexOrWriteNode { .. } => todo!(),
-        Node::IndexTargetNode { .. } => todo!(),
-        Node::InstanceVariableAndWriteNode { .. } => todo!(),
-        Node::InstanceVariableOperatorWriteNode { .. } => todo!(),
-        Node::InstanceVariableOrWriteNode { .. } => todo!(),
-        Node::InstanceVariableReadNode { .. } => todo!(),
-        Node::InstanceVariableTargetNode { .. } => todo!(),
+        Node::ForNode { .. } => format_for_node(ps, node.as_for_node().unwrap()),
+        Node::ForwardingArgumentsNode { .. } => {
+            format_forwarding_arguments_node(ps, node.as_forwarding_arguments_node().unwrap())
+        }
+        Node::ForwardingParameterNode { .. } => {
+            format_forwarding_parameter_node(ps, node.as_forwarding_parameter_node().unwrap())
+        }
+        Node::ForwardingSuperNode { .. } => {
+            format_forwarding_super_node(ps, node.as_forwarding_super_node().unwrap())
+        }
+        Node::GlobalVariableAndWriteNode { .. } => format_global_variable_and_write_node(
+            ps,
+            node.as_global_variable_and_write_node().unwrap(),
+        ),
+        Node::GlobalVariableOperatorWriteNode { .. } => format_global_variable_operator_write_node(
+            ps,
+            node.as_global_variable_operator_write_node().unwrap(),
+        ),
+        Node::GlobalVariableOrWriteNode { .. } => format_global_variable_or_write_node(
+            ps,
+            node.as_global_variable_or_write_node().unwrap(),
+        ),
+        Node::GlobalVariableReadNode { .. } => {
+            format_global_variable_read_node(ps, node.as_global_variable_read_node().unwrap())
+        }
+        Node::GlobalVariableTargetNode { .. } => {
+            format_global_variable_target_node(ps, node.as_global_variable_target_node().unwrap())
+        }
+        Node::GlobalVariableWriteNode { .. } => {
+            format_global_variable_write_node(ps, node.as_global_variable_write_node().unwrap())
+        }
+        Node::HashNode { .. } => format_hash_node(ps, node.as_hash_node().unwrap()),
+        Node::HashPatternNode { .. } => {
+            format_hash_pattern_node(ps, node.as_hash_pattern_node().unwrap())
+        }
+        Node::IfNode { .. } => format_if_node(ps, node.as_if_node().unwrap()),
+        Node::ImaginaryNode { .. } => format_imaginary_node(ps, node.as_imaginary_node().unwrap()),
+        Node::ImplicitNode { .. } => format_implicit_node(ps, node.as_implicit_node().unwrap()),
+        Node::ImplicitRestNode { .. } => {
+            format_implicit_rest_node(ps, node.as_implicit_rest_node().unwrap())
+        }
+        Node::InNode { .. } => format_in_node(ps, node.as_in_node().unwrap()),
+        Node::IndexAndWriteNode { .. } => {
+            format_index_and_write_node(ps, node.as_index_and_write_node().unwrap())
+        }
+        Node::IndexOperatorWriteNode { .. } => {
+            format_index_operator_write_node(ps, node.as_index_operator_write_node().unwrap())
+        }
+        Node::IndexOrWriteNode { .. } => {
+            format_index_or_write_node(ps, node.as_index_or_write_node().unwrap())
+        }
+        Node::IndexTargetNode { .. } => {
+            format_index_target_node(ps, node.as_index_target_node().unwrap())
+        }
+        Node::InstanceVariableAndWriteNode { .. } => format_instance_variable_and_write_node(
+            ps,
+            node.as_instance_variable_and_write_node().unwrap(),
+        ),
+        Node::InstanceVariableOperatorWriteNode { .. } => {
+            format_instance_variable_operator_write_node(
+                ps,
+                node.as_instance_variable_operator_write_node().unwrap(),
+            )
+        }
+        Node::InstanceVariableOrWriteNode { .. } => format_instance_variable_or_write_node(
+            ps,
+            node.as_instance_variable_or_write_node().unwrap(),
+        ),
+        Node::InstanceVariableReadNode { .. } => {
+            format_instance_variable_read_node(ps, node.as_instance_variable_read_node().unwrap())
+        }
+        Node::InstanceVariableTargetNode { .. } => format_instance_variable_target_node(
+            ps,
+            node.as_instance_variable_target_node().unwrap(),
+        ),
         Node::InstanceVariableWriteNode { .. } => {
             format_instance_variable_write_node(ps, node.as_instance_variable_write_node().unwrap())
         }
         Node::IntegerNode { .. } => format_integer_node(ps, node.as_integer_node().unwrap()),
-        Node::InterpolatedMatchLastLineNode { .. } => todo!(),
-        Node::InterpolatedRegularExpressionNode { .. } => todo!(),
+        Node::InterpolatedMatchLastLineNode { .. } => format_interpolated_last_line_node(
+            ps,
+            node.as_interpolated_match_last_line_node().unwrap(),
+        ),
+        Node::InterpolatedRegularExpressionNode { .. } => {
+            format_interpolated_regular_expression_node(
+                ps,
+                node.as_interpolated_regular_expression_node().unwrap(),
+            )
+        }
         Node::InterpolatedStringNode { .. } => {
             format_interpolated_string_node(ps, node.as_interpolated_string_node().unwrap())
         }
-        Node::InterpolatedSymbolNode { .. } => todo!(),
-        Node::InterpolatedXStringNode { .. } => todo!(),
-        Node::ItLocalVariableReadNode { .. } => todo!(),
-        Node::ItParametersNode { .. } => todo!(),
+        Node::InterpolatedSymbolNode { .. } => {
+            format_interpolated_symbol_node(ps, node.as_interpolated_symbol_node().unwrap())
+        }
+        Node::InterpolatedXStringNode { .. } => {
+            format_interpolated_x_string_node(ps, node.as_interpolated_x_string_node().unwrap())
+        }
+        Node::ItLocalVariableReadNode { .. } => {
+            format_it_local_variable_read_node(ps, node.as_it_local_variable_read_node().unwrap())
+        }
+        Node::ItParametersNode { .. } => {
+            format_it_parameters_node(ps, node.as_it_parameters_node().unwrap())
+        }
         Node::KeywordHashNode { .. } => {
             format_keyword_hash_node(ps, node.as_keyword_hash_node().unwrap())
         }
         Node::KeywordRestParameterNode { .. } => {
             format_keyword_rest_parameter_node(ps, node.as_keyword_rest_parameter_node().unwrap())
         }
-        Node::LambdaNode { .. } => todo!(),
-        Node::LocalVariableAndWriteNode { .. } => todo!(),
-        Node::LocalVariableOperatorWriteNode { .. } => todo!(),
-        Node::LocalVariableOrWriteNode { .. } => todo!(),
+        Node::LambdaNode { .. } => format_lambda_node(ps, node.as_lambda_node().unwrap()),
+        Node::LocalVariableAndWriteNode { .. } => format_local_variable_and_write_node(
+            ps,
+            node.as_local_variable_and_write_node().unwrap(),
+        ),
+        Node::LocalVariableOperatorWriteNode { .. } => format_local_variable_operator_write_node(
+            ps,
+            node.as_local_variable_operator_write_node().unwrap(),
+        ),
+        Node::LocalVariableOrWriteNode { .. } => {
+            format_local_variable_or_write_node(ps, node.as_local_variable_or_write_node().unwrap())
+        }
         Node::LocalVariableReadNode { .. } => {
             format_local_variable_read_node(ps, node.as_local_variable_read_node().unwrap())
         }
-        Node::LocalVariableTargetNode { .. } => todo!(),
+        Node::LocalVariableTargetNode { .. } => {
+            format_local_variable_target_node(ps, node.as_local_variable_target_node().unwrap())
+        }
         Node::LocalVariableWriteNode { .. } => {
             format_local_variable_write_node(ps, node.as_local_variable_write_node().unwrap())
         }
-        Node::MatchLastLineNode { .. } => todo!(),
-        Node::MatchPredicateNode { .. } => todo!(),
-        Node::MatchRequiredNode { .. } => todo!(),
-        Node::MatchWriteNode { .. } => todo!(),
-        Node::MissingNode { .. } => todo!(),
+        Node::MatchLastLineNode { .. } => {
+            format_match_last_line_node(ps, node.as_match_last_line_node().unwrap())
+        }
+        Node::MatchPredicateNode { .. } => {
+            format_match_predicate_node(ps, node.as_match_predicate_node().unwrap())
+        }
+        Node::MatchRequiredNode { .. } => {
+            format_match_required_node(ps, node.as_match_required_node().unwrap())
+        }
+        Node::MatchWriteNode { .. } => {
+            format_match_write_node(ps, node.as_match_write_node().unwrap())
+        }
+        Node::MissingNode { .. } => unreachable!(
+            "MissingNode should only occur in files with syntax errors, which cannot be formatted"
+        ),
         Node::ModuleNode { .. } => format_module_node(ps, node.as_module_node().unwrap()),
-        Node::MultiTargetNode { .. } => todo!(),
-        Node::MultiWriteNode { .. } => todo!(),
-        Node::NextNode { .. } => todo!(),
-        Node::NilNode { .. } => todo!(),
-        Node::NoKeywordsParameterNode { .. } => todo!(),
-        Node::NumberedParametersNode { .. } => todo!(),
-        Node::NumberedReferenceReadNode { .. } => todo!(),
-        Node::OptionalKeywordParameterNode { .. } => todo!(),
-        Node::OptionalParameterNode { .. } => todo!(),
-        Node::OrNode { .. } => todo!(),
-        Node::ParametersNode { .. } => todo!(),
+        Node::MultiTargetNode { .. } => {
+            format_multi_target_node(ps, node.as_multi_target_node().unwrap())
+        }
+        Node::MultiWriteNode { .. } => {
+            format_multi_write_node(ps, node.as_multi_write_node().unwrap())
+        }
+        Node::NextNode { .. } => format_next_node(ps, node.as_next_node().unwrap()),
+        Node::NilNode { .. } => format_nil_node(ps, node.as_nil_node().unwrap()),
+        Node::NoKeywordsParameterNode { .. } => {
+            format_no_keywords_parameter_node(ps, node.as_no_keywords_parameter_node().unwrap())
+        }
+        Node::NumberedParametersNode { .. } => {
+            format_numbered_parameters_node(ps, node.as_numbered_parameters_node().unwrap())
+        }
+        Node::NumberedReferenceReadNode { .. } => {
+            format_numbered_reference_read_node(ps, node.as_numbered_reference_read_node().unwrap())
+        }
+        Node::OptionalKeywordParameterNode { .. } => format_optional_keyword_parameter_node(
+            ps,
+            node.as_optional_keyword_parameter_node().unwrap(),
+        ),
+        Node::OptionalParameterNode { .. } => {
+            format_optional_parameter_node(ps, node.as_optional_parameter_node().unwrap())
+        }
+        Node::OrNode { .. } => format_or_node(ps, node.as_or_node().unwrap()),
+        Node::ParametersNode { .. } => {
+            format_parameters_node(ps, node.as_parameters_node().unwrap())
+        }
         Node::ParenthesesNode { .. } => {
             format_parentheses_node(ps, node.as_parentheses_node().unwrap())
         }
-        Node::PinnedExpressionNode { .. } => todo!(),
-        Node::PinnedVariableNode { .. } => todo!(),
-        Node::PostExecutionNode { .. } => todo!(),
-        Node::PreExecutionNode { .. } => todo!(),
+        Node::PinnedExpressionNode { .. } => {
+            format_pinned_expression_node(ps, node.as_pinned_expression_node().unwrap())
+        }
+        Node::PinnedVariableNode { .. } => {
+            format_pinned_variable_node(ps, node.as_pinned_variable_node().unwrap())
+        }
+        Node::PostExecutionNode { .. } => {
+            format_post_execution_node(ps, node.as_post_execution_node().unwrap())
+        }
+        Node::PreExecutionNode { .. } => {
+            format_pre_execution_node(ps, node.as_pre_execution_node().unwrap())
+        }
         Node::ProgramNode { .. } => format_program(ps, node.as_program_node().unwrap(), None),
-        Node::RangeNode { .. } => todo!(),
-        Node::RationalNode { .. } => todo!(),
-        Node::RedoNode { .. } => todo!(),
-        Node::RegularExpressionNode { .. } => todo!(),
+        Node::RangeNode { .. } => format_range_node(ps, node.as_range_node().unwrap()),
+        Node::RationalNode { .. } => format_rational_node(ps, node.as_rational_node().unwrap()),
+        Node::RedoNode { .. } => format_redo_node(ps, node.as_redo_node().unwrap()),
+        Node::RegularExpressionNode { .. } => {
+            format_regular_expression_node(ps, node.as_regular_expression_node().unwrap())
+        }
         Node::RequiredKeywordParameterNode { .. } => format_required_keyword_parameter_node(
             ps,
             node.as_required_keyword_parameter_node().unwrap(),
@@ -179,36 +358,108 @@ pub fn format_node(ps: &mut dyn ConcreteParserState, node: prism::Node) {
         Node::RequiredParameterNode { .. } => {
             format_required_parameter_node(ps, node.as_required_parameter_node().unwrap())
         }
-        Node::RescueModifierNode { .. } => todo!(),
-        Node::RescueNode { .. } => todo!(),
-        Node::RestParameterNode { .. } => todo!(),
-        Node::RetryNode { .. } => todo!(),
-        Node::ReturnNode { .. } => todo!(),
+        Node::RescueModifierNode { .. } => {
+            format_rescue_modifier_node(ps, node.as_rescue_modifier_node().unwrap())
+        }
+        Node::RescueNode { .. } => format_rescue_node(ps, node.as_rescue_node().unwrap()),
+        Node::RestParameterNode { .. } => {
+            format_rest_parameter_node(ps, node.as_rest_parameter_node().unwrap())
+        }
+        Node::RetryNode { .. } => format_retry_node(ps, node.as_retry_node().unwrap()),
+        Node::ReturnNode { .. } => format_return_node(ps, node.as_return_node().unwrap()),
         Node::SelfNode { .. } => format_self_node(ps, node.as_self_node().unwrap()),
-        Node::ShareableConstantNode { .. } => todo!(),
-        Node::SingletonClassNode { .. } => todo!(),
-        Node::SourceEncodingNode { .. } => todo!(),
-        Node::SourceFileNode { .. } => todo!(),
-        Node::SourceLineNode { .. } => todo!(),
+        Node::ShareableConstantNode { .. } => {
+            format_shareable_constant_node(ps, node.as_shareable_constant_node().unwrap())
+        }
+        Node::SingletonClassNode { .. } => {
+            format_singleton_class_node(ps, node.as_singleton_class_node().unwrap())
+        }
+        Node::SourceEncodingNode { .. } => {
+            format_source_encoding_node(ps, node.as_source_encoding_node().unwrap())
+        }
+        Node::SourceFileNode { .. } => {
+            format_source_file_node(ps, node.as_source_file_node().unwrap())
+        }
+        Node::SourceLineNode { .. } => {
+            format_source_line_node(ps, node.as_source_line_node().unwrap())
+        }
         Node::SplatNode { .. } => format_splat_node(ps, node.as_splat_node().unwrap()),
         Node::StatementsNode { .. } => format_statements(ps, node.as_statements_node().unwrap()),
         Node::StringNode { .. } => format_string_node(ps, node.as_string_node().unwrap()),
-        Node::SuperNode { .. } => todo!(),
+        Node::SuperNode { .. } => format_super_node(ps, node.as_super_node().unwrap()),
         Node::SymbolNode { .. } => format_symbol_node(ps, node.as_symbol_node().unwrap()),
-        Node::TrueNode { .. } => todo!(),
-        Node::UndefNode { .. } => todo!(),
-        Node::UnlessNode { .. } => todo!(),
-        Node::UntilNode { .. } => todo!(),
-        Node::WhenNode { .. } => todo!(),
-        Node::WhileNode { .. } => todo!(),
-        Node::XStringNode { .. } => todo!(),
-        Node::YieldNode { .. } => todo!(),
+        Node::TrueNode { .. } => format_true_node(ps, node.as_true_node().unwrap()),
+        Node::UndefNode { .. } => format_undef_node(ps, node.as_undef_node().unwrap()),
+        Node::UnlessNode { .. } => format_unless_node(ps, node.as_unless_node().unwrap()),
+        Node::UntilNode { .. } => format_until_node(ps, node.as_until_node().unwrap()),
+        Node::WhenNode { .. } => format_when_node(ps, node.as_when_node().unwrap()),
+        Node::WhileNode { .. } => format_while_node(ps, node.as_while_node().unwrap()),
+        Node::XStringNode { .. } => format_x_string_node(ps, node.as_x_string_node().unwrap()),
+        Node::YieldNode { .. } => format_yield_node(ps, node.as_yield_node().unwrap()),
     }
 
     ps.at_offset(node.location().end_offset());
     if ps.at_start_of_line() && !matches!(node, Node::StatementsNode { .. }) {
         ps.emit_newline();
     }
+}
+
+fn format_alias_global_variable_node(
+    _ps: &mut dyn ConcreteParserState,
+    _alias_global_variable_node: prism::AliasGlobalVariableNode,
+) {
+    todo!()
+}
+
+fn format_alias_method_node(
+    _ps: &mut dyn ConcreteParserState,
+    _alias_method_node: prism::AliasMethodNode,
+) {
+    todo!()
+}
+
+fn format_alternation_pattern_node(
+    _ps: &mut dyn ConcreteParserState,
+    _alternation_pattern_node: prism::AlternationPatternNode,
+) {
+    todo!()
+}
+
+fn format_and_node(_ps: &mut dyn ConcreteParserState, _and_node: prism::AndNode) {
+    todo!()
+}
+
+fn format_back_reference_read_node(
+    _ps: &mut dyn ConcreteParserState,
+    _back_reference_read_node: prism::BackReferenceReadNode,
+) {
+    todo!()
+}
+
+fn format_begin_node(_ps: &mut dyn ConcreteParserState, _begin_node: prism::BeginNode) {
+    todo!()
+}
+
+fn format_break_node(_ps: &mut dyn ConcreteParserState, _break_node: prism::BreakNode) {
+    todo!()
+}
+
+fn format_capture_pattern_node(
+    _ps: &mut dyn ConcreteParserState,
+    _capture_pattern_node: prism::CapturePatternNode,
+) {
+    todo!()
+}
+
+fn format_case_match_node(
+    _ps: &mut dyn ConcreteParserState,
+    _case_match_node: prism::CaseMatchNode,
+) {
+    todo!()
+}
+
+fn format_case_node(_ps: &mut dyn ConcreteParserState, _case_node: prism::CaseNode) {
+    todo!()
 }
 
 pub fn format_program(
@@ -382,6 +633,48 @@ fn format_interpolated_string_node(
     }
 }
 
+fn format_interpolated_symbol_node(
+    _ps: &mut dyn ConcreteParserState,
+    _interpolated_string_node: prism::InterpolatedSymbolNode,
+) {
+    todo!()
+}
+
+fn format_interpolated_x_string_node(
+    _ps: &mut dyn ConcreteParserState,
+    _interpolated_x_string_node: prism::InterpolatedXStringNode,
+) {
+    todo!()
+}
+
+fn format_it_local_variable_read_node(
+    _ps: &mut dyn ConcreteParserState,
+    _it_local_variable_read_node: prism::ItLocalVariableReadNode,
+) {
+    todo!()
+}
+
+fn format_it_parameters_node(
+    _ps: &mut dyn ConcreteParserState,
+    _it_parameters_node: prism::ItParametersNode,
+) {
+    todo!()
+}
+
+fn format_interpolated_last_line_node(
+    _ps: &mut dyn ConcreteParserState,
+    _interpolated_match_last_line_node: prism::InterpolatedMatchLastLineNode,
+) {
+    todo!()
+}
+
+fn format_interpolated_regular_expression_node(
+    _ps: &mut dyn ConcreteParserState,
+    _interpolated_regular_expression_node: prism::InterpolatedRegularExpressionNode,
+) {
+    todo!()
+}
+
 fn format_embedded_statements_node(
     ps: &mut dyn ConcreteParserState,
     embedded_statements_node: prism::EmbeddedStatementsNode,
@@ -403,6 +696,32 @@ fn format_embedded_statements_node(
         );
     }
     ps.emit_string_content("}".to_string());
+}
+
+fn format_embedded_variable_node(
+    _ps: &mut dyn ConcreteParserState,
+    _embedded_variable_node: prism::EmbeddedVariableNode,
+) {
+    todo!()
+}
+
+fn format_ensure_node(_ps: &mut dyn ConcreteParserState, _ensure_node: prism::EnsureNode) {
+    todo!()
+}
+
+fn format_false_node(_ps: &mut dyn ConcreteParserState, _false_node: prism::FalseNode) {
+    todo!()
+}
+
+fn format_find_pattern_node(
+    _ps: &mut dyn ConcreteParserState,
+    _find_pattern_node: prism::FindPatternNode,
+) {
+    todo!()
+}
+
+fn format_flip_flop_node(_ps: &mut dyn ConcreteParserState, _flip_flop_node: prism::FlipFlopNode) {
+    todo!()
 }
 
 fn format_class_node(ps: &mut dyn ConcreteParserState, class_node: prism::ClassNode) {
@@ -442,6 +761,48 @@ fn format_class_node(ps: &mut dyn ConcreteParserState, class_node: prism::ClassN
             ps.emit_end();
         }),
     );
+}
+
+fn format_class_variable_and_write_node(
+    _ps: &mut dyn ConcreteParserState,
+    _class_variable_and_write_node: prism::ClassVariableAndWriteNode,
+) {
+    todo!()
+}
+
+fn format_class_variable_operator_write_node(
+    _ps: &mut dyn ConcreteParserState,
+    _class_variable_operator_write_node: prism::ClassVariableOperatorWriteNode,
+) {
+    todo!()
+}
+
+fn format_class_variable_or_write_node(
+    _ps: &mut dyn ConcreteParserState,
+    _class_variable_or_write_node: prism::ClassVariableOrWriteNode,
+) {
+    todo!()
+}
+
+fn format_class_variable_read_node(
+    _ps: &mut dyn ConcreteParserState,
+    _class_variable_read_node: prism::ClassVariableReadNode,
+) {
+    todo!()
+}
+
+fn format_class_variable_target_node(
+    _ps: &mut dyn ConcreteParserState,
+    _class_variable_target_node: prism::ClassVariableTargetNode,
+) {
+    todo!()
+}
+
+fn format_class_variable_write_node(
+    _ps: &mut dyn ConcreteParserState,
+    _class_variable_write_node: prism::ClassVariableWriteNode,
+) {
+    todo!()
 }
 
 fn format_module_node(ps: &mut dyn ConcreteParserState, module_node: prism::ModuleNode) {
@@ -570,6 +931,14 @@ fn format_def_body(
     }
 }
 
+fn format_defined_node(_ps: &mut dyn ConcreteParserState, _defined_node: prism::DefinedNode) {
+    todo!()
+}
+
+fn format_else_node(_ps: &mut dyn ConcreteParserState, _else_node: prism::ElseNode) {
+    todo!()
+}
+
 type ParamFormattingFunc<'a> = Box<dyn FnOnce(&mut dyn ConcreteParserState) + 'a>;
 
 fn format_parameters_node(ps: &mut dyn ConcreteParserState, params: prism::ParametersNode) {
@@ -678,6 +1047,13 @@ fn format_block_parameter_node(
             }
         }),
     );
+}
+
+fn format_block_argument_node(
+    _ps: &mut dyn ConcreteParserState,
+    _block_argument_node: prism::BlockArgumentNode,
+) {
+    todo!()
 }
 
 fn format_call_node(
@@ -822,6 +1198,34 @@ fn call_chain_elements_are_user_multilined(
     })
 }
 
+fn format_call_and_write_node(
+    _ps: &mut dyn ConcreteParserState,
+    _call_and_write_node: prism::CallAndWriteNode,
+) {
+    todo!()
+}
+
+fn format_call_operator_write_node(
+    _ps: &mut dyn ConcreteParserState,
+    _call_operator_write_node: prism::CallOperatorWriteNode,
+) {
+    todo!()
+}
+
+fn format_call_or_write_node(
+    _ps: &mut dyn ConcreteParserState,
+    _call_or_write_node: prism::CallOrWriteNode,
+) {
+    todo!()
+}
+
+fn format_call_target_node(
+    _ps: &mut dyn ConcreteParserState,
+    _call_target_node: prism::CallTargetNode,
+) {
+    todo!()
+}
+
 fn format_symbol_node(ps: &mut dyn ConcreteParserState, symbol_node: prism::SymbolNode) {
     if let Some(opening_loc) = symbol_node.opening_loc() {
         ps.emit_ident(loc_to_string(opening_loc));
@@ -853,6 +1257,13 @@ fn format_assoc_node(ps: &mut dyn ConcreteParserState, assoc_node: prism::AssocN
             format_node(ps, assoc_node.value());
         }),
     );
+}
+
+fn format_assoc_splat_node(
+    _ps: &mut dyn ConcreteParserState,
+    _assoc_splat_node: prism::AssocSplatNode,
+) {
+    todo!()
 }
 
 fn format_block_node(ps: &mut dyn ConcreteParserState, block_node: prism::BlockNode) {
@@ -990,6 +1401,13 @@ fn format_array_node(ps: &mut dyn ConcreteParserState, array_node: prism::ArrayN
     );
 }
 
+fn format_array_pattern_node(
+    _ps: &mut dyn ConcreteParserState,
+    _array_pattern_node: prism::ArrayPatternNode,
+) {
+    todo!()
+}
+
 fn format_parentheses_node(
     ps: &mut dyn ConcreteParserState,
     parentheses_node: prism::ParenthesesNode,
@@ -1119,6 +1537,34 @@ fn format_required_parameter_node(
     ps.emit_ident(name);
 }
 
+fn format_local_variable_and_write_node(
+    _ps: &mut dyn ConcreteParserState,
+    _local_variable_and_write_node: prism::LocalVariableAndWriteNode,
+) {
+    todo!()
+}
+
+fn format_local_variable_operator_write_node(
+    _ps: &mut dyn ConcreteParserState,
+    _local_variable_operator_write_node: prism::LocalVariableOperatorWriteNode,
+) {
+    todo!()
+}
+
+fn format_local_variable_or_write_node(
+    _ps: &mut dyn ConcreteParserState,
+    _local_variable_or_write_node: prism::LocalVariableOrWriteNode,
+) {
+    todo!()
+}
+
+fn format_local_variable_target_node(
+    _ps: &mut dyn ConcreteParserState,
+    _local_variable_target_node: prism::LocalVariableTargetNode,
+) {
+    todo!()
+}
+
 fn format_local_variable_read_node(
     ps: &mut dyn ConcreteParserState,
     local_variable_read_node: prism::LocalVariableReadNode,
@@ -1192,6 +1638,170 @@ fn format_float_node(ps: &mut dyn ConcreteParserState, float_node: prism::FloatN
     );
 }
 
+fn format_for_node(_ps: &mut dyn ConcreteParserState, _for_node: prism::ForNode) {
+    todo!()
+}
+
+fn format_forwarding_arguments_node(
+    _ps: &mut dyn ConcreteParserState,
+    _forwarding_arguments_node: prism::ForwardingArgumentsNode,
+) {
+    todo!()
+}
+
+fn format_forwarding_parameter_node(
+    _ps: &mut dyn ConcreteParserState,
+    _forwarding_parameter_node: prism::ForwardingParameterNode,
+) {
+    todo!()
+}
+
+fn format_forwarding_super_node(
+    _ps: &mut dyn ConcreteParserState,
+    _forwarding_super_node: prism::ForwardingSuperNode,
+) {
+    todo!()
+}
+
+fn format_global_variable_and_write_node(
+    _ps: &mut dyn ConcreteParserState,
+    _global_variable_and_write_node: prism::GlobalVariableAndWriteNode,
+) {
+    todo!()
+}
+
+fn format_global_variable_operator_write_node(
+    _ps: &mut dyn ConcreteParserState,
+    _global_variable_operator_write_node: prism::GlobalVariableOperatorWriteNode,
+) {
+    todo!()
+}
+
+fn format_global_variable_or_write_node(
+    _ps: &mut dyn ConcreteParserState,
+    _global_variable_or_write_node: prism::GlobalVariableOrWriteNode,
+) {
+    todo!()
+}
+
+fn format_global_variable_read_node(
+    _ps: &mut dyn ConcreteParserState,
+    _global_variable_read_node: prism::GlobalVariableReadNode,
+) {
+    todo!()
+}
+
+fn format_global_variable_target_node(
+    _ps: &mut dyn ConcreteParserState,
+    _global_variable_target_node: prism::GlobalVariableTargetNode,
+) {
+    todo!()
+}
+
+fn format_global_variable_write_node(
+    _ps: &mut dyn ConcreteParserState,
+    _global_variable_write_node: prism::GlobalVariableWriteNode,
+) {
+    todo!()
+}
+
+fn format_hash_node(_ps: &mut dyn ConcreteParserState, _hash_node: prism::HashNode) {
+    todo!()
+}
+
+fn format_hash_pattern_node(
+    _ps: &mut dyn ConcreteParserState,
+    _hash_pattern_node: prism::HashPatternNode,
+) {
+    todo!()
+}
+
+fn format_if_node(_ps: &mut dyn ConcreteParserState, _if_node: prism::IfNode) {
+    todo!()
+}
+
+fn format_imaginary_node(_ps: &mut dyn ConcreteParserState, _imaginary_node: prism::ImaginaryNode) {
+    todo!()
+}
+
+fn format_implicit_node(_ps: &mut dyn ConcreteParserState, _implicit_node: prism::ImplicitNode) {
+    todo!()
+}
+
+fn format_implicit_rest_node(
+    _ps: &mut dyn ConcreteParserState,
+    _implicit_rest_node: prism::ImplicitRestNode,
+) {
+    todo!()
+}
+
+fn format_in_node(_ps: &mut dyn ConcreteParserState, _in_node: prism::InNode) {
+    todo!()
+}
+
+fn format_index_and_write_node(
+    _ps: &mut dyn ConcreteParserState,
+    _index_and_write_node: prism::IndexAndWriteNode,
+) {
+    todo!()
+}
+
+fn format_index_operator_write_node(
+    _ps: &mut dyn ConcreteParserState,
+    _index_operator_write_node: prism::IndexOperatorWriteNode,
+) {
+    todo!()
+}
+
+fn format_index_or_write_node(
+    _ps: &mut dyn ConcreteParserState,
+    _index_or_write_node: prism::IndexOrWriteNode,
+) {
+    todo!()
+}
+
+fn format_index_target_node(
+    _ps: &mut dyn ConcreteParserState,
+    _index_target_node: prism::IndexTargetNode,
+) {
+    todo!()
+}
+
+fn format_instance_variable_and_write_node(
+    _ps: &mut dyn ConcreteParserState,
+    _instance_variable_and_write_node: prism::InstanceVariableAndWriteNode,
+) {
+    todo!()
+}
+
+fn format_instance_variable_operator_write_node(
+    _ps: &mut dyn ConcreteParserState,
+    _instance_variable_operator_write_node: prism::InstanceVariableOperatorWriteNode,
+) {
+    todo!()
+}
+
+fn format_instance_variable_or_write_node(
+    _ps: &mut dyn ConcreteParserState,
+    _instance_variable_or_write_node: prism::InstanceVariableOrWriteNode,
+) {
+    todo!()
+}
+
+fn format_instance_variable_read_node(
+    _ps: &mut dyn ConcreteParserState,
+    _instance_variable_read_node: prism::InstanceVariableReadNode,
+) {
+    todo!()
+}
+
+fn format_instance_variable_target_node(
+    _ps: &mut dyn ConcreteParserState,
+    _instance_variable_target_node: prism::InstanceVariableTargetNode,
+) {
+    todo!()
+}
+
 fn format_constant_read_node(
     ps: &mut dyn ConcreteParserState,
     constant_read_node: prism::ConstantReadNode,
@@ -1224,8 +1834,315 @@ fn format_constant_path_node(
     );
 }
 
+fn format_constant_and_write_node(
+    _ps: &mut dyn ConcreteParserState,
+    _constant_and_write_node: prism::ConstantAndWriteNode,
+) {
+    todo!()
+}
+
+fn format_constant_operator_write_node(
+    _ps: &mut dyn ConcreteParserState,
+    _constant_operator_write_node: prism::ConstantOperatorWriteNode,
+) {
+    todo!()
+}
+
+fn format_constant_or_write_node(
+    _ps: &mut dyn ConcreteParserState,
+    _constant_or_write_node: prism::ConstantOrWriteNode,
+) {
+    todo!()
+}
+
+fn format_constant_path_and_write_node(
+    _ps: &mut dyn ConcreteParserState,
+    _constant_path_and_write_node: prism::ConstantPathAndWriteNode,
+) {
+    todo!()
+}
+
+fn format_constant_path_operator_write_node(
+    _ps: &mut dyn ConcreteParserState,
+    _constant_path_operator_write_node: prism::ConstantPathOperatorWriteNode,
+) {
+    todo!()
+}
+
+fn format_constant_path_or_write_node(
+    _ps: &mut dyn ConcreteParserState,
+    _constant_path_or_write_node: prism::ConstantPathOrWriteNode,
+) {
+    todo!()
+}
+
+fn format_constant_path_target_node(
+    _ps: &mut dyn ConcreteParserState,
+    _constant_path_target_node: prism::ConstantPathTargetNode,
+) {
+    todo!()
+}
+
+fn format_constant_path_write_node(
+    _ps: &mut dyn ConcreteParserState,
+    _constant_path_write_node: prism::ConstantPathWriteNode,
+) {
+    todo!()
+}
+
+fn format_constant_target_node(
+    _ps: &mut dyn ConcreteParserState,
+    _constant_target_node: prism::ConstantTargetNode,
+) {
+    todo!()
+}
+
+fn format_constant_write_node(
+    _ps: &mut dyn ConcreteParserState,
+    _constant_write_node: prism::ConstantWriteNode,
+) {
+    todo!()
+}
+
+fn format_lambda_node(_ps: &mut dyn ConcreteParserState, _lambda_node: prism::LambdaNode) {
+    todo!()
+}
+
+fn format_match_last_line_node(
+    _ps: &mut dyn ConcreteParserState,
+    _match_last_line_node: prism::MatchLastLineNode,
+) {
+    todo!()
+}
+
+fn format_match_predicate_node(
+    _ps: &mut dyn ConcreteParserState,
+    _match_predicate_node: prism::MatchPredicateNode,
+) {
+    todo!()
+}
+
+fn format_match_required_node(
+    _ps: &mut dyn ConcreteParserState,
+    _match_required_node: prism::MatchRequiredNode,
+) {
+    todo!()
+}
+
+fn format_match_write_node(
+    _ps: &mut dyn ConcreteParserState,
+    _match_write_node: prism::MatchWriteNode,
+) {
+    todo!()
+}
+
+fn format_multi_target_node(
+    _ps: &mut dyn ConcreteParserState,
+    _multi_target_node: prism::MultiTargetNode,
+) {
+    todo!()
+}
+
+fn format_multi_write_node(
+    _ps: &mut dyn ConcreteParserState,
+    _multi_write_node: prism::MultiWriteNode,
+) {
+    todo!()
+}
+
+fn format_next_node(_ps: &mut dyn ConcreteParserState, _next_node: prism::NextNode) {
+    todo!()
+}
+
+fn format_nil_node(_ps: &mut dyn ConcreteParserState, _nil_node: prism::NilNode) {
+    todo!()
+}
+
+fn format_no_keywords_parameter_node(
+    _ps: &mut dyn ConcreteParserState,
+    _no_keywords_parameter_node: prism::NoKeywordsParameterNode,
+) {
+    todo!()
+}
+
+fn format_numbered_parameters_node(
+    _ps: &mut dyn ConcreteParserState,
+    _numbered_parameters_node: prism::NumberedParametersNode,
+) {
+    todo!()
+}
+
+fn format_numbered_reference_read_node(
+    _ps: &mut dyn ConcreteParserState,
+    _numbered_reference_read_node: prism::NumberedReferenceReadNode,
+) {
+    todo!()
+}
+
+fn format_optional_keyword_parameter_node(
+    _ps: &mut dyn ConcreteParserState,
+    _optional_keyword_parameter_node: prism::OptionalKeywordParameterNode,
+) {
+    todo!()
+}
+
+fn format_optional_parameter_node(
+    _ps: &mut dyn ConcreteParserState,
+    _optional_parameter_node: prism::OptionalParameterNode,
+) {
+    todo!()
+}
+
+fn format_or_node(_ps: &mut dyn ConcreteParserState, _or_node: prism::OrNode) {
+    todo!()
+}
+
+fn format_pinned_expression_node(
+    _ps: &mut dyn ConcreteParserState,
+    _pinned_expression_node: prism::PinnedExpressionNode,
+) {
+    todo!()
+}
+
+fn format_pinned_variable_node(
+    _ps: &mut dyn ConcreteParserState,
+    _pinned_variable_node: prism::PinnedVariableNode,
+) {
+    todo!()
+}
+
+fn format_post_execution_node(
+    _ps: &mut dyn ConcreteParserState,
+    _post_execution_node: prism::PostExecutionNode,
+) {
+    todo!()
+}
+
+fn format_pre_execution_node(
+    _ps: &mut dyn ConcreteParserState,
+    _pre_execution_node: prism::PreExecutionNode,
+) {
+    todo!()
+}
+
+fn format_range_node(_ps: &mut dyn ConcreteParserState, _range_node: prism::RangeNode) {
+    todo!()
+}
+
+fn format_rational_node(_ps: &mut dyn ConcreteParserState, _rational_node: prism::RationalNode) {
+    todo!()
+}
+
+fn format_redo_node(_ps: &mut dyn ConcreteParserState, _redo_node: prism::RedoNode) {
+    todo!()
+}
+
+fn format_regular_expression_node(
+    _ps: &mut dyn ConcreteParserState,
+    _regular_expression_node: prism::RegularExpressionNode,
+) {
+    todo!()
+}
+
+fn format_rescue_modifier_node(
+    _ps: &mut dyn ConcreteParserState,
+    _rescue_modifier_node: prism::RescueModifierNode,
+) {
+    todo!()
+}
+
+fn format_rescue_node(_ps: &mut dyn ConcreteParserState, _rescue_node: prism::RescueNode) {
+    todo!()
+}
+
+fn format_rest_parameter_node(
+    _ps: &mut dyn ConcreteParserState,
+    _rest_parameter_node: prism::RestParameterNode,
+) {
+    todo!()
+}
+
+fn format_retry_node(_ps: &mut dyn ConcreteParserState, _retry_node: prism::RetryNode) {
+    todo!()
+}
+
+fn format_return_node(_ps: &mut dyn ConcreteParserState, _return_node: prism::ReturnNode) {
+    todo!()
+}
+
+fn format_shareable_constant_node(
+    _ps: &mut dyn ConcreteParserState,
+    _shareable_constant_node: prism::ShareableConstantNode,
+) {
+    todo!()
+}
+
+fn format_singleton_class_node(
+    _ps: &mut dyn ConcreteParserState,
+    _singleton_class_node: prism::SingletonClassNode,
+) {
+    todo!()
+}
+
+fn format_source_encoding_node(
+    _ps: &mut dyn ConcreteParserState,
+    _source_encoding_node: prism::SourceEncodingNode,
+) {
+    todo!()
+}
+
+fn format_source_file_node(
+    _ps: &mut dyn ConcreteParserState,
+    _source_file_node: prism::SourceFileNode,
+) {
+    todo!()
+}
+
+fn format_source_line_node(
+    _ps: &mut dyn ConcreteParserState,
+    _source_line_node: prism::SourceLineNode,
+) {
+    todo!()
+}
+
+fn format_super_node(_ps: &mut dyn ConcreteParserState, _super_node: prism::SuperNode) {
+    todo!()
+}
+
 fn format_self_node(ps: &mut dyn ConcreteParserState, _self_node: prism::SelfNode) {
     ps.emit_ident("self".to_string());
+}
+
+fn format_true_node(_ps: &mut dyn ConcreteParserState, _true_node: prism::TrueNode) {
+    todo!()
+}
+
+fn format_undef_node(_ps: &mut dyn ConcreteParserState, _undef_node: prism::UndefNode) {
+    todo!()
+}
+
+fn format_unless_node(_ps: &mut dyn ConcreteParserState, _unless_node: prism::UnlessNode) {
+    todo!()
+}
+
+fn format_until_node(_ps: &mut dyn ConcreteParserState, _until_node: prism::UntilNode) {
+    todo!()
+}
+
+fn format_when_node(_ps: &mut dyn ConcreteParserState, _when_node: prism::WhenNode) {
+    todo!()
+}
+
+fn format_while_node(_ps: &mut dyn ConcreteParserState, _while_node: prism::WhileNode) {
+    todo!()
+}
+
+fn format_x_string_node(_ps: &mut dyn ConcreteParserState, _x_string_node: prism::XStringNode) {
+    todo!()
+}
+
+fn format_yield_node(_ps: &mut dyn ConcreteParserState, _yield_node: prism::YieldNode) {
+    todo!()
 }
 
 fn handle_string_at_offset(ps: &mut dyn ConcreteParserState, ident: String, offset: usize) {
