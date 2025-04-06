@@ -709,8 +709,12 @@ fn format_ensure_node(_ps: &mut dyn ConcreteParserState, _ensure_node: prism::En
     todo!()
 }
 
-fn format_false_node(_ps: &mut dyn ConcreteParserState, _false_node: prism::FalseNode) {
-    todo!()
+fn format_false_node(ps: &mut dyn ConcreteParserState, false_node: prism::FalseNode) {
+    handle_string_at_offset(
+        ps,
+        "false".to_string(),
+        false_node.location().start_offset(),
+    );
 }
 
 fn format_find_pattern_node(
@@ -2113,8 +2117,8 @@ fn format_self_node(ps: &mut dyn ConcreteParserState, _self_node: prism::SelfNod
     ps.emit_ident("self".to_string());
 }
 
-fn format_true_node(_ps: &mut dyn ConcreteParserState, _true_node: prism::TrueNode) {
-    todo!()
+fn format_true_node(ps: &mut dyn ConcreteParserState, true_node: prism::TrueNode) {
+    handle_string_at_offset(ps, "true".to_string(), true_node.location().start_offset());
 }
 
 fn format_undef_node(_ps: &mut dyn ConcreteParserState, _undef_node: prism::UndefNode) {
