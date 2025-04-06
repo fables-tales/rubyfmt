@@ -470,6 +470,7 @@ fixture!(
     test_small_single_quoted_string_with_embexpr,
     "small/single_quoted_string_with_embexpr"
 );
+fixture!(test_small_source_keywords, "small/source_keywords");
 fixture!(
     test_small_single_quoted_string_with_slash_escape,
     "small/single_quoted_string_with_slash_escape"
