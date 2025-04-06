@@ -27,7 +27,7 @@ jobs:
           args: --all -- --check
 
   clippy:
-    runs-on: ubuntu-latest
+    runs-on: macos-latest
     steps:
       - uses: actions/checkout@v1
       - uses: actions-rust-lang/setup-rust-toolchain@v1
