@@ -113,7 +113,9 @@ pub fn format_node(ps: &mut dyn ConcreteParserState, node: prism::Node) {
         Node::InstanceVariableOrWriteNode { .. } => todo!(),
         Node::InstanceVariableReadNode { .. } => todo!(),
         Node::InstanceVariableTargetNode { .. } => todo!(),
-        Node::InstanceVariableWriteNode { .. } => todo!(),
+        Node::InstanceVariableWriteNode { .. } => {
+            format_instance_variable_write_node(ps, node.as_instance_variable_write_node().unwrap())
+        }
         Node::IntegerNode { .. } => format_integer_node(ps, node.as_integer_node().unwrap()),
         Node::InterpolatedMatchLastLineNode { .. } => todo!(),
         Node::InterpolatedRegularExpressionNode { .. } => todo!(),
@@ -1173,6 +1175,30 @@ fn format_splat_node(ps: &mut dyn ConcreteParserState, splat_node: prism::SplatN
 
 fn format_ident(ps: &mut dyn ConcreteParserState, ident: String, offset: usize) {
     handle_string_at_offset(ps, ident, offset);
+}
+
+fn format_instance_variable_write_node(
+    ps: &mut dyn ConcreteParserState,
+    instance_variable_write_node: prism::InstanceVariableWriteNode,
+) {
+    if ps.at_start_of_line() {
+        ps.emit_indent();
+    }
+
+    ps.at_offset(instance_variable_write_node.location().start_offset());
+
+    ps.emit_ident(const_to_string(instance_variable_write_node.name()));
+    ps.emit_space();
+    ps.emit_op("=".to_string());
+    ps.emit_space();
+    ps.with_start_of_line(
+        false,
+        Box::new(|ps| format_node(ps, instance_variable_write_node.value())),
+    );
+
+    if ps.at_start_of_line() {
+        ps.emit_newline();
+    }
 }
 
 fn format_integer_node(ps: &mut dyn ConcreteParserState, integer_node: prism::IntegerNode) {
