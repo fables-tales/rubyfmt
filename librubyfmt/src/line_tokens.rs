@@ -99,15 +99,7 @@ impl ConcreteLineToken {
             Self::End => "end".to_string(),
             Self::HeredocClose { symbol } => symbol,
             Self::DataEnd => "__END__".to_string(),
-            Self::HeredocStart { kind, symbol } => {
-                let mut kind_str = match kind {
-                    HeredocKind::Bare => "<<".to_string(),
-                    HeredocKind::Dash => "<<-".to_string(),
-                    HeredocKind::Squiggly => "<<~".to_string(),
-                };
-                kind_str.push_str(&symbol);
-                kind_str
-            }
+            Self::HeredocStart { symbol, .. } => symbol,
             // no-op, this is purely semantic information
             // for the render queue
             Self::AfterCallChain | Self::BeginCallChainIndent | Self::EndCallChainIndent => {
@@ -124,13 +116,7 @@ impl ConcreteLineToken {
         // by an order of magnitude
         match self {
             AfterCallChain | BeginCallChainIndent | EndCallChainIndent => 0, // purely semantic tokens, don't render
-            HeredocStart { kind, symbol } => {
-                symbol.len()
-                    + match kind {
-                        HeredocKind::Bare => 2,                         // <<
-                        HeredocKind::Dash | HeredocKind::Squiggly => 3, // <<- or <<~
-                    }
-            }
+            HeredocStart { symbol, .. } => symbol.len(),
             Indent { depth } => *depth as usize,
             Keyword { keyword: contents }
             | Op { op: contents }
