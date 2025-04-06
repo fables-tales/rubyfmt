@@ -10,8 +10,8 @@ pub fn single_to_double_quoted(content: String, start_delim: &str, end_delim: &s
     } else {
         // For percent literals, we only care about the delimiter
         // e.g. for `%<` we're looking for the `<`
-        let start_delim = if start_delim.chars().nth(0).unwrap() == '%' {
-            &start_delim[1..]
+        let start_delim = if let Some(stripped) = start_delim.strip_prefix('%') {
+            stripped
         } else {
             start_delim
         };
@@ -30,12 +30,12 @@ pub fn single_to_double_quoted(content: String, start_delim: &str, end_delim: &s
                 let val_str = val.as_str().to_string();
                 if val_str.ends_with("\"") {
                     // Ends with a quote, which we transform to `\"`
-                    format!("{}\\\"", val_str[0..(val_str.len() - 1)].to_string())
+                    format!("{}\\\"", &val_str[0..(val_str.len() - 1)])
                 } else {
                     // drop unnecessary escape
                     format!(
                         "{}{}",
-                        val_str[0..(val_str.len() - 2)].to_string(),
+                        &val_str[0..(val_str.len() - 2)],
                         val_str.chars().last().unwrap()
                     )
                 }
@@ -49,7 +49,7 @@ fn escape_string(content: String, opening_delim: char, closing_delim: char) -> S
         return content;
     }
 
-    let chars = content.chars().into_iter().collect::<Vec<char>>();
+    let chars = content.chars().collect::<Vec<char>>();
     let mut i = 0;
 
     let mut output = String::new();

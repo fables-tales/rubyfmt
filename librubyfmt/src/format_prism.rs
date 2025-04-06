@@ -303,10 +303,8 @@ fn format_string_node(ps: &mut dyn ConcreteParserState, string_node: prism::Stri
                         .trim()
                         .to_string(),
                 );
-            } else {
-                if opener.is_some() {
-                    ps.emit_double_quote();
-                }
+            } else if opener.is_some() {
+                ps.emit_double_quote();
             }
         }),
     );
@@ -346,9 +344,9 @@ fn format_interpolated_string_node(
             .all(|node| node.as_string_node().unwrap().opening_loc().is_some());
 
     ps.at_offset(interpolated_string_node.location().start_offset());
-    interpolated_string_node
-        .opening_loc()
-        .map(|s| ps.emit_string_content(loc_to_string(s).trim().to_string()));
+    if let Some(s) = interpolated_string_node.opening_loc() {
+        ps.emit_string_content(loc_to_string(s).trim().to_string());
+    }
     if is_heredoc {
         ps.emit_newline();
     }
@@ -375,9 +373,9 @@ fn format_interpolated_string_node(
                 // For non-backslash-concatenated multiline strings, `part` contains newlines and indentation,
                 // so we don't need to handle that ourselves.
                 if is_backslash_string_interpolation && i < string_parts_count - 1 {
-                    interpolated_string_node
-                        .closing_loc()
-                        .map(|s| ps.emit_string_content(loc_to_string(s).trim().to_string()));
+                    if let Some(s) = interpolated_string_node.closing_loc() {
+                        ps.emit_string_content(loc_to_string(s).trim().to_string());
+                    }
                     ps.emit_space();
                     ps.emit_slash();
                 }
