@@ -10,7 +10,7 @@ bison --version
 TAG=$(git describe --tags --exact-match HEAD)
 RELEASE_DIR=${RELEASE_DIR:-"tmp/releases/${TAG}-$(uname -s)/"}
 
-./script/test.sh
+cargo test --release
 rm -rf "${RELEASE_DIR}"
 
 mkdir -p "${RELEASE_DIR}"
