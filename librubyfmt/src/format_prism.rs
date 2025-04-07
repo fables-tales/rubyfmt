@@ -2089,24 +2089,36 @@ fn format_singleton_class_node(
 }
 
 fn format_source_encoding_node(
-    _ps: &mut dyn ConcreteParserState,
-    _source_encoding_node: prism::SourceEncodingNode,
+    ps: &mut dyn ConcreteParserState,
+    source_encoding_node: prism::SourceEncodingNode,
 ) {
-    todo!()
+    handle_string_at_offset(
+        ps,
+        "__ENCODING__".to_string(),
+        source_encoding_node.location().start_offset(),
+    );
 }
 
 fn format_source_file_node(
-    _ps: &mut dyn ConcreteParserState,
-    _source_file_node: prism::SourceFileNode,
+    ps: &mut dyn ConcreteParserState,
+    source_file_node: prism::SourceFileNode,
 ) {
-    todo!()
+    handle_string_at_offset(
+        ps,
+        "__FILE__".to_string(),
+        source_file_node.location().start_offset(),
+    );
 }
 
 fn format_source_line_node(
-    _ps: &mut dyn ConcreteParserState,
-    _source_line_node: prism::SourceLineNode,
+    ps: &mut dyn ConcreteParserState,
+    source_line_node: prism::SourceLineNode,
 ) {
-    todo!()
+    handle_string_at_offset(
+        ps,
+        "__LINE__".to_string(),
+        source_line_node.location().start_offset(),
+    );
 }
 
 fn format_super_node(_ps: &mut dyn ConcreteParserState, _super_node: prism::SuperNode) {
