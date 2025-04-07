@@ -243,10 +243,6 @@ fn format_statements(ps: &mut dyn ConcreteParserState, statements_node: prism::S
 }
 
 fn format_string_node(ps: &mut dyn ConcreteParserState, string_node: prism::StringNode) {
-    if ps.at_start_of_line() {
-        ps.emit_indent();
-    }
-
     ps.at_offset(string_node.location().start_offset());
 
     // `opening_loc()` is only `None` in the case of the inner parts of multiline strings
@@ -310,20 +306,12 @@ fn format_string_node(ps: &mut dyn ConcreteParserState, string_node: prism::Stri
     );
 
     ps.wind_dumping_comments_until_offset(string_node.location().end_offset());
-
-    if ps.at_start_of_line() {
-        ps.emit_newline();
-    }
 }
 
 fn format_interpolated_string_node(
     ps: &mut dyn ConcreteParserState,
     interpolated_string_node: prism::InterpolatedStringNode,
 ) {
-    if ps.at_start_of_line() {
-        ps.emit_indent();
-    }
-
     let is_heredoc = interpolated_string_node
         .opening_loc()
         .map(|s| loc_to_string(s).starts_with("<"))
@@ -390,10 +378,6 @@ fn format_interpolated_string_node(
 
     if let Some(closing_loc) = interpolated_string_node.closing_loc() {
         ps.emit_string_content(loc_to_string(closing_loc).trim().to_string());
-    }
-
-    if ps.at_start_of_line() {
-        ps.emit_newline();
     }
 }
 
@@ -1179,10 +1163,6 @@ fn format_instance_variable_write_node(
     ps: &mut dyn ConcreteParserState,
     instance_variable_write_node: prism::InstanceVariableWriteNode,
 ) {
-    if ps.at_start_of_line() {
-        ps.emit_indent();
-    }
-
     ps.at_offset(instance_variable_write_node.location().start_offset());
 
     ps.emit_ident(const_to_string(instance_variable_write_node.name()));
@@ -1193,10 +1173,6 @@ fn format_instance_variable_write_node(
         false,
         Box::new(|ps| format_node(ps, instance_variable_write_node.value())),
     );
-
-    if ps.at_start_of_line() {
-        ps.emit_newline();
-    }
 }
 
 fn format_integer_node(ps: &mut dyn ConcreteParserState, integer_node: prism::IntegerNode) {
