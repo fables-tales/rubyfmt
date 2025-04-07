@@ -32,6 +32,7 @@ mod render_queue_writer;
 mod render_targets;
 mod ripper_tree_types;
 mod ruby_ops;
+mod string_escape;
 mod types;
 mod util;
 

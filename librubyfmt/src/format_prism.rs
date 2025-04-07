@@ -3,6 +3,7 @@ use ruby_prism as prism;
 use crate::{
     delimiters::BreakableDelims,
     format::SpecialCase,
+    heredoc_string::HeredocKind,
     parser_state::{ConcreteParserState, FormattingContext, HashType, RenderFunc},
     render_targets::MultilineHandling,
     types::SourceOffset,
@@ -77,7 +78,9 @@ pub fn format_node(ps: &mut dyn ConcreteParserState, node: prism::Node) {
         Node::DefNode { .. } => format_def_node(ps, node.as_def_node().unwrap()),
         Node::DefinedNode { .. } => todo!(),
         Node::ElseNode { .. } => todo!(),
-        Node::EmbeddedStatementsNode { .. } => todo!(),
+        Node::EmbeddedStatementsNode { .. } => {
+            format_embedded_statements_node(ps, node.as_embedded_statements_node().unwrap())
+        }
         Node::EmbeddedVariableNode { .. } => todo!(),
         Node::EnsureNode { .. } => todo!(),
         Node::FalseNode { .. } => todo!(),
@@ -110,11 +113,15 @@ pub fn format_node(ps: &mut dyn ConcreteParserState, node: prism::Node) {
         Node::InstanceVariableOrWriteNode { .. } => todo!(),
         Node::InstanceVariableReadNode { .. } => todo!(),
         Node::InstanceVariableTargetNode { .. } => todo!(),
-        Node::InstanceVariableWriteNode { .. } => todo!(),
+        Node::InstanceVariableWriteNode { .. } => {
+            format_instance_variable_write_node(ps, node.as_instance_variable_write_node().unwrap())
+        }
         Node::IntegerNode { .. } => format_integer_node(ps, node.as_integer_node().unwrap()),
         Node::InterpolatedMatchLastLineNode { .. } => todo!(),
         Node::InterpolatedRegularExpressionNode { .. } => todo!(),
-        Node::InterpolatedStringNode { .. } => todo!(),
+        Node::InterpolatedStringNode { .. } => {
+            format_interpolated_string_node(ps, node.as_interpolated_string_node().unwrap())
+        }
         Node::InterpolatedSymbolNode { .. } => todo!(),
         Node::InterpolatedXStringNode { .. } => todo!(),
         Node::ItLocalVariableReadNode { .. } => todo!(),
@@ -185,7 +192,7 @@ pub fn format_node(ps: &mut dyn ConcreteParserState, node: prism::Node) {
         Node::SourceLineNode { .. } => todo!(),
         Node::SplatNode { .. } => format_splat_node(ps, node.as_splat_node().unwrap()),
         Node::StatementsNode { .. } => format_statements(ps, node.as_statements_node().unwrap()),
-        Node::StringNode { .. } => todo!(),
+        Node::StringNode { .. } => format_string_node(ps, node.as_string_node().unwrap()),
         Node::SuperNode { .. } => todo!(),
         Node::SymbolNode { .. } => format_symbol_node(ps, node.as_symbol_node().unwrap()),
         Node::TrueNode { .. } => todo!(),
@@ -233,6 +240,169 @@ fn format_statements(ps: &mut dyn ConcreteParserState, statements_node: prism::S
             }
         }),
     );
+}
+
+fn format_string_node(ps: &mut dyn ConcreteParserState, string_node: prism::StringNode) {
+    ps.at_offset(string_node.location().start_offset());
+
+    // `opening_loc()` is only `None` in the case of the inner parts of multiline strings
+    // (e.g. the inner contents of a heredoc)
+    let opener = string_node
+        .opening_loc()
+        .map(|s| loc_to_string(s).trim().to_string());
+    let closer = string_node
+        .closing_loc()
+        .map(|s| loc_to_string(s).trim().to_string());
+    let is_heredoc = opener.clone().map(|s| s.starts_with("<")).unwrap_or(false);
+
+    ps.with_start_of_line(
+        false,
+        Box::new(|ps| {
+            if is_heredoc {
+                let heredoc_symbol = opener.clone().unwrap();
+                let heredoc_kind = HeredocKind::from_string(&heredoc_symbol);
+
+                ps.emit_heredoc_start(heredoc_symbol, heredoc_kind);
+                ps.emit_newline();
+            } else {
+                // Always use double quotes over single quotes/percent literals
+                if opener.is_some() {
+                    ps.emit_double_quote();
+                }
+            }
+
+            // If opener is nil, we must be in some kind of interpolated string context, which
+            // means the contents must already be appropriately escaped -- hence we default to `true` here
+            let in_escaped_context =
+                is_heredoc || opener.clone().map(|s| s.starts_with("\"")).unwrap_or(true);
+            let string_content = if in_escaped_context {
+                loc_to_string(string_node.content_loc())
+            } else {
+                crate::string_escape::single_to_double_quoted(
+                    loc_to_string(string_node.content_loc()),
+                    opener.clone().unwrap().as_str(),
+                    closer.clone().unwrap().as_str(),
+                )
+            };
+
+            ps.emit_string_content(string_content);
+            ps.wind_dumping_comments_until_offset(string_node.content_loc().end_offset());
+
+            if is_heredoc {
+                // <<~ heredocs have their closing tag indented too
+                if opener.map(|s| s.starts_with("<<~")).unwrap_or(false) {
+                    ps.emit_indent();
+                }
+
+                ps.emit_heredoc_close(
+                    loc_to_string(string_node.closing_loc().unwrap())
+                        .trim()
+                        .to_string(),
+                );
+            } else if opener.is_some() {
+                ps.emit_double_quote();
+            }
+        }),
+    );
+
+    ps.wind_dumping_comments_until_offset(string_node.location().end_offset());
+}
+
+fn format_interpolated_string_node(
+    ps: &mut dyn ConcreteParserState,
+    interpolated_string_node: prism::InterpolatedStringNode,
+) {
+    let is_heredoc = interpolated_string_node
+        .opening_loc()
+        .map(|s| loc_to_string(s).starts_with("<"))
+        .unwrap_or(false);
+
+    // Prism actually handles string concatenation when using "\", so it treats
+    // ```ruby
+    // "foo" \
+    //   "bar"
+    // ```
+    // as an interpolated node with the contents `"foobar"` (in two `parts` of "foo" and "bar").
+    // To detect this, we can look for any `InterpolatedStringNode` that has multiple `parts`
+    // and isn't a heredoc.
+    let is_backslash_string_interpolation = !is_heredoc
+        && interpolated_string_node.parts().iter().all(|node| {
+            node.as_string_node()
+                .map(|s| s.opening_loc().is_some())
+                .unwrap_or(false)
+        });
+
+    ps.at_offset(interpolated_string_node.location().start_offset());
+    if let Some(s) = interpolated_string_node.opening_loc() {
+        ps.emit_string_content(loc_to_string(s).trim().to_string());
+    }
+    if is_heredoc {
+        ps.emit_newline();
+    }
+
+    ps.with_start_of_line(
+        false,
+        Box::new(|ps| {
+            let string_parts_count = interpolated_string_node.parts().iter().count();
+            for (i, part) in interpolated_string_node.parts().iter().enumerate() {
+                let end_offset = part.location().end_offset();
+                ps.at_offset(part.location().start_offset());
+
+                if i > 0 {
+                    ps.start_indent();
+
+                    if is_backslash_string_interpolation {
+                        ps.emit_newline();
+                        ps.emit_indent();
+                    }
+                }
+
+                format_node(ps, part);
+
+                // For non-backslash-concatenated multiline strings, `part` contains newlines and indentation,
+                // so we don't need to handle that ourselves.
+                if is_backslash_string_interpolation && i < string_parts_count - 1 {
+                    if let Some(s) = interpolated_string_node.closing_loc() {
+                        ps.emit_string_content(loc_to_string(s).trim().to_string());
+                    }
+                    ps.emit_space();
+                    ps.emit_slash();
+                }
+
+                ps.at_offset(end_offset);
+                if i > 0 {
+                    ps.end_indent();
+                }
+            }
+        }),
+    );
+
+    if let Some(closing_loc) = interpolated_string_node.closing_loc() {
+        ps.emit_string_content(loc_to_string(closing_loc).trim().to_string());
+    }
+}
+
+fn format_embedded_statements_node(
+    ps: &mut dyn ConcreteParserState,
+    embedded_statements_node: prism::EmbeddedStatementsNode,
+) {
+    ps.emit_string_content("#{".to_string());
+    if let Some(statements) = embedded_statements_node.statements() {
+        let has_multiple_statements = statements.body().iter().count() > 1;
+        ps.with_start_of_line(
+            has_multiple_statements,
+            Box::new(|ps| {
+                if has_multiple_statements {
+                    ps.emit_newline();
+                    ps.new_block(Box::new(|ps| format_node(ps, statements.as_node())));
+                    ps.emit_indent();
+                } else {
+                    format_node(ps, statements.as_node());
+                }
+            }),
+        );
+    }
+    ps.emit_string_content("}".to_string());
 }
 
 fn format_class_node(ps: &mut dyn ConcreteParserState, class_node: prism::ClassNode) {
@@ -988,6 +1158,22 @@ fn format_splat_node(ps: &mut dyn ConcreteParserState, splat_node: prism::SplatN
 
 fn format_ident(ps: &mut dyn ConcreteParserState, ident: String, offset: usize) {
     handle_string_at_offset(ps, ident, offset);
+}
+
+fn format_instance_variable_write_node(
+    ps: &mut dyn ConcreteParserState,
+    instance_variable_write_node: prism::InstanceVariableWriteNode,
+) {
+    ps.at_offset(instance_variable_write_node.location().start_offset());
+
+    ps.emit_ident(const_to_string(instance_variable_write_node.name()));
+    ps.emit_space();
+    ps.emit_op("=".to_string());
+    ps.emit_space();
+    ps.with_start_of_line(
+        false,
+        Box::new(|ps| format_node(ps, instance_variable_write_node.value())),
+    );
 }
 
 fn format_integer_node(ps: &mut dyn ConcreteParserState, integer_node: prism::IntegerNode) {

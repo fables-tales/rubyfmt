@@ -101,6 +101,7 @@ where
     fn emit_def(&mut self, def_name: String);
     fn emit_indent(&mut self);
     fn emit_heredoc_start(&mut self, symbol: String, kind: HeredocKind);
+    fn emit_heredoc_close(&mut self, symbol: String);
     fn emit_after_call_chain(&mut self);
     fn emit_data_end(&mut self);
     fn emit_data(&mut self, data: &str);
@@ -246,6 +247,10 @@ impl ConcreteParserState for BaseParserState {
 
     fn emit_heredoc_start(&mut self, symbol: String, kind: HeredocKind) {
         self.push_concrete_token(ConcreteLineToken::HeredocStart { kind, symbol });
+    }
+
+    fn emit_heredoc_close(&mut self, symbol: String) {
+        self.push_concrete_token(ConcreteLineToken::HeredocClose { symbol });
     }
 
     fn magic_handle_comments_for_multiline_arrays<'a>(
@@ -1065,10 +1070,6 @@ impl BaseParserState {
             Some(be) => be.push(t),
             None => self.render_queue.push(Self::dangerously_convert(t)),
         }
-    }
-
-    fn emit_heredoc_close(&mut self, symbol: String) {
-        self.push_concrete_token(ConcreteLineToken::HeredocClose { symbol });
     }
 
     fn render_with_blank_state<F>(ps: &mut BaseParserState, f: F) -> BaseParserState

@@ -10,6 +10,7 @@ build = "build.rs"
 [dependencies]
 serde = { version = "1.0", features=["derive"] }
 libc = "0.2.68"
+fancy-regex = "0.14.0"
 ripper_deserialize = { path = "ripper_deserialize" }
 lazy_static = "1.4.0"
 log = { version = "0.4.8", features = ["max_level_debug", "release_max_level_warn"] }

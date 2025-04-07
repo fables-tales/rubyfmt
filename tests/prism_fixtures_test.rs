@@ -95,10 +95,10 @@ fixture!(test_small_bare_assoc_multiple, "small/bare_assoc_multiple");
 // fixture!(test_small_binary_raise, "small/binary_raise");
 // fixture!(test_small_bitwise_not, "small/bitwise_not");
 // fixture!(test_small_block_argument, "small/block_argument");
-// fixture!(
-//     test_small_block_ending_with_comment,
-//     "small/block_ending_with_comment"
-// );
+fixture!(
+    test_small_block_ending_with_comment,
+    "small/block_ending_with_comment"
+);
 // fixture!(
 //     test_small_block_local_variables,
 //     "small/block_local_variables"
@@ -153,7 +153,7 @@ fixture!(test_small_cannibalization_4, "small/cannibalization_4");
 //     "small/class_methods_respect_parens"
 // );
 // fixture!(test_small_class_module, "small/class_module");
-// fixture!(test_small_coloncoloncalldot, "small/coloncoloncalldot");
+fixture!(test_small_coloncoloncalldot, "small/coloncoloncalldot");
 // fixture!(test_small_command_call_raise, "small/command_call_raise");
 // fixture!(test_small_command_paren, "small/command_paren");
 fixture!(test_small_commas_trailing, "small/commas_trailing");
@@ -173,10 +173,10 @@ fixture!(test_small_commas_trailing, "small/commas_trailing");
 //     test_small_comments_at_indentation_changes,
 //     "small/comments_at_indentation_changes"
 // );
-// fixture!(
-//     test_small_comments_inside_array,
-//     "small/comments_inside_array"
-// );
+fixture!(
+    test_small_comments_inside_array,
+    "small/comments_inside_array"
+);
 // fixture!(
 //     test_small_comments_with_breaks,
 //     "small/comments_with_breaks"
@@ -332,7 +332,7 @@ fixture!(
     "small/method_call_with_trailing_comma"
 );
 // fixture!(test_small_method_chains, "small/method_chains");
-// fixture!(test_small_missing_parens, "small/missing_parens");
+fixture!(test_small_missing_parens, "small/missing_parens");
 // fixture!(test_small_mlhs_params, "small/mlhs_params");
 // fixture!(test_small_mlhs_paren, "small/mlhs_paren");
 fixture!(test_small_more_breaks, "small/more_breaks");
@@ -360,10 +360,10 @@ fixture!(
     "small/multiline_chained_call"
 );
 // fixture!(test_small_multiline_defs, "small/multiline_defs");
-// fixture!(
-//     test_small_multiline_method_call_with_block,
-//     "small/multiline_method_call_with_block"
-// );
+fixture!(
+    test_small_multiline_method_call_with_block,
+    "small/multiline_method_call_with_block"
+);
 // fixture!(
 //     test_small_multiline_method_chain_with_arguments,
 //     "small/multiline_method_chain_with_arguments"
@@ -376,15 +376,15 @@ fixture!(
 //     test_small_multiline_single_quotes,
 //     "small/multiline_single_quotes"
 // );
-// fixture!(
-//     test_small_multiline_strings_in_parameter_list,
-//     "small/multiline_strings_in_parameter_list"
-// );
+fixture!(
+    test_small_multiline_strings_in_parameter_list,
+    "small/multiline_strings_in_parameter_list"
+);
 // fixture!(
 //     test_small_multiline_when_with_comment,
 //     "small/multiline_when_with_comment"
 // );
-// fixture!(test_small_nbsp, "small/nbsp");
+fixture!(test_small_nbsp, "small/nbsp");
 fixture!(test_small_nested_command, "small/nested_command");
 // fixture!(test_small_nested_conditionals, "small/nested_conditionals");
 // fixture!(
@@ -438,10 +438,10 @@ fixture!(test_small_raise_star, "small/raise_star");
 // fixture!(test_small_req_optional_params, "small/req_optional_params");
 // fixture!(test_small_require_rails, "small/require_rails");
 // fixture!(test_small_require_relative, "small/require_relative");
-// fixture!(
-//     test_small_requirish_followed_by_module,
-//     "small/requirish_followed_by_module"
-// );
+fixture!(
+    test_small_requirish_followed_by_module,
+    "small/requirish_followed_by_module"
+);
 // fixture!(test_small_rescue_else, "small/rescue_else");
 // fixture!(test_small_rescue_multiple, "small/rescue_multiple");
 // fixture!(test_small_rescue_no_class, "small/rescue_no_class");
@@ -466,14 +466,14 @@ fixture!(
     "small/single_line_method_call_chain"
 );
 // fixture!(test_small_single_massign, "small/single_massign");
-// fixture!(
-//     test_small_single_quoted_string_with_embexpr,
-//     "small/single_quoted_string_with_embexpr"
-// );
-// fixture!(
-//     test_small_single_quoted_string_with_slash_escape,
-//     "small/single_quoted_string_with_slash_escape"
-// );
+fixture!(
+    test_small_single_quoted_string_with_embexpr,
+    "small/single_quoted_string_with_embexpr"
+);
+fixture!(
+    test_small_single_quoted_string_with_slash_escape,
+    "small/single_quoted_string_with_slash_escape"
+);
 // fixture!(test_small_splat_case, "small/splat_case");
 fixture!(test_small_splat_in_argument, "small/splat_in_argument");
 // fixture!(test_small_splat_rescue, "small/splat_rescue");
@@ -488,18 +488,18 @@ fixture!(
     test_small_start_of_file_comments,
     "small/start_of_file_comments"
 );
-// fixture!(test_small_static_call, "small/static_call");
+fixture!(test_small_static_call, "small/static_call");
 fixture!(
     test_small_stmt_followed_by_do_block,
     "small/stmt_followed_by_do_block"
 );
-// fixture!(test_small_string_concat, "small/string_concat");
+fixture!(test_small_string_concat, "small/string_concat");
 // fixture!(
 //     test_small_string_concat_indent,
 //     "small/string_concat_indent"
 // );
 // fixture!(test_small_string_dvar, "small/string_dvar");
-// fixture!(test_small_string_escapes, "small/string_escapes");
+fixture!(test_small_string_escapes, "small/string_escapes");
 // fixture!(
 //     test_small_string_first_item_is_embed,
 //     "small/string_first_item_is_embed"
@@ -559,10 +559,10 @@ fixture!(test_small_trailing_empty_star, "small/trailing_empty_star");
 // fixture!(test_small_visibility_modifier, "small/visibility_modifier");
 // fixture!(test_small_w_array, "small/w_array");
 // fixture!(test_small_w_arrays, "small/w_arrays");
-// fixture!(
-//     test_small_weird_percent_strings,
-//     "small/weird_percent_strings"
-// );
+fixture!(
+    test_small_weird_percent_strings,
+    "small/weird_percent_strings"
+);
 // fixture!(test_small_when_indent, "small/when_indent");
 // fixture!(test_small_while, "small/while");
 // fixture!(test_small_while_block_comment, "small/while_block_comment");
