@@ -326,10 +326,11 @@ fn format_interpolated_string_node(
     // To detect this, we can look for any `InterpolatedStringNode` that has multiple `parts`
     // and isn't a heredoc.
     let is_backslash_string_interpolation = !is_heredoc
-        && interpolated_string_node
-            .parts()
-            .iter()
-            .all(|node| node.as_string_node().unwrap().opening_loc().is_some());
+        && interpolated_string_node.parts().iter().all(|node| {
+            node.as_string_node()
+                .map(|s| s.opening_loc().is_some())
+                .unwrap_or(false)
+        });
 
     ps.at_offset(interpolated_string_node.location().start_offset());
     if let Some(s) = interpolated_string_node.opening_loc() {
