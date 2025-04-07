@@ -7,9 +7,9 @@
 
 ## Running the tests
 
-`./script/test.sh`
+`cargo test`
 
-in particular `./script/tests/test_fixtures.sh` is what I use for ongoing
+in particular `cargo test --test fixtures_test` is what I use for ongoing
 development when I'm testing a new feature, which I usually start by committing
 a new fixture.
 
