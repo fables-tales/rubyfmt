@@ -66,7 +66,7 @@ fixture!(test_small_arg_trailing_comma, "small/arg_trailing_comma");
 // );
 // fixture!(test_small_array_with_splat, "small/array_with_splat");
 // fixture!(test_small_assign_field, "small/assign_field");
-// fixture!(test_small_assoc_double_splat, "small/assoc_double_splat");
+fixture!(test_small_assoc_double_splat, "small/assoc_double_splat");
 // fixture!(test_small_backref, "small/backref");
 fixture!(test_small_backtick_symbol, "small/backtick_symbol");
 // fixture!(test_small_backticks, "small/backticks");
@@ -221,7 +221,7 @@ fixture!(test_small_defs_kw, "small/defs_kw");
 // fixture!(test_small_dot2, "small/dot2");
 // fixture!(test_small_dot3, "small/dot3");
 // fixture!(test_small_dotcall, "small/dotcall");
-// fixture!(test_small_double_splat, "small/double_splat");
+fixture!(test_small_double_splat, "small/double_splat");
 // fixture!(test_small_double_splat_def, "small/double_splat_def");
 // fixture!(
 //     test_small_dyna_symbol_with_escapes,

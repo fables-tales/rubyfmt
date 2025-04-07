@@ -1264,10 +1264,18 @@ fn format_assoc_node(ps: &mut dyn ConcreteParserState, assoc_node: prism::AssocN
 }
 
 fn format_assoc_splat_node(
-    _ps: &mut dyn ConcreteParserState,
-    _assoc_splat_node: prism::AssocSplatNode,
+    ps: &mut dyn ConcreteParserState,
+    assoc_splat_node: prism::AssocSplatNode,
 ) {
-    todo!()
+    ps.with_start_of_line(
+        false,
+        Box::new(|ps| {
+            ps.emit_ident("**".to_string());
+            if let Some(value) = assoc_splat_node.value() {
+                format_node(ps, value);
+            }
+        }),
+    );
 }
 
 fn format_block_node(ps: &mut dyn ConcreteParserState, block_node: prism::BlockNode) {
