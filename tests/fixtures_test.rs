@@ -58,6 +58,13 @@ fixture!(
 );
 fixture!(test_small_arg_trailing_comma, "small/arg_trailing_comma");
 fixture!(test_small_args_forwarding, "small/args_forwarding");
+// TODO: The Ripper implementation does not currently support
+//       args forwarding with additional arguments passed in
+//       https://github.com/fables-tales/rubyfmt/issues/474
+// fixture!(
+//     test_small_args_forwarding_additional_args,
+//     "small/args_forwarding_additional_args"
+// );
 fixture!(
     test_small_args_forwarding_multiline,
     "small/args_forwarding_multiline"
