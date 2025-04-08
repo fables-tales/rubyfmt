@@ -236,10 +236,10 @@ fixture!(test_small_empty_block, "small/empty_block");
 //     test_small_empty_module_comments,
 //     "small/empty_module_comments"
 // );
-// fixture!(
-//     test_small_empty_string_literal,
-//     "small/empty_string_literal"
-// );
+fixture!(
+    test_small_empty_string_literal,
+    "small/empty_string_literal"
+);
 // fixture!(test_small_end_block, "small/end_block");
 fixture!(test_small_end_data, "small/end_data");
 fixture!(
@@ -307,7 +307,7 @@ fixture!(test_small_kwargs_multiline, "small/kwargs_multiline");
 //     test_small_list_like_things_with_comments,
 //     "small/list_like_things_with_comments"
 // );
-// fixture!(test_small_literals_newlines, "small/literals_newlines");
+fixture!(test_small_literals_newlines, "small/literals_newlines");
 fixture!(test_small_long_blockvar, "small/long_blockvar");
 // fixture!(
 //     test_small_long_line_with_indentation,
@@ -394,7 +394,7 @@ fixture!(test_small_nested_command, "small/nested_command");
 // fixture!(test_small_next_with_args, "small/next_with_args");
 // fixture!(test_small_next_with_comments, "small/next_with_comments");
 // fixture!(test_small_next_yield, "small/next_yield");
-// fixture!(test_small_no_mangle_jpy, "small/no_mangle_jpy");
+fixture!(test_small_no_mangle_jpy, "small/no_mangle_jpy");
 // fixture!(
 //     test_small_no_multiline_call_in_string_embexpr,
 //     "small/no_multiline_call_in_string_embexpr"
@@ -417,10 +417,10 @@ fixture!(test_small_op_defs, "small/op_defs");
 //     "small/pathological_heredocs"
 // );
 // fixture!(test_small_percent_q, "small/percent_q");
-// fixture!(
-//     test_small_preserve_slash_u_strings,
-//     "small/preserve_slash_u_strings"
-// );
+fixture!(
+    test_small_preserve_slash_u_strings,
+    "small/preserve_slash_u_strings"
+);
 // fixture!(
 //     test_small_private_class_method,
 //     "small/private_class_method"
@@ -495,10 +495,10 @@ fixture!(
     "small/stmt_followed_by_do_block"
 );
 fixture!(test_small_string_concat, "small/string_concat");
-// fixture!(
-//     test_small_string_concat_indent,
-//     "small/string_concat_indent"
-// );
+fixture!(
+    test_small_string_concat_indent,
+    "small/string_concat_indent"
+);
 // fixture!(test_small_string_dvar, "small/string_dvar");
 fixture!(test_small_string_escapes, "small/string_escapes");
 // fixture!(
