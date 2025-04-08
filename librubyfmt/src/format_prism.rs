@@ -1655,17 +1655,25 @@ fn format_for_node(_ps: &mut dyn ConcreteParserState, _for_node: prism::ForNode)
 }
 
 fn format_forwarding_arguments_node(
-    _ps: &mut dyn ConcreteParserState,
-    _forwarding_arguments_node: prism::ForwardingArgumentsNode,
+    ps: &mut dyn ConcreteParserState,
+    forwarding_arguments_node: prism::ForwardingArgumentsNode,
 ) {
-    todo!()
+    handle_string_at_offset(
+        ps,
+        "...".to_string(),
+        forwarding_arguments_node.location().start_offset(),
+    );
 }
 
 fn format_forwarding_parameter_node(
-    _ps: &mut dyn ConcreteParserState,
-    _forwarding_parameter_node: prism::ForwardingParameterNode,
+    ps: &mut dyn ConcreteParserState,
+    forwarding_parameter_node: prism::ForwardingParameterNode,
 ) {
-    todo!()
+    handle_string_at_offset(
+        ps,
+        "...".to_string(),
+        forwarding_parameter_node.location().start_offset(),
+    );
 }
 
 fn format_forwarding_super_node(

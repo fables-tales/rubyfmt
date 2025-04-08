@@ -59,7 +59,11 @@ fixture!(test_small_all_method_blocks, "small/all_method_blocks");
 //     "small/arg_list_with_bare_assoc_hash"
 // );
 fixture!(test_small_arg_trailing_comma, "small/arg_trailing_comma");
-// fixture!(test_small_args_forwarding, "small/args_forwarding");
+fixture!(test_small_args_forwarding, "small/args_forwarding");
+fixture!(
+    test_small_args_forwarding_additional_args,
+    "small/args_forwarding_additional_args"
+);
 // fixture!(
 //     test_small_args_forwarding_multiline,
 //     "small/args_forwarding_multiline"
