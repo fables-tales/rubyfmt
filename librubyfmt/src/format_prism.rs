@@ -1882,8 +1882,10 @@ fn format_constant_path_node(
         Box::new(|ps| {
             if let Some(parent) = constant_path_node.parent() {
                 format_node(ps, parent);
-                ps.emit_colon_colon();
             }
+            // Emit :: regardless of if there's a parent
+            // since it could be a top reference
+            ps.emit_colon_colon();
 
             handle_string_at_offset(
                 ps,
@@ -1944,10 +1946,15 @@ fn format_constant_path_target_node(
 }
 
 fn format_constant_path_write_node(
-    _ps: &mut dyn ConcreteParserState,
-    _constant_path_write_node: prism::ConstantPathWriteNode,
+    ps: &mut dyn ConcreteParserState,
+    constant_path_write_node: prism::ConstantPathWriteNode,
 ) {
-    todo!()
+    format_constant_path_node(ps, constant_path_write_node.target());
+    ps.emit_op(" = ".to_string());
+    ps.with_start_of_line(
+        false,
+        Box::new(|ps| format_node(ps, constant_path_write_node.value())),
+    );
 }
 
 fn format_constant_target_node(
