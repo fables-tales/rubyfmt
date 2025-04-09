@@ -35,6 +35,12 @@ jobs:
           toolchain: 1.85.0
           components: clippy
           override: true
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+          key: ${{ runner.os }}-cargo-2-${{ hashFiles('**/Cargo.lock') }}
       - run: cargo clippy --all --all-features -- -D warnings
 
   lint:
