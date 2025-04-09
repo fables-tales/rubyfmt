@@ -277,7 +277,7 @@ fixture!(test_small_gvar_symbol, "small/gvar_symbol");
 //     "small/heredoc_indented_whitespace"
 // );
 // fixture!(test_small_heredoc_method_call, "small/heredoc_method_call");
-// fixture!(test_small_heredoc_with_call, "small/heredoc_with_call");
+fixture!(test_small_heredoc_with_call, "small/heredoc_with_call");
 // fixture!(
 //     test_small_heredoc_with_leading_newline,
 //     "small/heredoc_with_leading_newline"
@@ -345,10 +345,10 @@ fixture!(test_small_more_breaks, "small/more_breaks");
 // fixture!(test_small_mrhs_add_star, "small/mrhs_add_star");
 // fixture!(test_small_mrhs_new_from_args, "small/mrhs_new_from_args");
 // fixture!(test_small_multi_assign_method, "small/multi_assign_method");
-// fixture!(
-//     test_small_multi_expression_embexpr,
-//     "small/multi_expression_embexpr"
-// );
+fixture!(
+    test_small_multi_expression_embexpr,
+    "small/multi_expression_embexpr"
+);
 // fixture!(
 //     test_small_multi_line_word_arrays,
 //     "small/multi_line_word_arrays"
@@ -376,10 +376,10 @@ fixture!(
 //     test_small_multiline_method_params,
 //     "small/multiline_method_params"
 // );
-// fixture!(
-//     test_small_multiline_single_quotes,
-//     "small/multiline_single_quotes"
-// );
+fixture!(
+    test_small_multiline_single_quotes,
+    "small/multiline_single_quotes"
+);
 fixture!(
     test_small_multiline_strings_in_parameter_list,
     "small/multiline_strings_in_parameter_list"
@@ -460,10 +460,10 @@ fixture!(test_small_rest_param, "small/rest_param");
 // fixture!(test_small_rspec_its, "small/rspec_its");
 // fixture!(test_small_sclass, "small/sclass");
 // fixture!(test_small_scoping, "small/scoping");
-// fixture!(
-//     test_small_separated_statements_with_trailing_comment,
-//     "small/separated_statements_with_trailing_comment"
-// );
+fixture!(
+    test_small_separated_statements_with_trailing_comment,
+    "small/separated_statements_with_trailing_comment"
+);
 // fixture!(test_small_shorthand_hash, "small/shorthand_hash");
 fixture!(
     test_small_single_line_method_call_chain,
@@ -517,10 +517,10 @@ fixture!(test_small_string_escapes, "small/string_escapes");
 //     test_small_string_literals_dont_break_comments,
 //     "small/string_literals_dont_break_comments"
 // );
-// fixture!(
-//     test_small_string_literals_with_escaped_quotes,
-//     "small/string_literals_with_escaped_quotes"
-// );
+fixture!(
+    test_small_string_literals_with_escaped_quotes,
+    "small/string_literals_with_escaped_quotes"
+);
 // fixture!(
 //     test_small_string_with_embexpr_dyna_symbol,
 //     "small/string_with_embexpr_dyna_symbol"

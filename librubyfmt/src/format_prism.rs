@@ -1607,7 +1607,7 @@ fn format_local_variable_write_node(
     ps.bind_variable(name.clone());
     ps.emit_ident(name);
 
-    ps.emit_ident("=".to_string());
+    ps.emit_ident(" = ".to_string());
 
     ps.with_start_of_line(
         false,
