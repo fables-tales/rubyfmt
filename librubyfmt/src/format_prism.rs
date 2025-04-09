@@ -2054,10 +2054,12 @@ fn format_optional_keyword_parameter_node(
 }
 
 fn format_optional_parameter_node(
-    _ps: &mut dyn ConcreteParserState,
-    _optional_parameter_node: prism::OptionalParameterNode,
+    ps: &mut dyn ConcreteParserState,
+    optional_parameter_node: prism::OptionalParameterNode,
 ) {
-    todo!()
+    ps.emit_ident(const_to_string(optional_parameter_node.name()));
+    ps.emit_op(" = ".to_string());
+    format_node(ps, optional_parameter_node.value());
 }
 
 fn format_or_node(_ps: &mut dyn ConcreteParserState, _or_node: prism::OrNode) {
