@@ -198,10 +198,10 @@ fixture!(
 //     "small/conditionals_with_ending_comments"
 // );
 // fixture!(test_small_const_call, "small/const_call");
-// fixture!(
-//     test_small_const_path_field_assignment,
-//     "small/const_path_field_assignment"
-// );
+fixture!(
+    test_small_const_path_field_assignment,
+    "small/const_path_field_assignment"
+);
 fixture!(
     test_small_const_path_ref_class_definition,
     "small/const_path_ref_class_definition"
@@ -303,10 +303,10 @@ fixture!(test_small_kw_symbol, "small/kw_symbol");
 // fixture!(test_small_kwargs, "small/kwargs");
 fixture!(test_small_kwargs_multiline, "small/kwargs_multiline");
 // fixture!(test_small_lambda, "small/lambda");
-// fixture!(
-//     test_small_line_broken_top_const_field,
-//     "small/line_broken_top_const_field"
-// );
+fixture!(
+    test_small_line_broken_top_const_field,
+    "small/line_broken_top_const_field"
+);
 // fixture!(
 //     test_small_list_like_things_with_comments,
 //     "small/list_like_things_with_comments"
@@ -548,11 +548,11 @@ fixture!(test_small_symbol_arg, "small/symbol_arg");
 fixture!(test_small_symbol_op, "small/symbol_op");
 // fixture!(test_small_ternary, "small/ternary");
 // fixture!(test_small_to_proc_operator, "small/to_proc_operator");
-// fixture!(
-//     test_small_top_const_field_assignment,
-//     "small/top_const_field_assignment"
-// );
-// fixture!(test_small_top_const_ref, "small/top_const_ref");
+fixture!(
+    test_small_top_const_field_assignment,
+    "small/top_const_field_assignment"
+);
+fixture!(test_small_top_const_ref, "small/top_const_ref");
 fixture!(test_small_trailing_empty_star, "small/trailing_empty_star");
 // fixture!(test_small_unary, "small/unary");
 // fixture!(test_small_undef, "small/undef");
