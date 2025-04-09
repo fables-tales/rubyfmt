@@ -185,7 +185,7 @@ fixture!(
 //     test_small_comments_with_breaks,
 //     "small/comments_with_breaks"
 // );
-// fixture!(test_small_complex_numbers, "small/complex_numbers");
+fixture!(test_small_complex_numbers, "small/complex_numbers");
 // fixture!(test_small_complex_params, "small/complex_params");
 // fixture!(test_small_conditional, "small/conditional");
 // fixture!(test_small_conditional_assign, "small/conditional_assign");
@@ -436,7 +436,7 @@ fixture!(
 // fixture!(test_small_procs, "small/procs");
 // fixture!(test_small_quoted_heredoc, "small/quoted_heredoc");
 fixture!(test_small_raise_star, "small/raise_star");
-// fixture!(test_small_rationals, "small/rationals");
+fixture!(test_small_rationals, "small/rationals");
 // fixture!(test_small_redo, "small/redo");
 // fixture!(test_small_regexp_literal, "small/regexp_literal");
 // fixture!(test_small_req_optional_params, "small/req_optional_params");

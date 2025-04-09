@@ -1780,8 +1780,8 @@ fn format_if_node(_ps: &mut dyn ConcreteParserState, _if_node: prism::IfNode) {
     todo!()
 }
 
-fn format_imaginary_node(_ps: &mut dyn ConcreteParserState, _imaginary_node: prism::ImaginaryNode) {
-    todo!()
+fn format_imaginary_node(ps: &mut dyn ConcreteParserState, imaginary_node: prism::ImaginaryNode) {
+    ps.emit_ident(loc_to_string(imaginary_node.location()));
 }
 
 fn format_implicit_node(_ps: &mut dyn ConcreteParserState, _implicit_node: prism::ImplicitNode) {
@@ -2089,8 +2089,8 @@ fn format_range_node(_ps: &mut dyn ConcreteParserState, _range_node: prism::Rang
     todo!()
 }
 
-fn format_rational_node(_ps: &mut dyn ConcreteParserState, _rational_node: prism::RationalNode) {
-    todo!()
+fn format_rational_node(ps: &mut dyn ConcreteParserState, rational_node: prism::RationalNode) {
+    ps.emit_ident(loc_to_string(rational_node.location()));
 }
 
 fn format_redo_node(_ps: &mut dyn ConcreteParserState, _redo_node: prism::RedoNode) {
