@@ -737,8 +737,7 @@ fn format_class_node(ps: &mut dyn ConcreteParserState, class_node: prism::ClassN
     );
 
     if let Some(superclass) = class_node.superclass() {
-        ps.emit_ident("<".to_string());
-        ps.emit_space();
+        ps.emit_ident(" < ".to_string());
         ps.with_start_of_line(
             false,
             Box::new(|ps| {
@@ -1677,10 +1676,37 @@ fn format_forwarding_parameter_node(
 }
 
 fn format_forwarding_super_node(
-    _ps: &mut dyn ConcreteParserState,
-    _forwarding_super_node: prism::ForwardingSuperNode,
+    ps: &mut dyn ConcreteParserState,
+    forwarding_super_node: prism::ForwardingSuperNode,
 ) {
-    todo!()
+    ps.emit_ident("super".to_string());
+    if let Some(block) = forwarding_super_node.block() {
+        ps.emit_space();
+        format_block_node(ps, block);
+    }
+}
+
+fn format_super_node(ps: &mut dyn ConcreteParserState, super_node: prism::SuperNode) {
+    ps.emit_ident("super".to_string());
+    // Note that we always emit parens for SuperNodes,
+    // since they're distinct from ForwardingSuperNode which never use parens
+    ps.with_start_of_line(
+        false,
+        Box::new(|ps| {
+            ps.breakable_of(
+                BreakableDelims::for_method_call(),
+                Box::new(|ps| {
+                    if let Some(arguments) = super_node.arguments() {
+                        format_arguments_node(ps, arguments);
+                    }
+                }),
+            );
+        }),
+    );
+    if let Some(block) = super_node.block() {
+        ps.emit_space();
+        ps.with_start_of_line(false, Box::new(|ps| format_node(ps, block)));
+    }
 }
 
 fn format_global_variable_and_write_node(
@@ -2135,10 +2161,6 @@ fn format_source_line_node(
         "__LINE__".to_string(),
         source_line_node.location().start_offset(),
     );
-}
-
-fn format_super_node(_ps: &mut dyn ConcreteParserState, _super_node: prism::SuperNode) {
-    todo!()
 }
 
 fn format_self_node(ps: &mut dyn ConcreteParserState, _self_node: prism::SelfNode) {

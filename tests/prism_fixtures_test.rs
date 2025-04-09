@@ -145,7 +145,7 @@ fixture!(test_small_blockarg, "small/blockarg");
 // fixture!(test_small_breaks, "small/breaks");
 // fixture!(test_small_cannibalization_1, "small/cannibalization_1");
 // fixture!(test_small_cannibalization_2, "small/cannibalization_2");
-// fixture!(test_small_cannibalization_3, "small/cannibalization_3");
+fixture!(test_small_cannibalization_3, "small/cannibalization_3");
 fixture!(test_small_cannibalization_4, "small/cannibalization_4");
 // fixture!(test_small_case, "small/case");
 // fixture!(test_small_case_else, "small/case_else");
@@ -236,10 +236,10 @@ fixture!(test_small_double_splat, "small/double_splat");
 fixture!(test_small_empty_block, "small/empty_block");
 // fixture!(test_small_empty_comments, "small/empty_comments");
 // fixture!(test_small_empty_heredocs, "small/empty_heredocs");
-// fixture!(
-//     test_small_empty_module_comments,
-//     "small/empty_module_comments"
-// );
+fixture!(
+    test_small_empty_module_comments,
+    "small/empty_module_comments"
+);
 fixture!(
     test_small_empty_string_literal,
     "small/empty_string_literal"
@@ -525,25 +525,25 @@ fixture!(test_small_string_escapes, "small/string_escapes");
 //     test_small_string_with_embexpr_dyna_symbol,
 //     "small/string_with_embexpr_dyna_symbol"
 // );
-// fixture!(test_small_super_comment, "small/super_comment");
-// fixture!(test_small_super_in_call_chain, "small/super_in_call_chain");
-// fixture!(
-//     test_small_super_keyword_comment_ordering,
-//     "small/super_keyword_comment_ordering"
-// );
-// fixture!(
-//     test_small_super_keyword_comment_ordering_spaces,
-//     "small/super_keyword_comment_ordering_spaces"
-// );
-// fixture!(test_small_super_with_block, "small/super_with_block");
-// fixture!(
-//     test_small_super_with_empty_paren,
-//     "small/super_with_empty_paren"
-// );
-// fixture!(
-//     test_small_super_with_trailing_comma,
-//     "small/super_with_trailing_comma"
-// );
+fixture!(test_small_super_comment, "small/super_comment");
+fixture!(test_small_super_in_call_chain, "small/super_in_call_chain");
+fixture!(
+    test_small_super_keyword_comment_ordering,
+    "small/super_keyword_comment_ordering"
+);
+fixture!(
+    test_small_super_keyword_comment_ordering_spaces,
+    "small/super_keyword_comment_ordering_spaces"
+);
+fixture!(test_small_super_with_block, "small/super_with_block");
+fixture!(
+    test_small_super_with_empty_paren,
+    "small/super_with_empty_paren"
+);
+fixture!(
+    test_small_super_with_trailing_comma,
+    "small/super_with_trailing_comma"
+);
 fixture!(test_small_symbol_arg, "small/symbol_arg");
 fixture!(test_small_symbol_op, "small/symbol_op");
 // fixture!(test_small_ternary, "small/ternary");
@@ -587,7 +587,7 @@ fixture!(
 //     "small/yield_keyword_comment_ordering_spaces"
 // );
 // fixture!(test_small_yield_with_paren, "small/yield_with_paren");
-// fixture!(test_small_zsuper, "small/zsuper");
+fixture!(test_small_zsuper, "small/zsuper");
 
 // /*
 //    Large Fixtures
