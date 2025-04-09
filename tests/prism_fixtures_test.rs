@@ -407,10 +407,10 @@ fixture!(test_small_no_mangle_jpy, "small/no_mangle_jpy");
 fixture!(test_small_numbers, "small/numbers");
 fixture!(test_small_op_defs, "small/op_defs");
 // fixture!(test_small_opassign, "small/opassign");
-// fixture!(
-//     test_small_optional_arg_in_middle,
-//     "small/optional_arg_in_middle"
-// );
+fixture!(
+    test_small_optional_arg_in_middle,
+    "small/optional_arg_in_middle"
+);
 // fixture!(test_small_paren_expr_calls, "small/paren_expr_calls");
 // fixture!(
 //     test_small_paren_with_multiple_expressions,
@@ -439,7 +439,7 @@ fixture!(test_small_raise_star, "small/raise_star");
 // fixture!(test_small_rationals, "small/rationals");
 // fixture!(test_small_redo, "small/redo");
 // fixture!(test_small_regexp_literal, "small/regexp_literal");
-// fixture!(test_small_req_optional_params, "small/req_optional_params");
+fixture!(test_small_req_optional_params, "small/req_optional_params");
 // fixture!(test_small_require_rails, "small/require_rails");
 // fixture!(test_small_require_relative, "small/require_relative");
 fixture!(
