@@ -151,7 +151,7 @@ fixture!(test_small_cannibalization_4, "small/cannibalization_4");
 // fixture!(test_small_case_else, "small/case_else");
 // fixture!(test_small_case_multi, "small/case_multi");
 // fixture!(test_small_character_literal, "small/character_literal");
-// fixture!(test_small_class_comment, "small/class_comment");
+fixture!(test_small_class_comment, "small/class_comment");
 // fixture!(
 //     test_small_class_methods_respect_parens,
 //     "small/class_methods_respect_parens"
@@ -165,14 +165,14 @@ fixture!(test_small_commas_trailing, "small/commas_trailing");
 //     test_small_comment_in_block_inside_array,
 //     "small/comment_in_block_inside_array"
 // );
-// fixture!(
-//     test_small_comment_in_module_are_tight,
-//     "small/comment_in_module_are_tight"
-// );
-// fixture!(
-//     test_small_comment_on_inheritence,
-//     "small/comment_on_inheritence"
-// );
+fixture!(
+    test_small_comment_in_module_are_tight,
+    "small/comment_in_module_are_tight"
+);
+fixture!(
+    test_small_comment_on_inheritence,
+    "small/comment_on_inheritence"
+);
 // fixture!(
 //     test_small_comments_at_indentation_changes,
 //     "small/comments_at_indentation_changes"

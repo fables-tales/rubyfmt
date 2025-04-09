@@ -745,12 +745,12 @@ fn format_class_node(ps: &mut dyn ConcreteParserState, class_node: prism::ClassN
             }),
         );
     }
-    ps.emit_newline();
 
     ps.new_block(Box::new(|ps| {
         ps.with_start_of_line(
             true,
             Box::new(|ps| {
+                ps.emit_newline();
                 if let Some(body) = class_node.body() {
                     format_node(ps, body);
                 }
@@ -815,12 +815,12 @@ fn format_module_node(ps: &mut dyn ConcreteParserState, module_node: prism::Modu
         false,
         Box::new(|ps| format_node(ps, module_node.constant_path())),
     );
-    ps.emit_newline();
 
     ps.new_block(Box::new(|ps| {
         ps.with_start_of_line(
             true,
             Box::new(|ps| {
+                ps.emit_newline();
                 if let Some(body) = module_node.body() {
                     format_node(ps, body);
                 }
