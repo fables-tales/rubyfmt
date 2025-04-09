@@ -1285,8 +1285,12 @@ fn format_block_node(ps: &mut dyn ConcreteParserState, block_node: prism::BlockN
                 format_node(ps, block_parameters);
             }
 
+            // Even if there's no body, we still need a newline for
+            // comments to render appropriately. `ps.emit_end` will handle
+            // checking for this newline and deduping it appropriately.
+            ps.emit_newline();
+
             if let Some(body) = block_node.body() {
-                ps.emit_newline();
                 ps.with_start_of_line(
                     true,
                     Box::new(|ps| {
@@ -1318,7 +1322,7 @@ fn format_block_node(ps: &mut dyn ConcreteParserState, block_node: prism::BlockN
                         .map(|statements_node| statements_node.body().iter().count() > 1)
                         .unwrap_or(false);
                     if has_multiple_statements {
-                        ps.emit_newline();
+                        ps.emit_soft_newline();
                         ps.with_start_of_line(
                             true,
                             Box::new(|ps| {
@@ -1340,11 +1344,21 @@ fn format_block_node(ps: &mut dyn ConcreteParserState, block_node: prism::BlockN
                             }),
                         );
                     }
+                } else if ps.has_comment_in_offset_span(
+                    block_node.opening_loc().start_offset(),
+                    block_node.closing_loc().end_offset(),
+                ) {
+                    // Even if there's no `body` node -- that is, there are no statements in the block --
+                    // we still need to look for comments and multiline if they're present.
+                    // Note that this is a soft newline, which are special-cased in breakables to correctly handle
+                    // comments, so we use one here instead of a hard newline.
+                    ps.emit_soft_newline();
                 }
 
                 // `inline_breakable_of` doesn't handle the indentation for the closing delimeter for us.
                 ps.dedent(Box::new(|ps| ps.emit_soft_indent()));
                 ps.wind_dumping_comments_until_offset(block_node.location().end_offset());
+                ps.shift_comments();
             }),
         );
     }

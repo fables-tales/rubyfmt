@@ -113,10 +113,10 @@ fixture!(
 // );
 // fixture!(test_small_block_spacing, "small/block_spacing");
 fixture!(test_small_blockarg, "small/blockarg");
-// fixture!(
-//     test_small_blocks_with_only_comments,
-//     "small/blocks_with_only_comments"
-// );
+fixture!(
+    test_small_blocks_with_only_comments,
+    "small/blocks_with_only_comments"
+);
 // fixture!(
 //     test_small_brace_blocks_with_no_args,
 //     "small/brace_blocks_with_no_args"
