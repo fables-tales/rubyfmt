@@ -232,7 +232,7 @@ fixture!(test_small_double_splat, "small/double_splat");
 //     "small/dyna_symbol_with_escapes"
 // );
 // fixture!(test_small_empty_arg_paren, "small/empty_arg_paren");
-// fixture!(test_small_empty_array, "small/empty_array");
+fixture!(test_small_empty_array, "small/empty_array");
 fixture!(test_small_empty_block, "small/empty_block");
 // fixture!(test_small_empty_comments, "small/empty_comments");
 // fixture!(test_small_empty_heredocs, "small/empty_heredocs");
