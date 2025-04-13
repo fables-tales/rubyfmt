@@ -186,7 +186,7 @@ fixture!(
 //     "small/comments_with_breaks"
 // );
 // fixture!(test_small_complex_numbers, "small/complex_numbers");
-// fixture!(test_small_complex_params, "small/complex_params");
+fixture!(test_small_complex_params, "small/complex_params");
 // fixture!(test_small_conditional, "small/conditional");
 // fixture!(test_small_conditional_assign, "small/conditional_assign");
 // fixture!(
@@ -226,7 +226,7 @@ fixture!(test_small_defs_kw, "small/defs_kw");
 // fixture!(test_small_dot3, "small/dot3");
 // fixture!(test_small_dotcall, "small/dotcall");
 fixture!(test_small_double_splat, "small/double_splat");
-// fixture!(test_small_double_splat_def, "small/double_splat_def");
+fixture!(test_small_double_splat_def, "small/double_splat_def");
 // fixture!(
 //     test_small_dyna_symbol_with_escapes,
 //     "small/dyna_symbol_with_escapes"
@@ -300,7 +300,7 @@ fixture!(test_small_inline_comments, "small/inline_comments");
 // fixture!(test_small_inline_rescue, "small/inline_rescue");
 fixture!(test_small_ivar_symbol, "small/ivar_symbol");
 fixture!(test_small_kw_symbol, "small/kw_symbol");
-// fixture!(test_small_kwargs, "small/kwargs");
+fixture!(test_small_kwargs, "small/kwargs");
 fixture!(test_small_kwargs_multiline, "small/kwargs_multiline");
 // fixture!(test_small_lambda, "small/lambda");
 fixture!(
