@@ -1065,17 +1065,26 @@ fn format_call_node(
     skip_receiver: bool,
 ) {
     if skip_receiver || call_node.receiver().is_none() {
-        handle_string_at_offset(
-            ps,
-            const_to_string(call_node.name()),
-            call_node.message_loc().unwrap().start_offset(),
-        );
+        let method_name = const_to_string(call_node.name());
+        let is_aref = &method_name == "[]";
+        if !is_aref {
+            handle_string_at_offset(
+                ps,
+                method_name,
+                call_node.message_loc().unwrap().start_offset(),
+            );
+        }
         if let Some(arguments) = call_node.arguments() {
+            let delims = if is_aref {
+                BreakableDelims::for_array()
+            } else {
+                BreakableDelims::for_method_call()
+            };
             ps.with_start_of_line(
                 false,
                 Box::new(|ps| {
                     ps.breakable_of(
-                        BreakableDelims::for_method_call(),
+                        delims,
                         Box::new(|ps| {
                             format_arguments_node(ps, arguments);
                         }),
@@ -1115,15 +1124,18 @@ fn format_call_node(
                             Box::new(|ps| {
                                 for element in call_chain_elements {
                                     let element = element.as_call_node().unwrap();
-                                    let call_operator = loc_to_string(
-                                        // `call_operator_loc` is the `.`/`::`/`&.` etc.
-                                        element.call_operator_loc().expect("We're in the middle of the chain, there must be an operator"),
-                                    );
-                                    if call_operator != *"::" {
-                                        ps.emit_collapsing_newline();
-                                        ps.emit_soft_indent();
+
+                                    // `call_operator_loc` is the `.`/`::`/`&.` etc.
+                                    // it may be None in the case of arefs, e.g. foo[bar]
+                                    let call_operator =
+                                        element.call_operator_loc().map(|loc| loc_to_string(loc));
+                                    if let Some(call_operator) = call_operator {
+                                        if call_operator != *"::" {
+                                            ps.emit_collapsing_newline();
+                                            ps.emit_soft_indent();
+                                        }
+                                        ps.emit_ident(call_operator);
                                     }
-                                    ps.emit_ident(call_operator);
 
                                     ps.at_offset(element.location().start_offset());
                                     format_call_node(ps, element, true);
@@ -2099,8 +2111,19 @@ fn format_pre_execution_node(
     todo!()
 }
 
-fn format_range_node(_ps: &mut dyn ConcreteParserState, _range_node: prism::RangeNode) {
-    todo!()
+fn format_range_node(ps: &mut dyn ConcreteParserState, range_node: prism::RangeNode) {
+    ps.with_start_of_line(
+        false,
+        Box::new(|ps| {
+            if let Some(left) = range_node.left() {
+                format_node(ps, left);
+            }
+            ps.emit_op(loc_to_string(range_node.operator_loc()));
+            if let Some(right) = range_node.right() {
+                format_node(ps, right);
+            }
+        }),
+    );
 }
 
 fn format_rational_node(_ps: &mut dyn ConcreteParserState, _rational_node: prism::RationalNode) {
