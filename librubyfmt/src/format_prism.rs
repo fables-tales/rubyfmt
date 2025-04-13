@@ -928,8 +928,40 @@ fn format_defined_node(_ps: &mut dyn ConcreteParserState, _defined_node: prism::
     todo!()
 }
 
-fn format_else_node(_ps: &mut dyn ConcreteParserState, _else_node: prism::ElseNode) {
-    todo!()
+fn format_else_node(ps: &mut dyn ConcreteParserState, else_node: prism::ElseNode) {
+    // `else_keyword_loc` is somewhat misleading, since this can be either the `else`
+    // keyword or the `:` separator in a ternary
+    let keyword = loc_to_string(else_node.else_keyword_loc());
+    if &keyword == "else" {
+        ps.emit_conditional_keyword(keyword);
+
+        ps.new_block(Box::new(|ps| {
+            ps.emit_newline();
+            if let Some(statements) = else_node.statements() {
+                format_node(ps, statements.as_node())
+            }
+        }));
+    } else {
+        // In a ternary
+        ps.emit_space();
+        ps.emit_conditional_keyword(keyword);
+        ps.emit_space();
+        ps.with_start_of_line(
+            false,
+            Box::new(|ps| {
+                format_node(
+                    ps,
+                    else_node
+                        .statements()
+                        .expect("Statements must be present in a ternary")
+                        .body()
+                        .iter()
+                        .next()
+                        .expect("Ternaries cannot have multiple statements"),
+                );
+            }),
+        );
+    }
 }
 
 type ParamFormattingFunc<'a> = Box<dyn FnOnce(&mut dyn ConcreteParserState) + 'a>;
@@ -1790,8 +1822,65 @@ fn format_hash_pattern_node(
     todo!()
 }
 
-fn format_if_node(_ps: &mut dyn ConcreteParserState, _if_node: prism::IfNode) {
-    todo!()
+fn format_if_node(ps: &mut dyn ConcreteParserState, if_node: prism::IfNode) {
+    // If a keyword is present, we're in an `if/elsif` block.
+    // If it's not there, this is actually a ternary, which is sufficiently
+    // different that we handle it in its own branch
+    if let Some(if_loc) = if_node.if_keyword_loc() {
+        let conditional_keyword = loc_to_string(if_loc);
+        // `elsif` nodes don't need an `else` keyword, that's handled
+        // by the parent `if` node.
+        let requires_end_keyword = &conditional_keyword == "if";
+        ps.emit_conditional_keyword(conditional_keyword);
+        ps.emit_space();
+        ps.with_start_of_line(false, Box::new(|ps| format_node(ps, if_node.predicate())));
+
+        ps.new_block(Box::new(|ps| {
+            ps.emit_newline();
+            if let Some(statements) = if_node.statements() {
+                format_node(ps, statements.as_node());
+            }
+        }));
+
+        if let Some(subsequent) = if_node.subsequent() {
+            ps.with_start_of_line(
+                false,
+                Box::new(|ps| {
+                    ps.emit_indent();
+                    format_node(ps, subsequent);
+                }),
+            );
+        }
+        if requires_end_keyword {
+            ps.emit_end();
+        }
+    } else {
+        // No keyword, so this is a ternary
+        ps.with_start_of_line(
+            false,
+            Box::new(|ps| {
+                format_node(ps, if_node.predicate());
+                ps.emit_ident(" ? ".to_string());
+
+                format_node(
+                    ps,
+                    if_node
+                        .statements()
+                        .expect("Ternaries must have a `statements` branch")
+                        .body()
+                        .iter()
+                        .next()
+                        .expect("There must be exactly one statement inside a ternary branch"),
+                );
+                format_node(
+                    ps,
+                    if_node
+                        .subsequent()
+                        .expect("Ternaries must have a subsequent branch"),
+                )
+            }),
+        );
+    }
 }
 
 fn format_imaginary_node(_ps: &mut dyn ConcreteParserState, _imaginary_node: prism::ImaginaryNode) {
