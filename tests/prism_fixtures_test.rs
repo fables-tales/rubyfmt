@@ -363,7 +363,7 @@ fixture!(
     test_small_multiline_chained_call,
     "small/multiline_chained_call"
 );
-// fixture!(test_small_multiline_defs, "small/multiline_defs");
+fixture!(test_small_multiline_defs, "small/multiline_defs");
 fixture!(
     test_small_multiline_method_call_with_block,
     "small/multiline_method_call_with_block"
