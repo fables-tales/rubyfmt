@@ -278,10 +278,10 @@ fixture!(test_small_gvar_symbol, "small/gvar_symbol");
 // );
 // fixture!(test_small_heredoc_method_call, "small/heredoc_method_call");
 fixture!(test_small_heredoc_with_call, "small/heredoc_with_call");
-// fixture!(
-//     test_small_heredoc_with_leading_newline,
-//     "small/heredoc_with_leading_newline"
-// );
+fixture!(
+    test_small_heredoc_with_leading_newline,
+    "small/heredoc_with_leading_newline"
+);
 // fixture!(test_small_heredocs, "small/heredocs");
 // fixture!(
 //     test_small_heredocs_ending_blocks,
@@ -296,7 +296,7 @@ fixture!(test_small_heredoc_with_call, "small/heredoc_with_call");
 //     test_small_if_without_extra_parts,
 //     "small/if_without_extra_parts"
 // );
-// fixture!(test_small_inline_comments, "small/inline_comments");
+fixture!(test_small_inline_comments, "small/inline_comments");
 // fixture!(test_small_inline_rescue, "small/inline_rescue");
 fixture!(test_small_ivar_symbol, "small/ivar_symbol");
 fixture!(test_small_kw_symbol, "small/kw_symbol");
@@ -655,7 +655,7 @@ fixture!(test_small_zsuper, "small/zsuper");
 //     test_concurrent_ruby_truffleruby_map_backend,
 //     "large/concurrent-ruby/truffleruby_map_backend"
 // );
-// fixture!(
-//     test_concurrent_ruby_version,
-//     "large/concurrent-ruby/version"
-// );
+fixture!(
+    test_concurrent_ruby_version,
+    "large/concurrent-ruby/version"
+);
