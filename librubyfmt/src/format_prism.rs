@@ -1407,23 +1407,47 @@ fn format_block_local_variable_node(
 }
 
 fn format_array_node(ps: &mut dyn ConcreteParserState, array_node: prism::ArrayNode) {
-    ps.with_start_of_line(
-        false,
-        Box::new(|ps| {
-            ps.breakable_of(
-                BreakableDelims::for_array(),
+    if node_list_is_empty(&array_node.elements()) {
+        if ps.has_comment_in_offset_span(
+            array_node.location().start_offset(),
+            array_node.location().end_offset(),
+        ) {
+            ps.with_start_of_line(
+                false,
                 Box::new(|ps| {
-                    format_list_like_thing(
-                        ps,
-                        array_node.elements(),
-                        array_node.location().end_offset(),
-                        false,
-                    );
-                    ps.wind_dumping_comments_until_offset(array_node.location().end_offset());
+                    ps.breakable_of(
+                        BreakableDelims::for_array(),
+                        Box::new(|ps| {
+                            ps.wind_dumping_comments_until_offset(
+                                array_node.location().end_offset(),
+                            );
+                        }),
+                    )
                 }),
-            );
-        }),
-    );
+            )
+        } else {
+            ps.emit_open_square_bracket();
+            ps.emit_close_square_bracket();
+        }
+    } else {
+        ps.with_start_of_line(
+            false,
+            Box::new(|ps| {
+                ps.breakable_of(
+                    BreakableDelims::for_array(),
+                    Box::new(|ps| {
+                        format_list_like_thing(
+                            ps,
+                            array_node.elements(),
+                            array_node.location().end_offset(),
+                            false,
+                        );
+                        ps.wind_dumping_comments_until_offset(array_node.location().end_offset());
+                    }),
+                );
+            }),
+        );
+    }
 }
 
 fn format_array_pattern_node(
