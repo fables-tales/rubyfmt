@@ -2040,8 +2040,8 @@ fn format_next_node(_ps: &mut dyn ConcreteParserState, _next_node: prism::NextNo
     todo!()
 }
 
-fn format_nil_node(_ps: &mut dyn ConcreteParserState, _nil_node: prism::NilNode) {
-    todo!()
+fn format_nil_node(ps: &mut dyn ConcreteParserState, _nil_node: prism::NilNode) {
+    ps.emit_ident("nil".to_string());
 }
 
 fn format_no_keywords_parameter_node(
@@ -2066,10 +2066,17 @@ fn format_numbered_reference_read_node(
 }
 
 fn format_optional_keyword_parameter_node(
-    _ps: &mut dyn ConcreteParserState,
-    _optional_keyword_parameter_node: prism::OptionalKeywordParameterNode,
+    ps: &mut dyn ConcreteParserState,
+    optional_keyword_parameter_node: prism::OptionalKeywordParameterNode,
 ) {
-    todo!()
+    ps.emit_ident(const_to_string(optional_keyword_parameter_node.name()));
+    ps.emit_op(": ".to_string());
+    ps.with_start_of_line(
+        false,
+        Box::new(|ps| {
+            format_node(ps, optional_keyword_parameter_node.value());
+        }),
+    );
 }
 
 fn format_optional_parameter_node(
