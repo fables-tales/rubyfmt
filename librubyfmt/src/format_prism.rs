@@ -856,27 +856,12 @@ fn format_def_node(ps: &mut dyn ConcreteParserState, def_node: prism::DefNode) {
         }),
     );
 
-    format_def_body(
-        ps,
-        def_node.parameters(),
-        def_node.body(),
-        def_node
-            .end_keyword_loc()
-            .map(|loc| loc.end_offset())
-            .unwrap(),
-        def_node.end_keyword_loc().is_some(),
-    );
+    format_def_body(ps, def_node);
 }
 
-fn format_def_body(
-    ps: &mut dyn ConcreteParserState,
-    parameters_node: Option<prism::ParametersNode>,
-    bodystmt: Option<prism::Node>,
-    end_offset: SourceOffset,
-    has_end_keyword: bool,
-) {
+fn format_def_body(ps: &mut dyn ConcreteParserState, def_node: prism::DefNode) {
     ps.new_scope(Box::new(|ps| {
-        if let Some(parameters_node) = parameters_node {
+        if let Some(parameters_node) = def_node.parameters() {
             ps.breakable_of(
                 BreakableDelims::for_method_call(),
                 Box::new(|ps| {
@@ -884,6 +869,11 @@ fn format_def_body(
                         false,
                         Box::new(|ps| {
                             format_parameters_node(ps, parameters_node);
+                            // If the parameters have parens, wind to the closing paren, since it may
+                            // be on its own line past the end of the params
+                            if let Some(rparen_loc) = def_node.rparen_loc() {
+                                ps.at_offset(rparen_loc.end_offset());
+                            }
                         }),
                     );
                 }),
@@ -893,13 +883,13 @@ fn format_def_body(
         ps.with_formatting_context(
             FormattingContext::Def,
             Box::new(|ps| {
-                if has_end_keyword {
+                if def_node.end_keyword_loc().is_some() {
                     ps.new_block(Box::new(|ps| {
                         ps.emit_newline();
                         ps.with_start_of_line(
                             true,
                             Box::new(|ps| {
-                                if let Some(body) = bodystmt {
+                                if let Some(body) = def_node.body() {
                                     format_node(ps, body);
                                 }
                             }),
@@ -913,7 +903,7 @@ fn format_def_body(
                     ps.with_start_of_line(
                         false,
                         Box::new(|ps| {
-                            if let Some(body) = bodystmt {
+                            if let Some(body) = def_node.body() {
                                 format_node(ps, body);
                             }
                         }),
@@ -923,11 +913,11 @@ fn format_def_body(
         );
     }));
 
-    if has_end_keyword {
+    if let Some(end_keyword_loc) = def_node.end_keyword_loc() {
         ps.with_start_of_line(
             true,
             Box::new(|ps| {
-                ps.wind_dumping_comments_until_offset(end_offset);
+                ps.wind_dumping_comments_until_offset(end_keyword_loc.end_offset());
                 ps.emit_end();
             }),
         );

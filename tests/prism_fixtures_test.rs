@@ -214,10 +214,10 @@ fixture!(test_small_def_const, "small/def_const");
 fixture!(test_small_def_scope, "small/def_scope");
 fixture!(test_small_def_with_kw, "small/def_with_kw");
 // fixture!(test_small_defined, "small/defined");
-// fixture!(
-//     test_small_definitions_with_comments,
-//     "small/definitions_with_comments"
-// );
+fixture!(
+    test_small_definitions_with_comments,
+    "small/definitions_with_comments"
+);
 fixture!(test_small_defs_comment, "small/defs_comment");
 fixture!(test_small_defs_end_comment, "small/defs_end_comment");
 fixture!(test_small_defs_kw, "small/defs_kw");
@@ -372,10 +372,10 @@ fixture!(
 //     test_small_multiline_method_chain_with_arguments,
 //     "small/multiline_method_chain_with_arguments"
 // );
-// fixture!(
-//     test_small_multiline_method_params,
-//     "small/multiline_method_params"
-// );
+fixture!(
+    test_small_multiline_method_params,
+    "small/multiline_method_params"
+);
 fixture!(
     test_small_multiline_single_quotes,
     "small/multiline_single_quotes"
