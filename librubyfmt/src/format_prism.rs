@@ -1454,7 +1454,38 @@ fn format_parentheses_node(
         ps.with_start_of_line(
             false,
             Box::new(|ps| {
-                format_node(ps, body);
+                if let Some(statements_node) = body.as_statements_node() {
+                    if statements_node.body().iter().count() == 1 {
+                        ps.with_start_of_line(
+                            false,
+                            Box::new(|ps| {
+                                format_node(ps, statements_node.body().iter().next().unwrap())
+                            }),
+                        );
+                    } else {
+                        ps.emit_newline();
+                        ps.new_block(Box::new(|ps| {
+                            ps.with_start_of_line(
+                                true,
+                                Box::new(|ps| {
+                                    format_node(ps, body);
+                                }),
+                            );
+                        }));
+                    }
+                } else {
+                    // I'm *pretty* sure this should always be a StatementsNode, but this is here
+                    // just to be defensive
+                    ps.emit_newline();
+                    ps.new_block(Box::new(|ps| {
+                        ps.with_start_of_line(
+                            true,
+                            Box::new(|ps| {
+                                format_node(ps, body);
+                            }),
+                        );
+                    }));
+                }
             }),
         );
     }
