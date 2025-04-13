@@ -292,10 +292,10 @@ fixture!(
 //     test_small_heredocs_with_comments,
 //     "small/heredocs_with_comments"
 // );
-// fixture!(
-//     test_small_if_without_extra_parts,
-//     "small/if_without_extra_parts"
-// );
+fixture!(
+    test_small_if_without_extra_parts,
+    "small/if_without_extra_parts"
+);
 fixture!(test_small_inline_comments, "small/inline_comments");
 // fixture!(test_small_inline_rescue, "small/inline_rescue");
 fixture!(test_small_ivar_symbol, "small/ivar_symbol");
@@ -390,7 +390,7 @@ fixture!(
 // );
 fixture!(test_small_nbsp, "small/nbsp");
 fixture!(test_small_nested_command, "small/nested_command");
-// fixture!(test_small_nested_conditionals, "small/nested_conditionals");
+fixture!(test_small_nested_conditionals, "small/nested_conditionals");
 // fixture!(
 //     test_small_nested_destructuring,
 //     "small/nested_destructuring"
@@ -546,7 +546,7 @@ fixture!(
 );
 fixture!(test_small_symbol_arg, "small/symbol_arg");
 fixture!(test_small_symbol_op, "small/symbol_op");
-// fixture!(test_small_ternary, "small/ternary");
+fixture!(test_small_ternary, "small/ternary");
 // fixture!(test_small_to_proc_operator, "small/to_proc_operator");
 fixture!(
     test_small_top_const_field_assignment,
