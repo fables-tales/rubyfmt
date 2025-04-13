@@ -944,11 +944,13 @@ fn format_else_node(ps: &mut dyn ConcreteParserState, else_node: prism::ElseNode
     let keyword = loc_to_string(else_node.else_keyword_loc());
     if &keyword == "else" {
         ps.emit_conditional_keyword(keyword);
-        ps.emit_newline();
 
-        if let Some(statements) = else_node.statements() {
-            ps.new_block(Box::new(|ps| format_node(ps, statements.as_node())));
-        }
+        ps.new_block(Box::new(|ps| {
+            ps.emit_newline();
+            if let Some(statements) = else_node.statements() {
+                format_node(ps, statements.as_node())
+            }
+        }));
     } else {
         // In a ternary
         ps.emit_space();
