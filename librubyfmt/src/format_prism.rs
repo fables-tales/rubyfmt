@@ -1965,10 +1965,15 @@ fn format_constant_target_node(
 }
 
 fn format_constant_write_node(
-    _ps: &mut dyn ConcreteParserState,
-    _constant_write_node: prism::ConstantWriteNode,
+    ps: &mut dyn ConcreteParserState,
+    constant_write_node: prism::ConstantWriteNode,
 ) {
-    todo!()
+    ps.emit_ident(const_to_string(constant_write_node.name()));
+    ps.emit_op(" = ".to_string());
+    ps.with_start_of_line(
+        false,
+        Box::new(|ps| format_node(ps, constant_write_node.value())),
+    );
 }
 
 fn format_lambda_node(_ps: &mut dyn ConcreteParserState, _lambda_node: prism::LambdaNode) {
