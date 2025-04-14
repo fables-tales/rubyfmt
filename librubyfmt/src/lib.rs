@@ -38,12 +38,12 @@ mod util;
 
 use file_comments::FileComments;
 use parser_state::BaseParserState;
-use ruby_ops::{load_rubyfmt, ParseError, Parser, RipperTree};
+use ruby_ops::{ParseError, Parser, RipperTree, load_rubyfmt};
 
 #[cfg(debug_assertions)]
 use simplelog::{ColorChoice, ConfigBuilder, LevelFilter, TermLogger, TerminalMode};
 
-extern "C" {
+unsafe extern "C" {
     pub fn Init_ripper();
     pub fn rb_gc_disable();
 }
@@ -116,7 +116,7 @@ pub fn format_buffer(buf: &str, use_prism: bool) -> Result<String, RichFormatErr
     Ok(String::from_utf8(output.into_inner()).expect("we never write invalid UTF-8"))
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn rubyfmt_init() -> libc::c_int {
     init_logger();
     let res = ruby_ops::setup_ruby();
@@ -142,37 +142,37 @@ pub extern "C" fn rubyfmt_init() -> libc::c_int {
 /// available in the passed buffer pointer. It will also fail if the passed
 /// data isn't utf8.
 /// Please don't pass non-utf8 too small buffers.
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rubyfmt_format_buffer(
     ptr: *const u8,
     len: usize,
     err: *mut i64,
 ) -> *mut RubyfmtString {
-    let input = str::from_utf8_unchecked(slice::from_raw_parts(ptr, len));
+    let input = unsafe { str::from_utf8_unchecked(slice::from_raw_parts(ptr, len)) };
     let output = format_buffer(input, false);
     match output {
         Ok(o) => {
-            *err = FormatError::OK as i64;
+            unsafe { *err = FormatError::OK as i64 };
             Box::into_raw(Box::new(RubyfmtString(o.into_boxed_str())))
         }
         Err(e) => {
-            *err = e.as_format_error() as i64;
+            unsafe { *err = e.as_format_error() as i64 };
             std::ptr::null::<RubyfmtString>() as _
         }
     }
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn rubyfmt_string_ptr(s: &RubyfmtString) -> *const u8 {
     s.0.as_ptr()
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn rubyfmt_string_len(s: &RubyfmtString) -> usize {
     s.0.len()
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 extern "C" fn rubyfmt_string_free(rubyfmt_string: *mut RubyfmtString) {
     unsafe {
         drop(Box::from_raw(rubyfmt_string));
@@ -181,9 +181,10 @@ extern "C" fn rubyfmt_string_free(rubyfmt_string: *mut RubyfmtString) {
 
 // Safety: This function expects a functioning Ruby VM
 unsafe fn load_ripper() -> Result<(), ()> {
-    // trick ruby in to thinking ripper is already loaded
-    ruby::eval_str(
-        r#"
+    unsafe {
+        // trick ruby in to thinking ripper is already loaded
+        ruby::eval_str(
+            r#"
     $LOADED_FEATURES << "ripper.bundle"
     $LOADED_FEATURES << "ripper.so"
     $LOADED_FEATURES << "ripper.rb"
@@ -192,27 +193,28 @@ unsafe fn load_ripper() -> Result<(), ()> {
     $LOADED_FEATURES << "ripper/filter.rb"
     $LOADED_FEATURES << "ripper/lexer.rb"
     "#,
-    )?;
+        )?;
 
-    // init the ripper C module
-    Init_ripper();
+        // init the ripper C module
+        Init_ripper();
 
-    //load each ripper program
-    ruby::eval_str(include_str!("../ruby_checkout/ext/ripper/lib/ripper.rb"))?;
-    ruby::eval_str(include_str!(
-        "../ruby_checkout/ext/ripper/lib/ripper/core.rb"
-    ))?;
-    ruby::eval_str(include_str!(
-        "../ruby_checkout/ext/ripper/lib/ripper/lexer.rb"
-    ))?;
-    ruby::eval_str(include_str!(
-        "../ruby_checkout/ext/ripper/lib/ripper/filter.rb"
-    ))?;
-    ruby::eval_str(include_str!(
-        "../ruby_checkout/ext/ripper/lib/ripper/sexp.rb"
-    ))?;
+        //load each ripper program
+        ruby::eval_str(include_str!("../ruby_checkout/ext/ripper/lib/ripper.rb"))?;
+        ruby::eval_str(include_str!(
+            "../ruby_checkout/ext/ripper/lib/ripper/core.rb"
+        ))?;
+        ruby::eval_str(include_str!(
+            "../ruby_checkout/ext/ripper/lib/ripper/lexer.rb"
+        ))?;
+        ruby::eval_str(include_str!(
+            "../ruby_checkout/ext/ripper/lib/ripper/filter.rb"
+        ))?;
+        ruby::eval_str(include_str!(
+            "../ruby_checkout/ext/ripper/lib/ripper/sexp.rb"
+        ))?;
 
-    rb_gc_disable();
+        rb_gc_disable();
+    }
     Ok(())
 }
 

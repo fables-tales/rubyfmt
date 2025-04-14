@@ -4,18 +4,14 @@ use crate::ruby::*;
 pub fn setup_ruby() -> Result<(), ()> {
     unsafe {
         let res = ruby_setup();
-        if res == 0 {
-            Ok(())
-        } else {
-            Err(())
-        }
+        if res == 0 { Ok(()) } else { Err(()) }
     }
 }
 
 // Safety: This function expects an initialized Ruby VM
 pub unsafe fn load_rubyfmt() -> Result<(), ()> {
     let rubyfmt_program = include_str!("../rubyfmt_lib.rb");
-    eval_str(rubyfmt_program)?;
+    unsafe { eval_str(rubyfmt_program) }?;
     Ok(())
 }
 
@@ -30,7 +26,7 @@ pub enum ParseError {
 
 impl Parser {
     unsafe extern "C" fn real_run_parser(parser_instance: VALUE) -> VALUE {
-        rb_funcall(parser_instance, intern!("parse"), 0)
+        unsafe { rb_funcall(parser_instance, intern!("parse"), 0) }
     }
 
     pub fn new(buf: &str) -> Self {
