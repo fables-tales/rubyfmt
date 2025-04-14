@@ -283,9 +283,7 @@ impl AbstractTokenTarget for BreakableCallChainEntry {
                     tokens.pop();
                 }
             } else if let AbstractLineToken::BreakableEntry(BreakableEntry {
-                delims,
-                ref mut tokens,
-                ..
+                delims, tokens, ..
             }) = token
             {
                 if *delims == BreakableDelims::for_brace_block() {

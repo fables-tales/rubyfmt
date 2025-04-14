@@ -6,8 +6,8 @@ extern crate proc_macro;
 
 use proc_macro::TokenStream;
 use quote::quote;
-use syn::spanned::Spanned;
 use syn::Ident;
+use syn::spanned::Spanned;
 
 #[proc_macro_derive(RipperDeserialize, attributes(tag))]
 pub fn derive_deserialize(input: TokenStream) -> TokenStream {

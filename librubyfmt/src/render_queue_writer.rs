@@ -123,14 +123,24 @@ impl RenderQueueWriter {
             }
 
             if let Some(
-                [&ConcreteLineToken::HeredocClose { .. }, &ConcreteLineToken::HardNewLine, &ConcreteLineToken::Indent { .. }, &ConcreteLineToken::HardNewLine],
+                [
+                    &ConcreteLineToken::HeredocClose { .. },
+                    &ConcreteLineToken::HardNewLine,
+                    &ConcreteLineToken::Indent { .. },
+                    &ConcreteLineToken::HardNewLine,
+                ],
             ) = accum.last::<4>()
             {
                 accum.pop_heredoc_mistake();
             }
 
             if let Some(
-                [&ConcreteLineToken::End, &ConcreteLineToken::HardNewLine, &ConcreteLineToken::Indent { .. }, x],
+                [
+                    &ConcreteLineToken::End,
+                    &ConcreteLineToken::HardNewLine,
+                    &ConcreteLineToken::Indent { .. },
+                    x,
+                ],
             ) = accum.last::<4>()
             {
                 if x.is_in_need_of_a_trailing_blankline() {
@@ -147,7 +157,15 @@ impl RenderQueueWriter {
             }
 
             if let Some(
-                [&ConcreteLineToken::End, &ConcreteLineToken::AfterCallChain, &ConcreteLineToken::HardNewLine, &ConcreteLineToken::Indent { .. }, x, maybe_space, maybe_def],
+                [
+                    &ConcreteLineToken::End,
+                    &ConcreteLineToken::AfterCallChain,
+                    &ConcreteLineToken::HardNewLine,
+                    &ConcreteLineToken::Indent { .. },
+                    x,
+                    maybe_space,
+                    maybe_def,
+                ],
             ) = accum.last::<7>()
             {
                 match x {
@@ -176,16 +194,30 @@ impl RenderQueueWriter {
             }
 
             if let Some(
-                [&ConcreteLineToken::HeredocClose { .. }, &ConcreteLineToken::HardNewLine, &ConcreteLineToken::Indent { .. }, &ConcreteLineToken::Indent { .. }, &ConcreteLineToken::Delim { .. }
-                | &ConcreteLineToken::Dot
-                | &ConcreteLineToken::DirectPart { .. }],
+                [
+                    &ConcreteLineToken::HeredocClose { .. },
+                    &ConcreteLineToken::HardNewLine,
+                    &ConcreteLineToken::Indent { .. },
+                    &ConcreteLineToken::Indent { .. },
+                    &ConcreteLineToken::Delim { .. }
+                    | &ConcreteLineToken::Dot
+                    | &ConcreteLineToken::DirectPart { .. },
+                ],
             ) = accum.last::<5>()
             {
                 accum.fix_heredoc_duplicate_indent_mistake();
             }
 
             if let Some(
-                [&ConcreteLineToken::HeredocClose { .. }, &ConcreteLineToken::HardNewLine, &ConcreteLineToken::Indent { .. }, &ConcreteLineToken::Delim { .. }, &ConcreteLineToken::Comma, &ConcreteLineToken::HardNewLine, &ConcreteLineToken::HardNewLine],
+                [
+                    &ConcreteLineToken::HeredocClose { .. },
+                    &ConcreteLineToken::HardNewLine,
+                    &ConcreteLineToken::Indent { .. },
+                    &ConcreteLineToken::Delim { .. },
+                    &ConcreteLineToken::Comma,
+                    &ConcreteLineToken::HardNewLine,
+                    &ConcreteLineToken::HardNewLine,
+                ],
             ) = accum.last::<7>()
             {
                 accum.fix_heredoc_arg_newline_mistake();

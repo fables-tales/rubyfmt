@@ -3,7 +3,7 @@ use std::{
     fs::{self, create_dir, read_to_string},
     io::Write,
 };
-use tempfile::{tempdir, NamedTempFile};
+use tempfile::{NamedTempFile, tempdir};
 
 #[test]
 fn test_simple_stdout() {

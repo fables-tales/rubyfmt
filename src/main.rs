@@ -6,10 +6,10 @@ use regex::Regex;
 use rubyfmt::init_logger;
 use similar::TextDiff;
 use std::ffi::OsStr;
-use std::fs::{read_to_string, File, OpenOptions};
+use std::fs::{File, OpenOptions, read_to_string};
 use std::io::{self, BufRead, BufReader, IsTerminal, Read, Write};
 use std::path::Path;
-use std::process::{exit, Command};
+use std::process::{Command, exit};
 use std::sync::{Arc, Mutex};
 
 #[macro_use]

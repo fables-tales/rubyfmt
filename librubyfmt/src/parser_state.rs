@@ -1,10 +1,10 @@
 use crate::comment_block::{CommentBlock, Merge};
 use crate::delimiters::BreakableDelims;
 use crate::file_comments::FileComments;
-use crate::format::{format_inner_string, StringType};
+use crate::format::{StringType, format_inner_string};
 use crate::heredoc_string::{HeredocKind, HeredocString};
 use crate::line_tokens::*;
-use crate::render_queue_writer::{RenderQueueWriter, MAX_LINE_LENGTH};
+use crate::render_queue_writer::{MAX_LINE_LENGTH, RenderQueueWriter};
 use crate::render_targets::{
     AbstractTokenTarget, BaseQueue, BreakableCallChainEntry, BreakableEntry, MultilineHandling,
 };

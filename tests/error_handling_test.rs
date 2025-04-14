@@ -1,6 +1,6 @@
 use std::io::Write;
 
-use assert_cmd::{cargo::cargo_bin, Command};
+use assert_cmd::{Command, cargo::cargo_bin};
 use tempfile::NamedTempFile;
 
 #[test]
