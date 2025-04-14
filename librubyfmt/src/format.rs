@@ -813,7 +813,7 @@ pub fn format_dot(ps: &mut dyn ConcreteParserState, dot: DotTypeOrOp) {
             }
         }
         DotTypeOrOp::Period(p) => {
-            ps.on_line(p.2 .0);
+            ps.on_line(p.2.0);
             ps.emit_dot();
         }
         DotTypeOrOp::ColonColon(_) => {
@@ -1164,7 +1164,7 @@ pub fn format_begin(ps: &mut dyn ConcreteParserState, begin: Begin) {
     }
 
     let end_line = begin.1.end_line();
-    ps.on_line(begin.1 .0);
+    ps.on_line(begin.1.0);
 
     ps.emit_begin();
 
@@ -2438,7 +2438,7 @@ pub fn format_if(ps: &mut dyn ConcreteParserState, ifs: If) {
     ps.with_start_of_line(
         true,
         Box::new(|ps| {
-            ps.wind_dumping_comments_until_line(vifs.4 .1);
+            ps.wind_dumping_comments_until_line(vifs.4.1);
             ps.emit_end();
         }),
     );
@@ -2480,7 +2480,7 @@ pub fn format_binary(ps: &mut dyn ConcreteParserState, binary: Binary) {
     } else {
         // If we don't have it, use the line number of the binary operator
         // (which is always there, albeit possibly not what the user expects)
-        ps.on_line(binary.2 .1.start_line());
+        ps.on_line(binary.2.1.start_line());
     }
 
     ps.inline_breakable_of(
@@ -3325,7 +3325,7 @@ pub fn format_case(ps: &mut dyn ConcreteParserState, case: Case) {
         ps.wind_dumping_comments_until_line(end_line);
         ps.emit_newline();
     }
-    ps.on_line(case.3 .1);
+    ps.on_line(case.3.1);
 }
 
 pub fn format_retry(ps: &mut dyn ConcreteParserState, r: Retry) {

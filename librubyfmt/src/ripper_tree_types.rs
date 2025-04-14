@@ -1720,7 +1720,7 @@ impl CallChainElement {
     pub fn start_line(&self) -> Option<u64> {
         match self {
             CallChainElement::IdentOrOpOrKeywordOrConst(ident) => {
-                Some(ident.clone().to_def_parts().1 .0)
+                Some(ident.clone().to_def_parts().1.0)
             }
             CallChainElement::Block(block) => Some(block.start_line()),
             CallChainElement::VarRef(VarRef(.., var_ref_type)) => Some(var_ref_type.start_line()),
