@@ -325,7 +325,7 @@ fixture!(test_small_long_blockvar, "small/long_blockvar");
 fixture!(test_small_map_curly, "small/map_curly");
 // fixture!(test_small_massign, "small/massign");
 // fixture!(test_small_massign_omg, "small/massign_omg");
-// fixture!(test_small_memoist, "small/memoist");
+fixture!(test_small_memoist, "small/memoist");
 fixture!(
     test_small_method_add_block_command_call,
     "small/method_add_block_command_call"
@@ -425,10 +425,10 @@ fixture!(
     test_small_preserve_slash_u_strings,
     "small/preserve_slash_u_strings"
 );
-// fixture!(
-//     test_small_private_class_method,
-//     "small/private_class_method"
-// );
+fixture!(
+    test_small_private_class_method,
+    "small/private_class_method"
+);
 fixture!(
     test_small_private_gets_trailing_blankline,
     "small/private_gets_trailing_blankline"

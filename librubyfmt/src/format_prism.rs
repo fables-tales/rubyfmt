@@ -1097,22 +1097,45 @@ fn format_call_node(
             );
         }
         if let Some(arguments) = call_node.arguments() {
-            let delims = if is_aref {
-                BreakableDelims::for_array()
+            // For callers where the only arg is a def node,
+            // we assume that's a `public def` style modifier and don't use parens
+            if arguments.arguments().iter().count() == 1
+                && arguments
+                    .arguments()
+                    .iter()
+                    .next()
+                    .unwrap()
+                    .as_def_node()
+                    .is_some()
+            {
+                ps.emit_space();
+
+                let def_node = arguments
+                    .arguments()
+                    .iter()
+                    .next()
+                    .unwrap()
+                    .as_def_node()
+                    .unwrap();
+                format_def_node(ps, def_node);
             } else {
-                BreakableDelims::for_method_call()
+                let delims = if is_aref {
+                    BreakableDelims::for_array()
+                } else {
+                    BreakableDelims::for_method_call()
+                };
+                ps.with_start_of_line(
+                    false,
+                    Box::new(|ps| {
+                        ps.breakable_of(
+                            delims,
+                            Box::new(|ps| {
+                                format_arguments_node(ps, arguments);
+                            }),
+                        );
+                    }),
+                );
             };
-            ps.with_start_of_line(
-                false,
-                Box::new(|ps| {
-                    ps.breakable_of(
-                        delims,
-                        Box::new(|ps| {
-                            format_arguments_node(ps, arguments);
-                        }),
-                    );
-                }),
-            );
         }
         if let Some(block) = call_node.block() {
             ps.emit_space();
