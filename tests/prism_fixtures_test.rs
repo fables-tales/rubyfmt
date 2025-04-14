@@ -39,10 +39,10 @@ fixture!(
     test_small_two_five_unnamed_kwrest_param_def,
     "small/2.5/unnamed_kwrest_param_def"
 );
-// fixture!(
-//     test_small_two_six_range_with_no_upper_bound,
-//     "small/2.6/range_with_no_upper_bound"
-// );
+fixture!(
+    test_small_two_six_range_with_no_upper_bound,
+    "small/2.6/range_with_no_upper_bound"
+);
 
 // fixture!(test_small_alias, "small/alias");
 // fixture!(test_small_alias_bare_kw, "small/alias_bare_kw");
@@ -221,9 +221,9 @@ fixture!(
 fixture!(test_small_defs_comment, "small/defs_comment");
 fixture!(test_small_defs_end_comment, "small/defs_end_comment");
 fixture!(test_small_defs_kw, "small/defs_kw");
-// fixture!(test_small_disambiguated_range, "small/disambiguated_range");
-// fixture!(test_small_dot2, "small/dot2");
-// fixture!(test_small_dot3, "small/dot3");
+fixture!(test_small_disambiguated_range, "small/disambiguated_range");
+fixture!(test_small_dot2, "small/dot2");
+fixture!(test_small_dot3, "small/dot3");
 // fixture!(test_small_dotcall, "small/dotcall");
 fixture!(test_small_double_splat, "small/double_splat");
 fixture!(test_small_double_splat_def, "small/double_splat_def");
@@ -412,10 +412,10 @@ fixture!(
     "small/optional_arg_in_middle"
 );
 // fixture!(test_small_paren_expr_calls, "small/paren_expr_calls");
-// fixture!(
-//     test_small_paren_with_multiple_expressions,
-//     "small/paren_with_multiple_expressions"
-// );
+fixture!(
+    test_small_paren_with_multiple_expressions,
+    "small/paren_with_multiple_expressions"
+);
 // fixture!(
 //     test_small_pathological_heredocs,
 //     "small/pathological_heredocs"
