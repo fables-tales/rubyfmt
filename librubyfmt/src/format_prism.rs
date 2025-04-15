@@ -507,26 +507,12 @@ fn format_string_node(ps: &mut dyn ConcreteParserState, string_node: prism::Stri
     let is_heredoc = opener.clone().map(|s| s.starts_with("<")).unwrap_or(false);
 
     if is_heredoc {
-        let heredoc_kind = HeredocKind::from_string(opener.clone().unwrap().as_str());
-        ps.emit_heredoc_start(opener.unwrap(), heredoc_kind);
-        ps.push_heredoc_content(
-            closer.unwrap(),
-            heredoc_kind,
-            ps.get_line_number_for_offset(
-                string_node
-                    .closing_loc()
-                    .expect("Heredocs must have a loc for the closing tag")
-                    // We use the start line here because sometimes (but not always!)
-                    // the closing_loc includes a trailing newline, which would put
-                    // us one line too far up
-                    .start_offset(),
-            ),
-            Box::new(|n: &mut BaseParserState| {
-                n.disable_user_newlines();
-                let mut content = u8_to_string(string_node.unescaped()).to_string();
-                content = content.strip_suffix('\n').unwrap_or(&content).to_string();
-                n.emit_string_content(content);
-            }),
+        format_heredoc(
+            ps,
+            HeredocNodeType::Plain(string_node),
+            opener
+                .expect("Heredocs must have an opening loc for the opening tag (<<FOO etc.)")
+                .to_string(),
         );
         return;
     }
@@ -592,7 +578,13 @@ fn format_interpolated_string_node(
     ps.at_offset(interpolated_string_node.location().start_offset());
 
     if is_heredoc {
-        format_heredoc(ps, &interpolated_string_node, opener);
+        format_heredoc(
+            ps,
+            HeredocNodeType::Interpolated(interpolated_string_node),
+            opener
+                .expect("Heredocs must have an opening loc for the opening tag (<<FOO etc.)")
+                .to_string(),
+        );
         // The rest of this machinery is handled in format_inner_string
         // From here on out, assume we're not in a heredoc
         return;
@@ -644,38 +636,60 @@ fn format_interpolated_string_node(
     }
 }
 
+enum HeredocNodeType<'h> {
+    Plain(prism::StringNode<'h>),
+    Interpolated(prism::InterpolatedStringNode<'h>),
+}
+
+impl HeredocNodeType<'_> {
+    fn parts(&self) -> Vec<prism::Node> {
+        match self {
+            HeredocNodeType::Plain(string_node) => vec![string_node.as_node()],
+            HeredocNodeType::Interpolated(interpolated_string_node) => {
+                interpolated_string_node.parts().iter().collect::<Vec<_>>()
+            }
+        }
+    }
+
+    fn closing_loc(&self) -> prism::Location {
+        match self {
+            HeredocNodeType::Plain(string_node) => string_node
+                .closing_loc()
+                .expect("This is a heredoc, it must have a loc for the closing tag"),
+            HeredocNodeType::Interpolated(interpolated_string_node) => interpolated_string_node
+                .closing_loc()
+                .expect("This is a heredoc, it must have a loc for the closing tag"),
+        }
+    }
+}
+
 fn format_heredoc(
     ps: &mut dyn ConcreteParserState,
-    interpolated_string_node: &ruby_prism::InterpolatedStringNode<'_>,
-    opener: Option<String>,
+    heredoc: HeredocNodeType,
+    heredoc_symbol: String,
 ) {
-    let heredoc_symbol = opener.unwrap().to_string();
     let heredoc_kind = HeredocKind::from_string(&heredoc_symbol);
     ps.emit_heredoc_start(heredoc_symbol, heredoc_kind);
 
-    let parts = interpolated_string_node.parts();
+    let parts = heredoc.parts();
 
     ps.push_heredoc_content(
-        interpolated_string_node
-            .closing_loc()
-            .map(|s| loc_to_string(s).trim().to_string())
-            .unwrap(),
+        loc_to_string(heredoc.closing_loc()).trim().to_string(),
         heredoc_kind,
-        ps.get_line_number_for_offset(
-            interpolated_string_node
-                .closing_loc()
-                .expect("Heredocs must have a loc for the closing tag")
-                .start_offset(),
-        ),
+        ps.get_line_number_for_offset(heredoc.closing_loc().start_offset()),
         Box::new(|n: &mut BaseParserState| {
             n.disable_user_newlines();
             format_inner_string(n, parts, true);
         }),
     );
-    ps.wind_dumping_comments_until_offset(interpolated_string_node.location().end_offset());
+    ps.wind_dumping_comments_until_offset(heredoc.closing_loc().start_offset());
 }
 
-fn format_inner_string(ps: &mut dyn ConcreteParserState, parts: prism::NodeList, is_heredoc: bool) {
+fn format_inner_string(
+    ps: &mut dyn ConcreteParserState,
+    parts: Vec<prism::Node>,
+    is_heredoc: bool,
+) {
     let mut peekable = parts.iter().peekable();
     while let Some(part) = peekable.next() {
         match part {
@@ -715,7 +729,13 @@ fn format_inner_string(ps: &mut dyn ConcreteParserState, parts: prism::NodeList,
                     ps.render_heredocs(true)
                 }
             }
-            _ => ps.with_start_of_line(false, Box::new(|ps| format_node(ps, part))),
+            prism::Node::EmbeddedStatementsNode { .. } => {
+                format_embedded_statements_node(ps, part.as_embedded_statements_node().unwrap())
+            }
+            prism::Node::EmbeddedVariableNode { .. } => {
+                format_embedded_variable_node(ps, part.as_embedded_variable_node().unwrap())
+            }
+            x => unreachable!("Unexpected Node type in heredoc: {:?}", x),
         }
     }
 }
