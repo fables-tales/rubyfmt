@@ -260,23 +260,23 @@ fixture!(test_small_gvar_symbol, "small/gvar_symbol");
 // fixture!(test_small_hash_comments, "small/hash_comments");
 // fixture!(test_small_hash_heredoc, "small/hash_heredoc");
 // fixture!(test_small_hash_rocket_usage, "small/hash_rocket_usage");
-// fixture!(
-//     test_small_heredoc_comment_header,
-//     "small/heredoc_comment_header"
-// );
+fixture!(
+    test_small_heredoc_comment_header,
+    "small/heredoc_comment_header"
+);
 // fixture!(
 //     test_small_heredoc_ending_with_curly,
 //     "small/heredoc_ending_with_curly"
 // );
-// fixture!(
-//     test_small_heredoc_in_array_in_call,
-//     "small/heredoc_in_array_in_call"
-// );
-// fixture!(
-//     test_small_heredoc_indented_whitespace,
-//     "small/heredoc_indented_whitespace"
-// );
-// fixture!(test_small_heredoc_method_call, "small/heredoc_method_call");
+fixture!(
+    test_small_heredoc_in_array_in_call,
+    "small/heredoc_in_array_in_call"
+);
+fixture!(
+    test_small_heredoc_indented_whitespace,
+    "small/heredoc_indented_whitespace"
+);
+fixture!(test_small_heredoc_method_call, "small/heredoc_method_call");
 fixture!(test_small_heredoc_with_call, "small/heredoc_with_call");
 fixture!(
     test_small_heredoc_with_leading_newline,
@@ -287,11 +287,11 @@ fixture!(
 //     test_small_heredocs_ending_blocks,
 //     "small/heredocs_ending_blocks"
 // );
-// fixture!(test_small_heredocs_in_calls, "small/heredocs_in_calls");
-// fixture!(
-//     test_small_heredocs_with_comments,
-//     "small/heredocs_with_comments"
-// );
+fixture!(test_small_heredocs_in_calls, "small/heredocs_in_calls");
+fixture!(
+    test_small_heredocs_with_comments,
+    "small/heredocs_with_comments"
+);
 fixture!(
     test_small_if_without_extra_parts,
     "small/if_without_extra_parts"
@@ -399,10 +399,10 @@ fixture!(test_small_nested_conditionals, "small/nested_conditionals");
 // fixture!(test_small_next_with_comments, "small/next_with_comments");
 // fixture!(test_small_next_yield, "small/next_yield");
 fixture!(test_small_no_mangle_jpy, "small/no_mangle_jpy");
-// fixture!(
-//     test_small_no_multiline_call_in_string_embexpr,
-//     "small/no_multiline_call_in_string_embexpr"
-// );
+fixture!(
+    test_small_no_multiline_call_in_string_embexpr,
+    "small/no_multiline_call_in_string_embexpr"
+);
 // fixture!(test_small_not, "small/not");
 fixture!(test_small_numbers, "small/numbers");
 fixture!(test_small_op_defs, "small/op_defs");
@@ -434,7 +434,7 @@ fixture!(
     "small/private_gets_trailing_blankline"
 );
 // fixture!(test_small_procs, "small/procs");
-// fixture!(test_small_quoted_heredoc, "small/quoted_heredoc");
+fixture!(test_small_quoted_heredoc, "small/quoted_heredoc");
 fixture!(test_small_raise_star, "small/raise_star");
 // fixture!(test_small_rationals, "small/rationals");
 // fixture!(test_small_redo, "small/redo");
