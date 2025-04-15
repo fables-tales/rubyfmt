@@ -2,7 +2,6 @@ use crate::line_metadata::LineMetadata;
 use crate::line_tokens::*;
 #[cfg(debug_assertions)]
 use log::debug;
-use std::convert::TryInto;
 use std::mem;
 
 #[derive(Debug)]
@@ -66,21 +65,8 @@ impl Intermediary {
         self.index_of_last_hard_newline = self.tokens.len() - 1;
     }
 
-    pub fn last<const N: usize>(&self) -> Option<[&ConcreteLineToken; N]> {
-        if self.len() < N {
-            return None;
-        }
-
-        let mut values = Vec::with_capacity(N);
-        for index in (0..N).rev() {
-            values.push(&self.tokens[self.len() - index - 1]);
-        }
-
-        Some(
-            values
-                .try_into()
-                .expect("checked the length when constructing this"),
-        )
+    pub fn last<const N: usize>(&self) -> Option<&[ConcreteLineToken; N]> {
+        self.tokens.last_chunk::<N>()
     }
 
     pub fn into_tokens(self) -> Vec<ConcreteLineToken> {
