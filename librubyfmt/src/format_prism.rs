@@ -697,10 +697,8 @@ fn format_inner_string(
                 // have the appropriate leading whitespace stripped for <<~ heredocs
                 let mut contents = u8_to_string(part.unescaped());
 
-                if is_heredoc {
-                    if peekable.peek().is_none() && contents.ends_with('\n') {
-                        contents.pop();
-                    }
+                if is_heredoc && peekable.peek().is_none() && contents.ends_with('\n') {
+                    contents.pop();
                 }
 
                 ps.at_offset(part.location().end_offset());
@@ -797,10 +795,8 @@ fn format_embedded_statements_node(
                             ps.emit_newline();
                             ps.new_block(Box::new(|ps| format_node(ps, statements.as_node())));
                             ps.emit_indent();
-                        } else {
-                            if let Some(statement) = statements.body().iter().next() {
-                                format_node(ps, statement);
-                            }
+                        } else if let Some(statement) = statements.body().iter().next() {
+                            format_node(ps, statement);
                         }
                     }),
                 );
