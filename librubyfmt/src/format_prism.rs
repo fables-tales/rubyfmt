@@ -671,15 +671,13 @@ fn format_heredoc(
     let heredoc_kind = HeredocKind::from_string(&heredoc_symbol);
     ps.emit_heredoc_start(heredoc_symbol, heredoc_kind);
 
-    let parts = heredoc.parts();
-
     ps.push_heredoc_content(
         loc_to_string(heredoc.closing_loc()).trim().to_string(),
         heredoc_kind,
         ps.get_line_number_for_offset(heredoc.closing_loc().start_offset()),
         Box::new(|n: &mut BaseParserState| {
             n.disable_user_newlines();
-            format_inner_string(n, parts, true);
+            format_inner_string(n, heredoc.parts(), true);
         }),
     );
     ps.wind_dumping_comments_until_offset(heredoc.closing_loc().start_offset());
