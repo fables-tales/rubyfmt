@@ -4,10 +4,10 @@ use crate::{
     delimiters::BreakableDelims,
     format::SpecialCase,
     heredoc_string::HeredocKind,
-    parser_state::{ConcreteParserState, FormattingContext, HashType, RenderFunc},
+    parser_state::{BaseParserState, ConcreteParserState, FormattingContext, HashType, RenderFunc},
     render_targets::MultilineHandling,
     types::SourceOffset,
-    util::{const_to_string, loc_to_string},
+    util::{const_to_string, loc_to_string, u8_to_string},
 };
 
 pub fn format_node(ps: &mut dyn ConcreteParserState, node: prism::Node) {
@@ -506,20 +506,37 @@ fn format_string_node(ps: &mut dyn ConcreteParserState, string_node: prism::Stri
         .map(|s| loc_to_string(s).trim().to_string());
     let is_heredoc = opener.clone().map(|s| s.starts_with("<")).unwrap_or(false);
 
+    if is_heredoc {
+        let heredoc_kind = HeredocKind::from_string(opener.clone().unwrap().as_str());
+        ps.emit_heredoc_start(opener.unwrap(), heredoc_kind);
+        ps.push_heredoc_content(
+            closer.unwrap(),
+            heredoc_kind,
+            ps.get_line_number_for_offset(
+                string_node
+                    .closing_loc()
+                    .expect("Heredocs must have a loc for the closing tag")
+                    // We use the start line here because sometimes (but not always!)
+                    // the closing_loc includes a trailing newline, which would put
+                    // us one line too far up
+                    .start_offset(),
+            ),
+            Box::new(|n: &mut BaseParserState| {
+                n.disable_user_newlines();
+                let mut content = u8_to_string(string_node.unescaped()).to_string();
+                content = content.strip_suffix('\n').unwrap_or(&content).to_string();
+                n.emit_string_content(content);
+            }),
+        );
+        return;
+    }
+
     ps.with_start_of_line(
         false,
         Box::new(|ps| {
-            if is_heredoc {
-                let heredoc_symbol = opener.clone().unwrap();
-                let heredoc_kind = HeredocKind::from_string(&heredoc_symbol);
-
-                ps.emit_heredoc_start(heredoc_symbol, heredoc_kind);
-                ps.emit_newline();
-            } else {
-                // Always use double quotes over single quotes/percent literals
-                if opener.is_some() {
-                    ps.emit_double_quote();
-                }
+            // Always use double quotes over single quotes/percent literals
+            if opener.is_some() {
+                ps.emit_double_quote();
             }
 
             // If opener is nil, we must be in some kind of interpolated string context, which
@@ -539,18 +556,7 @@ fn format_string_node(ps: &mut dyn ConcreteParserState, string_node: prism::Stri
             ps.emit_string_content(string_content);
             ps.wind_dumping_comments_until_offset(string_node.content_loc().end_offset());
 
-            if is_heredoc {
-                // <<~ heredocs have their closing tag indented too
-                if opener.map(|s| s.starts_with("<<~")).unwrap_or(false) {
-                    ps.emit_indent();
-                }
-
-                ps.emit_heredoc_close(
-                    loc_to_string(string_node.closing_loc().unwrap())
-                        .trim()
-                        .to_string(),
-                );
-            } else if opener.is_some() {
+            if opener.is_some() {
                 ps.emit_double_quote();
             }
         }),
@@ -563,10 +569,10 @@ fn format_interpolated_string_node(
     ps: &mut dyn ConcreteParserState,
     interpolated_string_node: prism::InterpolatedStringNode,
 ) {
-    let is_heredoc = interpolated_string_node
+    let opener = interpolated_string_node
         .opening_loc()
-        .map(|s| loc_to_string(s).starts_with("<"))
-        .unwrap_or(false);
+        .map(|s| loc_to_string(s).trim().to_string());
+    let is_heredoc = opener.as_ref().map(|s| s.starts_with("<")).unwrap_or(false);
 
     // Prism actually handles string concatenation when using "\", so it treats
     // ```ruby
@@ -584,11 +590,16 @@ fn format_interpolated_string_node(
         });
 
     ps.at_offset(interpolated_string_node.location().start_offset());
-    if let Some(s) = interpolated_string_node.opening_loc() {
-        ps.emit_string_content(loc_to_string(s).trim().to_string());
-    }
+
     if is_heredoc {
-        ps.emit_newline();
+        format_heredoc(ps, &interpolated_string_node, opener);
+        // The rest of this machinery is handled in format_inner_string
+        // From here on out, assume we're not in a heredoc
+        return;
+    }
+
+    if let Some(s) = &opener {
+        ps.emit_string_content(s.clone());
     }
 
     ps.with_start_of_line(
@@ -596,16 +607,16 @@ fn format_interpolated_string_node(
         Box::new(|ps| {
             let string_parts_count = interpolated_string_node.parts().iter().count();
             for (i, part) in interpolated_string_node.parts().iter().enumerate() {
+                let start_offset = part.location().start_offset();
                 let end_offset = part.location().end_offset();
-                ps.at_offset(part.location().start_offset());
 
-                if i > 0 {
+                ps.at_offset(start_offset);
+                let indent_for_consecutive_strings = is_backslash_string_interpolation && i > 0;
+
+                if indent_for_consecutive_strings {
                     ps.start_indent();
-
-                    if is_backslash_string_interpolation {
-                        ps.emit_newline();
-                        ps.emit_indent();
-                    }
+                    ps.emit_newline();
+                    ps.emit_indent();
                 }
 
                 format_node(ps, part);
@@ -621,7 +632,7 @@ fn format_interpolated_string_node(
                 }
 
                 ps.at_offset(end_offset);
-                if i > 0 {
+                if indent_for_consecutive_strings {
                     ps.end_indent();
                 }
             }
@@ -630,6 +641,82 @@ fn format_interpolated_string_node(
 
     if let Some(closing_loc) = interpolated_string_node.closing_loc() {
         ps.emit_string_content(loc_to_string(closing_loc).trim().to_string());
+    }
+}
+
+fn format_heredoc(
+    ps: &mut dyn ConcreteParserState,
+    interpolated_string_node: &ruby_prism::InterpolatedStringNode<'_>,
+    opener: Option<String>,
+) {
+    let heredoc_symbol = opener.unwrap().to_string();
+    let heredoc_kind = HeredocKind::from_string(&heredoc_symbol);
+    ps.emit_heredoc_start(heredoc_symbol, heredoc_kind);
+
+    let parts = interpolated_string_node.parts();
+
+    ps.push_heredoc_content(
+        interpolated_string_node
+            .closing_loc()
+            .map(|s| loc_to_string(s).trim().to_string())
+            .unwrap(),
+        heredoc_kind,
+        ps.get_line_number_for_offset(
+            interpolated_string_node
+                .closing_loc()
+                .expect("Heredocs must have a loc for the closing tag")
+                .start_offset(),
+        ),
+        Box::new(|n: &mut BaseParserState| {
+            n.disable_user_newlines();
+            format_inner_string(n, parts, true);
+        }),
+    );
+    ps.wind_dumping_comments_until_offset(interpolated_string_node.location().end_offset());
+}
+
+fn format_inner_string(ps: &mut dyn ConcreteParserState, parts: prism::NodeList, is_heredoc: bool) {
+    let mut peekable = parts.iter().peekable();
+    while let Some(part) = peekable.next() {
+        match part {
+            prism::Node::StringNode { .. } => {
+                let part = part.as_string_node().unwrap();
+                // We use the `unescaped` contents here since they
+                // have the appropriate leading whitespace stripped for <<~ heredocs
+                let mut contents = u8_to_string(part.unescaped());
+
+                if is_heredoc {
+                    if peekable.peek().is_none() && contents.ends_with('\n') {
+                        contents.pop();
+                    }
+                }
+
+                ps.at_offset(part.location().end_offset());
+                ps.emit_string_content(contents);
+            }
+            prism::Node::InterpolatedStringNode { .. } => {
+                ps.at_offset(part.location().start_offset());
+                format_interpolated_string_node(ps, part.as_interpolated_string_node().unwrap());
+
+                let on_line_skip = is_heredoc
+                    && match peekable.peek() {
+                        Some(prism::Node::StringNode { .. }) => loc_to_string(
+                            peekable
+                                .peek()
+                                .unwrap()
+                                .as_string_node()
+                                .unwrap()
+                                .content_loc(),
+                        )
+                        .starts_with('\n'),
+                        _ => false,
+                    };
+                if on_line_skip {
+                    ps.render_heredocs(true)
+                }
+            }
+            _ => ps.with_start_of_line(false, Box::new(|ps| format_node(ps, part))),
+        }
     }
 }
 
@@ -681,17 +768,24 @@ fn format_embedded_statements_node(
 ) {
     ps.emit_string_content("#{".to_string());
     if let Some(statements) = embedded_statements_node.statements() {
-        let has_multiple_statements = statements.body().iter().count() > 1;
-        ps.with_start_of_line(
-            has_multiple_statements,
+        ps.with_formatting_context(
+            FormattingContext::StringEmbexpr,
             Box::new(|ps| {
-                if has_multiple_statements {
-                    ps.emit_newline();
-                    ps.new_block(Box::new(|ps| format_node(ps, statements.as_node())));
-                    ps.emit_indent();
-                } else {
-                    format_node(ps, statements.as_node());
-                }
+                let has_multiple_statements = statements.body().iter().count() > 1;
+                ps.with_start_of_line(
+                    has_multiple_statements,
+                    Box::new(|ps| {
+                        if has_multiple_statements {
+                            ps.emit_newline();
+                            ps.new_block(Box::new(|ps| format_node(ps, statements.as_node())));
+                            ps.emit_indent();
+                        } else {
+                            if let Some(statement) = statements.body().iter().next() {
+                                format_node(ps, statement);
+                            }
+                        }
+                    }),
+                );
             }),
         );
     }
@@ -1161,6 +1255,11 @@ fn format_call_node(
                         // must be additional calls -- you cannot insert literals into call chains
                         let first_expression = call_chain_elements.remove(0);
                         format_node(ps, first_expression);
+                        // Eagerly render heredocs if they're in the first expression.
+                        // We want the full heredoc to get rendered _before_ we emit the
+                        // BeginCallChainIndent token so that it gets correctly indented
+                        // (or in the case of it being the first expression, _not_ indented).
+                        ps.render_heredocs(true);
 
                         ps.start_indent_for_call_chain();
 

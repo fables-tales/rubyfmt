@@ -1544,7 +1544,7 @@ pub enum StringType {
     Regexp,
 }
 
-pub fn format_inner_string(
+fn format_inner_string(
     ps: &mut dyn ConcreteParserState,
     parts: Vec<StringContentPart>,
     tipe: StringType,
@@ -1644,7 +1644,15 @@ pub fn format_heredoc_string_literal(
             let kind = HeredocKind::from_string(&heredoc_type);
             ps.emit_heredoc_start(format!("{}{}", heredoc_type, heredoc_symbol), kind);
 
-            ps.push_heredoc_content(heredoc_symbol, kind, parts, end_line);
+            ps.push_heredoc_content(
+                heredoc_symbol,
+                kind,
+                end_line,
+                Box::new(|n: &mut BaseParserState| {
+                    n.disable_user_newlines();
+                    format_inner_string(n, parts, StringType::Heredoc);
+                }),
+            );
         }),
     );
 
