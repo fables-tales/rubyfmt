@@ -121,18 +121,18 @@ fixture!(
 //     test_small_brace_blocks_with_no_args,
 //     "small/brace_blocks_with_no_args"
 // );
-// fixture!(
-//     test_small_bracket_method_call_on_module_with_method_call_inside,
-//     "small/bracket_method_call_on_module_with_method_call_inside"
-// );
+fixture!(
+    test_small_bracket_method_call_on_module_with_method_call_inside,
+    "small/bracket_method_call_on_module_with_method_call_inside"
+);
 // fixture!(
 //     test_small_bracket_method_call_on_module_with_no_args,
 //     "small/bracket_method_call_on_module_with_no_args"
 // );
-// fixture!(
-//     test_small_bracket_method_call_on_module_with_trailing_comma,
-//     "small/bracket_method_call_on_module_with_trailing_comma"
-// );
+fixture!(
+    test_small_bracket_method_call_on_module_with_trailing_comma,
+    "small/bracket_method_call_on_module_with_trailing_comma"
+);
 // fixture!(
 //     test_small_break_all_the_things,
 //     "small/break_all_the_things"
@@ -161,10 +161,10 @@ fixture!(test_small_coloncoloncalldot, "small/coloncoloncalldot");
 // fixture!(test_small_command_call_raise, "small/command_call_raise");
 // fixture!(test_small_command_paren, "small/command_paren");
 fixture!(test_small_commas_trailing, "small/commas_trailing");
-// fixture!(
-//     test_small_comment_in_block_inside_array,
-//     "small/comment_in_block_inside_array"
-// );
+fixture!(
+    test_small_comment_in_block_inside_array,
+    "small/comment_in_block_inside_array"
+);
 fixture!(
     test_small_comment_in_module_are_tight,
     "small/comment_in_module_are_tight"
@@ -482,7 +482,7 @@ fixture!(
 // fixture!(test_small_splat_case, "small/splat_case");
 fixture!(test_small_splat_in_argument, "small/splat_in_argument");
 fixture!(test_small_splat_rescue, "small/splat_rescue");
-// fixture!(test_small_sqb_no_parens, "small/sqb_no_parens");
+fixture!(test_small_sqb_no_parens, "small/sqb_no_parens");
 // fixture!(
 //     test_small_squiggly_heredoc_interpolation,
 //     "small/squiggly_heredoc_interpolation"
