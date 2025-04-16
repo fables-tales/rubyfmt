@@ -1450,13 +1450,12 @@ fn call_chain_elements_are_user_multilined(
     );
     !call_chain_elements[1..].iter().all(|cce| {
         start_line
-            == ps.get_line_number_for_offset(
-                cce.as_call_node()
-                    .unwrap()
-                    .call_operator_loc()
-                    .unwrap()
-                    .start_offset(),
-            )
+            == cce
+                .as_call_node()
+                .unwrap()
+                .call_operator_loc()
+                .map(|loc| ps.get_line_number_for_offset(loc.start_offset()))
+                .unwrap_or(start_line)
     })
 }
 
