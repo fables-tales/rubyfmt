@@ -124,10 +124,10 @@ impl RenderQueueWriter {
 
             if let Some(
                 [
-                    &ConcreteLineToken::HeredocClose { .. },
-                    &ConcreteLineToken::HardNewLine,
-                    &ConcreteLineToken::Indent { .. },
-                    &ConcreteLineToken::HardNewLine,
+                    ConcreteLineToken::HeredocClose { .. },
+                    ConcreteLineToken::HardNewLine,
+                    ConcreteLineToken::Indent { .. },
+                    ConcreteLineToken::HardNewLine,
                 ],
             ) = accum.last::<4>()
             {
@@ -136,9 +136,9 @@ impl RenderQueueWriter {
 
             if let Some(
                 [
-                    &ConcreteLineToken::End,
-                    &ConcreteLineToken::HardNewLine,
-                    &ConcreteLineToken::Indent { .. },
+                    ConcreteLineToken::End,
+                    ConcreteLineToken::HardNewLine,
+                    ConcreteLineToken::Indent { .. },
                     x,
                 ],
             ) = accum.last::<4>()
@@ -158,10 +158,10 @@ impl RenderQueueWriter {
 
             if let Some(
                 [
-                    &ConcreteLineToken::End,
-                    &ConcreteLineToken::AfterCallChain,
-                    &ConcreteLineToken::HardNewLine,
-                    &ConcreteLineToken::Indent { .. },
+                    ConcreteLineToken::End,
+                    ConcreteLineToken::AfterCallChain,
+                    ConcreteLineToken::HardNewLine,
+                    ConcreteLineToken::Indent { .. },
                     x,
                     maybe_space,
                     maybe_def,
@@ -195,13 +195,13 @@ impl RenderQueueWriter {
 
             if let Some(
                 [
-                    &ConcreteLineToken::HeredocClose { .. },
-                    &ConcreteLineToken::HardNewLine,
-                    &ConcreteLineToken::Indent { .. },
-                    &ConcreteLineToken::Indent { .. },
-                    &ConcreteLineToken::Delim { .. }
-                    | &ConcreteLineToken::Dot
-                    | &ConcreteLineToken::DirectPart { .. },
+                    ConcreteLineToken::HeredocClose { .. },
+                    ConcreteLineToken::HardNewLine,
+                    ConcreteLineToken::Indent { .. },
+                    ConcreteLineToken::Indent { .. },
+                    ConcreteLineToken::Delim { .. }
+                    | ConcreteLineToken::Dot
+                    | ConcreteLineToken::DirectPart { .. },
                 ],
             ) = accum.last::<5>()
             {
@@ -210,13 +210,13 @@ impl RenderQueueWriter {
 
             if let Some(
                 [
-                    &ConcreteLineToken::HeredocClose { .. },
-                    &ConcreteLineToken::HardNewLine,
-                    &ConcreteLineToken::Indent { .. },
-                    &ConcreteLineToken::Delim { .. },
-                    &ConcreteLineToken::Comma,
-                    &ConcreteLineToken::HardNewLine,
-                    &ConcreteLineToken::HardNewLine,
+                    ConcreteLineToken::HeredocClose { .. },
+                    ConcreteLineToken::HardNewLine,
+                    ConcreteLineToken::Indent { .. },
+                    ConcreteLineToken::Delim { .. },
+                    ConcreteLineToken::Comma,
+                    ConcreteLineToken::HardNewLine,
+                    ConcreteLineToken::HardNewLine,
                 ],
             ) = accum.last::<7>()
             {
