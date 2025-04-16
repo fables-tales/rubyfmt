@@ -436,8 +436,67 @@ fn format_back_reference_read_node(
     todo!()
 }
 
-fn format_begin_node(_ps: &mut dyn ConcreteParserState, _begin_node: prism::BeginNode) {
-    todo!()
+fn format_begin_node(ps: &mut dyn ConcreteParserState, begin_node: prism::BeginNode) {
+    // If there's no `begin` keyword loc, this is probably an "implicit" begin node,
+    // like a rescue/ensure in a def without a `begin` keyword:
+    // ```ruby
+    //   def foo
+    //     raise "Ahh!"
+    //   rescue
+    //   end
+    // ```
+    let is_implicit_begin_node = begin_node.begin_keyword_loc().is_none();
+
+    // Double check that these offsets are correct, since begin/rescue/ensure/else
+    // aren't always handled with `format_node`, which usually handles this
+    ps.at_offset(begin_node.location().start_offset());
+
+    if is_implicit_begin_node {
+        // We assume we're in a context that's already been indented, e.g.
+        // the body of a `def`
+        ps.end_indent();
+    } else {
+        ps.emit_keyword("begin".to_string());
+    }
+    ps.new_block(Box::new(|ps| {
+        // For implicit nodes, this newline was already emitted by the caller
+        if !is_implicit_begin_node {
+            ps.emit_newline();
+        }
+        if let Some(statements_node) = begin_node.statements() {
+            format_statements(ps, statements_node);
+        }
+    }));
+
+    ps.with_start_of_line(
+        true,
+        Box::new(|ps| {
+            if let Some(rescue_node) = begin_node.rescue_clause() {
+                ps.emit_indent();
+                format_rescue_node(ps, rescue_node);
+            }
+
+            if let Some(else_node) = begin_node.else_clause() {
+                ps.emit_indent();
+                format_else_node(ps, else_node);
+            }
+
+            if let Some(ensure_node) = begin_node.ensure_clause() {
+                ps.emit_indent();
+                format_ensure_node(ps, ensure_node);
+            }
+
+            if !is_implicit_begin_node {
+                ps.emit_end();
+            }
+        }),
+    );
+
+    if is_implicit_begin_node {
+        ps.start_indent();
+    }
+
+    ps.at_offset(begin_node.location().end_offset());
 }
 
 fn format_break_node(_ps: &mut dyn ConcreteParserState, _break_node: prism::BreakNode) {
@@ -813,8 +872,20 @@ fn format_embedded_variable_node(
     todo!()
 }
 
-fn format_ensure_node(_ps: &mut dyn ConcreteParserState, _ensure_node: prism::EnsureNode) {
-    todo!()
+fn format_ensure_node(ps: &mut dyn ConcreteParserState, ensure_node: prism::EnsureNode) {
+    // Double check that these offsets are correct, since begin/rescue/ensure/else
+    // aren't always handled with `format_node`, which usually handles this
+    ps.at_offset(ensure_node.location().start_offset());
+
+    ps.emit_keyword("ensure".to_string());
+    ps.new_block(Box::new(|ps| {
+        ps.emit_newline();
+        if let Some(statements) = ensure_node.statements() {
+            format_statements(ps, statements);
+        }
+    }));
+
+    ps.at_offset(ensure_node.location().end_offset());
 }
 
 fn format_false_node(ps: &mut dyn ConcreteParserState, false_node: prism::FalseNode) {
@@ -998,7 +1069,19 @@ fn format_def_body(ps: &mut dyn ConcreteParserState, def_node: prism::DefNode) {
                             true,
                             Box::new(|ps| {
                                 if let Some(body) = def_node.body() {
-                                    format_node(ps, body);
+                                    // Begin nodes are special because they could be "implicit" begins,
+                                    // e.g. `def foo; rescue Foo; end`, which aren't indented the same way
+                                    // as other nodes and thus shouldn't go through the usual `format_node` machinery
+                                    // that handles indentation and newlines
+                                    if let Some(begin_node) = body.as_begin_node() {
+                                        if begin_node.begin_keyword_loc().is_none() {
+                                            format_begin_node(ps, begin_node);
+                                        } else {
+                                            format_node(ps, body);
+                                        }
+                                    } else {
+                                        format_node(ps, body);
+                                    }
                                 }
                             }),
                         );
@@ -1037,6 +1120,10 @@ fn format_defined_node(_ps: &mut dyn ConcreteParserState, _defined_node: prism::
 }
 
 fn format_else_node(ps: &mut dyn ConcreteParserState, else_node: prism::ElseNode) {
+    // Double check that these offsets are correct, since begin/rescue/ensure/else
+    // aren't always handled with `format_node`, which usually handles this
+    ps.at_offset(else_node.location().start_offset());
+
     // `else_keyword_loc` is somewhat misleading, since this can be either the `else`
     // keyword or the `:` separator in a ternary
     let keyword = loc_to_string(else_node.else_keyword_loc());
@@ -1070,6 +1157,8 @@ fn format_else_node(ps: &mut dyn ConcreteParserState, else_node: prism::ElseNode
             }),
         );
     }
+
+    ps.at_offset(else_node.location().end_offset());
 }
 
 type ParamFormattingFunc<'a> = Box<dyn FnOnce(&mut dyn ConcreteParserState) + 'a>;
@@ -1743,14 +1832,19 @@ fn format_keyword_hash_node(
         HashType::HashRocket
     };
 
-    ps.with_formatting_context(
-        FormattingContext::HashType(hash_type),
+    ps.with_start_of_line(
+        false,
         Box::new(|ps| {
-            format_list_like_thing(
-                ps,
-                keyword_hash_node.elements(),
-                keyword_hash_node.location().end_offset(),
-                false,
+            ps.with_formatting_context(
+                FormattingContext::HashType(hash_type),
+                Box::new(|ps| {
+                    format_list_like_thing(
+                        ps,
+                        keyword_hash_node.elements(),
+                        keyword_hash_node.location().end_offset(),
+                        false,
+                    );
+                }),
             );
         }),
     );
@@ -1809,10 +1903,12 @@ fn format_local_variable_or_write_node(
 }
 
 fn format_local_variable_target_node(
-    _ps: &mut dyn ConcreteParserState,
-    _local_variable_target_node: prism::LocalVariableTargetNode,
+    ps: &mut dyn ConcreteParserState,
+    local_variable_target_node: prism::LocalVariableTargetNode,
 ) {
-    todo!()
+    let variable_name = const_to_string(local_variable_target_node.name());
+    ps.bind_variable(variable_name.clone());
+    ps.emit_ident(variable_name);
 }
 
 fn format_local_variable_read_node(
@@ -2425,8 +2521,57 @@ fn format_rescue_modifier_node(
     todo!()
 }
 
-fn format_rescue_node(_ps: &mut dyn ConcreteParserState, _rescue_node: prism::RescueNode) {
-    todo!()
+fn format_rescue_node(ps: &mut dyn ConcreteParserState, rescue_node: prism::RescueNode) {
+    // Double check that these offsets are correct, since begin/rescue/ensure/else
+    // aren't always handled with `format_node`, which usually handles this
+    ps.at_offset(rescue_node.location().start_offset());
+
+    ps.emit_keyword("rescue".to_string());
+    let exceptions = rescue_node.exceptions();
+    if !node_list_is_empty(&exceptions) {
+        ps.with_start_of_line(
+            false,
+            Box::new(|ps| {
+                ps.emit_space();
+                format_list_like_thing(
+                    ps,
+                    exceptions,
+                    rescue_node
+                        .exceptions()
+                        .iter()
+                        .last()
+                        .unwrap()
+                        .location()
+                        .end_offset(),
+                    true,
+                );
+            }),
+        );
+    }
+
+    if let Some(reference) = rescue_node.reference() {
+        ps.emit_op(" => ".to_string());
+        ps.with_start_of_line(
+            false,
+            Box::new(|ps| {
+                format_node(ps, reference);
+            }),
+        );
+    }
+
+    ps.new_block(Box::new(|ps| {
+        ps.emit_newline();
+        if let Some(statements) = rescue_node.statements() {
+            format_statements(ps, statements);
+        }
+        ps.shift_comments();
+    }));
+
+    if let Some(subsequent) = rescue_node.subsequent() {
+        format_node(ps, subsequent.as_node());
+    }
+
+    ps.at_offset(rescue_node.location().end_offset());
 }
 
 fn format_rest_parameter_node(
@@ -2440,8 +2585,21 @@ fn format_retry_node(_ps: &mut dyn ConcreteParserState, _retry_node: prism::Retr
     todo!()
 }
 
-fn format_return_node(_ps: &mut dyn ConcreteParserState, _return_node: prism::ReturnNode) {
-    todo!()
+fn format_return_node(ps: &mut dyn ConcreteParserState, return_node: prism::ReturnNode) {
+    ps.emit_ident("return".to_string());
+    ps.with_start_of_line(
+        false,
+        Box::new(|ps| {
+            if let Some(arguments) = return_node.arguments() {
+                ps.breakable_of(
+                    BreakableDelims::for_kw(),
+                    Box::new(|ps| {
+                        format_arguments_node(ps, arguments);
+                    }),
+                );
+            }
+        }),
+    );
 }
 
 fn format_shareable_constant_node(
@@ -2567,10 +2725,15 @@ fn format_list_like_thing(
                 ps.with_start_of_line(
                     false,
                     Box::new(|ps| {
-                        if expr.as_assoc_node().is_none() {
+                        if let Some(assoc_node) = expr.as_assoc_node() {
+                            if idx > 0 {
+                                ps.emit_soft_indent();
+                            }
+                            format_assoc_node(ps, assoc_node)
+                        } else {
                             ps.emit_soft_indent();
+                            format_node(ps, expr);
                         }
-                        format_node(ps, expr);
 
                         if idx != args_count - 1 {
                             ps.emit_comma();
