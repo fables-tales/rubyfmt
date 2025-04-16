@@ -459,7 +459,10 @@ fn format_begin_node(ps: &mut dyn ConcreteParserState, begin_node: prism::BeginN
         ps.emit_keyword("begin".to_string());
     }
     ps.new_block(Box::new(|ps| {
-        ps.emit_newline();
+        // For implicit nodes, this newline was already emitted by the caller
+        if !is_implicit_begin_node {
+            ps.emit_newline();
+        }
         if let Some(statements_node) = begin_node.statements() {
             format_statements(ps, statements_node);
         }
