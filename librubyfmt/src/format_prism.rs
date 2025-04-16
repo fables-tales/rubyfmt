@@ -347,7 +347,7 @@ pub fn format_node(ps: &mut dyn ConcreteParserState, node: prism::Node) {
         Node::ProgramNode { .. } => format_program(ps, node.as_program_node().unwrap(), None),
         Node::RangeNode { .. } => format_range_node(ps, node.as_range_node().unwrap()),
         Node::RationalNode { .. } => format_rational_node(ps, node.as_rational_node().unwrap()),
-        Node::RedoNode { .. } => format_redo_node(ps, node.as_redo_node().unwrap()),
+        Node::RedoNode { .. } => format_redo_node(ps),
         Node::RegularExpressionNode { .. } => {
             format_regular_expression_node(ps, node.as_regular_expression_node().unwrap())
         }
@@ -365,7 +365,7 @@ pub fn format_node(ps: &mut dyn ConcreteParserState, node: prism::Node) {
         Node::RestParameterNode { .. } => {
             format_rest_parameter_node(ps, node.as_rest_parameter_node().unwrap())
         }
-        Node::RetryNode { .. } => format_retry_node(ps, node.as_retry_node().unwrap()),
+        Node::RetryNode { .. } => format_retry_node(ps),
         Node::ReturnNode { .. } => format_return_node(ps, node.as_return_node().unwrap()),
         Node::SelfNode { .. } => format_self_node(ps, node.as_self_node().unwrap()),
         Node::ShareableConstantNode { .. } => {
@@ -2503,8 +2503,8 @@ fn format_rational_node(_ps: &mut dyn ConcreteParserState, _rational_node: prism
     todo!()
 }
 
-fn format_redo_node(_ps: &mut dyn ConcreteParserState, _redo_node: prism::RedoNode) {
-    todo!()
+fn format_redo_node(ps: &mut dyn ConcreteParserState) {
+    ps.emit_ident("redo".to_string());
 }
 
 fn format_regular_expression_node(
@@ -2581,8 +2581,8 @@ fn format_rest_parameter_node(
     todo!()
 }
 
-fn format_retry_node(_ps: &mut dyn ConcreteParserState, _retry_node: prism::RetryNode) {
-    todo!()
+fn format_retry_node(ps: &mut dyn ConcreteParserState) {
+    ps.emit_keyword("retry".to_string());
 }
 
 fn format_return_node(ps: &mut dyn ConcreteParserState, return_node: prism::ReturnNode) {
