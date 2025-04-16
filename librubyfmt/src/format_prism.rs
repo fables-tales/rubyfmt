@@ -2681,8 +2681,24 @@ fn format_x_string_node(_ps: &mut dyn ConcreteParserState, _x_string_node: prism
     todo!()
 }
 
-fn format_yield_node(_ps: &mut dyn ConcreteParserState, _yield_node: prism::YieldNode) {
-    todo!()
+fn format_yield_node(ps: &mut dyn ConcreteParserState, yield_node: prism::YieldNode) {
+    ps.emit_ident("yield".to_string());
+    if let Some(arguments) = yield_node.arguments() {
+        let use_parens =
+            ps.current_formatting_context_requires_parens() || yield_node.lparen_loc().is_some();
+        let delims = if use_parens {
+            BreakableDelims::for_method_call()
+        } else {
+            BreakableDelims::for_kw()
+        };
+
+        ps.breakable_of(
+            delims,
+            Box::new(|ps| {
+                format_arguments_node(ps, arguments);
+            }),
+        );
+    }
 }
 
 fn handle_string_at_offset(ps: &mut dyn ConcreteParserState, ident: String, offset: usize) {
