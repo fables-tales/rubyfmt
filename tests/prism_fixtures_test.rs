@@ -85,12 +85,12 @@ fixture!(test_small_bare_assoc_multiple, "small/bare_assoc_multiple");
 //     "small/bare_rescue_comments"
 // );
 // fixture!(test_small_bare_rescue_newline, "small/bare_rescue_newline");
-// fixture!(test_small_bare_return_comment, "small/bare_return_comment");
+fixture!(test_small_bare_return_comment, "small/bare_return_comment");
 // fixture!(test_small_begin_block, "small/begin_block");
-// fixture!(test_small_begin_block_comment, "small/begin_block_comment");
-// fixture!(test_small_begin_end_stack, "small/begin_end_stack");
-// fixture!(test_small_begin_ensure_rescue, "small/begin_ensure_rescue");
-// fixture!(test_small_begin_with_comment, "small/begin_with_comment");
+fixture!(test_small_begin_block_comment, "small/begin_block_comment");
+fixture!(test_small_begin_end_stack, "small/begin_end_stack");
+fixture!(test_small_begin_ensure_rescue, "small/begin_ensure_rescue");
+fixture!(test_small_begin_with_comment, "small/begin_with_comment");
 // fixture!(
 //     test_small_binary_line_splitting,
 //     "small/binary_line_splitting"
@@ -144,7 +144,7 @@ fixture!(
 // );
 // fixture!(test_small_breaks, "small/breaks");
 // fixture!(test_small_cannibalization_1, "small/cannibalization_1");
-// fixture!(test_small_cannibalization_2, "small/cannibalization_2");
+fixture!(test_small_cannibalization_2, "small/cannibalization_2");
 fixture!(test_small_cannibalization_3, "small/cannibalization_3");
 fixture!(test_small_cannibalization_4, "small/cannibalization_4");
 // fixture!(test_small_case, "small/case");
@@ -354,7 +354,7 @@ fixture!(
 //     "small/multi_line_word_arrays"
 // );
 // fixture!(test_small_multi_rescue, "small/multi_rescue");
-// fixture!(test_small_multi_return, "small/multi_return");
+fixture!(test_small_multi_return, "small/multi_return");
 // fixture!(
 //     test_small_multiline_chain_in_block,
 //     "small/multiline_chain_in_block"
@@ -446,9 +446,9 @@ fixture!(
     test_small_requirish_followed_by_module,
     "small/requirish_followed_by_module"
 );
-// fixture!(test_small_rescue_else, "small/rescue_else");
-// fixture!(test_small_rescue_multiple, "small/rescue_multiple");
-// fixture!(test_small_rescue_no_class, "small/rescue_no_class");
+fixture!(test_small_rescue_else, "small/rescue_else");
+fixture!(test_small_rescue_multiple, "small/rescue_multiple");
+fixture!(test_small_rescue_no_class, "small/rescue_no_class");
 fixture!(test_small_rest_param, "small/rest_param");
 // fixture!(
 //     test_small_rest_param_unpacking,
@@ -481,7 +481,7 @@ fixture!(
 );
 // fixture!(test_small_splat_case, "small/splat_case");
 fixture!(test_small_splat_in_argument, "small/splat_in_argument");
-// fixture!(test_small_splat_rescue, "small/splat_rescue");
+fixture!(test_small_splat_rescue, "small/splat_rescue");
 // fixture!(test_small_sqb_no_parens, "small/sqb_no_parens");
 // fixture!(
 //     test_small_squiggly_heredoc_interpolation,
