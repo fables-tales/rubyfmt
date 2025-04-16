@@ -1,14 +1,12 @@
 use crate::comment_block::{CommentBlock, Merge};
 use crate::delimiters::BreakableDelims;
 use crate::file_comments::FileComments;
-use crate::format::{StringType, format_inner_string};
 use crate::heredoc_string::{HeredocKind, HeredocString};
 use crate::line_tokens::*;
 use crate::render_queue_writer::{MAX_LINE_LENGTH, RenderQueueWriter};
 use crate::render_targets::{
     AbstractTokenTarget, BaseQueue, BreakableCallChainEntry, BreakableEntry, MultilineHandling,
 };
-use crate::ripper_tree_types::StringContentPart;
 use crate::types::{ColNumber, LineNumber, SourceOffset};
 use log::debug;
 use std::io::{self, Cursor, Write};
@@ -120,12 +118,12 @@ where
     fn shift_comments_at_index(&mut self, index: usize);
     fn wind_line_forward(&mut self);
     fn render_heredocs(&mut self, skip: bool);
-    fn push_heredoc_content(
+    fn push_heredoc_content<'a>(
         &mut self,
         symbol: String,
         kind: HeredocKind,
-        parts: Vec<StringContentPart>,
         end_line: LineNumber,
+        formatting_func: Box<dyn FnOnce(&mut BaseParserState) + 'a>,
     );
 
     // queries
@@ -212,17 +210,14 @@ impl ConcreteParserState for BaseParserState {
     fn bind_variable(&mut self, s: String) {
         self.scopes.last_mut().expect("it's never empty").push(s);
     }
-    fn push_heredoc_content(
+    fn push_heredoc_content<'a>(
         &mut self,
         symbol: String,
         kind: HeredocKind,
-        parts: Vec<StringContentPart>,
         end_line: LineNumber,
+        formatting_func: Box<dyn FnOnce(&mut BaseParserState) + 'a>,
     ) {
-        let mut next_ps = BaseParserState::render_with_blank_state(self, |n| {
-            n.insert_user_newlines = false;
-            format_inner_string(n, parts, StringType::Heredoc);
-        });
+        let mut next_ps = BaseParserState::render_with_blank_state(self, formatting_func);
 
         for hs in next_ps.heredoc_strings.drain(0..) {
             self.heredoc_strings.push(hs);
@@ -952,6 +947,10 @@ impl BaseParserState {
             .last()
             .expect("depth stack is never empty")
             .get()
+    }
+
+    pub fn disable_user_newlines(&mut self) {
+        self.insert_user_newlines = false;
     }
 
     fn last_token_is_a_newline(&self) -> bool {
