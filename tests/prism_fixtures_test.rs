@@ -572,20 +572,20 @@ fixture!(
 // fixture!(test_small_while, "small/while");
 // fixture!(test_small_while_block_comment, "small/while_block_comment");
 // fixture!(test_small_while_mod, "small/while_mod");
-// fixture!(test_small_yield0, "small/yield0");
-// fixture!(test_small_yield0_in_ifop, "small/yield0_in_ifop");
-// fixture!(test_small_yield, "small/yield");
-// fixture!(test_small_yield_comment, "small/yield_comment");
+fixture!(test_small_yield0, "small/yield0");
+fixture!(test_small_yield0_in_ifop, "small/yield0_in_ifop");
+fixture!(test_small_yield, "small/yield");
+fixture!(test_small_yield_comment, "small/yield_comment");
 // fixture!(test_small_yield_hash_args, "small/yield_hash_args");
-// fixture!(test_small_yield_in_ifop, "small/yield_in_ifop");
-// fixture!(
-//     test_small_yield_keyword_comment_ordering,
-//     "small/yield_keyword_comment_ordering"
-// );
-// fixture!(
-//     test_small_yield_keyword_comment_ordering_spaces,
-//     "small/yield_keyword_comment_ordering_spaces"
-// );
+fixture!(test_small_yield_in_ifop, "small/yield_in_ifop");
+fixture!(
+    test_small_yield_keyword_comment_ordering,
+    "small/yield_keyword_comment_ordering"
+);
+fixture!(
+    test_small_yield_keyword_comment_ordering_spaces,
+    "small/yield_keyword_comment_ordering_spaces"
+);
 // fixture!(test_small_yield_with_paren, "small/yield_with_paren");
 fixture!(test_small_zsuper, "small/zsuper");
 
