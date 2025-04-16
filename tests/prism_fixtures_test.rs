@@ -54,10 +54,10 @@ fixture!(test_small_all_method_blocks, "small/all_method_blocks");
 // fixture!(test_small_aref_field, "small/aref_field");
 // fixture!(test_small_aref_in_call, "small/aref_in_call");
 // fixture!(test_small_aref_rest_param, "small/aref_rest_param");
-// fixture!(
-//     test_small_arg_list_with_bare_assoc_hash,
-//     "small/arg_list_with_bare_assoc_hash"
-// );
+fixture!(
+    test_small_arg_list_with_bare_assoc_hash,
+    "small/arg_list_with_bare_assoc_hash"
+);
 fixture!(test_small_arg_trailing_comma, "small/arg_trailing_comma");
 fixture!(test_small_args_forwarding, "small/args_forwarding");
 fixture!(
@@ -437,7 +437,7 @@ fixture!(
 fixture!(test_small_quoted_heredoc, "small/quoted_heredoc");
 fixture!(test_small_raise_star, "small/raise_star");
 // fixture!(test_small_rationals, "small/rationals");
-// fixture!(test_small_redo, "small/redo");
+fixture!(test_small_redo, "small/redo");
 // fixture!(test_small_regexp_literal, "small/regexp_literal");
 fixture!(test_small_req_optional_params, "small/req_optional_params");
 // fixture!(test_small_require_rails, "small/require_rails");
@@ -454,7 +454,7 @@ fixture!(test_small_rest_param, "small/rest_param");
 //     test_small_rest_param_unpacking,
 //     "small/rest_param_unpacking"
 // );
-// fixture!(test_small_retry, "small/retry");
+fixture!(test_small_retry, "small/retry");
 // fixture!(test_small_return0, "small/return0");
 // fixture!(test_small_return, "small/return");
 // fixture!(test_small_rspec_its, "small/rspec_its");

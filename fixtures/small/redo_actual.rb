@@ -1,7 +1,6 @@
 class Foo
   def bees
-    begin
-    rescue
+    loop do
       redo
     end
   end
