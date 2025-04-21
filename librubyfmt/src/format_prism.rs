@@ -2507,10 +2507,12 @@ fn format_redo_node(ps: &mut dyn ConcreteParserState) {
 }
 
 fn format_regular_expression_node(
-    _ps: &mut dyn ConcreteParserState,
-    _regular_expression_node: prism::RegularExpressionNode,
+    ps: &mut dyn ConcreteParserState,
+    regular_expression_node: prism::RegularExpressionNode,
 ) {
-    todo!()
+    ps.emit_ident(loc_to_string(regular_expression_node.opening_loc()));
+    ps.emit_string_content(loc_to_string(regular_expression_node.content_loc()));
+    ps.emit_ident(loc_to_string(regular_expression_node.closing_loc()));
 }
 
 fn format_rescue_modifier_node(
