@@ -2226,10 +2226,10 @@ fn format_instance_variable_or_write_node(
 }
 
 fn format_instance_variable_read_node(
-    _ps: &mut dyn ConcreteParserState,
-    _instance_variable_read_node: prism::InstanceVariableReadNode,
+    ps: &mut dyn ConcreteParserState,
+    instance_variable_read_node: prism::InstanceVariableReadNode,
 ) {
-    todo!()
+    ps.emit_ident(const_to_string(instance_variable_read_node.name()));
 }
 
 fn format_instance_variable_target_node(

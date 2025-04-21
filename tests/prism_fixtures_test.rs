@@ -84,7 +84,7 @@ fixture!(test_small_bare_assoc_multiple, "small/bare_assoc_multiple");
 //     test_small_bare_rescue_comments,
 //     "small/bare_rescue_comments"
 // );
-// fixture!(test_small_bare_rescue_newline, "small/bare_rescue_newline");
+fixture!(test_small_bare_rescue_newline, "small/bare_rescue_newline");
 fixture!(test_small_bare_return_comment, "small/bare_return_comment");
 // fixture!(test_small_begin_block, "small/begin_block");
 fixture!(test_small_begin_block_comment, "small/begin_block_comment");
@@ -159,7 +159,7 @@ fixture!(test_small_class_comment, "small/class_comment");
 // fixture!(test_small_class_module, "small/class_module");
 fixture!(test_small_coloncoloncalldot, "small/coloncoloncalldot");
 // fixture!(test_small_command_call_raise, "small/command_call_raise");
-// fixture!(test_small_command_paren, "small/command_paren");
+fixture!(test_small_command_paren, "small/command_paren");
 fixture!(test_small_commas_trailing, "small/commas_trailing");
 fixture!(
     test_small_comment_in_block_inside_array,
@@ -252,7 +252,7 @@ fixture!(
 );
 // fixture!(test_small_endless_methods, "small/endless_methods");
 // fixture!(test_small_fib, "small/fib");
-// fixture!(test_small_first_rest_param, "small/first_rest_param");
+fixture!(test_small_first_rest_param, "small/first_rest_param");
 // fixture!(test_small_for_loop, "small/for_loop");
 // fixture!(test_small_gemfile, "small/gemfile");
 fixture!(test_small_gvar_symbol, "small/gvar_symbol");
