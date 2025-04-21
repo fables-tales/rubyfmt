@@ -438,7 +438,7 @@ fixture!(test_small_quoted_heredoc, "small/quoted_heredoc");
 fixture!(test_small_raise_star, "small/raise_star");
 // fixture!(test_small_rationals, "small/rationals");
 fixture!(test_small_redo, "small/redo");
-// fixture!(test_small_regexp_literal, "small/regexp_literal");
+fixture!(test_small_regexp_literal, "small/regexp_literal");
 fixture!(test_small_req_optional_params, "small/req_optional_params");
 // fixture!(test_small_require_rails, "small/require_rails");
 // fixture!(test_small_require_relative, "small/require_relative");
@@ -483,10 +483,10 @@ fixture!(
 fixture!(test_small_splat_in_argument, "small/splat_in_argument");
 fixture!(test_small_splat_rescue, "small/splat_rescue");
 fixture!(test_small_sqb_no_parens, "small/sqb_no_parens");
-// fixture!(
-//     test_small_squiggly_heredoc_interpolation,
-//     "small/squiggly_heredoc_interpolation"
-// );
+fixture!(
+    test_small_squiggly_heredoc_interpolation,
+    "small/squiggly_heredoc_interpolation"
+);
 // fixture!(test_small_stabby_lambda, "small/stabby_lambda");
 fixture!(test_small_star, "small/star");
 fixture!(
