@@ -2085,8 +2085,50 @@ fn format_global_variable_write_node(
     todo!()
 }
 
-fn format_hash_node(_ps: &mut dyn ConcreteParserState, _hash_node: prism::HashNode) {
-    todo!()
+fn format_hash_node(ps: &mut dyn ConcreteParserState, hash_node: prism::HashNode) {
+    ps.with_start_of_line(
+        false,
+        Box::new(|ps| {
+            if node_list_is_empty(&hash_node.elements()) {
+                let start_offset = hash_node.location().start_offset();
+                let end_offset = hash_node.location().end_offset();
+                let is_multiline = ps.get_line_number_for_offset(start_offset)
+                    != ps.get_line_number_for_offset(end_offset);
+
+                let has_comments = ps.has_comment_in_offset_span(start_offset, end_offset);
+
+                if is_multiline && has_comments {
+                    // Since we already know this is multiline, we can just use
+                    // a breakable and know that it will always be the multiline form
+                    // instead of manually inserting all of the newlines/indents for
+                    // a multiline hash
+                    ps.breakable_of(
+                        BreakableDelims::for_hash(),
+                        Box::new(|ps| {
+                            ps.wind_dumping_comments_until_offset(end_offset);
+                        }),
+                    );
+                } else {
+                    ps.emit_ident("{}".to_string());
+                    ps.wind_dumping_comments_until_offset(end_offset);
+                }
+            } else {
+                ps.breakable_of(
+                    BreakableDelims::for_hash(),
+                    Box::new(|ps| {
+                        ps.emit_soft_indent();
+                        format_list_like_thing(
+                            ps,
+                            hash_node.elements(),
+                            hash_node.closing_loc().end_offset(),
+                            false,
+                        );
+                        ps.wind_dumping_comments_until_offset(hash_node.closing_loc().end_offset());
+                    }),
+                );
+            }
+        }),
+    );
 }
 
 fn format_hash_pattern_node(

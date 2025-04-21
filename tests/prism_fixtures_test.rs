@@ -256,9 +256,9 @@ fixture!(test_small_first_rest_param, "small/first_rest_param");
 // fixture!(test_small_for_loop, "small/for_loop");
 // fixture!(test_small_gemfile, "small/gemfile");
 fixture!(test_small_gvar_symbol, "small/gvar_symbol");
-// fixture!(test_small_hash_breaking, "small/hash_breaking");
-// fixture!(test_small_hash_comments, "small/hash_comments");
-// fixture!(test_small_hash_heredoc, "small/hash_heredoc");
+fixture!(test_small_hash_breaking, "small/hash_breaking");
+fixture!(test_small_hash_comments, "small/hash_comments");
+fixture!(test_small_hash_heredoc, "small/hash_heredoc");
 // fixture!(test_small_hash_rocket_usage, "small/hash_rocket_usage");
 fixture!(
     test_small_heredoc_comment_header,
