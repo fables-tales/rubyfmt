@@ -103,10 +103,10 @@ fixture!(
     test_small_block_ending_with_comment,
     "small/block_ending_with_comment"
 );
-// fixture!(
-//     test_small_block_local_variables,
-//     "small/block_local_variables"
-// );
+fixture!(
+    test_small_block_local_variables,
+    "small/block_local_variables"
+);
 // fixture!(
 //     test_small_block_param_line_length,
 //     "small/block_param_line_length"
