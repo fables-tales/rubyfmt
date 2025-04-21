@@ -253,6 +253,7 @@ fixture!(
 // fixture!(test_small_endless_methods, "small/endless_methods");
 // fixture!(test_small_fib, "small/fib");
 fixture!(test_small_first_rest_param, "small/first_rest_param");
+fixture!(test_implicit_rest_param, "small/implicit_rest_param");
 // fixture!(test_small_for_loop, "small/for_loop");
 // fixture!(test_small_gemfile, "small/gemfile");
 fixture!(test_small_gvar_symbol, "small/gvar_symbol");
