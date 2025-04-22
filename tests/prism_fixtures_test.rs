@@ -464,7 +464,7 @@ fixture!(
     test_small_separated_statements_with_trailing_comment,
     "small/separated_statements_with_trailing_comment"
 );
-// fixture!(test_small_shorthand_hash, "small/shorthand_hash");
+fixture!(test_small_shorthand_hash, "small/shorthand_hash");
 fixture!(
     test_small_single_line_method_call_chain,
     "small/single_line_method_call_chain"
