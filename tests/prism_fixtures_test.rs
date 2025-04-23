@@ -250,7 +250,7 @@ fixture!(
     test_small_end_of_file_comments,
     "small/end_of_file_comments"
 );
-// fixture!(test_small_endless_methods, "small/endless_methods");
+fixture!(test_small_endless_methods, "small/endless_methods");
 // fixture!(test_small_fib, "small/fib");
 fixture!(test_small_first_rest_param, "small/first_rest_param");
 // fixture!(test_small_for_loop, "small/for_loop");

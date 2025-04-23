@@ -1095,7 +1095,15 @@ fn format_def_body(ps: &mut dyn ConcreteParserState, def_node: prism::DefNode) {
                         false,
                         Box::new(|ps| {
                             if let Some(body) = def_node.body() {
-                                format_node(ps, body);
+                                let mut body_node_list = body.as_statements_node()
+                                    .expect("Endless methods must have a body, and method definitions are always a Statements node")
+                                    .body()
+                                    .iter();
+                                let body_expression = body_node_list.next().expect("Endless methods must have exactly one expression in their body");
+
+                                debug_assert!(body_node_list.next().is_none(), "Expected endless method body to have exactly one node.");
+
+                                format_node(ps, body_expression);
                             }
                         }),
                     )
