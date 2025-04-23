@@ -191,7 +191,7 @@ pub fn format_node(ps: &mut dyn ConcreteParserState, node: prism::Node) {
         }
         Node::IfNode { .. } => format_if_node(ps, node.as_if_node().unwrap()),
         Node::ImaginaryNode { .. } => format_imaginary_node(ps, node.as_imaginary_node().unwrap()),
-        Node::ImplicitNode { .. } => format_implicit_node(ps, node.as_implicit_node().unwrap()),
+        Node::ImplicitNode { .. } => format_implicit_node(),
         Node::ImplicitRestNode { .. } => {
             format_implicit_rest_node(ps, node.as_implicit_rest_node().unwrap())
         }
@@ -1514,7 +1514,10 @@ fn format_assoc_node(ps: &mut dyn ConcreteParserState, assoc_node: prism::AssocN
                 ps.emit_space();
                 ps.emit_ident("=>".to_string());
             }
-            ps.emit_space();
+            // For assoc nodes, skip the space so it renders as `{ a:, b:, c: }`
+            if assoc_node.value().as_implicit_node().is_none() {
+                ps.emit_space();
+            }
             format_node(ps, assoc_node.value());
         }),
     );
@@ -2203,8 +2206,10 @@ fn format_imaginary_node(_ps: &mut dyn ConcreteParserState, _imaginary_node: pri
     todo!()
 }
 
-fn format_implicit_node(_ps: &mut dyn ConcreteParserState, _implicit_node: prism::ImplicitNode) {
-    todo!()
+fn format_implicit_node() {
+    // Do nothing!
+    // This implicit node represents an implicit value in hash shorthands,
+    // e.g. `{ a: }`, so we don't actually need to do anything to format it
 }
 
 fn format_implicit_rest_node(
