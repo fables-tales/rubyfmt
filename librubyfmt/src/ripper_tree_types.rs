@@ -1272,7 +1272,11 @@ impl Params {
             (self.4).is_some(),
             (self.5).is_some(),
             (self.6).is_some(),
-            (self.7).is_some(),
+            match self.7 {
+                // BlockArgOrTag::Tag doesn't emit anything, so we should ignore it
+                None | Some(BlockArgOrTag::Tag(..)) => false,
+                _ => true,
+            },
         ]
     }
 }

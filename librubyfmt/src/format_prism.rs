@@ -192,9 +192,7 @@ pub fn format_node(ps: &mut dyn ConcreteParserState, node: prism::Node) {
         Node::IfNode { .. } => format_if_node(ps, node.as_if_node().unwrap()),
         Node::ImaginaryNode { .. } => format_imaginary_node(ps, node.as_imaginary_node().unwrap()),
         Node::ImplicitNode { .. } => format_implicit_node(),
-        Node::ImplicitRestNode { .. } => {
-            format_implicit_rest_node(ps, node.as_implicit_rest_node().unwrap())
-        }
+        Node::ImplicitRestNode { .. } => format_implicit_rest_node(),
         Node::InNode { .. } => format_in_node(ps, node.as_in_node().unwrap()),
         Node::IndexAndWriteNode { .. } => {
             format_index_and_write_node(ps, node.as_index_and_write_node().unwrap())
@@ -362,9 +360,11 @@ pub fn format_node(ps: &mut dyn ConcreteParserState, node: prism::Node) {
             format_rescue_modifier_node(ps, node.as_rescue_modifier_node().unwrap())
         }
         Node::RescueNode { .. } => format_rescue_node(ps, node.as_rescue_node().unwrap()),
-        Node::RestParameterNode { .. } => {
-            format_rest_parameter_node(ps, node.as_rest_parameter_node().unwrap())
-        }
+        Node::RestParameterNode { .. } => format_rest_parameter_node(
+            ps,
+            node.as_rest_parameter_node().unwrap(),
+            SpecialCase::NoSpecialCase,
+        ),
         Node::RetryNode { .. } => format_retry_node(ps),
         Node::ReturnNode { .. } => format_return_node(ps, node.as_return_node().unwrap()),
         Node::SelfNode { .. } => format_self_node(ps, node.as_self_node().unwrap()),
@@ -1215,11 +1215,7 @@ fn format_parameters_node(ps: &mut dyn ConcreteParserState, params: prism::Param
         }),
         Box::new(move |ps: &mut dyn ConcreteParserState| {
             if let Some(rest) = rest {
-                format_rest_param(
-                    ps,
-                    rest.as_rest_parameter_node().unwrap(),
-                    SpecialCase::NoSpecialCase,
-                )
+                format_node(ps, rest);
             }
         }),
         Box::new(move |ps: &mut dyn ConcreteParserState| {
@@ -1647,7 +1643,6 @@ fn format_block_parameters_node(
             }
             if has_locals {
                 ps.emit_ident(";".to_string());
-                ps.emit_space();
                 ps.with_start_of_line(
                     false,
                     Box::new(|ps| {
@@ -1786,7 +1781,7 @@ fn collapse_nodes_to_call_chain(node: prism::Node) -> Vec<prism::Node> {
     call_chain_elements
 }
 
-fn format_rest_param(
+fn format_rest_parameter_node(
     ps: &mut dyn ConcreteParserState,
     rest_param: prism::RestParameterNode,
     special_case: SpecialCase,
@@ -2220,11 +2215,14 @@ fn format_implicit_node() {
     // e.g. `{ a: }`, so we don't actually need to do anything to format it
 }
 
-fn format_implicit_rest_node(
-    _ps: &mut dyn ConcreteParserState,
-    _implicit_rest_node: prism::ImplicitRestNode,
-) {
-    todo!()
+fn format_implicit_rest_node() {
+    // Intentionally do nothing.
+    //
+    // prism::ImplicitRestNode is essentially a placeholder for some variable declaration like
+    // func { |x,| }, where the trailing comma is the "implicit rest node". This doesn't actually require us
+    // to do anything, since this node will basically be listed as a node in the arguments list, so we'll
+    // treat it like any other argument: by emitting a comma and a space before it.
+    // Since other machinery actually handles all of this, we don't really need to do anything if we end up here.
 }
 
 fn format_in_node(_ps: &mut dyn ConcreteParserState, _in_node: prism::InNode) {
@@ -2628,13 +2626,6 @@ fn format_rescue_node(ps: &mut dyn ConcreteParserState, rescue_node: prism::Resc
     }
 
     ps.at_offset(rescue_node.location().end_offset());
-}
-
-fn format_rest_parameter_node(
-    _ps: &mut dyn ConcreteParserState,
-    _rest_parameter_node: prism::RestParameterNode,
-) {
-    todo!()
 }
 
 fn format_retry_node(ps: &mut dyn ConcreteParserState) {
