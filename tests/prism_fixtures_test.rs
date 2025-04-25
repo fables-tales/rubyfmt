@@ -50,7 +50,7 @@ fixture!(
 // fixture!(test_small_alias_string_symbol, "small/alias_string_symbol");
 fixture!(test_small_all_method_blocks, "small/all_method_blocks");
 // fixture!(test_small_and_or, "small/and_or");
-// fixture!(test_small_anonymous_blockarg, "small/anonymous_blockarg");
+fixture!(test_small_anonymous_blockarg, "small/anonymous_blockarg");
 // fixture!(test_small_aref_field, "small/aref_field");
 // fixture!(test_small_aref_in_call, "small/aref_in_call");
 // fixture!(test_small_aref_rest_param, "small/aref_rest_param");
@@ -68,7 +68,7 @@ fixture!(
     test_small_args_forwarding_multiline,
     "small/args_forwarding_multiline"
 );
-// fixture!(test_small_array_with_splat, "small/array_with_splat");
+fixture!(test_small_array_with_splat, "small/array_with_splat");
 // fixture!(test_small_assign_field, "small/assign_field");
 fixture!(test_small_assoc_double_splat, "small/assoc_double_splat");
 // fixture!(test_small_backref, "small/backref");
@@ -319,9 +319,9 @@ fixture!(test_small_long_blockvar, "small/long_blockvar");
 //     "small/long_line_with_indentation"
 // );
 // fixture!(test_small_long_raise, "small/long_raise");
-// fixture!(test_small_many_arg_types, "small/many_arg_types");
+fixture!(test_small_many_arg_types, "small/many_arg_types");
 // fixture!(test_small_many_opassigns, "small/many_opassigns");
-// fixture!(test_small_many_splats, "small/many_splats");
+fixture!(test_small_many_splats, "small/many_splats");
 // fixture!(test_small_many_weird_args, "small/many_weird_args");
 fixture!(test_small_map_curly, "small/map_curly");
 // fixture!(test_small_massign, "small/massign");
@@ -548,7 +548,7 @@ fixture!(
 fixture!(test_small_symbol_arg, "small/symbol_arg");
 fixture!(test_small_symbol_op, "small/symbol_op");
 fixture!(test_small_ternary, "small/ternary");
-// fixture!(test_small_to_proc_operator, "small/to_proc_operator");
+fixture!(test_small_to_proc_operator, "small/to_proc_operator");
 fixture!(
     test_small_top_const_field_assignment,
     "small/top_const_field_assignment"
