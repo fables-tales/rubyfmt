@@ -1637,6 +1637,13 @@ fn format_block_parameters_node(
     ps: &mut dyn ConcreteParserState,
     block_parameters_node: prism::BlockParametersNode,
 ) {
+    // Exit early if there's no params
+    if node_list_is_empty(&block_parameters_node.locals())
+        && block_parameters_node.parameters().is_none()
+    {
+        return;
+    }
+
     ps.breakable_of(
         BreakableDelims::for_block_params(),
         Box::new(|ps| {
@@ -2454,8 +2461,21 @@ fn format_multi_write_node(
     todo!()
 }
 
-fn format_next_node(_ps: &mut dyn ConcreteParserState, _next_node: prism::NextNode) {
-    todo!()
+fn format_next_node(ps: &mut dyn ConcreteParserState, next_node: prism::NextNode) {
+    ps.emit_ident("next".to_string());
+    if let Some(arguments_node) = next_node.arguments() {
+        ps.with_start_of_line(
+            false,
+            Box::new(|ps| {
+                ps.breakable_of(
+                    BreakableDelims::for_kw(),
+                    Box::new(|ps| {
+                        format_arguments_node(ps, arguments_node);
+                    }),
+                );
+            }),
+        );
+    }
 }
 
 fn format_nil_node(ps: &mut dyn ConcreteParserState, _nil_node: prism::NilNode) {
