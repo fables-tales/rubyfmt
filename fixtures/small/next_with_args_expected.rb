@@ -1,1 +1,3 @@
-next 1
+[].each do
+  next 1
+end
