@@ -1276,10 +1276,18 @@ fn format_block_parameter_node(
 }
 
 fn format_block_argument_node(
-    _ps: &mut dyn ConcreteParserState,
-    _block_argument_node: prism::BlockArgumentNode,
+    ps: &mut dyn ConcreteParserState,
+    block_argument_node: prism::BlockArgumentNode,
 ) {
-    todo!()
+    ps.emit_ident("&".to_string());
+    if let Some(expression_node) = block_argument_node.expression() {
+        ps.with_start_of_line(
+            false,
+            Box::new(|ps| {
+                format_node(ps, expression_node);
+            }),
+        );
+    }
 }
 
 fn format_call_node(
@@ -1331,7 +1339,23 @@ fn format_call_node(
                         ps.breakable_of(
                             delims,
                             Box::new(|ps| {
+                                let has_arguments = !node_list_is_empty(&arguments.arguments());
                                 format_arguments_node(ps, arguments);
+
+                                // Somewhat confusingly, the block argument node (&blk) is
+                                // separate from the rest of the arguments node. If it's present,
+                                // we want it to be a part of the comma-separated list
+                                if let Some(block_argument_node) = call_node
+                                    .block()
+                                    .map(|block_node| block_node.as_block_argument_node())
+                                    .flatten()
+                                {
+                                    if has_arguments {
+                                        ps.emit_comma();
+                                        ps.emit_soft_newline();
+                                    }
+                                    format_block_argument_node(ps, block_argument_node);
+                                }
                             }),
                         );
                     }),
@@ -1339,13 +1363,26 @@ fn format_call_node(
             };
         }
         if let Some(block) = call_node.block() {
-            ps.emit_space();
-            ps.with_start_of_line(
-                false,
-                Box::new(|ps| {
-                    format_node(ps, block);
-                }),
-            );
+            if block.as_block_argument_node().is_none() {
+                ps.emit_space();
+                ps.with_start_of_line(
+                    false,
+                    Box::new(|ps| {
+                        format_node(ps, block);
+                    }),
+                );
+            // If there's an arguments node, we've handled this block arg with
+            // the rest of the args (since it's included in the comma-separated
+            // args list), otherwise the only argument is the &blk node, so we
+            // have to handle that here separately
+            } else if call_node.arguments().is_none() && block.as_block_argument_node().is_some() {
+                ps.breakable_of(
+                    BreakableDelims::for_method_call(),
+                    Box::new(|ps| {
+                        format_block_argument_node(ps, block.as_block_argument_node().unwrap());
+                    }),
+                );
+            }
         }
     } else {
         ps.with_start_of_line(
