@@ -64,10 +64,10 @@ fixture!(
     test_small_args_forwarding_additional_args,
     "small/args_forwarding_additional_args"
 );
-// fixture!(
-//     test_small_args_forwarding_multiline,
-//     "small/args_forwarding_multiline"
-// );
+fixture!(
+    test_small_args_forwarding_multiline,
+    "small/args_forwarding_multiline"
+);
 // fixture!(test_small_array_with_splat, "small/array_with_splat");
 // fixture!(test_small_assign_field, "small/assign_field");
 fixture!(test_small_assoc_double_splat, "small/assoc_double_splat");
