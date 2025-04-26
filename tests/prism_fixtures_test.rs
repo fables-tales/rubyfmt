@@ -73,7 +73,7 @@ fixture!(
 fixture!(test_small_assoc_double_splat, "small/assoc_double_splat");
 // fixture!(test_small_backref, "small/backref");
 fixture!(test_small_backtick_symbol, "small/backtick_symbol");
-// fixture!(test_small_backticks, "small/backticks");
+fixture!(test_small_backticks, "small/backticks");
 // fixture!(test_small_bare_alias, "small/bare_alias");
 fixture!(
     test_small_bare_assoc_hash_trailing_comma,

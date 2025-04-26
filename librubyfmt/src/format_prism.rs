@@ -2724,8 +2724,10 @@ fn format_while_node(_ps: &mut dyn ConcreteParserState, _while_node: prism::Whil
     todo!()
 }
 
-fn format_x_string_node(_ps: &mut dyn ConcreteParserState, _x_string_node: prism::XStringNode) {
-    todo!()
+fn format_x_string_node(ps: &mut dyn ConcreteParserState, x_string_node: prism::XStringNode) {
+    ps.emit_ident("`".to_string());
+    ps.emit_string_content(loc_to_string(x_string_node.content_loc()));
+    ps.emit_ident("`".to_string());
 }
 
 fn format_yield_node(ps: &mut dyn ConcreteParserState, yield_node: prism::YieldNode) {
