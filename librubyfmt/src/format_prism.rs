@@ -1347,8 +1347,7 @@ fn format_call_node(
                                 // we want it to be a part of the comma-separated list
                                 if let Some(block_argument_node) = call_node
                                     .block()
-                                    .map(|block_node| block_node.as_block_argument_node())
-                                    .flatten()
+                                    .and_then(|block_node| block_node.as_block_argument_node())
                                 {
                                     if has_arguments {
                                         ps.emit_comma();
