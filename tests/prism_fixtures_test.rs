@@ -396,9 +396,9 @@ fixture!(test_small_nested_conditionals, "small/nested_conditionals");
 //     test_small_nested_destructuring,
 //     "small/nested_destructuring"
 // );
-// fixture!(test_small_next_with_args, "small/next_with_args");
-// fixture!(test_small_next_with_comments, "small/next_with_comments");
-// fixture!(test_small_next_yield, "small/next_yield");
+fixture!(test_small_next_with_args, "small/next_with_args");
+fixture!(test_small_next_with_comments, "small/next_with_comments");
+fixture!(test_small_next_yield, "small/next_yield");
 fixture!(test_small_no_mangle_jpy, "small/no_mangle_jpy");
 fixture!(
     test_small_no_multiline_call_in_string_embexpr,
