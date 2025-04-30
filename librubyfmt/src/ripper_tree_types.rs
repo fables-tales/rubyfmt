@@ -1261,7 +1261,7 @@ pub struct ExcessedComma(excessed_comma_tag);
 
 def_tag!(args_forward_tag, "args_forward");
 #[derive(Deserialize, Debug, Clone)]
-pub struct ArgsForward(args_forward_tag);
+pub struct ArgsForward(pub args_forward_tag, pub StartEnd);
 
 impl Params {
     pub fn non_null_positions(&self) -> Vec<bool> {

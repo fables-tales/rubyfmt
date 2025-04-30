@@ -234,7 +234,7 @@ pub fn format_kwrest_params(
                 }),
             );
         }
-        KwRestParamOrArgsForward::ArgsForward(_) => ps.emit_ellipsis(),
+        KwRestParamOrArgsForward::ArgsForward(ArgsForward(..)) => ps.emit_ellipsis(),
     }
     true
 }
@@ -1519,7 +1519,9 @@ pub fn format_list_like_thing(
         ArgsAddStarOrExpressionListOrArgsForward::ExpressionList(el) => {
             format_list_like_thing_items(ps, el, end_line, single_line)
         }
-        ArgsAddStarOrExpressionListOrArgsForward::ArgsForward(_) => {
+        ArgsAddStarOrExpressionListOrArgsForward::ArgsForward(ArgsForward(_, start_end)) => {
+            ps.wind_dumping_comments_until_line(start_end.start_line());
+            ps.emit_soft_indent();
             ps.emit_ellipsis();
             false
         }

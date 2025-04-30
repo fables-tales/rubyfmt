@@ -2638,10 +2638,16 @@ fn format_return_node(ps: &mut dyn ConcreteParserState, return_node: prism::Retu
         false,
         Box::new(|ps| {
             if let Some(arguments) = return_node.arguments() {
-                ps.breakable_of(
-                    BreakableDelims::for_kw(),
+                ps.emit_space();
+                ps.with_start_of_line(
+                    false,
                     Box::new(|ps| {
-                        format_arguments_node(ps, arguments);
+                        format_list_like_thing(
+                            ps,
+                            arguments.arguments(),
+                            arguments.location().end_offset(),
+                            true,
+                        );
                     }),
                 );
             }

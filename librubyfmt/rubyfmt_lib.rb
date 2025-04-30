@@ -202,6 +202,10 @@ class Parser < Ripper::SexpBuilderPP
     @lbrace_stack << lineno
   end
 
+  def on_args_forward(*_args)
+    with_lineno { super }
+  end
+
   def on_rbracket(*_args)
     @rbracket_stack << lineno
     super
