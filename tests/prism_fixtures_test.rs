@@ -111,7 +111,7 @@ fixture!(
 //     test_small_block_param_line_length,
 //     "small/block_param_line_length"
 // );
-// fixture!(test_small_block_spacing, "small/block_spacing");
+fixture!(test_small_block_spacing, "small/block_spacing");
 fixture!(test_small_blockarg, "small/blockarg");
 fixture!(
     test_small_blocks_with_only_comments,
@@ -314,10 +314,10 @@ fixture!(
 // );
 fixture!(test_small_literals_newlines, "small/literals_newlines");
 fixture!(test_small_long_blockvar, "small/long_blockvar");
-// fixture!(
-//     test_small_long_line_with_indentation,
-//     "small/long_line_with_indentation"
-// );
+fixture!(
+    test_small_long_line_with_indentation,
+    "small/long_line_with_indentation"
+);
 // fixture!(test_small_long_raise, "small/long_raise");
 fixture!(test_small_many_arg_types, "small/many_arg_types");
 // fixture!(test_small_many_opassigns, "small/many_opassigns");

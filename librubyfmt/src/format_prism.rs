@@ -1930,17 +1930,41 @@ fn format_required_parameter_node(
 }
 
 fn format_local_variable_and_write_node(
-    _ps: &mut dyn ConcreteParserState,
-    _local_variable_and_write_node: prism::LocalVariableAndWriteNode,
+    ps: &mut dyn ConcreteParserState,
+    local_variable_and_write_node: prism::LocalVariableAndWriteNode,
 ) {
-    todo!()
+    let variable_name = const_to_string(local_variable_and_write_node.name());
+    ps.bind_variable(variable_name.clone());
+    ps.emit_ident(variable_name);
+
+    ps.emit_space();
+    ps.emit_op(loc_to_string(local_variable_and_write_node.operator_loc()));
+    ps.emit_space();
+
+    ps.with_start_of_line(
+        false,
+        Box::new(|ps| format_node(ps, local_variable_and_write_node.value())),
+    );
 }
 
 fn format_local_variable_operator_write_node(
-    _ps: &mut dyn ConcreteParserState,
-    _local_variable_operator_write_node: prism::LocalVariableOperatorWriteNode,
+    ps: &mut dyn ConcreteParserState,
+    local_variable_operator_write_node: prism::LocalVariableOperatorWriteNode,
 ) {
-    todo!()
+    let variable_name = const_to_string(local_variable_operator_write_node.name());
+    ps.bind_variable(variable_name.clone());
+    ps.emit_ident(variable_name);
+
+    ps.emit_space();
+    ps.emit_op(loc_to_string(
+        local_variable_operator_write_node.binary_operator_loc(),
+    ));
+    ps.emit_space();
+
+    ps.with_start_of_line(
+        false,
+        Box::new(|ps| format_node(ps, local_variable_operator_write_node.value())),
+    );
 }
 
 fn format_local_variable_or_write_node(
@@ -2782,8 +2806,25 @@ fn format_when_node(_ps: &mut dyn ConcreteParserState, _when_node: prism::WhenNo
     todo!()
 }
 
-fn format_while_node(_ps: &mut dyn ConcreteParserState, _while_node: prism::WhileNode) {
-    todo!()
+fn format_while_node(ps: &mut dyn ConcreteParserState, while_node: prism::WhileNode) {
+    ps.with_start_of_line(
+        false,
+        Box::new(|ps| {
+            ps.emit_keyword("while".to_string());
+            ps.emit_space();
+            format_node(ps, while_node.predicate());
+            ps.emit_newline();
+        }),
+    );
+
+    if let Some(statements) = while_node.statements() {
+        ps.new_block(Box::new(|ps| {
+            format_statements(ps, statements);
+        }));
+    }
+
+    ps.wind_dumping_comments_until_offset(while_node.location().end_offset());
+    ps.emit_end();
 }
 
 fn format_x_string_node(ps: &mut dyn ConcreteParserState, x_string_node: prism::XStringNode) {
