@@ -2113,14 +2113,6 @@ pub struct Defs(
 );
 
 #[derive(RipperDeserialize, Debug, Clone)]
-pub enum IdentOrKw {
-    #[allow(unused)]
-    Ident(Ident),
-    #[allow(unused)]
-    Kw(Kw),
-}
-
-#[derive(RipperDeserialize, Debug, Clone)]
 pub enum Singleton {
     VarRef(VarRef),
     Paren(ParenExpr),

@@ -701,7 +701,7 @@ enum HeredocNodeType<'h> {
 }
 
 impl HeredocNodeType<'_> {
-    fn parts(&self) -> Vec<prism::Node> {
+    fn parts(&self) -> Vec<prism::Node<'_>> {
         match self {
             HeredocNodeType::Plain(string_node) => vec![string_node.as_node()],
             HeredocNodeType::Interpolated(interpolated_string_node) => {
@@ -710,7 +710,7 @@ impl HeredocNodeType<'_> {
         }
     }
 
-    fn closing_loc(&self) -> prism::Location {
+    fn closing_loc(&self) -> prism::Location<'_> {
         match self {
             HeredocNodeType::Plain(string_node) => string_node
                 .closing_loc()
