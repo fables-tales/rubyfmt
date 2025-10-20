@@ -2325,24 +2325,57 @@ fn format_index_target_node(
 }
 
 fn format_instance_variable_and_write_node(
-    _ps: &mut dyn ConcreteParserState,
-    _instance_variable_and_write_node: prism::InstanceVariableAndWriteNode,
+    ps: &mut dyn ConcreteParserState,
+    instance_variable_and_write_node: prism::InstanceVariableAndWriteNode,
 ) {
-    todo!()
+    ps.emit_ident(const_to_string(instance_variable_and_write_node.name()));
+
+    ps.emit_space();
+    ps.emit_op(loc_to_string(
+	instance_variable_and_write_node.operator_loc(),
+    ));
+    ps.emit_space();
+
+    ps.with_start_of_line(
+	false,
+	Box::new(|ps| format_node(ps, instance_variable_and_write_node.value())),
+    );
 }
 
 fn format_instance_variable_operator_write_node(
-    _ps: &mut dyn ConcreteParserState,
-    _instance_variable_operator_write_node: prism::InstanceVariableOperatorWriteNode,
+    ps: &mut dyn ConcreteParserState,
+    instance_variable_operator_write_node: prism::InstanceVariableOperatorWriteNode,
 ) {
-    todo!()
+    ps.emit_ident(const_to_string(instance_variable_operator_write_node.name()));
+
+    ps.emit_space();
+    ps.emit_op(loc_to_string(
+	instance_variable_operator_write_node.binary_operator_loc(),
+    ));
+    ps.emit_space();
+
+    ps.with_start_of_line(
+	false,
+	Box::new(|ps| format_node(ps, instance_variable_operator_write_node.value())),
+    );
 }
 
 fn format_instance_variable_or_write_node(
-    _ps: &mut dyn ConcreteParserState,
-    _instance_variable_or_write_node: prism::InstanceVariableOrWriteNode,
+    ps: &mut dyn ConcreteParserState,
+    instance_variable_or_write_node: prism::InstanceVariableOrWriteNode,
 ) {
-    todo!()
+    ps.emit_ident(const_to_string(instance_variable_or_write_node.name()));
+
+    ps.emit_space();
+    ps.emit_op(loc_to_string(
+	instance_variable_or_write_node.operator_loc(),
+    ));
+    ps.emit_space();
+
+    ps.with_start_of_line(
+	false,
+	Box::new(|ps| format_node(ps, instance_variable_or_write_node.value())),
+    );
 }
 
 fn format_instance_variable_read_node(
@@ -2353,10 +2386,10 @@ fn format_instance_variable_read_node(
 }
 
 fn format_instance_variable_target_node(
-    _ps: &mut dyn ConcreteParserState,
-    _instance_variable_target_node: prism::InstanceVariableTargetNode,
+    ps: &mut dyn ConcreteParserState,
+    instance_variable_target_node: prism::InstanceVariableTargetNode,
 ) {
-    todo!()
+    ps.emit_ident(const_to_string(instance_variable_target_node.name()));
 }
 
 fn format_constant_read_node(
