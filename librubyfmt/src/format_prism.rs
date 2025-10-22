@@ -952,14 +952,12 @@ fn format_class_variable_and_write_node(
     ps.emit_ident(const_to_string(class_variable_and_write_node.name()));
 
     ps.emit_space();
-    ps.emit_op(loc_to_string(
-	class_variable_and_write_node.operator_loc(),
-    ));
+    ps.emit_op(loc_to_string(class_variable_and_write_node.operator_loc()));
     ps.emit_space();
 
     ps.with_start_of_line(
-	false,
-	Box::new(|ps| format_node(ps, class_variable_and_write_node.value())),
+        false,
+        Box::new(|ps| format_node(ps, class_variable_and_write_node.value())),
     );
 }
 
@@ -971,13 +969,13 @@ fn format_class_variable_operator_write_node(
 
     ps.emit_space();
     ps.emit_op(loc_to_string(
-	class_variable_operator_write_node.binary_operator_loc(),
+        class_variable_operator_write_node.binary_operator_loc(),
     ));
     ps.emit_space();
 
     ps.with_start_of_line(
-	false,
-	Box::new(|ps| format_node(ps, class_variable_operator_write_node.value())),
+        false,
+        Box::new(|ps| format_node(ps, class_variable_operator_write_node.value())),
     );
 }
 
@@ -988,14 +986,12 @@ fn format_class_variable_or_write_node(
     ps.emit_ident(const_to_string(class_variable_or_write_node.name()));
 
     ps.emit_space();
-    ps.emit_op(loc_to_string(
-	class_variable_or_write_node.operator_loc(),
-    ));
+    ps.emit_op(loc_to_string(class_variable_or_write_node.operator_loc()));
     ps.emit_space();
 
     ps.with_start_of_line(
-	false,
-	Box::new(|ps| format_node(ps, class_variable_or_write_node.value())),
+        false,
+        Box::new(|ps| format_node(ps, class_variable_or_write_node.value())),
     );
 }
 
@@ -2374,13 +2370,13 @@ fn format_instance_variable_and_write_node(
 
     ps.emit_space();
     ps.emit_op(loc_to_string(
-	instance_variable_and_write_node.operator_loc(),
+        instance_variable_and_write_node.operator_loc(),
     ));
     ps.emit_space();
 
     ps.with_start_of_line(
-	false,
-	Box::new(|ps| format_node(ps, instance_variable_and_write_node.value())),
+        false,
+        Box::new(|ps| format_node(ps, instance_variable_and_write_node.value())),
     );
 }
 
@@ -2388,17 +2384,19 @@ fn format_instance_variable_operator_write_node(
     ps: &mut dyn ConcreteParserState,
     instance_variable_operator_write_node: prism::InstanceVariableOperatorWriteNode,
 ) {
-    ps.emit_ident(const_to_string(instance_variable_operator_write_node.name()));
+    ps.emit_ident(const_to_string(
+        instance_variable_operator_write_node.name(),
+    ));
 
     ps.emit_space();
     ps.emit_op(loc_to_string(
-	instance_variable_operator_write_node.binary_operator_loc(),
+        instance_variable_operator_write_node.binary_operator_loc(),
     ));
     ps.emit_space();
 
     ps.with_start_of_line(
-	false,
-	Box::new(|ps| format_node(ps, instance_variable_operator_write_node.value())),
+        false,
+        Box::new(|ps| format_node(ps, instance_variable_operator_write_node.value())),
     );
 }
 
@@ -2410,13 +2408,13 @@ fn format_instance_variable_or_write_node(
 
     ps.emit_space();
     ps.emit_op(loc_to_string(
-	instance_variable_or_write_node.operator_loc(),
+        instance_variable_or_write_node.operator_loc(),
     ));
     ps.emit_space();
 
     ps.with_start_of_line(
-	false,
-	Box::new(|ps| format_node(ps, instance_variable_or_write_node.value())),
+        false,
+        Box::new(|ps| format_node(ps, instance_variable_or_write_node.value())),
     );
 }
 
