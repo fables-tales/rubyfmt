@@ -946,45 +946,83 @@ fn format_class_node(ps: &mut dyn ConcreteParserState, class_node: prism::ClassN
 }
 
 fn format_class_variable_and_write_node(
-    _ps: &mut dyn ConcreteParserState,
-    _class_variable_and_write_node: prism::ClassVariableAndWriteNode,
+    ps: &mut dyn ConcreteParserState,
+    class_variable_and_write_node: prism::ClassVariableAndWriteNode,
 ) {
-    todo!()
+    ps.emit_ident(const_to_string(class_variable_and_write_node.name()));
+
+    ps.emit_space();
+    ps.emit_op(loc_to_string(class_variable_and_write_node.operator_loc()));
+    ps.emit_space();
+
+    ps.with_start_of_line(
+        false,
+        Box::new(|ps| format_node(ps, class_variable_and_write_node.value())),
+    );
 }
 
 fn format_class_variable_operator_write_node(
-    _ps: &mut dyn ConcreteParserState,
-    _class_variable_operator_write_node: prism::ClassVariableOperatorWriteNode,
+    ps: &mut dyn ConcreteParserState,
+    class_variable_operator_write_node: prism::ClassVariableOperatorWriteNode,
 ) {
-    todo!()
+    ps.emit_ident(const_to_string(class_variable_operator_write_node.name()));
+
+    ps.emit_space();
+    ps.emit_op(loc_to_string(
+        class_variable_operator_write_node.binary_operator_loc(),
+    ));
+    ps.emit_space();
+
+    ps.with_start_of_line(
+        false,
+        Box::new(|ps| format_node(ps, class_variable_operator_write_node.value())),
+    );
 }
 
 fn format_class_variable_or_write_node(
-    _ps: &mut dyn ConcreteParserState,
-    _class_variable_or_write_node: prism::ClassVariableOrWriteNode,
+    ps: &mut dyn ConcreteParserState,
+    class_variable_or_write_node: prism::ClassVariableOrWriteNode,
 ) {
-    todo!()
+    ps.emit_ident(const_to_string(class_variable_or_write_node.name()));
+
+    ps.emit_space();
+    ps.emit_op(loc_to_string(class_variable_or_write_node.operator_loc()));
+    ps.emit_space();
+
+    ps.with_start_of_line(
+        false,
+        Box::new(|ps| format_node(ps, class_variable_or_write_node.value())),
+    );
 }
 
 fn format_class_variable_read_node(
-    _ps: &mut dyn ConcreteParserState,
-    _class_variable_read_node: prism::ClassVariableReadNode,
+    ps: &mut dyn ConcreteParserState,
+    class_variable_read_node: prism::ClassVariableReadNode,
 ) {
-    todo!()
+    ps.emit_ident(const_to_string(class_variable_read_node.name()));
 }
 
 fn format_class_variable_target_node(
-    _ps: &mut dyn ConcreteParserState,
-    _class_variable_target_node: prism::ClassVariableTargetNode,
+    ps: &mut dyn ConcreteParserState,
+    class_variable_target_node: prism::ClassVariableTargetNode,
 ) {
-    todo!()
+    ps.emit_ident(const_to_string(class_variable_target_node.name()));
 }
 
 fn format_class_variable_write_node(
-    _ps: &mut dyn ConcreteParserState,
-    _class_variable_write_node: prism::ClassVariableWriteNode,
+    ps: &mut dyn ConcreteParserState,
+    class_variable_write_node: prism::ClassVariableWriteNode,
 ) {
-    todo!()
+    ps.at_offset(class_variable_write_node.location().start_offset());
+
+    ps.emit_ident(const_to_string(class_variable_write_node.name()));
+    ps.emit_space();
+    ps.emit_op("=".to_string());
+    ps.emit_space();
+    ps.with_start_of_line(
+        false,
+        Box::new(|ps| format_node(ps, class_variable_write_node.value())),
+    );
 }
 
 fn format_module_node(ps: &mut dyn ConcreteParserState, module_node: prism::ModuleNode) {
@@ -2325,24 +2363,59 @@ fn format_index_target_node(
 }
 
 fn format_instance_variable_and_write_node(
-    _ps: &mut dyn ConcreteParserState,
-    _instance_variable_and_write_node: prism::InstanceVariableAndWriteNode,
+    ps: &mut dyn ConcreteParserState,
+    instance_variable_and_write_node: prism::InstanceVariableAndWriteNode,
 ) {
-    todo!()
+    ps.emit_ident(const_to_string(instance_variable_and_write_node.name()));
+
+    ps.emit_space();
+    ps.emit_op(loc_to_string(
+        instance_variable_and_write_node.operator_loc(),
+    ));
+    ps.emit_space();
+
+    ps.with_start_of_line(
+        false,
+        Box::new(|ps| format_node(ps, instance_variable_and_write_node.value())),
+    );
 }
 
 fn format_instance_variable_operator_write_node(
-    _ps: &mut dyn ConcreteParserState,
-    _instance_variable_operator_write_node: prism::InstanceVariableOperatorWriteNode,
+    ps: &mut dyn ConcreteParserState,
+    instance_variable_operator_write_node: prism::InstanceVariableOperatorWriteNode,
 ) {
-    todo!()
+    ps.emit_ident(const_to_string(
+        instance_variable_operator_write_node.name(),
+    ));
+
+    ps.emit_space();
+    ps.emit_op(loc_to_string(
+        instance_variable_operator_write_node.binary_operator_loc(),
+    ));
+    ps.emit_space();
+
+    ps.with_start_of_line(
+        false,
+        Box::new(|ps| format_node(ps, instance_variable_operator_write_node.value())),
+    );
 }
 
 fn format_instance_variable_or_write_node(
-    _ps: &mut dyn ConcreteParserState,
-    _instance_variable_or_write_node: prism::InstanceVariableOrWriteNode,
+    ps: &mut dyn ConcreteParserState,
+    instance_variable_or_write_node: prism::InstanceVariableOrWriteNode,
 ) {
-    todo!()
+    ps.emit_ident(const_to_string(instance_variable_or_write_node.name()));
+
+    ps.emit_space();
+    ps.emit_op(loc_to_string(
+        instance_variable_or_write_node.operator_loc(),
+    ));
+    ps.emit_space();
+
+    ps.with_start_of_line(
+        false,
+        Box::new(|ps| format_node(ps, instance_variable_or_write_node.value())),
+    );
 }
 
 fn format_instance_variable_read_node(
@@ -2353,10 +2426,10 @@ fn format_instance_variable_read_node(
 }
 
 fn format_instance_variable_target_node(
-    _ps: &mut dyn ConcreteParserState,
-    _instance_variable_target_node: prism::InstanceVariableTargetNode,
+    ps: &mut dyn ConcreteParserState,
+    instance_variable_target_node: prism::InstanceVariableTargetNode,
 ) {
-    todo!()
+    ps.emit_ident(const_to_string(instance_variable_target_node.name()));
 }
 
 fn format_constant_read_node(

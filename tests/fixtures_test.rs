@@ -300,6 +300,7 @@ fixture!(
 );
 fixture!(test_small_inline_comments, "small/inline_comments");
 fixture!(test_small_inline_rescue, "small/inline_rescue");
+fixture!(test_small_ivar, "small/ivar");
 fixture!(test_small_ivar_symbol, "small/ivar_symbol");
 fixture!(test_small_kw_symbol, "small/kw_symbol");
 fixture!(test_small_kwargs, "small/kwargs");
