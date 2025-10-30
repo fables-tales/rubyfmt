@@ -26,3 +26,9 @@ similar = "2.1.0"
 [dev-dependencies]
 assert_cmd = "2"
 tempfile = "3.19"
+libtest-mimic = "0.8.1"
+
+[[test]]
+name = "fixtures_test"
+path = "tests/fixtures_test.rs"
+harness = false
