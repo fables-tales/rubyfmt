@@ -380,7 +380,11 @@ impl ParserState {
             .expect("start of line is never_empty")
     }
 
-    pub(crate) fn has_comments_in_line(&self, start_line: LineNumber, end_line: LineNumber) -> bool {
+    pub(crate) fn has_comments_in_line(
+        &self,
+        start_line: LineNumber,
+        end_line: LineNumber,
+    ) -> bool {
         self.comments_hash
             .has_comments_in_lines(start_line, end_line)
     }
@@ -818,7 +822,7 @@ impl ParserState {
         }
     }
 
-    pub (crate) fn index_of_prev_hard_newline(&self) -> Option<usize> {
+    pub(crate) fn index_of_prev_hard_newline(&self) -> Option<usize> {
         match self.breakable_entry_stack.last() {
             Some(be) => be.index_of_prev_newline(),
             None => self.render_queue.index_of_prev_newline(),
@@ -848,7 +852,7 @@ impl ParserState {
         bufio.into_inner()
     }
 
-    pub (crate) fn write<W: Write>(self, writer: &mut W) -> io::Result<()> {
+    pub(crate) fn write<W: Write>(self, writer: &mut W) -> io::Result<()> {
         let rqw = RenderQueueWriter::new(self.consume_to_render_queue());
         rqw.write(writer)
     }
@@ -868,7 +872,7 @@ impl ParserState {
         }
     }
 
-    pub (crate) fn flush_start_of_file_comments(&mut self) {
+    pub(crate) fn flush_start_of_file_comments(&mut self) {
         match self
             .comments_hash
             .take_start_of_file_contiguous_comment_lines()
@@ -887,7 +891,11 @@ impl ParserState {
         }
     }
 
-    pub(crate) fn insert_concrete_tokens(&mut self, insert_idx: usize, clts: Vec<ConcreteLineToken>) {
+    pub(crate) fn insert_concrete_tokens(
+        &mut self,
+        insert_idx: usize,
+        clts: Vec<ConcreteLineToken>,
+    ) {
         match self.breakable_entry_stack.last_mut() {
             Some(be) => be.insert_at(
                 insert_idx,

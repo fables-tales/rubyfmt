@@ -2,7 +2,7 @@ use std::collections::HashSet;
 
 use crate::delimiters::BreakableDelims;
 use crate::heredoc_string::HeredocKind;
-use crate::parser_state::{ParserState, FormattingContext, RenderFunc};
+use crate::parser_state::{FormattingContext, ParserState, RenderFunc};
 use crate::render_targets::MultilineHandling;
 use crate::ripper_tree_types::*;
 use crate::types::LineNumber;
@@ -106,18 +106,12 @@ pub fn inner_format_params(ps: &mut ParserState, params: Box<Params>) {
     let block_arg = params.7;
 
     let formats: Vec<ParamFormattingFunc> = vec![
-        Box::new(move |ps: &mut ParserState| {
-            format_required_params(ps, required_params)
-        }),
-        Box::new(move |ps: &mut ParserState| {
-            format_optional_params(ps, optional_params)
-        }),
+        Box::new(move |ps: &mut ParserState| format_required_params(ps, required_params)),
+        Box::new(move |ps: &mut ParserState| format_optional_params(ps, optional_params)),
         Box::new(move |ps: &mut ParserState| {
             format_rest_param(ps, rest_param, SpecialCase::NoSpecialCase)
         }),
-        Box::new(move |ps: &mut ParserState| {
-            format_required_params(ps, more_required_params)
-        }),
+        Box::new(move |ps: &mut ParserState| format_required_params(ps, more_required_params)),
         Box::new(move |ps: &mut ParserState| format_kwargs(ps, kwargs)),
         Box::new(move |ps: &mut ParserState| format_kwrest_params(ps, kwrest_params)),
         Box::new(move |ps: &mut ParserState| format_block_arg(ps, block_arg)),
@@ -189,11 +183,7 @@ pub fn format_blockvar(ps: &mut ParserState, bv: BlockVar) {
     ps.on_line(start_end.end_line());
 }
 
-pub fn format_params(
-    ps: &mut ParserState,
-    params: Box<Params>,
-    delims: BreakableDelims,
-) {
+pub fn format_params(ps: &mut ParserState, params: Box<Params>, delims: BreakableDelims) {
     let have_any_params = params.non_null_positions().iter().any(|&x| x);
     if !have_any_params {
         return;
@@ -239,10 +229,7 @@ pub fn format_kwrest_params(
     true
 }
 
-pub fn format_block_arg(
-    ps: &mut ParserState,
-    block_arg: Option<BlockArgOrTag>,
-) -> bool {
+pub fn format_block_arg(ps: &mut ParserState, block_arg: Option<BlockArgOrTag>) -> bool {
     match block_arg {
         None | Some(BlockArgOrTag::Tag(..)) => false,
         Some(BlockArgOrTag::BlockArg(ba)) => {
@@ -263,10 +250,7 @@ pub fn format_block_arg(
     }
 }
 
-pub fn format_kwargs(
-    ps: &mut ParserState,
-    kwargs: Vec<(Label, ExpressionOrFalse)>,
-) -> bool {
+pub fn format_kwargs(ps: &mut ParserState, kwargs: Vec<(Label, ExpressionOrFalse)>) -> bool {
     if kwargs.is_empty() {
         return false;
     }
@@ -434,10 +418,7 @@ fn bind_mlhs(ps: &mut ParserState, mlhs: &MLhs) {
     }
 }
 
-pub fn format_required_params(
-    ps: &mut ParserState,
-    required_params: Vec<IdentOrMLhs>,
-) -> bool {
+pub fn format_required_params(ps: &mut ParserState, required_params: Vec<IdentOrMLhs>) -> bool {
     if required_params.is_empty() {
         return false;
     }
@@ -472,11 +453,7 @@ pub fn emit_params_separator(ps: &mut ParserState, index: usize, length: usize) 
     }
 }
 
-pub fn format_bodystmt(
-    ps: &mut ParserState,
-    bodystmt: Box<BodyStmt>,
-    end_line: LineNumber,
-) {
+pub fn format_bodystmt(ps: &mut ParserState, bodystmt: Box<BodyStmt>, end_line: LineNumber) {
     let expressions = bodystmt.1;
     let rescue_part = bodystmt.2;
     let else_part = bodystmt.3;
@@ -1082,11 +1059,7 @@ fn all_labelish(assocs: &[AssocNewOrAssocSplat]) -> bool {
     })
 }
 
-pub fn format_assocs(
-    ps: &mut ParserState,
-    assocs: Vec<AssocNewOrAssocSplat>,
-    sc: SpecialCase,
-) {
+pub fn format_assocs(ps: &mut ParserState, assocs: Vec<AssocNewOrAssocSplat>, sc: SpecialCase) {
     let len = assocs.len();
     let all_labelish = all_labelish(&assocs);
     for (idx, assoc) in assocs.into_iter().enumerate() {
@@ -1101,10 +1074,7 @@ pub fn format_assocs(
     }
 }
 
-pub fn format_assocs_single_line(
-    ps: &mut ParserState,
-    assocs: Vec<AssocNewOrAssocSplat>,
-) {
+pub fn format_assocs_single_line(ps: &mut ParserState, assocs: Vec<AssocNewOrAssocSplat>) {
     let len = assocs.len();
     let all_labelish = all_labelish(&assocs);
     for (idx, assoc) in assocs.into_iter().enumerate() {
@@ -1115,11 +1085,7 @@ pub fn format_assocs_single_line(
     }
 }
 
-pub fn format_assoc(
-    ps: &mut ParserState,
-    assoc: AssocNewOrAssocSplat,
-    all_labelish: bool,
-) {
+pub fn format_assoc(ps: &mut ParserState, assoc: AssocNewOrAssocSplat, all_labelish: bool) {
     ps.with_start_of_line(
         false,
         Box::new(|ps| match assoc {
@@ -1359,11 +1325,7 @@ pub fn percent_symbol_for(tag: String) -> String {
     }
 }
 
-pub fn format_percent_array(
-    ps: &mut ParserState,
-    tag: String,
-    parts: Vec<Vec<StringContentPart>>,
-) {
+pub fn format_percent_array(ps: &mut ParserState, tag: String, parts: Vec<Vec<StringContentPart>>) {
     ps.emit_ident(percent_symbol_for(tag));
     ps.with_start_of_line(
         false,
@@ -1546,11 +1508,7 @@ pub enum StringType {
     Regexp,
 }
 
-fn format_inner_string(
-    ps: &mut ParserState,
-    parts: Vec<StringContentPart>,
-    tipe: StringType,
-) {
+fn format_inner_string(ps: &mut ParserState, parts: Vec<StringContentPart>, tipe: StringType) {
     let mut peekable = parts.into_iter().peekable();
     while peekable.peek().is_some() {
         let part = peekable.next().expect("we peeked");

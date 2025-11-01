@@ -4,7 +4,7 @@ use crate::{
     delimiters::BreakableDelims,
     format::SpecialCase,
     heredoc_string::HeredocKind,
-    parser_state::{ParserState, FormattingContext, HashType, RenderFunc},
+    parser_state::{FormattingContext, HashType, ParserState, RenderFunc},
     render_targets::MultilineHandling,
     types::SourceOffset,
     util::{const_to_string, loc_to_string, u8_to_string},
@@ -411,10 +411,7 @@ fn format_alias_global_variable_node(
     todo!()
 }
 
-fn format_alias_method_node(
-    _ps: &mut ParserState,
-    _alias_method_node: prism::AliasMethodNode,
-) {
+fn format_alias_method_node(_ps: &mut ParserState, _alias_method_node: prism::AliasMethodNode) {
     todo!()
 }
 
@@ -510,10 +507,7 @@ fn format_capture_pattern_node(
     todo!()
 }
 
-fn format_case_match_node(
-    _ps: &mut ParserState,
-    _case_match_node: prism::CaseMatchNode,
-) {
+fn format_case_match_node(_ps: &mut ParserState, _case_match_node: prism::CaseMatchNode) {
     todo!()
 }
 
@@ -722,11 +716,7 @@ impl HeredocNodeType<'_> {
     }
 }
 
-fn format_heredoc(
-    ps: &mut ParserState,
-    heredoc: HeredocNodeType,
-    heredoc_symbol: String,
-) {
+fn format_heredoc(ps: &mut ParserState, heredoc: HeredocNodeType, heredoc_symbol: String) {
     let heredoc_kind = HeredocKind::from_string(&heredoc_symbol);
     ps.emit_heredoc_start(heredoc_symbol, heredoc_kind);
 
@@ -742,11 +732,7 @@ fn format_heredoc(
     ps.wind_dumping_comments_until_offset(heredoc.closing_loc().start_offset());
 }
 
-fn format_inner_string(
-    ps: &mut ParserState,
-    parts: Vec<prism::Node>,
-    is_heredoc: bool,
-) {
+fn format_inner_string(ps: &mut ParserState, parts: Vec<prism::Node>, is_heredoc: bool) {
     let mut peekable = parts.iter().peekable();
     while let Some(part) = peekable.next() {
         match part {
@@ -816,10 +802,7 @@ fn format_it_local_variable_read_node(
     todo!()
 }
 
-fn format_it_parameters_node(
-    _ps: &mut ParserState,
-    _it_parameters_node: prism::ItParametersNode,
-) {
+fn format_it_parameters_node(_ps: &mut ParserState, _it_parameters_node: prism::ItParametersNode) {
     todo!()
 }
 
@@ -896,10 +879,7 @@ fn format_false_node(ps: &mut ParserState, false_node: prism::FalseNode) {
     );
 }
 
-fn format_find_pattern_node(
-    _ps: &mut ParserState,
-    _find_pattern_node: prism::FindPatternNode,
-) {
+fn format_find_pattern_node(_ps: &mut ParserState, _find_pattern_node: prism::FindPatternNode) {
     todo!()
 }
 
@@ -1295,10 +1275,7 @@ fn format_parameters_node(ps: &mut ParserState, params: prism::ParametersNode) {
     }
 }
 
-fn format_block_parameter_node(
-    ps: &mut ParserState,
-    block_arg: prism::BlockParameterNode,
-) {
+fn format_block_parameter_node(ps: &mut ParserState, block_arg: prism::BlockParameterNode) {
     ps.with_start_of_line(
         false,
         Box::new(|ps| {
@@ -1313,10 +1290,7 @@ fn format_block_parameter_node(
     );
 }
 
-fn format_block_argument_node(
-    ps: &mut ParserState,
-    block_argument_node: prism::BlockArgumentNode,
-) {
+fn format_block_argument_node(ps: &mut ParserState, block_argument_node: prism::BlockArgumentNode) {
     ps.emit_ident("&".to_string());
     if let Some(expression_node) = block_argument_node.expression() {
         ps.with_start_of_line(
@@ -1328,11 +1302,7 @@ fn format_block_argument_node(
     }
 }
 
-fn format_call_node(
-    ps: &mut ParserState,
-    call_node: prism::CallNode,
-    skip_receiver: bool,
-) {
+fn format_call_node(ps: &mut ParserState, call_node: prism::CallNode, skip_receiver: bool) {
     if skip_receiver || call_node.receiver().is_none() {
         let method_name = const_to_string(call_node.name());
         let is_aref = &method_name == "[]";
@@ -1551,17 +1521,11 @@ fn format_call_operator_write_node(
     todo!()
 }
 
-fn format_call_or_write_node(
-    _ps: &mut ParserState,
-    _call_or_write_node: prism::CallOrWriteNode,
-) {
+fn format_call_or_write_node(_ps: &mut ParserState, _call_or_write_node: prism::CallOrWriteNode) {
     todo!()
 }
 
-fn format_call_target_node(
-    _ps: &mut ParserState,
-    _call_target_node: prism::CallTargetNode,
-) {
+fn format_call_target_node(_ps: &mut ParserState, _call_target_node: prism::CallTargetNode) {
     todo!()
 }
 
@@ -1601,10 +1565,7 @@ fn format_assoc_node(ps: &mut ParserState, assoc_node: prism::AssocNode) {
     );
 }
 
-fn format_assoc_splat_node(
-    ps: &mut ParserState,
-    assoc_splat_node: prism::AssocSplatNode,
-) {
+fn format_assoc_splat_node(ps: &mut ParserState, assoc_splat_node: prism::AssocSplatNode) {
     ps.with_start_of_line(
         false,
         Box::new(|ps| {
@@ -1795,17 +1756,11 @@ fn format_array_node(ps: &mut ParserState, array_node: prism::ArrayNode) {
     }
 }
 
-fn format_array_pattern_node(
-    _ps: &mut ParserState,
-    _array_pattern_node: prism::ArrayPatternNode,
-) {
+fn format_array_pattern_node(_ps: &mut ParserState, _array_pattern_node: prism::ArrayPatternNode) {
     todo!()
 }
 
-fn format_parentheses_node(
-    ps: &mut ParserState,
-    parentheses_node: prism::ParenthesesNode,
-) {
+fn format_parentheses_node(ps: &mut ParserState, parentheses_node: prism::ParenthesesNode) {
     ps.emit_open_paren();
     if let Some(body) = parentheses_node.body() {
         ps.with_start_of_line(
@@ -1902,10 +1857,7 @@ fn format_arguments_node(ps: &mut ParserState, arguments_node: prism::ArgumentsN
     );
 }
 
-fn format_keyword_hash_node(
-    ps: &mut ParserState,
-    keyword_hash_node: prism::KeywordHashNode,
-) {
+fn format_keyword_hash_node(ps: &mut ParserState, keyword_hash_node: prism::KeywordHashNode) {
     let all_symbol_keys = keyword_hash_node
         .elements()
         .iter()
@@ -2242,10 +2194,7 @@ fn format_hash_node(ps: &mut ParserState, hash_node: prism::HashNode) {
     );
 }
 
-fn format_hash_pattern_node(
-    _ps: &mut ParserState,
-    _hash_pattern_node: prism::HashPatternNode,
-) {
+fn format_hash_pattern_node(_ps: &mut ParserState, _hash_pattern_node: prism::HashPatternNode) {
     todo!()
 }
 
@@ -2355,10 +2304,7 @@ fn format_index_or_write_node(
     todo!()
 }
 
-fn format_index_target_node(
-    _ps: &mut ParserState,
-    _index_target_node: prism::IndexTargetNode,
-) {
+fn format_index_target_node(_ps: &mut ParserState, _index_target_node: prism::IndexTargetNode) {
     todo!()
 }
 
@@ -2432,10 +2378,7 @@ fn format_instance_variable_target_node(
     ps.emit_ident(const_to_string(instance_variable_target_node.name()));
 }
 
-fn format_constant_read_node(
-    ps: &mut ParserState,
-    constant_read_node: prism::ConstantReadNode,
-) {
+fn format_constant_read_node(ps: &mut ParserState, constant_read_node: prism::ConstantReadNode) {
     handle_string_at_offset(
         ps,
         const_to_string(constant_read_node.name()),
@@ -2443,10 +2386,7 @@ fn format_constant_read_node(
     );
 }
 
-fn format_constant_path_node(
-    ps: &mut ParserState,
-    constant_path_node: prism::ConstantPathNode,
-) {
+fn format_constant_path_node(ps: &mut ParserState, constant_path_node: prism::ConstantPathNode) {
     ps.with_start_of_line(
         false,
         Box::new(|ps| {
@@ -2534,10 +2474,7 @@ fn format_constant_target_node(
     todo!()
 }
 
-fn format_constant_write_node(
-    ps: &mut ParserState,
-    constant_write_node: prism::ConstantWriteNode,
-) {
+fn format_constant_write_node(ps: &mut ParserState, constant_write_node: prism::ConstantWriteNode) {
     ps.emit_ident(const_to_string(constant_write_node.name()));
     ps.emit_op(" = ".to_string());
     ps.with_start_of_line(
@@ -2571,24 +2508,15 @@ fn format_match_required_node(
     todo!()
 }
 
-fn format_match_write_node(
-    _ps: &mut ParserState,
-    _match_write_node: prism::MatchWriteNode,
-) {
+fn format_match_write_node(_ps: &mut ParserState, _match_write_node: prism::MatchWriteNode) {
     todo!()
 }
 
-fn format_multi_target_node(
-    _ps: &mut ParserState,
-    _multi_target_node: prism::MultiTargetNode,
-) {
+fn format_multi_target_node(_ps: &mut ParserState, _multi_target_node: prism::MultiTargetNode) {
     todo!()
 }
 
-fn format_multi_write_node(
-    _ps: &mut ParserState,
-    _multi_write_node: prism::MultiWriteNode,
-) {
+fn format_multi_write_node(_ps: &mut ParserState, _multi_write_node: prism::MultiWriteNode) {
     todo!()
 }
 
@@ -2682,10 +2610,7 @@ fn format_post_execution_node(
     todo!()
 }
 
-fn format_pre_execution_node(
-    _ps: &mut ParserState,
-    _pre_execution_node: prism::PreExecutionNode,
-) {
+fn format_pre_execution_node(_ps: &mut ParserState, _pre_execution_node: prism::PreExecutionNode) {
     todo!()
 }
 
@@ -2833,10 +2758,7 @@ fn format_source_encoding_node(
     );
 }
 
-fn format_source_file_node(
-    ps: &mut ParserState,
-    source_file_node: prism::SourceFileNode,
-) {
+fn format_source_file_node(ps: &mut ParserState, source_file_node: prism::SourceFileNode) {
     handle_string_at_offset(
         ps,
         "__FILE__".to_string(),
@@ -2844,10 +2766,7 @@ fn format_source_file_node(
     );
 }
 
-fn format_source_line_node(
-    ps: &mut ParserState,
-    source_line_node: prism::SourceLineNode,
-) {
+fn format_source_line_node(ps: &mut ParserState, source_line_node: prism::SourceLineNode) {
     handle_string_at_offset(
         ps,
         "__LINE__".to_string(),
