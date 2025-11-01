@@ -12,7 +12,7 @@ use log::debug;
 use std::io::{self, Cursor, Write};
 use std::str;
 
-pub type RenderFunc<'a> = Box<dyn FnOnce(&mut dyn ConcreteParserState) + 'a>;
+pub type RenderFunc<'a> = Box<dyn FnOnce(&mut BaseParserState) + 'a>;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum FormattingContext {

@@ -10,7 +10,7 @@ use crate::{
     util::{const_to_string, loc_to_string, u8_to_string},
 };
 
-pub fn format_node(ps: &mut dyn ConcreteParserState, node: prism::Node) {
+pub fn format_node(ps: &mut BaseParserState, node: prism::Node) {
     use prism::Node;
 
     ps.at_offset(node.location().start_offset());
@@ -405,38 +405,38 @@ pub fn format_node(ps: &mut dyn ConcreteParserState, node: prism::Node) {
 }
 
 fn format_alias_global_variable_node(
-    _ps: &mut dyn ConcreteParserState,
+    _ps: &mut BaseParserState,
     _alias_global_variable_node: prism::AliasGlobalVariableNode,
 ) {
     todo!()
 }
 
 fn format_alias_method_node(
-    _ps: &mut dyn ConcreteParserState,
+    _ps: &mut BaseParserState,
     _alias_method_node: prism::AliasMethodNode,
 ) {
     todo!()
 }
 
 fn format_alternation_pattern_node(
-    _ps: &mut dyn ConcreteParserState,
+    _ps: &mut BaseParserState,
     _alternation_pattern_node: prism::AlternationPatternNode,
 ) {
     todo!()
 }
 
-fn format_and_node(_ps: &mut dyn ConcreteParserState, _and_node: prism::AndNode) {
+fn format_and_node(_ps: &mut BaseParserState, _and_node: prism::AndNode) {
     todo!()
 }
 
 fn format_back_reference_read_node(
-    _ps: &mut dyn ConcreteParserState,
+    _ps: &mut BaseParserState,
     _back_reference_read_node: prism::BackReferenceReadNode,
 ) {
     todo!()
 }
 
-fn format_begin_node(ps: &mut dyn ConcreteParserState, begin_node: prism::BeginNode) {
+fn format_begin_node(ps: &mut BaseParserState, begin_node: prism::BeginNode) {
     // If there's no `begin` keyword loc, this is probably an "implicit" begin node,
     // like a rescue/ensure in a def without a `begin` keyword:
     // ```ruby
@@ -499,30 +499,30 @@ fn format_begin_node(ps: &mut dyn ConcreteParserState, begin_node: prism::BeginN
     ps.at_offset(begin_node.location().end_offset());
 }
 
-fn format_break_node(_ps: &mut dyn ConcreteParserState, _break_node: prism::BreakNode) {
+fn format_break_node(_ps: &mut BaseParserState, _break_node: prism::BreakNode) {
     todo!()
 }
 
 fn format_capture_pattern_node(
-    _ps: &mut dyn ConcreteParserState,
+    _ps: &mut BaseParserState,
     _capture_pattern_node: prism::CapturePatternNode,
 ) {
     todo!()
 }
 
 fn format_case_match_node(
-    _ps: &mut dyn ConcreteParserState,
+    _ps: &mut BaseParserState,
     _case_match_node: prism::CaseMatchNode,
 ) {
     todo!()
 }
 
-fn format_case_node(_ps: &mut dyn ConcreteParserState, _case_node: prism::CaseNode) {
+fn format_case_node(_ps: &mut BaseParserState, _case_node: prism::CaseNode) {
     todo!()
 }
 
 pub fn format_program(
-    ps: &mut dyn ConcreteParserState,
+    ps: &mut BaseParserState,
     program_node: prism::ProgramNode,
     data_loc: Option<prism::Location>,
 ) {
@@ -541,7 +541,7 @@ pub fn format_program(
     }
 }
 
-fn format_statements(ps: &mut dyn ConcreteParserState, statements_node: prism::StatementsNode) {
+fn format_statements(ps: &mut BaseParserState, statements_node: prism::StatementsNode) {
     ps.with_start_of_line(
         true,
         Box::new(|ps| {
@@ -552,7 +552,7 @@ fn format_statements(ps: &mut dyn ConcreteParserState, statements_node: prism::S
     );
 }
 
-fn format_string_node(ps: &mut dyn ConcreteParserState, string_node: prism::StringNode) {
+fn format_string_node(ps: &mut BaseParserState, string_node: prism::StringNode) {
     ps.at_offset(string_node.location().start_offset());
 
     // `opening_loc()` is only `None` in the case of the inner parts of multiline strings
@@ -611,7 +611,7 @@ fn format_string_node(ps: &mut dyn ConcreteParserState, string_node: prism::Stri
 }
 
 fn format_interpolated_string_node(
-    ps: &mut dyn ConcreteParserState,
+    ps: &mut BaseParserState,
     interpolated_string_node: prism::InterpolatedStringNode,
 ) {
     let opener = interpolated_string_node
@@ -723,7 +723,7 @@ impl HeredocNodeType<'_> {
 }
 
 fn format_heredoc(
-    ps: &mut dyn ConcreteParserState,
+    ps: &mut BaseParserState,
     heredoc: HeredocNodeType,
     heredoc_symbol: String,
 ) {
@@ -743,7 +743,7 @@ fn format_heredoc(
 }
 
 fn format_inner_string(
-    ps: &mut dyn ConcreteParserState,
+    ps: &mut BaseParserState,
     parts: Vec<prism::Node>,
     is_heredoc: bool,
 ) {
@@ -796,49 +796,49 @@ fn format_inner_string(
 }
 
 fn format_interpolated_symbol_node(
-    _ps: &mut dyn ConcreteParserState,
+    _ps: &mut BaseParserState,
     _interpolated_string_node: prism::InterpolatedSymbolNode,
 ) {
     todo!()
 }
 
 fn format_interpolated_x_string_node(
-    _ps: &mut dyn ConcreteParserState,
+    _ps: &mut BaseParserState,
     _interpolated_x_string_node: prism::InterpolatedXStringNode,
 ) {
     todo!()
 }
 
 fn format_it_local_variable_read_node(
-    _ps: &mut dyn ConcreteParserState,
+    _ps: &mut BaseParserState,
     _it_local_variable_read_node: prism::ItLocalVariableReadNode,
 ) {
     todo!()
 }
 
 fn format_it_parameters_node(
-    _ps: &mut dyn ConcreteParserState,
+    _ps: &mut BaseParserState,
     _it_parameters_node: prism::ItParametersNode,
 ) {
     todo!()
 }
 
 fn format_interpolated_last_line_node(
-    _ps: &mut dyn ConcreteParserState,
+    _ps: &mut BaseParserState,
     _interpolated_match_last_line_node: prism::InterpolatedMatchLastLineNode,
 ) {
     todo!()
 }
 
 fn format_interpolated_regular_expression_node(
-    _ps: &mut dyn ConcreteParserState,
+    _ps: &mut BaseParserState,
     _interpolated_regular_expression_node: prism::InterpolatedRegularExpressionNode,
 ) {
     todo!()
 }
 
 fn format_embedded_statements_node(
-    ps: &mut dyn ConcreteParserState,
+    ps: &mut BaseParserState,
     embedded_statements_node: prism::EmbeddedStatementsNode,
 ) {
     ps.emit_string_content("#{".to_string());
@@ -866,13 +866,13 @@ fn format_embedded_statements_node(
 }
 
 fn format_embedded_variable_node(
-    _ps: &mut dyn ConcreteParserState,
+    _ps: &mut BaseParserState,
     _embedded_variable_node: prism::EmbeddedVariableNode,
 ) {
     todo!()
 }
 
-fn format_ensure_node(ps: &mut dyn ConcreteParserState, ensure_node: prism::EnsureNode) {
+fn format_ensure_node(ps: &mut BaseParserState, ensure_node: prism::EnsureNode) {
     // Double check that these offsets are correct, since begin/rescue/ensure/else
     // aren't always handled with `format_node`, which usually handles this
     ps.at_offset(ensure_node.location().start_offset());
@@ -888,7 +888,7 @@ fn format_ensure_node(ps: &mut dyn ConcreteParserState, ensure_node: prism::Ensu
     ps.at_offset(ensure_node.location().end_offset());
 }
 
-fn format_false_node(ps: &mut dyn ConcreteParserState, false_node: prism::FalseNode) {
+fn format_false_node(ps: &mut BaseParserState, false_node: prism::FalseNode) {
     handle_string_at_offset(
         ps,
         "false".to_string(),
@@ -897,17 +897,17 @@ fn format_false_node(ps: &mut dyn ConcreteParserState, false_node: prism::FalseN
 }
 
 fn format_find_pattern_node(
-    _ps: &mut dyn ConcreteParserState,
+    _ps: &mut BaseParserState,
     _find_pattern_node: prism::FindPatternNode,
 ) {
     todo!()
 }
 
-fn format_flip_flop_node(_ps: &mut dyn ConcreteParserState, _flip_flop_node: prism::FlipFlopNode) {
+fn format_flip_flop_node(_ps: &mut BaseParserState, _flip_flop_node: prism::FlipFlopNode) {
     todo!()
 }
 
-fn format_class_node(ps: &mut dyn ConcreteParserState, class_node: prism::ClassNode) {
+fn format_class_node(ps: &mut BaseParserState, class_node: prism::ClassNode) {
     ps.emit_class_keyword();
     ps.emit_space();
     ps.with_start_of_line(
@@ -946,7 +946,7 @@ fn format_class_node(ps: &mut dyn ConcreteParserState, class_node: prism::ClassN
 }
 
 fn format_class_variable_and_write_node(
-    ps: &mut dyn ConcreteParserState,
+    ps: &mut BaseParserState,
     class_variable_and_write_node: prism::ClassVariableAndWriteNode,
 ) {
     ps.emit_ident(const_to_string(class_variable_and_write_node.name()));
@@ -962,7 +962,7 @@ fn format_class_variable_and_write_node(
 }
 
 fn format_class_variable_operator_write_node(
-    ps: &mut dyn ConcreteParserState,
+    ps: &mut BaseParserState,
     class_variable_operator_write_node: prism::ClassVariableOperatorWriteNode,
 ) {
     ps.emit_ident(const_to_string(class_variable_operator_write_node.name()));
@@ -980,7 +980,7 @@ fn format_class_variable_operator_write_node(
 }
 
 fn format_class_variable_or_write_node(
-    ps: &mut dyn ConcreteParserState,
+    ps: &mut BaseParserState,
     class_variable_or_write_node: prism::ClassVariableOrWriteNode,
 ) {
     ps.emit_ident(const_to_string(class_variable_or_write_node.name()));
@@ -996,21 +996,21 @@ fn format_class_variable_or_write_node(
 }
 
 fn format_class_variable_read_node(
-    ps: &mut dyn ConcreteParserState,
+    ps: &mut BaseParserState,
     class_variable_read_node: prism::ClassVariableReadNode,
 ) {
     ps.emit_ident(const_to_string(class_variable_read_node.name()));
 }
 
 fn format_class_variable_target_node(
-    ps: &mut dyn ConcreteParserState,
+    ps: &mut BaseParserState,
     class_variable_target_node: prism::ClassVariableTargetNode,
 ) {
     ps.emit_ident(const_to_string(class_variable_target_node.name()));
 }
 
 fn format_class_variable_write_node(
-    ps: &mut dyn ConcreteParserState,
+    ps: &mut BaseParserState,
     class_variable_write_node: prism::ClassVariableWriteNode,
 ) {
     ps.at_offset(class_variable_write_node.location().start_offset());
@@ -1025,7 +1025,7 @@ fn format_class_variable_write_node(
     );
 }
 
-fn format_module_node(ps: &mut dyn ConcreteParserState, module_node: prism::ModuleNode) {
+fn format_module_node(ps: &mut BaseParserState, module_node: prism::ModuleNode) {
     ps.emit_module_keyword();
     ps.emit_space();
     ps.with_start_of_line(
@@ -1053,7 +1053,7 @@ fn format_module_node(ps: &mut dyn ConcreteParserState, module_node: prism::Modu
     );
 }
 
-fn format_def_node(ps: &mut dyn ConcreteParserState, def_node: prism::DefNode) {
+fn format_def_node(ps: &mut BaseParserState, def_node: prism::DefNode) {
     ps.emit_keyword("def".to_string());
     ps.emit_space();
 
@@ -1076,7 +1076,7 @@ fn format_def_node(ps: &mut dyn ConcreteParserState, def_node: prism::DefNode) {
     format_def_body(ps, def_node);
 }
 
-fn format_def_body(ps: &mut dyn ConcreteParserState, def_node: prism::DefNode) {
+fn format_def_body(ps: &mut BaseParserState, def_node: prism::DefNode) {
     ps.new_scope(Box::new(|ps| {
         if let Some(parameters_node) = def_node.parameters() {
             ps.breakable_of(
@@ -1161,11 +1161,11 @@ fn format_def_body(ps: &mut dyn ConcreteParserState, def_node: prism::DefNode) {
     }
 }
 
-fn format_defined_node(_ps: &mut dyn ConcreteParserState, _defined_node: prism::DefinedNode) {
+fn format_defined_node(_ps: &mut BaseParserState, _defined_node: prism::DefinedNode) {
     todo!()
 }
 
-fn format_else_node(ps: &mut dyn ConcreteParserState, else_node: prism::ElseNode) {
+fn format_else_node(ps: &mut BaseParserState, else_node: prism::ElseNode) {
     // Double check that these offsets are correct, since begin/rescue/ensure/else
     // aren't always handled with `format_node`, which usually handles this
     ps.at_offset(else_node.location().start_offset());
@@ -1207,9 +1207,9 @@ fn format_else_node(ps: &mut dyn ConcreteParserState, else_node: prism::ElseNode
     ps.at_offset(else_node.location().end_offset());
 }
 
-type ParamFormattingFunc<'a> = Box<dyn FnOnce(&mut dyn ConcreteParserState) + 'a>;
+type ParamFormattingFunc<'a> = Box<dyn FnOnce(&mut BaseParserState) + 'a>;
 
-fn format_parameters_node(ps: &mut dyn ConcreteParserState, params: prism::ParametersNode) {
+fn format_parameters_node(ps: &mut BaseParserState, params: prism::ParametersNode) {
     let non_null_positions = non_null_positions(&params);
 
     //def foo(a, b=nil, *args, d, e:, **kwargs, &blk)
@@ -1237,45 +1237,45 @@ fn format_parameters_node(ps: &mut dyn ConcreteParserState, params: prism::Param
     let block = params.block();
 
     let formats: Vec<ParamFormattingFunc> = vec![
-        Box::new(move |ps: &mut dyn ConcreteParserState| {
+        Box::new(move |ps: &mut BaseParserState| {
             if node_list_is_empty(&requireds) {
                 return;
             }
             let end_offset = requireds.iter().last().unwrap().location().end_offset();
             format_list_like_thing(ps, requireds, end_offset, false);
         }),
-        Box::new(move |ps: &mut dyn ConcreteParserState| {
+        Box::new(move |ps: &mut BaseParserState| {
             if node_list_is_empty(&optionals) {
                 return;
             }
             let end_offset = optionals.iter().last().unwrap().location().end_offset();
             format_list_like_thing(ps, optionals, end_offset, false);
         }),
-        Box::new(move |ps: &mut dyn ConcreteParserState| {
+        Box::new(move |ps: &mut BaseParserState| {
             if let Some(rest) = rest {
                 format_node(ps, rest);
             }
         }),
-        Box::new(move |ps: &mut dyn ConcreteParserState| {
+        Box::new(move |ps: &mut BaseParserState| {
             if node_list_is_empty(&posts) {
                 return;
             }
             let end_offset = posts.iter().last().unwrap().location().end_offset();
             format_list_like_thing(ps, posts, end_offset, false);
         }),
-        Box::new(move |ps: &mut dyn ConcreteParserState| {
+        Box::new(move |ps: &mut BaseParserState| {
             if node_list_is_empty(&keywords) {
                 return;
             }
             let end_offset = keywords.iter().last().unwrap().location().end_offset();
             format_list_like_thing(ps, keywords, end_offset, false);
         }),
-        Box::new(move |ps: &mut dyn ConcreteParserState| {
+        Box::new(move |ps: &mut BaseParserState| {
             if let Some(keyword_rest) = keyword_rest {
                 format_node(ps, keyword_rest);
             }
         }),
-        Box::new(move |ps: &mut dyn ConcreteParserState| {
+        Box::new(move |ps: &mut BaseParserState| {
             if let Some(block) = block {
                 format_block_parameter_node(ps, block);
             }
@@ -1296,7 +1296,7 @@ fn format_parameters_node(ps: &mut dyn ConcreteParserState, params: prism::Param
 }
 
 fn format_block_parameter_node(
-    ps: &mut dyn ConcreteParserState,
+    ps: &mut BaseParserState,
     block_arg: prism::BlockParameterNode,
 ) {
     ps.with_start_of_line(
@@ -1314,7 +1314,7 @@ fn format_block_parameter_node(
 }
 
 fn format_block_argument_node(
-    ps: &mut dyn ConcreteParserState,
+    ps: &mut BaseParserState,
     block_argument_node: prism::BlockArgumentNode,
 ) {
     ps.emit_ident("&".to_string());
@@ -1329,7 +1329,7 @@ fn format_block_argument_node(
 }
 
 fn format_call_node(
-    ps: &mut dyn ConcreteParserState,
+    ps: &mut BaseParserState,
     call_node: prism::CallNode,
     skip_receiver: bool,
 ) {
@@ -1478,7 +1478,7 @@ fn format_call_node(
 }
 
 fn call_chain_elements_are_user_multilined(
-    ps: &dyn ConcreteParserState,
+    ps: &BaseParserState,
     call_chain_elements: Vec<&prism::Node>,
 ) -> bool {
     // Making a mutable copy since we may pop some items off later
@@ -1538,34 +1538,34 @@ fn call_chain_elements_are_user_multilined(
 }
 
 fn format_call_and_write_node(
-    _ps: &mut dyn ConcreteParserState,
+    _ps: &mut BaseParserState,
     _call_and_write_node: prism::CallAndWriteNode,
 ) {
     todo!()
 }
 
 fn format_call_operator_write_node(
-    _ps: &mut dyn ConcreteParserState,
+    _ps: &mut BaseParserState,
     _call_operator_write_node: prism::CallOperatorWriteNode,
 ) {
     todo!()
 }
 
 fn format_call_or_write_node(
-    _ps: &mut dyn ConcreteParserState,
+    _ps: &mut BaseParserState,
     _call_or_write_node: prism::CallOrWriteNode,
 ) {
     todo!()
 }
 
 fn format_call_target_node(
-    _ps: &mut dyn ConcreteParserState,
+    _ps: &mut BaseParserState,
     _call_target_node: prism::CallTargetNode,
 ) {
     todo!()
 }
 
-fn format_symbol_node(ps: &mut dyn ConcreteParserState, symbol_node: prism::SymbolNode) {
+fn format_symbol_node(ps: &mut BaseParserState, symbol_node: prism::SymbolNode) {
     if let Some(opening_loc) = symbol_node.opening_loc() {
         ps.emit_ident(loc_to_string(opening_loc));
     }
@@ -1574,7 +1574,7 @@ fn format_symbol_node(ps: &mut dyn ConcreteParserState, symbol_node: prism::Symb
     }
 }
 
-fn format_assoc_node(ps: &mut dyn ConcreteParserState, assoc_node: prism::AssocNode) {
+fn format_assoc_node(ps: &mut BaseParserState, assoc_node: prism::AssocNode) {
     let as_symbol = if let Some(hash_type) = ps.hash_type_from_formatting_context() {
         matches!(hash_type, HashType::SymbolKey)
     } else {
@@ -1602,7 +1602,7 @@ fn format_assoc_node(ps: &mut dyn ConcreteParserState, assoc_node: prism::AssocN
 }
 
 fn format_assoc_splat_node(
-    ps: &mut dyn ConcreteParserState,
+    ps: &mut BaseParserState,
     assoc_splat_node: prism::AssocSplatNode,
 ) {
     ps.with_start_of_line(
@@ -1616,7 +1616,7 @@ fn format_assoc_splat_node(
     );
 }
 
-fn format_block_node(ps: &mut dyn ConcreteParserState, block_node: prism::BlockNode) {
+fn format_block_node(ps: &mut BaseParserState, block_node: prism::BlockNode) {
     if &loc_to_string(block_node.opening_loc()) == "do" {
         ps.new_block(Box::new(|ps| {
             ps.emit_do_keyword();
@@ -1704,7 +1704,7 @@ fn format_block_node(ps: &mut dyn ConcreteParserState, block_node: prism::BlockN
 }
 
 fn format_block_parameters_node(
-    ps: &mut dyn ConcreteParserState,
+    ps: &mut BaseParserState,
     block_parameters_node: prism::BlockParametersNode,
 ) {
     // Exit early if there's no params
@@ -1741,7 +1741,7 @@ fn format_block_parameters_node(
 }
 
 fn format_block_local_variable_node(
-    ps: &mut dyn ConcreteParserState,
+    ps: &mut BaseParserState,
     block_local_variable_node: prism::BlockLocalVariableNode,
 ) {
     handle_string_at_offset(
@@ -1751,7 +1751,7 @@ fn format_block_local_variable_node(
     );
 }
 
-fn format_array_node(ps: &mut dyn ConcreteParserState, array_node: prism::ArrayNode) {
+fn format_array_node(ps: &mut BaseParserState, array_node: prism::ArrayNode) {
     if node_list_is_empty(&array_node.elements()) {
         if ps.has_comment_in_offset_span(
             array_node.location().start_offset(),
@@ -1796,14 +1796,14 @@ fn format_array_node(ps: &mut dyn ConcreteParserState, array_node: prism::ArrayN
 }
 
 fn format_array_pattern_node(
-    _ps: &mut dyn ConcreteParserState,
+    _ps: &mut BaseParserState,
     _array_pattern_node: prism::ArrayPatternNode,
 ) {
     todo!()
 }
 
 fn format_parentheses_node(
-    ps: &mut dyn ConcreteParserState,
+    ps: &mut BaseParserState,
     parentheses_node: prism::ParenthesesNode,
 ) {
     ps.emit_open_paren();
@@ -1863,7 +1863,7 @@ fn collapse_nodes_to_call_chain(node: prism::Node) -> Vec<prism::Node> {
 }
 
 fn format_rest_parameter_node(
-    ps: &mut dyn ConcreteParserState,
+    ps: &mut BaseParserState,
     rest_param: prism::RestParameterNode,
     special_case: SpecialCase,
 ) {
@@ -1888,7 +1888,7 @@ fn format_rest_parameter_node(
     );
 }
 
-fn format_arguments_node(ps: &mut dyn ConcreteParserState, arguments_node: prism::ArgumentsNode) {
+fn format_arguments_node(ps: &mut BaseParserState, arguments_node: prism::ArgumentsNode) {
     ps.with_start_of_line(
         false,
         Box::new(|ps| {
@@ -1903,7 +1903,7 @@ fn format_arguments_node(ps: &mut dyn ConcreteParserState, arguments_node: prism
 }
 
 fn format_keyword_hash_node(
-    ps: &mut dyn ConcreteParserState,
+    ps: &mut BaseParserState,
     keyword_hash_node: prism::KeywordHashNode,
 ) {
     let all_symbol_keys = keyword_hash_node
@@ -1937,7 +1937,7 @@ fn format_keyword_hash_node(
 }
 
 fn format_keyword_rest_parameter_node(
-    ps: &mut dyn ConcreteParserState,
+    ps: &mut BaseParserState,
     keyword_rest_parameter_node: prism::KeywordRestParameterNode,
 ) {
     ps.emit_ident("**".to_string());
@@ -1949,7 +1949,7 @@ fn format_keyword_rest_parameter_node(
 }
 
 fn format_required_keyword_parameter_node(
-    ps: &mut dyn ConcreteParserState,
+    ps: &mut BaseParserState,
     required_keyword_parameter_node: prism::RequiredKeywordParameterNode,
 ) {
     let name = const_to_string(required_keyword_parameter_node.name());
@@ -1959,7 +1959,7 @@ fn format_required_keyword_parameter_node(
 }
 
 fn format_required_parameter_node(
-    ps: &mut dyn ConcreteParserState,
+    ps: &mut BaseParserState,
     required_parameter_node: prism::RequiredParameterNode,
 ) {
     let name = const_to_string(required_parameter_node.name());
@@ -1968,7 +1968,7 @@ fn format_required_parameter_node(
 }
 
 fn format_local_variable_and_write_node(
-    ps: &mut dyn ConcreteParserState,
+    ps: &mut BaseParserState,
     local_variable_and_write_node: prism::LocalVariableAndWriteNode,
 ) {
     let variable_name = const_to_string(local_variable_and_write_node.name());
@@ -1986,7 +1986,7 @@ fn format_local_variable_and_write_node(
 }
 
 fn format_local_variable_operator_write_node(
-    ps: &mut dyn ConcreteParserState,
+    ps: &mut BaseParserState,
     local_variable_operator_write_node: prism::LocalVariableOperatorWriteNode,
 ) {
     let variable_name = const_to_string(local_variable_operator_write_node.name());
@@ -2006,14 +2006,14 @@ fn format_local_variable_operator_write_node(
 }
 
 fn format_local_variable_or_write_node(
-    _ps: &mut dyn ConcreteParserState,
+    _ps: &mut BaseParserState,
     _local_variable_or_write_node: prism::LocalVariableOrWriteNode,
 ) {
     todo!()
 }
 
 fn format_local_variable_target_node(
-    ps: &mut dyn ConcreteParserState,
+    ps: &mut BaseParserState,
     local_variable_target_node: prism::LocalVariableTargetNode,
 ) {
     let variable_name = const_to_string(local_variable_target_node.name());
@@ -2022,7 +2022,7 @@ fn format_local_variable_target_node(
 }
 
 fn format_local_variable_read_node(
-    ps: &mut dyn ConcreteParserState,
+    ps: &mut BaseParserState,
     local_variable_read_node: prism::LocalVariableReadNode,
 ) {
     let name = const_to_string(local_variable_read_node.name());
@@ -2031,7 +2031,7 @@ fn format_local_variable_read_node(
 }
 
 fn format_local_variable_write_node(
-    ps: &mut dyn ConcreteParserState,
+    ps: &mut BaseParserState,
     local_variable_write_node: prism::LocalVariableWriteNode,
 ) {
     let name = const_to_string(local_variable_write_node.name());
@@ -2046,7 +2046,7 @@ fn format_local_variable_write_node(
     );
 }
 
-fn format_splat_node(ps: &mut dyn ConcreteParserState, splat_node: prism::SplatNode) {
+fn format_splat_node(ps: &mut BaseParserState, splat_node: prism::SplatNode) {
     ps.emit_ident("*".to_string());
     if let Some(node) = splat_node.expression() {
         ps.with_start_of_line(
@@ -2058,12 +2058,12 @@ fn format_splat_node(ps: &mut dyn ConcreteParserState, splat_node: prism::SplatN
     }
 }
 
-fn format_ident(ps: &mut dyn ConcreteParserState, ident: String, offset: usize) {
+fn format_ident(ps: &mut BaseParserState, ident: String, offset: usize) {
     handle_string_at_offset(ps, ident, offset);
 }
 
 fn format_instance_variable_write_node(
-    ps: &mut dyn ConcreteParserState,
+    ps: &mut BaseParserState,
     instance_variable_write_node: prism::InstanceVariableWriteNode,
 ) {
     ps.at_offset(instance_variable_write_node.location().start_offset());
@@ -2078,7 +2078,7 @@ fn format_instance_variable_write_node(
     );
 }
 
-fn format_integer_node(ps: &mut dyn ConcreteParserState, integer_node: prism::IntegerNode) {
+fn format_integer_node(ps: &mut BaseParserState, integer_node: prism::IntegerNode) {
     handle_string_at_offset(
         ps,
         loc_to_string(integer_node.location()),
@@ -2086,7 +2086,7 @@ fn format_integer_node(ps: &mut dyn ConcreteParserState, integer_node: prism::In
     );
 }
 
-fn format_float_node(ps: &mut dyn ConcreteParserState, float_node: prism::FloatNode) {
+fn format_float_node(ps: &mut BaseParserState, float_node: prism::FloatNode) {
     handle_string_at_offset(
         ps,
         loc_to_string(float_node.location()),
@@ -2094,12 +2094,12 @@ fn format_float_node(ps: &mut dyn ConcreteParserState, float_node: prism::FloatN
     );
 }
 
-fn format_for_node(_ps: &mut dyn ConcreteParserState, _for_node: prism::ForNode) {
+fn format_for_node(_ps: &mut BaseParserState, _for_node: prism::ForNode) {
     todo!()
 }
 
 fn format_forwarding_arguments_node(
-    ps: &mut dyn ConcreteParserState,
+    ps: &mut BaseParserState,
     forwarding_arguments_node: prism::ForwardingArgumentsNode,
 ) {
     handle_string_at_offset(
@@ -2110,7 +2110,7 @@ fn format_forwarding_arguments_node(
 }
 
 fn format_forwarding_parameter_node(
-    ps: &mut dyn ConcreteParserState,
+    ps: &mut BaseParserState,
     forwarding_parameter_node: prism::ForwardingParameterNode,
 ) {
     handle_string_at_offset(
@@ -2121,7 +2121,7 @@ fn format_forwarding_parameter_node(
 }
 
 fn format_forwarding_super_node(
-    ps: &mut dyn ConcreteParserState,
+    ps: &mut BaseParserState,
     forwarding_super_node: prism::ForwardingSuperNode,
 ) {
     ps.emit_ident("super".to_string());
@@ -2131,7 +2131,7 @@ fn format_forwarding_super_node(
     }
 }
 
-fn format_super_node(ps: &mut dyn ConcreteParserState, super_node: prism::SuperNode) {
+fn format_super_node(ps: &mut BaseParserState, super_node: prism::SuperNode) {
     ps.emit_ident("super".to_string());
     // Note that we always emit parens for SuperNodes,
     // since they're distinct from ForwardingSuperNode which never use parens
@@ -2155,48 +2155,48 @@ fn format_super_node(ps: &mut dyn ConcreteParserState, super_node: prism::SuperN
 }
 
 fn format_global_variable_and_write_node(
-    _ps: &mut dyn ConcreteParserState,
+    _ps: &mut BaseParserState,
     _global_variable_and_write_node: prism::GlobalVariableAndWriteNode,
 ) {
     todo!()
 }
 
 fn format_global_variable_operator_write_node(
-    _ps: &mut dyn ConcreteParserState,
+    _ps: &mut BaseParserState,
     _global_variable_operator_write_node: prism::GlobalVariableOperatorWriteNode,
 ) {
     todo!()
 }
 
 fn format_global_variable_or_write_node(
-    _ps: &mut dyn ConcreteParserState,
+    _ps: &mut BaseParserState,
     _global_variable_or_write_node: prism::GlobalVariableOrWriteNode,
 ) {
     todo!()
 }
 
 fn format_global_variable_read_node(
-    _ps: &mut dyn ConcreteParserState,
+    _ps: &mut BaseParserState,
     _global_variable_read_node: prism::GlobalVariableReadNode,
 ) {
     todo!()
 }
 
 fn format_global_variable_target_node(
-    _ps: &mut dyn ConcreteParserState,
+    _ps: &mut BaseParserState,
     _global_variable_target_node: prism::GlobalVariableTargetNode,
 ) {
     todo!()
 }
 
 fn format_global_variable_write_node(
-    _ps: &mut dyn ConcreteParserState,
+    _ps: &mut BaseParserState,
     _global_variable_write_node: prism::GlobalVariableWriteNode,
 ) {
     todo!()
 }
 
-fn format_hash_node(ps: &mut dyn ConcreteParserState, hash_node: prism::HashNode) {
+fn format_hash_node(ps: &mut BaseParserState, hash_node: prism::HashNode) {
     ps.with_start_of_line(
         false,
         Box::new(|ps| {
@@ -2243,13 +2243,13 @@ fn format_hash_node(ps: &mut dyn ConcreteParserState, hash_node: prism::HashNode
 }
 
 fn format_hash_pattern_node(
-    _ps: &mut dyn ConcreteParserState,
+    _ps: &mut BaseParserState,
     _hash_pattern_node: prism::HashPatternNode,
 ) {
     todo!()
 }
 
-fn format_if_node(ps: &mut dyn ConcreteParserState, if_node: prism::IfNode) {
+fn format_if_node(ps: &mut BaseParserState, if_node: prism::IfNode) {
     // If a keyword is present, we're in an `if/elsif` block.
     // If it's not there, this is actually a ternary, which is sufficiently
     // different that we handle it in its own branch
@@ -2310,7 +2310,7 @@ fn format_if_node(ps: &mut dyn ConcreteParserState, if_node: prism::IfNode) {
     }
 }
 
-fn format_imaginary_node(_ps: &mut dyn ConcreteParserState, _imaginary_node: prism::ImaginaryNode) {
+fn format_imaginary_node(_ps: &mut BaseParserState, _imaginary_node: prism::ImaginaryNode) {
     todo!()
 }
 
@@ -2330,40 +2330,40 @@ fn format_implicit_rest_node() {
     // Since other machinery actually handles all of this, we don't really need to do anything if we end up here.
 }
 
-fn format_in_node(_ps: &mut dyn ConcreteParserState, _in_node: prism::InNode) {
+fn format_in_node(_ps: &mut BaseParserState, _in_node: prism::InNode) {
     todo!()
 }
 
 fn format_index_and_write_node(
-    _ps: &mut dyn ConcreteParserState,
+    _ps: &mut BaseParserState,
     _index_and_write_node: prism::IndexAndWriteNode,
 ) {
     todo!()
 }
 
 fn format_index_operator_write_node(
-    _ps: &mut dyn ConcreteParserState,
+    _ps: &mut BaseParserState,
     _index_operator_write_node: prism::IndexOperatorWriteNode,
 ) {
     todo!()
 }
 
 fn format_index_or_write_node(
-    _ps: &mut dyn ConcreteParserState,
+    _ps: &mut BaseParserState,
     _index_or_write_node: prism::IndexOrWriteNode,
 ) {
     todo!()
 }
 
 fn format_index_target_node(
-    _ps: &mut dyn ConcreteParserState,
+    _ps: &mut BaseParserState,
     _index_target_node: prism::IndexTargetNode,
 ) {
     todo!()
 }
 
 fn format_instance_variable_and_write_node(
-    ps: &mut dyn ConcreteParserState,
+    ps: &mut BaseParserState,
     instance_variable_and_write_node: prism::InstanceVariableAndWriteNode,
 ) {
     ps.emit_ident(const_to_string(instance_variable_and_write_node.name()));
@@ -2381,7 +2381,7 @@ fn format_instance_variable_and_write_node(
 }
 
 fn format_instance_variable_operator_write_node(
-    ps: &mut dyn ConcreteParserState,
+    ps: &mut BaseParserState,
     instance_variable_operator_write_node: prism::InstanceVariableOperatorWriteNode,
 ) {
     ps.emit_ident(const_to_string(
@@ -2401,7 +2401,7 @@ fn format_instance_variable_operator_write_node(
 }
 
 fn format_instance_variable_or_write_node(
-    ps: &mut dyn ConcreteParserState,
+    ps: &mut BaseParserState,
     instance_variable_or_write_node: prism::InstanceVariableOrWriteNode,
 ) {
     ps.emit_ident(const_to_string(instance_variable_or_write_node.name()));
@@ -2419,21 +2419,21 @@ fn format_instance_variable_or_write_node(
 }
 
 fn format_instance_variable_read_node(
-    ps: &mut dyn ConcreteParserState,
+    ps: &mut BaseParserState,
     instance_variable_read_node: prism::InstanceVariableReadNode,
 ) {
     ps.emit_ident(const_to_string(instance_variable_read_node.name()));
 }
 
 fn format_instance_variable_target_node(
-    ps: &mut dyn ConcreteParserState,
+    ps: &mut BaseParserState,
     instance_variable_target_node: prism::InstanceVariableTargetNode,
 ) {
     ps.emit_ident(const_to_string(instance_variable_target_node.name()));
 }
 
 fn format_constant_read_node(
-    ps: &mut dyn ConcreteParserState,
+    ps: &mut BaseParserState,
     constant_read_node: prism::ConstantReadNode,
 ) {
     handle_string_at_offset(
@@ -2444,7 +2444,7 @@ fn format_constant_read_node(
 }
 
 fn format_constant_path_node(
-    ps: &mut dyn ConcreteParserState,
+    ps: &mut BaseParserState,
     constant_path_node: prism::ConstantPathNode,
 ) {
     ps.with_start_of_line(
@@ -2467,56 +2467,56 @@ fn format_constant_path_node(
 }
 
 fn format_constant_and_write_node(
-    _ps: &mut dyn ConcreteParserState,
+    _ps: &mut BaseParserState,
     _constant_and_write_node: prism::ConstantAndWriteNode,
 ) {
     todo!()
 }
 
 fn format_constant_operator_write_node(
-    _ps: &mut dyn ConcreteParserState,
+    _ps: &mut BaseParserState,
     _constant_operator_write_node: prism::ConstantOperatorWriteNode,
 ) {
     todo!()
 }
 
 fn format_constant_or_write_node(
-    _ps: &mut dyn ConcreteParserState,
+    _ps: &mut BaseParserState,
     _constant_or_write_node: prism::ConstantOrWriteNode,
 ) {
     todo!()
 }
 
 fn format_constant_path_and_write_node(
-    _ps: &mut dyn ConcreteParserState,
+    _ps: &mut BaseParserState,
     _constant_path_and_write_node: prism::ConstantPathAndWriteNode,
 ) {
     todo!()
 }
 
 fn format_constant_path_operator_write_node(
-    _ps: &mut dyn ConcreteParserState,
+    _ps: &mut BaseParserState,
     _constant_path_operator_write_node: prism::ConstantPathOperatorWriteNode,
 ) {
     todo!()
 }
 
 fn format_constant_path_or_write_node(
-    _ps: &mut dyn ConcreteParserState,
+    _ps: &mut BaseParserState,
     _constant_path_or_write_node: prism::ConstantPathOrWriteNode,
 ) {
     todo!()
 }
 
 fn format_constant_path_target_node(
-    _ps: &mut dyn ConcreteParserState,
+    _ps: &mut BaseParserState,
     _constant_path_target_node: prism::ConstantPathTargetNode,
 ) {
     todo!()
 }
 
 fn format_constant_path_write_node(
-    ps: &mut dyn ConcreteParserState,
+    ps: &mut BaseParserState,
     constant_path_write_node: prism::ConstantPathWriteNode,
 ) {
     format_constant_path_node(ps, constant_path_write_node.target());
@@ -2528,14 +2528,14 @@ fn format_constant_path_write_node(
 }
 
 fn format_constant_target_node(
-    _ps: &mut dyn ConcreteParserState,
+    _ps: &mut BaseParserState,
     _constant_target_node: prism::ConstantTargetNode,
 ) {
     todo!()
 }
 
 fn format_constant_write_node(
-    ps: &mut dyn ConcreteParserState,
+    ps: &mut BaseParserState,
     constant_write_node: prism::ConstantWriteNode,
 ) {
     ps.emit_ident(const_to_string(constant_write_node.name()));
@@ -2546,53 +2546,53 @@ fn format_constant_write_node(
     );
 }
 
-fn format_lambda_node(_ps: &mut dyn ConcreteParserState, _lambda_node: prism::LambdaNode) {
+fn format_lambda_node(_ps: &mut BaseParserState, _lambda_node: prism::LambdaNode) {
     todo!()
 }
 
 fn format_match_last_line_node(
-    _ps: &mut dyn ConcreteParserState,
+    _ps: &mut BaseParserState,
     _match_last_line_node: prism::MatchLastLineNode,
 ) {
     todo!()
 }
 
 fn format_match_predicate_node(
-    _ps: &mut dyn ConcreteParserState,
+    _ps: &mut BaseParserState,
     _match_predicate_node: prism::MatchPredicateNode,
 ) {
     todo!()
 }
 
 fn format_match_required_node(
-    _ps: &mut dyn ConcreteParserState,
+    _ps: &mut BaseParserState,
     _match_required_node: prism::MatchRequiredNode,
 ) {
     todo!()
 }
 
 fn format_match_write_node(
-    _ps: &mut dyn ConcreteParserState,
+    _ps: &mut BaseParserState,
     _match_write_node: prism::MatchWriteNode,
 ) {
     todo!()
 }
 
 fn format_multi_target_node(
-    _ps: &mut dyn ConcreteParserState,
+    _ps: &mut BaseParserState,
     _multi_target_node: prism::MultiTargetNode,
 ) {
     todo!()
 }
 
 fn format_multi_write_node(
-    _ps: &mut dyn ConcreteParserState,
+    _ps: &mut BaseParserState,
     _multi_write_node: prism::MultiWriteNode,
 ) {
     todo!()
 }
 
-fn format_next_node(ps: &mut dyn ConcreteParserState, next_node: prism::NextNode) {
+fn format_next_node(ps: &mut BaseParserState, next_node: prism::NextNode) {
     ps.emit_ident("next".to_string());
     if let Some(arguments_node) = next_node.arguments() {
         ps.with_start_of_line(
@@ -2609,33 +2609,33 @@ fn format_next_node(ps: &mut dyn ConcreteParserState, next_node: prism::NextNode
     }
 }
 
-fn format_nil_node(ps: &mut dyn ConcreteParserState, _nil_node: prism::NilNode) {
+fn format_nil_node(ps: &mut BaseParserState, _nil_node: prism::NilNode) {
     ps.emit_ident("nil".to_string());
 }
 
 fn format_no_keywords_parameter_node(
-    _ps: &mut dyn ConcreteParserState,
+    _ps: &mut BaseParserState,
     _no_keywords_parameter_node: prism::NoKeywordsParameterNode,
 ) {
     todo!()
 }
 
 fn format_numbered_parameters_node(
-    _ps: &mut dyn ConcreteParserState,
+    _ps: &mut BaseParserState,
     _numbered_parameters_node: prism::NumberedParametersNode,
 ) {
     todo!()
 }
 
 fn format_numbered_reference_read_node(
-    _ps: &mut dyn ConcreteParserState,
+    _ps: &mut BaseParserState,
     _numbered_reference_read_node: prism::NumberedReferenceReadNode,
 ) {
     todo!()
 }
 
 fn format_optional_keyword_parameter_node(
-    ps: &mut dyn ConcreteParserState,
+    ps: &mut BaseParserState,
     optional_keyword_parameter_node: prism::OptionalKeywordParameterNode,
 ) {
     ps.emit_ident(const_to_string(optional_keyword_parameter_node.name()));
@@ -2649,7 +2649,7 @@ fn format_optional_keyword_parameter_node(
 }
 
 fn format_optional_parameter_node(
-    ps: &mut dyn ConcreteParserState,
+    ps: &mut BaseParserState,
     optional_parameter_node: prism::OptionalParameterNode,
 ) {
     ps.emit_ident(const_to_string(optional_parameter_node.name()));
@@ -2657,39 +2657,39 @@ fn format_optional_parameter_node(
     format_node(ps, optional_parameter_node.value());
 }
 
-fn format_or_node(_ps: &mut dyn ConcreteParserState, _or_node: prism::OrNode) {
+fn format_or_node(_ps: &mut BaseParserState, _or_node: prism::OrNode) {
     todo!()
 }
 
 fn format_pinned_expression_node(
-    _ps: &mut dyn ConcreteParserState,
+    _ps: &mut BaseParserState,
     _pinned_expression_node: prism::PinnedExpressionNode,
 ) {
     todo!()
 }
 
 fn format_pinned_variable_node(
-    _ps: &mut dyn ConcreteParserState,
+    _ps: &mut BaseParserState,
     _pinned_variable_node: prism::PinnedVariableNode,
 ) {
     todo!()
 }
 
 fn format_post_execution_node(
-    _ps: &mut dyn ConcreteParserState,
+    _ps: &mut BaseParserState,
     _post_execution_node: prism::PostExecutionNode,
 ) {
     todo!()
 }
 
 fn format_pre_execution_node(
-    _ps: &mut dyn ConcreteParserState,
+    _ps: &mut BaseParserState,
     _pre_execution_node: prism::PreExecutionNode,
 ) {
     todo!()
 }
 
-fn format_range_node(ps: &mut dyn ConcreteParserState, range_node: prism::RangeNode) {
+fn format_range_node(ps: &mut BaseParserState, range_node: prism::RangeNode) {
     ps.with_start_of_line(
         false,
         Box::new(|ps| {
@@ -2704,16 +2704,16 @@ fn format_range_node(ps: &mut dyn ConcreteParserState, range_node: prism::RangeN
     );
 }
 
-fn format_rational_node(_ps: &mut dyn ConcreteParserState, _rational_node: prism::RationalNode) {
+fn format_rational_node(_ps: &mut BaseParserState, _rational_node: prism::RationalNode) {
     todo!()
 }
 
-fn format_redo_node(ps: &mut dyn ConcreteParserState) {
+fn format_redo_node(ps: &mut BaseParserState) {
     ps.emit_ident("redo".to_string());
 }
 
 fn format_regular_expression_node(
-    ps: &mut dyn ConcreteParserState,
+    ps: &mut BaseParserState,
     regular_expression_node: prism::RegularExpressionNode,
 ) {
     ps.emit_ident(loc_to_string(regular_expression_node.opening_loc()));
@@ -2722,13 +2722,13 @@ fn format_regular_expression_node(
 }
 
 fn format_rescue_modifier_node(
-    _ps: &mut dyn ConcreteParserState,
+    _ps: &mut BaseParserState,
     _rescue_modifier_node: prism::RescueModifierNode,
 ) {
     todo!()
 }
 
-fn format_rescue_node(ps: &mut dyn ConcreteParserState, rescue_node: prism::RescueNode) {
+fn format_rescue_node(ps: &mut BaseParserState, rescue_node: prism::RescueNode) {
     // Double check that these offsets are correct, since begin/rescue/ensure/else
     // aren't always handled with `format_node`, which usually handles this
     ps.at_offset(rescue_node.location().start_offset());
@@ -2781,11 +2781,11 @@ fn format_rescue_node(ps: &mut dyn ConcreteParserState, rescue_node: prism::Resc
     ps.at_offset(rescue_node.location().end_offset());
 }
 
-fn format_retry_node(ps: &mut dyn ConcreteParserState) {
+fn format_retry_node(ps: &mut BaseParserState) {
     ps.emit_keyword("retry".to_string());
 }
 
-fn format_return_node(ps: &mut dyn ConcreteParserState, return_node: prism::ReturnNode) {
+fn format_return_node(ps: &mut BaseParserState, return_node: prism::ReturnNode) {
     ps.emit_ident("return".to_string());
     ps.with_start_of_line(
         false,
@@ -2809,21 +2809,21 @@ fn format_return_node(ps: &mut dyn ConcreteParserState, return_node: prism::Retu
 }
 
 fn format_shareable_constant_node(
-    _ps: &mut dyn ConcreteParserState,
+    _ps: &mut BaseParserState,
     _shareable_constant_node: prism::ShareableConstantNode,
 ) {
     todo!()
 }
 
 fn format_singleton_class_node(
-    _ps: &mut dyn ConcreteParserState,
+    _ps: &mut BaseParserState,
     _singleton_class_node: prism::SingletonClassNode,
 ) {
     todo!()
 }
 
 fn format_source_encoding_node(
-    ps: &mut dyn ConcreteParserState,
+    ps: &mut BaseParserState,
     source_encoding_node: prism::SourceEncodingNode,
 ) {
     handle_string_at_offset(
@@ -2834,7 +2834,7 @@ fn format_source_encoding_node(
 }
 
 fn format_source_file_node(
-    ps: &mut dyn ConcreteParserState,
+    ps: &mut BaseParserState,
     source_file_node: prism::SourceFileNode,
 ) {
     handle_string_at_offset(
@@ -2845,7 +2845,7 @@ fn format_source_file_node(
 }
 
 fn format_source_line_node(
-    ps: &mut dyn ConcreteParserState,
+    ps: &mut BaseParserState,
     source_line_node: prism::SourceLineNode,
 ) {
     handle_string_at_offset(
@@ -2855,31 +2855,31 @@ fn format_source_line_node(
     );
 }
 
-fn format_self_node(ps: &mut dyn ConcreteParserState, _self_node: prism::SelfNode) {
+fn format_self_node(ps: &mut BaseParserState, _self_node: prism::SelfNode) {
     ps.emit_ident("self".to_string());
 }
 
-fn format_true_node(ps: &mut dyn ConcreteParserState, true_node: prism::TrueNode) {
+fn format_true_node(ps: &mut BaseParserState, true_node: prism::TrueNode) {
     handle_string_at_offset(ps, "true".to_string(), true_node.location().start_offset());
 }
 
-fn format_undef_node(_ps: &mut dyn ConcreteParserState, _undef_node: prism::UndefNode) {
+fn format_undef_node(_ps: &mut BaseParserState, _undef_node: prism::UndefNode) {
     todo!()
 }
 
-fn format_unless_node(_ps: &mut dyn ConcreteParserState, _unless_node: prism::UnlessNode) {
+fn format_unless_node(_ps: &mut BaseParserState, _unless_node: prism::UnlessNode) {
     todo!()
 }
 
-fn format_until_node(_ps: &mut dyn ConcreteParserState, _until_node: prism::UntilNode) {
+fn format_until_node(_ps: &mut BaseParserState, _until_node: prism::UntilNode) {
     todo!()
 }
 
-fn format_when_node(_ps: &mut dyn ConcreteParserState, _when_node: prism::WhenNode) {
+fn format_when_node(_ps: &mut BaseParserState, _when_node: prism::WhenNode) {
     todo!()
 }
 
-fn format_while_node(ps: &mut dyn ConcreteParserState, while_node: prism::WhileNode) {
+fn format_while_node(ps: &mut BaseParserState, while_node: prism::WhileNode) {
     ps.with_start_of_line(
         false,
         Box::new(|ps| {
@@ -2900,13 +2900,13 @@ fn format_while_node(ps: &mut dyn ConcreteParserState, while_node: prism::WhileN
     ps.emit_end();
 }
 
-fn format_x_string_node(ps: &mut dyn ConcreteParserState, x_string_node: prism::XStringNode) {
+fn format_x_string_node(ps: &mut BaseParserState, x_string_node: prism::XStringNode) {
     ps.emit_ident("`".to_string());
     ps.emit_string_content(loc_to_string(x_string_node.content_loc()));
     ps.emit_ident("`".to_string());
 }
 
-fn format_yield_node(ps: &mut dyn ConcreteParserState, yield_node: prism::YieldNode) {
+fn format_yield_node(ps: &mut BaseParserState, yield_node: prism::YieldNode) {
     ps.emit_ident("yield".to_string());
     if let Some(arguments) = yield_node.arguments() {
         let use_parens =
@@ -2926,7 +2926,7 @@ fn format_yield_node(ps: &mut dyn ConcreteParserState, yield_node: prism::YieldN
     }
 }
 
-fn handle_string_at_offset(ps: &mut dyn ConcreteParserState, ident: String, offset: usize) {
+fn handle_string_at_offset(ps: &mut BaseParserState, ident: String, offset: usize) {
     ps.at_offset(offset);
     ps.emit_ident(ident);
 }
@@ -2948,7 +2948,7 @@ fn node_list_is_empty(node_list: &prism::NodeList) -> bool {
 }
 
 fn format_list_like_thing(
-    ps: &mut dyn ConcreteParserState,
+    ps: &mut BaseParserState,
     node_list: prism::NodeList,
     end_offset: SourceOffset,
     single_line: bool,
