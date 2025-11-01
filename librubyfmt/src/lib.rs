@@ -37,7 +37,7 @@ mod types;
 mod util;
 
 use file_comments::FileComments;
-use parser_state::BaseParserState;
+use parser_state::ParserState;
 use ruby_ops::{ParseError, Parser, RipperTree, load_rubyfmt};
 
 #[cfg(debug_assertions)]
@@ -224,7 +224,7 @@ pub fn toplevel_format_program<W: Write>(
     file_comments: FileComments,
     end_data: Option<&str>,
 ) -> Result<(), RichFormatError> {
-    let mut ps = BaseParserState::new(file_comments);
+    let mut ps = ParserState::new(file_comments);
     let v: ripper_tree_types::Program =
         de::from_value(tree).map_err(RichFormatError::RipperParseFailure)?;
 
@@ -242,7 +242,7 @@ pub fn toplevel_format_program_with_prism<W: Write>(
     source: &[u8],
     data: Option<ruby_prism::Location>,
 ) -> Result<(), RichFormatError> {
-    let mut ps = BaseParserState::new(FileComments::from_prism_comments(comments, source));
+    let mut ps = ParserState::new(FileComments::from_prism_comments(comments, source));
     ps.flush_start_of_file_comments();
 
     format_prism::format_program(&mut ps, tree.as_program_node().unwrap(), data);

@@ -12,7 +12,7 @@ use log::debug;
 use std::io::{self, Cursor, Write};
 use std::str;
 
-pub type RenderFunc<'a> = Box<dyn FnOnce(&mut BaseParserState) + 'a>;
+pub type RenderFunc<'a> = Box<dyn FnOnce(&mut ParserState) + 'a>;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum FormattingContext {
@@ -57,7 +57,7 @@ impl IndentDepth {
 }
 
 #[derive(Debug)]
-pub struct BaseParserState {
+pub struct ParserState {
     depth_stack: Vec<IndentDepth>,
     start_of_line: Vec<bool>,
     suppress_comments_stack: Vec<bool>,
@@ -74,7 +74,7 @@ pub struct BaseParserState {
     scopes: Vec<Vec<String>>,
 }
 
-impl BaseParserState {
+impl ParserState {
     pub(crate) fn scope_has_variable(&self, s: &str) -> bool {
         self.scopes
             .last()
@@ -94,9 +94,9 @@ impl BaseParserState {
         symbol: String,
         kind: HeredocKind,
         end_line: LineNumber,
-        formatting_func: Box<dyn FnOnce(&mut BaseParserState) + 'a>,
+        formatting_func: Box<dyn FnOnce(&mut ParserState) + 'a>,
     ) {
-        let mut next_ps = BaseParserState::render_with_blank_state(self, formatting_func);
+        let mut next_ps = ParserState::render_with_blank_state(self, formatting_func);
 
         for hs in next_ps.heredoc_strings.drain(0..) {
             self.heredoc_strings.push(hs);
@@ -169,7 +169,7 @@ impl BaseParserState {
     }
 
     pub(crate) fn will_render_as_multiline<'a>(&mut self, f: RenderFunc) -> bool {
-        let mut next_ps = BaseParserState::new_with_depth_stack_from(self);
+        let mut next_ps = ParserState::new_with_depth_stack_from(self);
         // Ignore commments when determining line length
         next_ps.with_suppress_comments(true, f);
         let data = next_ps.render_to_buffer();
@@ -442,7 +442,7 @@ impl BaseParserState {
         }
 
         self.on_line(self.current_orig_line_number + 1);
-        let should_iter = |ps: &BaseParserState, ln| {
+        let should_iter = |ps: &ParserState, ln| {
             // If we have a max line number, it will be the last token
             // of an expression (e.g. the `end` of a `do`/`end` block), so it's
             // fine if we wind forward to that line
@@ -736,9 +736,9 @@ impl BaseParserState {
     }
 }
 
-impl BaseParserState {
+impl ParserState {
     pub(crate) fn new(fc: FileComments) -> Self {
-        BaseParserState {
+        ParserState {
             depth_stack: vec![IndentDepth::new()],
             start_of_line: vec![true],
             suppress_comments_stack: vec![false],
@@ -825,16 +825,16 @@ impl BaseParserState {
         }
     }
 
-    pub(crate) fn new_with_depth_stack_from(ps: &BaseParserState) -> Self {
-        let mut next_ps = BaseParserState::new_with_reset_depth_stack(ps);
+    pub(crate) fn new_with_depth_stack_from(ps: &ParserState) -> Self {
+        let mut next_ps = ParserState::new_with_reset_depth_stack(ps);
         next_ps.depth_stack = ps.depth_stack.clone();
         next_ps
     }
 
     // Creates a copy of the parser state *with the depth_stack reset*.
     // This is used for heredocs, where we explicitly want to ignore current indentation.
-    pub(crate) fn new_with_reset_depth_stack(ps: &BaseParserState) -> Self {
-        let mut next_ps = BaseParserState::new(FileComments::default());
+    pub(crate) fn new_with_reset_depth_stack(ps: &ParserState) -> Self {
+        let mut next_ps = ParserState::new(FileComments::default());
         next_ps.comments_hash = ps.comments_hash.clone();
         next_ps.start_of_line = ps.start_of_line.clone();
         next_ps.current_orig_line_number = ps.current_orig_line_number;
@@ -929,11 +929,11 @@ impl BaseParserState {
         }
     }
 
-    pub(crate) fn render_with_blank_state<F>(ps: &mut BaseParserState, f: F) -> BaseParserState
+    pub(crate) fn render_with_blank_state<F>(ps: &mut ParserState, f: F) -> ParserState
     where
-        F: FnOnce(&mut BaseParserState),
+        F: FnOnce(&mut ParserState),
     {
-        let mut next_ps = BaseParserState::new_with_reset_depth_stack(ps);
+        let mut next_ps = ParserState::new_with_reset_depth_stack(ps);
         f(&mut next_ps);
         next_ps
     }
