@@ -4,7 +4,7 @@ use crate::{
     delimiters::BreakableDelims,
     format::SpecialCase,
     heredoc_string::HeredocKind,
-    parser_state::{BaseParserState, ConcreteParserState, FormattingContext, HashType, RenderFunc},
+    parser_state::{BaseParserState, FormattingContext, HashType, RenderFunc},
     render_targets::MultilineHandling,
     types::SourceOffset,
     util::{const_to_string, loc_to_string, u8_to_string},

@@ -2,7 +2,7 @@ use std::collections::HashSet;
 
 use crate::delimiters::BreakableDelims;
 use crate::heredoc_string::HeredocKind;
-use crate::parser_state::{BaseParserState, ConcreteParserState, FormattingContext, RenderFunc};
+use crate::parser_state::{BaseParserState, FormattingContext, RenderFunc};
 use crate::render_targets::MultilineHandling;
 use crate::ripper_tree_types::*;
 use crate::types::LineNumber;
