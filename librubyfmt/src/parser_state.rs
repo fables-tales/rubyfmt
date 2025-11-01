@@ -187,19 +187,6 @@ impl BaseParserState {
             .has_comment_in_offsets(start_offset, end_offset)
     }
 
-    pub(crate) fn will_render_beyond_max_line_length<'a>(&mut self, f: RenderFunc) -> bool {
-        let mut next_ps = BaseParserState::new_with_depth_stack_from(self);
-        // Ignore commments when determining line length
-        next_ps.with_suppress_comments(true, f);
-        let data = next_ps.render_to_buffer();
-
-        let s = str::from_utf8(&data).expect("string is utf8").to_string();
-
-        // Add current spaces to account for current indentation level
-        (s.split_whitespace().collect::<String>().len() + (self.current_spaces() as usize))
-            > MAX_LINE_LENGTH
-    }
-
     pub(crate) fn reset_space_count(&mut self) {
         self.spaces_after_last_newline = self.current_spaces();
     }
@@ -396,10 +383,6 @@ impl BaseParserState {
     pub(crate) fn has_comments_in_line(&self, start_line: LineNumber, end_line: LineNumber) -> bool {
         self.comments_hash
             .has_comments_in_lines(start_line, end_line)
-    }
-
-    pub(crate) fn current_line_number(&self) -> u64 {
-        self.current_orig_line_number
     }
 
     pub(crate) fn emit_def(&mut self, def_name: String) {
