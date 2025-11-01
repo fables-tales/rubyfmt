@@ -237,17 +237,19 @@ impl ConcreteLineTokenAndTargets {
 
     pub fn into_ruby(self) -> String {
         match self {
-            Self::BreakableEntry(be) => be
-                .into_tokens(ConvertType::SingleLine)
-                .into_iter()
-                .fold("".to_string(), |accum, tok| {
-                    format!("{}{}", accum, tok.into_ruby())
-                }),
+            Self::BreakableEntry(be) => be.into_tokens(ConvertType::SingleLine).into_iter().fold(
+                "".to_string(),
+                |mut accum, tok| {
+                    accum.push_str(&tok.into_ruby());
+                    accum
+                },
+            ),
             Self::BreakableCallChainEntry(bcce) => bcce
                 .into_tokens(ConvertType::SingleLine)
                 .into_iter()
-                .fold("".to_string(), |accum, tok| {
-                    format!("{}{}", accum, tok.into_ruby())
+                .fold("".to_string(), |mut accum, tok| {
+                    accum.push_str(&tok.into_ruby());
+                    accum
                 }),
             Self::ConcreteLineToken(clt) => clt.into_ruby(),
         }
