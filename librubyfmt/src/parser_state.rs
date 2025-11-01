@@ -902,11 +902,7 @@ impl BaseParserState {
         if self.heredoc_strings.is_empty() {
             None
         } else {
-            let mut hds = vec![];
-            while let Some(element) = self.heredoc_strings.pop() {
-                hds.push(element);
-            }
-            Some(hds)
+            Some(self.heredoc_strings.drain(..).rev().collect())
         }
     }
 
