@@ -81,7 +81,7 @@ impl ParserState {
             .expect("it's never empty")
             .contains(&s.to_string())
     }
-    pub(crate) fn new_scope<'a>(&mut self, f: RenderFunc) {
+    pub(crate) fn new_scope(&mut self, f: RenderFunc) {
         self.scopes.push(vec![]);
         f(self);
         self.scopes.pop();
@@ -127,7 +127,7 @@ impl ParserState {
         self.push_concrete_token(ConcreteLineToken::HeredocClose { symbol });
     }
 
-    pub(crate) fn magic_handle_comments_for_multiline_arrays<'a>(
+    pub(crate) fn magic_handle_comments_for_multiline_arrays(
         &mut self,
         end_line: Option<LineNumber>,
         f: RenderFunc,
@@ -168,7 +168,7 @@ impl ParserState {
         }
     }
 
-    pub(crate) fn will_render_as_multiline<'a>(&mut self, f: RenderFunc) -> bool {
+    pub(crate) fn will_render_as_multiline(&mut self, f: RenderFunc) -> bool {
         let mut next_ps = ParserState::new_with_depth_stack_from(self);
         // Ignore commments when determining line length
         next_ps.with_suppress_comments(true, f);
@@ -191,7 +191,7 @@ impl ParserState {
         self.spaces_after_last_newline = self.current_spaces();
     }
 
-    pub(crate) fn dedent<'a>(&mut self, f: RenderFunc) {
+    pub(crate) fn dedent(&mut self, f: RenderFunc) {
         let ds_length = self.depth_stack.len();
         self.depth_stack[ds_length - 1].decrement();
         f(self);
@@ -216,13 +216,13 @@ impl ParserState {
         self.depth_stack[ds_length - 1].decrement();
     }
 
-    pub(crate) fn with_start_of_line<'a>(&mut self, start_of_line: bool, f: RenderFunc) {
+    pub(crate) fn with_start_of_line(&mut self, start_of_line: bool, f: RenderFunc) {
         self.start_of_line.push(start_of_line);
         f(self);
         self.start_of_line.pop();
     }
 
-    pub(crate) fn breakable_of<'a>(&mut self, delims: BreakableDelims, f: RenderFunc) {
+    pub(crate) fn breakable_of(&mut self, delims: BreakableDelims, f: RenderFunc) {
         self.shift_comments();
         let mut be = BreakableEntry::new(delims, self.formatting_context.clone());
         be.push_line_number(self.current_orig_line_number);
@@ -255,7 +255,7 @@ impl ParserState {
 
     /// A version of `breakable_of` for list-like things that use whitespace delimiters.
     /// At the moment, this is only for conditions in a `when` clause
-    pub(crate) fn inline_breakable_of<'a>(&mut self, delims: BreakableDelims, f: RenderFunc) {
+    pub(crate) fn inline_breakable_of(&mut self, delims: BreakableDelims, f: RenderFunc) {
         self.shift_comments();
         let mut be = BreakableEntry::new(delims, self.formatting_context.clone());
         be.push_line_number(self.current_orig_line_number);
@@ -280,7 +280,7 @@ impl ParserState {
         self.push_target(ConcreteLineTokenAndTargets::BreakableEntry(insert_be));
     }
 
-    pub(crate) fn breakable_call_chain_of<'a>(
+    pub(crate) fn breakable_call_chain_of(
         &mut self,
         mulitiline_handling: MultilineHandling,
         f: RenderFunc,
@@ -304,13 +304,13 @@ impl ParserState {
         ));
     }
 
-    pub(crate) fn with_suppress_comments<'a>(&mut self, suppress: bool, f: RenderFunc) {
+    pub(crate) fn with_suppress_comments(&mut self, suppress: bool, f: RenderFunc) {
         self.suppress_comments_stack.push(suppress);
         f(self);
         self.suppress_comments_stack.pop();
     }
 
-    pub(crate) fn with_absorbing_indent_block<'a>(&mut self, f: RenderFunc) {
+    pub(crate) fn with_absorbing_indent_block(&mut self, f: RenderFunc) {
         let was_absorbing = self.absorbing_indents != 0;
         self.absorbing_indents += 1;
         if was_absorbing {
@@ -321,14 +321,14 @@ impl ParserState {
         self.absorbing_indents -= 1;
     }
 
-    pub(crate) fn new_block<'a>(&mut self, f: RenderFunc) {
+    pub(crate) fn new_block(&mut self, f: RenderFunc) {
         let ds_length = self.depth_stack.len();
         self.depth_stack[ds_length - 1].increment();
         f(self);
         self.depth_stack[ds_length - 1].decrement();
     }
 
-    pub(crate) fn with_formatting_context<'a>(&mut self, fc: FormattingContext, f: RenderFunc) {
+    pub(crate) fn with_formatting_context(&mut self, fc: FormattingContext, f: RenderFunc) {
         self.formatting_context.push(fc);
         f(self);
         self.formatting_context.pop();
