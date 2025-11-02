@@ -2,12 +2,12 @@ use std::collections::HashSet;
 
 use crate::delimiters::BreakableDelims;
 use crate::heredoc_string::HeredocKind;
-use crate::parser_state::{BaseParserState, ConcreteParserState, FormattingContext, RenderFunc};
+use crate::parser_state::{FormattingContext, ParserState, RenderFunc};
 use crate::render_targets::MultilineHandling;
 use crate::ripper_tree_types::*;
 use crate::types::LineNumber;
 
-pub fn format_def(ps: &mut dyn ConcreteParserState, def: Def) {
+pub fn format_def(ps: &mut ParserState, def: Def) {
     let def_expression = (def.1).to_def_parts();
 
     let body = def.3;
@@ -27,7 +27,7 @@ pub fn format_def(ps: &mut dyn ConcreteParserState, def: Def) {
 }
 
 fn format_def_body(
-    ps: &mut dyn ConcreteParserState,
+    ps: &mut ParserState,
     pp: ParenOrParams,
     bodystmt: DefBodyStmt,
     end_line: LineNumber,
@@ -77,9 +77,9 @@ fn format_def_body(
     }
 }
 
-type ParamFormattingFunc = Box<dyn FnOnce(&mut dyn ConcreteParserState) -> bool>;
+type ParamFormattingFunc = Box<dyn FnOnce(&mut ParserState) -> bool>;
 
-pub fn inner_format_params(ps: &mut dyn ConcreteParserState, params: Box<Params>) {
+pub fn inner_format_params(ps: &mut ParserState, params: Box<Params>) {
     let non_null_positions = params.non_null_positions();
     //def foo(a, b=nil, *args, d, e:, **kwargs, &blk)
     //        ^  ^___^  ^___^  ^  ^    ^_____^   ^
@@ -106,21 +106,15 @@ pub fn inner_format_params(ps: &mut dyn ConcreteParserState, params: Box<Params>
     let block_arg = params.7;
 
     let formats: Vec<ParamFormattingFunc> = vec![
-        Box::new(move |ps: &mut dyn ConcreteParserState| {
-            format_required_params(ps, required_params)
-        }),
-        Box::new(move |ps: &mut dyn ConcreteParserState| {
-            format_optional_params(ps, optional_params)
-        }),
-        Box::new(move |ps: &mut dyn ConcreteParserState| {
+        Box::new(move |ps: &mut ParserState| format_required_params(ps, required_params)),
+        Box::new(move |ps: &mut ParserState| format_optional_params(ps, optional_params)),
+        Box::new(move |ps: &mut ParserState| {
             format_rest_param(ps, rest_param, SpecialCase::NoSpecialCase)
         }),
-        Box::new(move |ps: &mut dyn ConcreteParserState| {
-            format_required_params(ps, more_required_params)
-        }),
-        Box::new(move |ps: &mut dyn ConcreteParserState| format_kwargs(ps, kwargs)),
-        Box::new(move |ps: &mut dyn ConcreteParserState| format_kwrest_params(ps, kwrest_params)),
-        Box::new(move |ps: &mut dyn ConcreteParserState| format_block_arg(ps, block_arg)),
+        Box::new(move |ps: &mut ParserState| format_required_params(ps, more_required_params)),
+        Box::new(move |ps: &mut ParserState| format_kwargs(ps, kwargs)),
+        Box::new(move |ps: &mut ParserState| format_kwrest_params(ps, kwrest_params)),
+        Box::new(move |ps: &mut ParserState| format_block_arg(ps, block_arg)),
     ];
 
     for (idx, format_fn) in formats.into_iter().enumerate() {
@@ -135,7 +129,7 @@ pub fn inner_format_params(ps: &mut dyn ConcreteParserState, params: Box<Params>
     }
 }
 
-pub fn format_blockvar(ps: &mut dyn ConcreteParserState, bv: BlockVar) {
+pub fn format_blockvar(ps: &mut ParserState, bv: BlockVar) {
     let start_end = bv.3;
     let f_params = match bv.2 {
         BlockLocalVariables::Present(v) => Some(v),
@@ -189,11 +183,7 @@ pub fn format_blockvar(ps: &mut dyn ConcreteParserState, bv: BlockVar) {
     ps.on_line(start_end.end_line());
 }
 
-pub fn format_params(
-    ps: &mut dyn ConcreteParserState,
-    params: Box<Params>,
-    delims: BreakableDelims,
-) {
+pub fn format_params(ps: &mut ParserState, params: Box<Params>, delims: BreakableDelims) {
     let have_any_params = params.non_null_positions().iter().any(|&x| x);
     if !have_any_params {
         return;
@@ -212,7 +202,7 @@ pub fn format_params(
 }
 
 pub fn format_kwrest_params(
-    ps: &mut dyn ConcreteParserState,
+    ps: &mut ParserState,
     kwrest_params: Option<KwRestParamOrArgsForward>,
 ) -> bool {
     if kwrest_params.is_none() {
@@ -239,10 +229,7 @@ pub fn format_kwrest_params(
     true
 }
 
-pub fn format_block_arg(
-    ps: &mut dyn ConcreteParserState,
-    block_arg: Option<BlockArgOrTag>,
-) -> bool {
+pub fn format_block_arg(ps: &mut ParserState, block_arg: Option<BlockArgOrTag>) -> bool {
     match block_arg {
         None | Some(BlockArgOrTag::Tag(..)) => false,
         Some(BlockArgOrTag::BlockArg(ba)) => {
@@ -263,10 +250,7 @@ pub fn format_block_arg(
     }
 }
 
-pub fn format_kwargs(
-    ps: &mut dyn ConcreteParserState,
-    kwargs: Vec<(Label, ExpressionOrFalse)>,
-) -> bool {
+pub fn format_kwargs(ps: &mut ParserState, kwargs: Vec<(Label, ExpressionOrFalse)>) -> bool {
     if kwargs.is_empty() {
         return false;
     }
@@ -301,7 +285,7 @@ pub fn format_kwargs(
 }
 
 pub fn format_rest_param(
-    ps: &mut dyn ConcreteParserState,
+    ps: &mut ParserState,
     rest_param: Option<RestParamOr0OrExcessedComma>,
     special_case: SpecialCase,
 ) -> bool {
@@ -350,7 +334,7 @@ pub fn format_rest_param(
 }
 
 pub fn format_optional_params(
-    ps: &mut dyn ConcreteParserState,
+    ps: &mut ParserState,
     optional_params: Vec<(Ident, Expression)>,
 ) -> bool {
     if optional_params.is_empty() {
@@ -375,7 +359,7 @@ pub fn format_optional_params(
     true
 }
 
-pub fn format_mlhs(ps: &mut dyn ConcreteParserState, mlhs: MLhs) {
+pub fn format_mlhs(ps: &mut ParserState, mlhs: MLhs) {
     ps.emit_open_paren();
 
     ps.with_start_of_line(
@@ -408,15 +392,15 @@ pub fn format_mlhs(ps: &mut dyn ConcreteParserState, mlhs: MLhs) {
     ps.emit_close_paren();
 }
 
-fn bind_var_field(ps: &mut dyn ConcreteParserState, vf: &VarField) {
+fn bind_var_field(ps: &mut ParserState, vf: &VarField) {
     ps.bind_variable((vf.1).clone().to_local_string())
 }
 
-fn bind_ident(ps: &mut dyn ConcreteParserState, id: &Ident) {
+fn bind_ident(ps: &mut ParserState, id: &Ident) {
     ps.bind_variable((id.1).clone())
 }
 
-fn bind_mlhs(ps: &mut dyn ConcreteParserState, mlhs: &MLhs) {
+fn bind_mlhs(ps: &mut ParserState, mlhs: &MLhs) {
     for value in (mlhs.0).iter() {
         match value {
             MLhsInner::VarField(v) => bind_var_field(ps, v),
@@ -434,10 +418,7 @@ fn bind_mlhs(ps: &mut dyn ConcreteParserState, mlhs: &MLhs) {
     }
 }
 
-pub fn format_required_params(
-    ps: &mut dyn ConcreteParserState,
-    required_params: Vec<IdentOrMLhs>,
-) -> bool {
+pub fn format_required_params(ps: &mut ParserState, required_params: Vec<IdentOrMLhs>) -> bool {
     if required_params.is_empty() {
         return false;
     }
@@ -465,18 +446,14 @@ pub fn format_required_params(
     true
 }
 
-pub fn emit_params_separator(ps: &mut dyn ConcreteParserState, index: usize, length: usize) {
+pub fn emit_params_separator(ps: &mut ParserState, index: usize, length: usize) {
     if index != length - 1 {
         ps.emit_comma();
         ps.emit_soft_newline();
     }
 }
 
-pub fn format_bodystmt(
-    ps: &mut dyn ConcreteParserState,
-    bodystmt: Box<BodyStmt>,
-    end_line: LineNumber,
-) {
+pub fn format_bodystmt(ps: &mut ParserState, bodystmt: Box<BodyStmt>, end_line: LineNumber) {
     let expressions = bodystmt.1;
     let rescue_part = bodystmt.2;
     let else_part = bodystmt.3;
@@ -505,7 +482,7 @@ pub fn format_bodystmt(
     format_ensure(ps, ensure_part);
 }
 
-pub fn format_mrhs(ps: &mut dyn ConcreteParserState, mrhs: Option<MRHS>) {
+pub fn format_mrhs(ps: &mut ParserState, mrhs: Option<MRHS>) {
     match mrhs {
         None => {}
         Some(MRHS::Single(expr)) => {
@@ -536,7 +513,7 @@ pub fn format_mrhs(ps: &mut dyn ConcreteParserState, mrhs: Option<MRHS>) {
 }
 
 pub fn format_rescue_capture(
-    ps: &mut dyn ConcreteParserState,
+    ps: &mut ParserState,
     rescue_capture: Option<Assignable>,
     class_present: bool,
 ) {
@@ -553,7 +530,7 @@ pub fn format_rescue_capture(
     }
 }
 
-pub fn format_rescue(ps: &mut dyn ConcreteParserState, rescue_part: Option<Rescue>) {
+pub fn format_rescue(ps: &mut ParserState, rescue_part: Option<Rescue>) {
     match rescue_part {
         None => {}
         Some(Rescue(_, class, capture, expressions, more_rescue, start_end)) => {
@@ -603,7 +580,7 @@ pub fn format_rescue(ps: &mut dyn ConcreteParserState, rescue_part: Option<Rescu
 }
 
 pub fn format_else(
-    ps: &mut dyn ConcreteParserState,
+    ps: &mut ParserState,
     else_part: Option<RescueElseOrExpressionList>,
     end_line: LineNumber,
 ) {
@@ -653,7 +630,7 @@ pub fn format_else(
     }
 }
 
-pub fn format_ensure(ps: &mut dyn ConcreteParserState, ensure_part: Option<Ensure>) {
+pub fn format_ensure(ps: &mut ParserState, ensure_part: Option<Ensure>) {
     match ensure_part {
         None => {}
         Some(e) => {
@@ -713,7 +690,7 @@ lazy_static! {
 }
 
 pub fn use_parens_for_method_call(
-    ps: &dyn ConcreteParserState,
+    ps: &ParserState,
     chain: &[CallChainElement],
     method: &IdentOrOpOrKeywordOrConst,
     args: &ArgsAddStarOrExpressionListOrArgsForward,
@@ -789,14 +766,14 @@ pub fn use_parens_for_method_call(
     true
 }
 
-pub fn format_dot_type(ps: &mut dyn ConcreteParserState, dt: DotType) {
+pub fn format_dot_type(ps: &mut ParserState, dt: DotType) {
     match dt {
         DotType::Dot(_) => ps.emit_dot(),
         DotType::LonelyOperator(_) => ps.emit_lonely_operator(),
     }
 }
 
-pub fn format_dot(ps: &mut dyn ConcreteParserState, dot: DotTypeOrOp) {
+pub fn format_dot(ps: &mut ParserState, dot: DotTypeOrOp) {
     match dot {
         DotTypeOrOp::DotType(dt) => format_dot_type(ps, dt),
         DotTypeOrOp::Op(op) => {
@@ -825,7 +802,7 @@ pub fn format_dot(ps: &mut dyn ConcreteParserState, dot: DotTypeOrOp) {
     }
 }
 
-pub fn format_method_call(ps: &mut dyn ConcreteParserState, method_call: MethodCall) {
+pub fn format_method_call(ps: &mut ParserState, method_call: MethodCall) {
     if ps.at_start_of_line() {
         ps.emit_indent();
     }
@@ -865,7 +842,7 @@ pub enum SpecialCase {
 }
 
 pub fn format_list_like_thing_items(
-    ps: &mut dyn ConcreteParserState,
+    ps: &mut ParserState,
     args: Vec<Expression>,
     end_line: Option<LineNumber>,
     single_line: bool,
@@ -921,7 +898,7 @@ pub fn format_list_like_thing_items(
     emitted_args
 }
 
-pub fn format_ident(ps: &mut dyn ConcreteParserState, ident: Ident) {
+pub fn format_ident(ps: &mut ParserState, ident: Ident) {
     if ps.at_start_of_line() {
         ps.emit_indent();
     }
@@ -933,7 +910,7 @@ pub fn format_ident(ps: &mut dyn ConcreteParserState, ident: Ident) {
     }
 }
 
-pub fn format_const(ps: &mut dyn ConcreteParserState, c: Const) {
+pub fn format_const(ps: &mut ParserState, c: Const) {
     if ps.at_start_of_line() {
         ps.emit_indent();
     }
@@ -945,7 +922,7 @@ pub fn format_const(ps: &mut dyn ConcreteParserState, c: Const) {
     }
 }
 
-pub fn format_int(ps: &mut dyn ConcreteParserState, int: Int) {
+pub fn format_int(ps: &mut ParserState, int: Int) {
     if ps.at_start_of_line() {
         ps.emit_indent();
     }
@@ -957,11 +934,11 @@ pub fn format_int(ps: &mut dyn ConcreteParserState, int: Int) {
     }
 }
 
-pub fn format_bare_assoc_hash(ps: &mut dyn ConcreteParserState, bah: BareAssocHash) {
+pub fn format_bare_assoc_hash(ps: &mut ParserState, bah: BareAssocHash) {
     format_assocs(ps, bah.1, SpecialCase::NoSpecialCase)
 }
 
-pub fn format_alias(ps: &mut dyn ConcreteParserState, alias: Alias) {
+pub fn format_alias(ps: &mut ParserState, alias: Alias) {
     if ps.at_start_of_line() {
         ps.emit_indent();
     }
@@ -983,7 +960,7 @@ pub fn format_alias(ps: &mut dyn ConcreteParserState, alias: Alias) {
 }
 
 pub fn format_symbol_literal_or_dyna_symbol(
-    ps: &mut dyn ConcreteParserState,
+    ps: &mut ParserState,
     symbol_literal_or_dyna_symbol: SymbolLiteralOrDynaSymbol,
 ) {
     match symbol_literal_or_dyna_symbol {
@@ -994,7 +971,7 @@ pub fn format_symbol_literal_or_dyna_symbol(
     }
 }
 
-pub fn format_op(ps: &mut dyn ConcreteParserState, op: Op) {
+pub fn format_op(ps: &mut ParserState, op: Op) {
     match op.1 {
         Operator::Equals(_) => ps.emit_ident("==".to_string()),
         Operator::Dot(_) => ps.emit_dot(),
@@ -1003,7 +980,7 @@ pub fn format_op(ps: &mut dyn ConcreteParserState, op: Op) {
     }
 }
 
-pub fn format_kw(ps: &mut dyn ConcreteParserState, kw: Kw) {
+pub fn format_kw(ps: &mut ParserState, kw: Kw) {
     if ps.at_start_of_line() {
         ps.emit_indent();
     }
@@ -1015,7 +992,7 @@ pub fn format_kw(ps: &mut dyn ConcreteParserState, kw: Kw) {
     }
 }
 
-pub fn format_backtick(ps: &mut dyn ConcreteParserState, backtick: Backtick) {
+pub fn format_backtick(ps: &mut ParserState, backtick: Backtick) {
     if ps.at_start_of_line() {
         ps.emit_indent();
     }
@@ -1027,7 +1004,7 @@ pub fn format_backtick(ps: &mut dyn ConcreteParserState, backtick: Backtick) {
     }
 }
 
-pub fn format_symbol(ps: &mut dyn ConcreteParserState, symbol: Symbol) {
+pub fn format_symbol(ps: &mut ParserState, symbol: Symbol) {
     ps.emit_ident(":".to_string());
     match symbol.1 {
         IdentOrConstOrKwOrOpOrIvarOrGvarOrCvarOrBacktick::Ident(i) => format_ident(ps, i),
@@ -1049,7 +1026,7 @@ pub fn format_symbol(ps: &mut dyn ConcreteParserState, symbol: Symbol) {
     }
 }
 
-pub fn format_symbol_literal(ps: &mut dyn ConcreteParserState, symbol_literal: SymbolLiteral) {
+pub fn format_symbol_literal(ps: &mut ParserState, symbol_literal: SymbolLiteral) {
     if ps.at_start_of_line() {
         ps.emit_indent();
     }
@@ -1082,11 +1059,7 @@ fn all_labelish(assocs: &[AssocNewOrAssocSplat]) -> bool {
     })
 }
 
-pub fn format_assocs(
-    ps: &mut dyn ConcreteParserState,
-    assocs: Vec<AssocNewOrAssocSplat>,
-    sc: SpecialCase,
-) {
+pub fn format_assocs(ps: &mut ParserState, assocs: Vec<AssocNewOrAssocSplat>, sc: SpecialCase) {
     let len = assocs.len();
     let all_labelish = all_labelish(&assocs);
     for (idx, assoc) in assocs.into_iter().enumerate() {
@@ -1101,10 +1074,7 @@ pub fn format_assocs(
     }
 }
 
-pub fn format_assocs_single_line(
-    ps: &mut dyn ConcreteParserState,
-    assocs: Vec<AssocNewOrAssocSplat>,
-) {
+pub fn format_assocs_single_line(ps: &mut ParserState, assocs: Vec<AssocNewOrAssocSplat>) {
     let len = assocs.len();
     let all_labelish = all_labelish(&assocs);
     for (idx, assoc) in assocs.into_iter().enumerate() {
@@ -1115,11 +1085,7 @@ pub fn format_assocs_single_line(
     }
 }
 
-pub fn format_assoc(
-    ps: &mut dyn ConcreteParserState,
-    assoc: AssocNewOrAssocSplat,
-    all_labelish: bool,
-) {
+pub fn format_assoc(ps: &mut ParserState, assoc: AssocNewOrAssocSplat, all_labelish: bool) {
     ps.with_start_of_line(
         false,
         Box::new(|ps| match assoc {
@@ -1158,7 +1124,7 @@ pub fn format_assoc(
     );
 }
 
-pub fn format_begin(ps: &mut dyn ConcreteParserState, begin: Begin) {
+pub fn format_begin(ps: &mut ParserState, begin: Begin) {
     if ps.at_start_of_line() {
         ps.emit_indent()
     }
@@ -1190,7 +1156,7 @@ pub fn format_begin(ps: &mut dyn ConcreteParserState, begin: Begin) {
     }
 }
 
-pub fn format_begin_block(ps: &mut dyn ConcreteParserState, begin: BeginBlock) {
+pub fn format_begin_block(ps: &mut ParserState, begin: BeginBlock) {
     if ps.at_start_of_line() {
         ps.emit_indent()
     }
@@ -1222,7 +1188,7 @@ pub fn format_begin_block(ps: &mut dyn ConcreteParserState, begin: BeginBlock) {
     }
 }
 
-pub fn format_end_block(ps: &mut dyn ConcreteParserState, end: EndBlock) {
+pub fn format_end_block(ps: &mut ParserState, end: EndBlock) {
     if ps.at_start_of_line() {
         ps.emit_indent()
     }
@@ -1267,11 +1233,11 @@ pub fn normalize(e: Expression) -> Expression {
     }
 }
 
-pub fn format_void_stmt(_ps: &mut dyn ConcreteParserState, _void: VoidStmt) {
+pub fn format_void_stmt(_ps: &mut ParserState, _void: VoidStmt) {
     // deliberately does nothing
 }
 
-pub fn format_paren(ps: &mut dyn ConcreteParserState, paren: ParenExpr) {
+pub fn format_paren(ps: &mut ParserState, paren: ParenExpr) {
     if ps.at_start_of_line() {
         ps.emit_indent();
     }
@@ -1311,16 +1277,16 @@ pub fn format_paren(ps: &mut dyn ConcreteParserState, paren: ParenExpr) {
     }
 }
 
-pub fn format_dot2(ps: &mut dyn ConcreteParserState, dot2: Dot2) {
+pub fn format_dot2(ps: &mut ParserState, dot2: Dot2) {
     format_dot2_or_3(ps, "..".to_string(), dot2.1, dot2.2);
 }
 
-pub fn format_dot3(ps: &mut dyn ConcreteParserState, dot3: Dot3) {
+pub fn format_dot3(ps: &mut ParserState, dot3: Dot3) {
     format_dot2_or_3(ps, "...".to_string(), dot3.1, dot3.2);
 }
 
 pub fn format_dot2_or_3(
-    ps: &mut dyn ConcreteParserState,
+    ps: &mut ParserState,
     dots: String,
     left: Option<Box<Expression>>,
     right: Option<Box<Expression>>,
@@ -1359,11 +1325,7 @@ pub fn percent_symbol_for(tag: String) -> String {
     }
 }
 
-pub fn format_percent_array(
-    ps: &mut dyn ConcreteParserState,
-    tag: String,
-    parts: Vec<Vec<StringContentPart>>,
-) {
+pub fn format_percent_array(ps: &mut ParserState, tag: String, parts: Vec<Vec<StringContentPart>>) {
     ps.emit_ident(percent_symbol_for(tag));
     ps.with_start_of_line(
         false,
@@ -1386,7 +1348,7 @@ pub fn format_percent_array(
     );
 }
 
-pub fn format_array(ps: &mut dyn ConcreteParserState, array: Array) {
+pub fn format_array(ps: &mut ParserState, array: Array) {
     if ps.at_start_of_line() {
         ps.emit_indent();
     }
@@ -1419,7 +1381,7 @@ pub fn format_array(ps: &mut dyn ConcreteParserState, array: Array) {
 }
 
 pub fn format_array_fast_path(
-    ps: &mut dyn ConcreteParserState,
+    ps: &mut ParserState,
     start_end: &StartEnd,
     a: Option<ArgsAddStarOrExpressionListOrArgsForward>,
 ) {
@@ -1452,7 +1414,7 @@ pub fn format_array_fast_path(
 }
 
 pub fn format_list_like_thing(
-    ps: &mut dyn ConcreteParserState,
+    ps: &mut ParserState,
     a: ArgsAddStarOrExpressionListOrArgsForward,
     end_line: Option<LineNumber>,
     single_line: bool,
@@ -1528,7 +1490,7 @@ pub fn format_list_like_thing(
     }
 }
 
-pub fn emit_intermediate_array_separator(ps: &mut dyn ConcreteParserState, single_line: bool) {
+pub fn emit_intermediate_array_separator(ps: &mut ParserState, single_line: bool) {
     if single_line {
         ps.emit_comma_space();
     } else {
@@ -1546,11 +1508,7 @@ pub enum StringType {
     Regexp,
 }
 
-fn format_inner_string(
-    ps: &mut dyn ConcreteParserState,
-    parts: Vec<StringContentPart>,
-    tipe: StringType,
-) {
+fn format_inner_string(ps: &mut ParserState, parts: Vec<StringContentPart>, tipe: StringType) {
     let mut peekable = parts.into_iter().peekable();
     while peekable.peek().is_some() {
         let part = peekable.next().expect("we peeked");
@@ -1627,7 +1585,7 @@ fn format_inner_string(
 }
 
 pub fn format_heredoc_string_literal(
-    ps: &mut dyn ConcreteParserState,
+    ps: &mut ParserState,
     hd: HeredocStringLiteral,
     parts: Vec<StringContentPart>,
 ) {
@@ -1650,7 +1608,7 @@ pub fn format_heredoc_string_literal(
                 heredoc_symbol,
                 kind,
                 end_line,
-                Box::new(|n: &mut BaseParserState| {
+                Box::new(|n: &mut ParserState| {
                     n.disable_user_newlines();
                     format_inner_string(n, parts, StringType::Heredoc);
                 }),
@@ -1663,7 +1621,7 @@ pub fn format_heredoc_string_literal(
     }
 }
 
-pub fn format_string_literal(ps: &mut dyn ConcreteParserState, sl: StringLiteral) {
+pub fn format_string_literal(ps: &mut ParserState, sl: StringLiteral) {
     match sl {
         StringLiteral::Heredoc(_, hd, StringContent(_, parts)) => {
             format_heredoc_string_literal(ps, hd, parts)
@@ -1686,7 +1644,7 @@ pub fn format_string_literal(ps: &mut dyn ConcreteParserState, sl: StringLiteral
     }
 }
 
-pub fn format_xstring_literal(ps: &mut dyn ConcreteParserState, xsl: XStringLiteral) {
+pub fn format_xstring_literal(ps: &mut ParserState, xsl: XStringLiteral) {
     let parts = xsl.1;
 
     if ps.at_start_of_line() {
@@ -1702,7 +1660,7 @@ pub fn format_xstring_literal(ps: &mut dyn ConcreteParserState, xsl: XStringLite
     }
 }
 
-pub fn format_const_path_field(ps: &mut dyn ConcreteParserState, cf: ConstPathField) {
+pub fn format_const_path_field(ps: &mut ParserState, cf: ConstPathField) {
     if ps.at_start_of_line() {
         ps.emit_indent();
     }
@@ -1721,7 +1679,7 @@ pub fn format_const_path_field(ps: &mut dyn ConcreteParserState, cf: ConstPathFi
     }
 }
 
-pub fn format_top_const_field(ps: &mut dyn ConcreteParserState, tcf: TopConstField) {
+pub fn format_top_const_field(ps: &mut ParserState, tcf: TopConstField) {
     if ps.at_start_of_line() {
         ps.emit_indent();
     }
@@ -1739,12 +1697,12 @@ pub fn format_top_const_field(ps: &mut dyn ConcreteParserState, tcf: TopConstFie
     }
 }
 
-pub fn format_var_field(ps: &mut dyn ConcreteParserState, vf: VarField) {
+pub fn format_var_field(ps: &mut ParserState, vf: VarField) {
     let left = vf.1;
     format_var_ref_type(ps, left);
 }
 
-pub fn format_aref_field(ps: &mut dyn ConcreteParserState, af: ArefField) {
+pub fn format_aref_field(ps: &mut ParserState, af: ArefField) {
     if ps.at_start_of_line() {
         ps.emit_indent();
     }
@@ -1778,7 +1736,7 @@ pub fn format_aref_field(ps: &mut dyn ConcreteParserState, af: ArefField) {
     }
 }
 
-pub fn format_field(ps: &mut dyn ConcreteParserState, f: Field) {
+pub fn format_field(ps: &mut ParserState, f: Field) {
     if ps.at_start_of_line() {
         ps.emit_indent();
     }
@@ -1800,7 +1758,7 @@ pub fn format_field(ps: &mut dyn ConcreteParserState, f: Field) {
     }
 }
 
-pub fn format_assignable(ps: &mut dyn ConcreteParserState, v: Assignable) {
+pub fn format_assignable(ps: &mut ParserState, v: Assignable) {
     match v {
         Assignable::VarField(vf) => {
             bind_var_field(ps, &vf);
@@ -1835,7 +1793,7 @@ pub fn format_assignable(ps: &mut dyn ConcreteParserState, v: Assignable) {
     }
 }
 
-pub fn format_assign(ps: &mut dyn ConcreteParserState, assign: Assign) {
+pub fn format_assign(ps: &mut ParserState, assign: Assign) {
     if ps.at_start_of_line() {
         ps.emit_indent();
     }
@@ -1867,7 +1825,7 @@ pub fn format_assign(ps: &mut dyn ConcreteParserState, assign: Assign) {
     }
 }
 
-pub fn format_massign(ps: &mut dyn ConcreteParserState, massign: MAssign) {
+pub fn format_massign(ps: &mut ParserState, massign: MAssign) {
     if ps.at_start_of_line() {
         ps.emit_indent();
     }
@@ -1915,7 +1873,7 @@ pub fn format_massign(ps: &mut dyn ConcreteParserState, massign: MAssign) {
     }
 }
 
-pub fn format_var_ref_type(ps: &mut dyn ConcreteParserState, vr: VarRefType) {
+pub fn format_var_ref_type(ps: &mut ParserState, vr: VarRefType) {
     if ps.at_start_of_line() {
         ps.emit_indent();
     }
@@ -1934,16 +1892,16 @@ pub fn format_var_ref_type(ps: &mut dyn ConcreteParserState, vr: VarRefType) {
     }
 }
 
-pub fn handle_string_and_linecol(ps: &mut dyn ConcreteParserState, ident: String, lc: LineCol) {
+pub fn handle_string_and_linecol(ps: &mut ParserState, ident: String, lc: LineCol) {
     ps.on_line(lc.0);
     ps.emit_ident(ident);
 }
 
-pub fn format_var_ref(ps: &mut dyn ConcreteParserState, vr: VarRef) {
+pub fn format_var_ref(ps: &mut ParserState, vr: VarRef) {
     format_var_ref_type(ps, vr.1);
 }
 
-pub fn format_const_path_ref(ps: &mut dyn ConcreteParserState, cpr: ConstPathRef) {
+pub fn format_const_path_ref(ps: &mut ParserState, cpr: ConstPathRef) {
     if ps.at_start_of_line() {
         ps.emit_indent();
     }
@@ -1962,7 +1920,7 @@ pub fn format_const_path_ref(ps: &mut dyn ConcreteParserState, cpr: ConstPathRef
     }
 }
 
-pub fn format_top_const_ref(ps: &mut dyn ConcreteParserState, tcr: TopConstRef) {
+pub fn format_top_const_ref(ps: &mut ParserState, tcr: TopConstRef) {
     if ps.at_start_of_line() {
         ps.emit_indent();
     }
@@ -1980,7 +1938,7 @@ pub fn format_top_const_ref(ps: &mut dyn ConcreteParserState, tcr: TopConstRef) 
     }
 }
 
-pub fn format_defined(ps: &mut dyn ConcreteParserState, defined: Defined) {
+pub fn format_defined(ps: &mut ParserState, defined: Defined) {
     if ps.at_start_of_line() {
         ps.emit_indent();
     }
@@ -2000,7 +1958,7 @@ pub fn format_defined(ps: &mut dyn ConcreteParserState, defined: Defined) {
     }
 }
 
-pub fn format_rescue_mod(ps: &mut dyn ConcreteParserState, rescue_mod: RescueMod) {
+pub fn format_rescue_mod(ps: &mut ParserState, rescue_mod: RescueMod) {
     if ps.at_start_of_line() {
         ps.emit_indent();
     }
@@ -2021,7 +1979,7 @@ pub fn format_rescue_mod(ps: &mut dyn ConcreteParserState, rescue_mod: RescueMod
     }
 }
 
-pub fn format_mrhs_new_from_args(ps: &mut dyn ConcreteParserState, mnfa: MRHSNewFromArgs) {
+pub fn format_mrhs_new_from_args(ps: &mut ParserState, mnfa: MRHSNewFromArgs) {
     format_list_like_thing(ps, mnfa.1, None, true);
 
     if let Some(expr) = mnfa.2 {
@@ -2030,7 +1988,7 @@ pub fn format_mrhs_new_from_args(ps: &mut dyn ConcreteParserState, mnfa: MRHSNew
     }
 }
 
-pub fn format_mrhs_add_star(ps: &mut dyn ConcreteParserState, mrhs: MRHSAddStar) {
+pub fn format_mrhs_add_star(ps: &mut ParserState, mrhs: MRHSAddStar) {
     let first = mrhs.1;
     let second = mrhs.2;
     ps.with_start_of_line(
@@ -2058,7 +2016,7 @@ pub fn format_mrhs_add_star(ps: &mut dyn ConcreteParserState, mrhs: MRHSAddStar)
     );
 }
 
-pub fn format_next(ps: &mut dyn ConcreteParserState, next: Next) {
+pub fn format_next(ps: &mut ParserState, next: Next) {
     if ps.at_start_of_line() {
         ps.emit_indent();
     }
@@ -2099,7 +2057,7 @@ pub fn format_next(ps: &mut dyn ConcreteParserState, next: Next) {
     }
 }
 
-pub fn format_unary(ps: &mut dyn ConcreteParserState, unary: Unary) {
+pub fn format_unary(ps: &mut ParserState, unary: Unary) {
     if ps.at_start_of_line() {
         ps.emit_indent();
     }
@@ -2135,7 +2093,7 @@ pub fn format_unary(ps: &mut dyn ConcreteParserState, unary: Unary) {
     }
 }
 
-pub fn format_string_concat(ps: &mut dyn ConcreteParserState, sc: StringConcat) {
+pub fn format_string_concat(ps: &mut ParserState, sc: StringConcat) {
     if ps.at_start_of_line() {
         ps.emit_indent();
     }
@@ -2165,7 +2123,7 @@ pub fn format_string_concat(ps: &mut dyn ConcreteParserState, sc: StringConcat) 
     }
 }
 
-pub fn format_dyna_symbol(ps: &mut dyn ConcreteParserState, ds: DynaSymbol) {
+pub fn format_dyna_symbol(ps: &mut ParserState, ds: DynaSymbol) {
     if ps.at_start_of_line() {
         ps.emit_indent();
     }
@@ -2183,7 +2141,7 @@ pub fn format_dyna_symbol(ps: &mut dyn ConcreteParserState, ds: DynaSymbol) {
     }
 }
 
-pub fn format_undef(ps: &mut dyn ConcreteParserState, undef: Undef) {
+pub fn format_undef(ps: &mut ParserState, undef: Undef) {
     if ps.at_start_of_line() {
         ps.emit_indent();
     }
@@ -2205,7 +2163,7 @@ pub fn format_undef(ps: &mut dyn ConcreteParserState, undef: Undef) {
     }
 }
 
-pub fn format_defs(ps: &mut dyn ConcreteParserState, defs: Defs) {
+pub fn format_defs(ps: &mut ParserState, defs: Defs) {
     if ps.at_start_of_line() {
         ps.emit_indent();
     }
@@ -2247,7 +2205,7 @@ pub fn format_defs(ps: &mut dyn ConcreteParserState, defs: Defs) {
     }
 }
 
-pub fn format_paren_or_params(ps: &mut dyn ConcreteParserState, pp: ParenOrParams) {
+pub fn format_paren_or_params(ps: &mut ParserState, pp: ParenOrParams) {
     let maybe_closing_paren_line = match &pp {
         ParenOrParams::Paren(p) => Some(p.2.end_line()),
         _ => None,
@@ -2266,7 +2224,7 @@ pub fn format_paren_or_params(ps: &mut dyn ConcreteParserState, pp: ParenOrParam
 
 // Modules and classes bodies should be treated the same,
 // the only real difference is in the module/class name and inheritance
-fn format_constant_body(ps: &mut dyn ConcreteParserState, bodystmt: Box<BodyStmt>, end_line: u64) {
+fn format_constant_body(ps: &mut ParserState, bodystmt: Box<BodyStmt>, end_line: u64) {
     ps.new_block(Box::new(|ps| {
         ps.with_start_of_line(
             true,
@@ -2294,7 +2252,7 @@ fn format_constant_body(ps: &mut dyn ConcreteParserState, bodystmt: Box<BodyStmt
     }
 }
 
-pub fn format_class(ps: &mut dyn ConcreteParserState, class: Class) {
+pub fn format_class(ps: &mut ParserState, class: Class) {
     if ps.at_start_of_line() {
         ps.emit_indent();
     }
@@ -2332,7 +2290,7 @@ pub fn format_class(ps: &mut dyn ConcreteParserState, class: Class) {
     format_constant_body(ps, bodystmt, end_line);
 }
 
-pub fn format_module(ps: &mut dyn ConcreteParserState, module: Module) {
+pub fn format_module(ps: &mut ParserState, module: Module) {
     if ps.at_start_of_line() {
         ps.emit_indent();
     }
@@ -2365,7 +2323,7 @@ pub fn format_module(ps: &mut dyn ConcreteParserState, module: Module) {
 }
 
 pub fn format_conditional(
-    ps: &mut dyn ConcreteParserState,
+    ps: &mut ParserState,
     cond_expr: Expression,
     body: Vec<Expression>,
     kw: String,
@@ -2441,7 +2399,7 @@ pub fn format_conditional(
     }
 }
 
-pub fn format_if(ps: &mut dyn ConcreteParserState, ifs: If) {
+pub fn format_if(ps: &mut ParserState, ifs: If) {
     let vifs = ifs.clone();
     format_conditional(ps, *ifs.1, ifs.2, "if".to_string(), ifs.3, Some(ifs.4));
 
@@ -2458,7 +2416,7 @@ pub fn format_if(ps: &mut dyn ConcreteParserState, ifs: If) {
     }
 }
 
-pub fn format_unless(ps: &mut dyn ConcreteParserState, unless: Unless) {
+pub fn format_unless(ps: &mut ParserState, unless: Unless) {
     format_conditional(
         ps,
         *unless.1,
@@ -2479,7 +2437,7 @@ pub fn format_unless(ps: &mut dyn ConcreteParserState, unless: Unless) {
     }
 }
 
-pub fn format_binary(ps: &mut dyn ConcreteParserState, binary: Binary) {
+pub fn format_binary(ps: &mut ParserState, binary: Binary) {
     if ps.at_start_of_line() {
         ps.emit_indent();
     }
@@ -2508,7 +2466,7 @@ pub fn format_binary(ps: &mut dyn ConcreteParserState, binary: Binary) {
 // Performs the actual formatting for binary operators. This method assumes that it's
 // inside of a breakable, but it's separated out so that it can recurse inside of
 // nested breakables so that nested breakables stay at the same indentation level.
-fn format_binary_inner(ps: &mut dyn ConcreteParserState, binary: Binary) {
+fn format_binary_inner(ps: &mut ParserState, binary: Binary) {
     ps.with_formatting_context(
         FormattingContext::Binary,
         Box::new(|ps| {
@@ -2554,7 +2512,7 @@ fn format_binary_inner(ps: &mut dyn ConcreteParserState, binary: Binary) {
     );
 }
 
-pub fn format_float(ps: &mut dyn ConcreteParserState, float: Float) {
+pub fn format_float(ps: &mut ParserState, float: Float) {
     if ps.at_start_of_line() {
         ps.emit_indent();
     }
@@ -2566,7 +2524,7 @@ pub fn format_float(ps: &mut dyn ConcreteParserState, float: Float) {
     }
 }
 
-pub fn format_aref(ps: &mut dyn ConcreteParserState, aref: Aref) {
+pub fn format_aref(ps: &mut ParserState, aref: Aref) {
     if ps.at_start_of_line() {
         ps.emit_indent();
     }
@@ -2598,7 +2556,7 @@ pub fn format_aref(ps: &mut dyn ConcreteParserState, aref: Aref) {
     }
 }
 
-pub fn format_char(ps: &mut dyn ConcreteParserState, c: Char) {
+pub fn format_char(ps: &mut ParserState, c: Char) {
     if ps.at_start_of_line() {
         ps.emit_indent();
     }
@@ -2613,7 +2571,7 @@ pub fn format_char(ps: &mut dyn ConcreteParserState, c: Char) {
     }
 }
 
-pub fn format_hash(ps: &mut dyn ConcreteParserState, hash: Hash) {
+pub fn format_hash(ps: &mut ParserState, hash: Hash) {
     if ps.at_start_of_line() {
         ps.emit_indent();
     }
@@ -2657,7 +2615,7 @@ pub fn format_hash(ps: &mut dyn ConcreteParserState, hash: Hash) {
     }
 }
 
-pub fn format_regexp_literal(ps: &mut dyn ConcreteParserState, regexp: RegexpLiteral) {
+pub fn format_regexp_literal(ps: &mut ParserState, regexp: RegexpLiteral) {
     if ps.at_start_of_line() {
         ps.emit_indent();
     }
@@ -2675,7 +2633,7 @@ pub fn format_regexp_literal(ps: &mut dyn ConcreteParserState, regexp: RegexpLit
     }
 }
 
-pub fn format_backref(ps: &mut dyn ConcreteParserState, backref: Backref) {
+pub fn format_backref(ps: &mut ParserState, backref: Backref) {
     if ps.at_start_of_line() {
         ps.emit_indent();
     }
@@ -2731,7 +2689,7 @@ fn can_elide_parens_for_reserved_names(cc: &[CallChainElement]) -> bool {
 
 /// Returns `true` if the call chain is indented, `false` if not
 fn format_call_chain(
-    ps: &mut dyn ConcreteParserState,
+    ps: &mut ParserState,
     cc: Vec<CallChainElement>,
     last_call_use_parens: Option<bool>,
 ) {
@@ -2753,7 +2711,7 @@ fn format_call_chain(
 }
 
 fn format_call_chain_elements(
-    ps: &mut dyn ConcreteParserState,
+    ps: &mut ParserState,
     cc: Vec<CallChainElement>,
     // Whether or not to force the last call to use parens. By default, falls back to normal call chain rules.
     // This is necessary for supporting things like parenthesized methods in `self.method` method chains where
@@ -2883,14 +2841,14 @@ fn format_call_chain_elements(
     }
 }
 
-pub fn format_block(ps: &mut dyn ConcreteParserState, b: Block) {
+pub fn format_block(ps: &mut ParserState, b: Block) {
     match b {
         Block::BraceBlock(bb) => format_brace_block(ps, bb),
         Block::DoBlock(db) => format_do_block(ps, db),
     }
 }
 
-pub fn format_method_add_block(ps: &mut dyn ConcreteParserState, mab: MethodAddBlock) {
+pub fn format_method_add_block(ps: &mut ParserState, mab: MethodAddBlock) {
     if ps.at_start_of_line() {
         ps.emit_indent();
     }
@@ -2944,7 +2902,7 @@ enum BraceBlockRenderMethod {
     MultipleExpressions,
 }
 
-pub fn format_brace_block(ps: &mut dyn ConcreteParserState, brace_block: BraceBlock) {
+pub fn format_brace_block(ps: &mut ParserState, brace_block: BraceBlock) {
     let bv = brace_block.1;
     let body = brace_block.2;
     let StartEnd(start_line, end_line) = brace_block.3;
@@ -2966,7 +2924,7 @@ pub fn format_brace_block(ps: &mut dyn ConcreteParserState, brace_block: BraceBl
 }
 
 fn render_block_contents(
-    ps: &mut dyn ConcreteParserState,
+    ps: &mut ParserState,
     brace_block_render_method: BraceBlockRenderMethod,
     body: Vec<Expression>,
     end_line: u64,
@@ -3028,7 +2986,7 @@ fn render_block_contents(
 }
 
 fn get_brace_block_render_method(
-    ps: &mut dyn ConcreteParserState,
+    ps: &mut ParserState,
     start_line: u64,
     end_line: u64,
     body: &[Expression],
@@ -3049,7 +3007,7 @@ fn get_brace_block_render_method(
     }
 }
 
-pub fn format_do_block(ps: &mut dyn ConcreteParserState, do_block: DoBlock) {
+pub fn format_do_block(ps: &mut ParserState, do_block: DoBlock) {
     ps.emit_do_keyword();
 
     let bv = do_block.1;
@@ -3081,7 +3039,7 @@ pub fn format_do_block(ps: &mut dyn ConcreteParserState, do_block: DoBlock) {
 }
 
 pub fn format_keyword(
-    ps: &mut dyn ConcreteParserState,
+    ps: &mut ParserState,
     args: ParenOrArgsAddBlock,
     kw: String,
     start_end: StartEnd,
@@ -3138,7 +3096,7 @@ pub fn format_keyword(
 }
 
 pub fn format_while(
-    ps: &mut dyn ConcreteParserState,
+    ps: &mut ParserState,
     conditional: Expression,
     exprs: Vec<Expression>,
     kw: String,
@@ -3175,7 +3133,7 @@ pub fn format_while(
 /// end
 /// ```
 pub fn format_inline_mod(
-    ps: &mut dyn ConcreteParserState,
+    ps: &mut ParserState,
     conditional: Box<Expression>,
     body: Box<Expression>,
     name: String,
@@ -3202,7 +3160,7 @@ pub fn format_inline_mod(
 /// Some mod statements can be safely converted to their equivalent
 /// multiline forms, specifically `if` and `unless` mod statements.
 pub fn format_multilinable_mod(
-    ps: &mut dyn ConcreteParserState,
+    ps: &mut ParserState,
     conditional: Box<Expression>,
     body: Box<Expression>,
     name: String,
@@ -3236,7 +3194,7 @@ pub fn format_multilinable_mod(
     }
 }
 
-pub fn format_when_or_else(ps: &mut dyn ConcreteParserState, tail: WhenOrElse) {
+pub fn format_when_or_else(ps: &mut ParserState, tail: WhenOrElse) {
     match tail {
         WhenOrElse::When(when) => {
             let conditionals = when.1;
@@ -3300,7 +3258,7 @@ pub fn format_when_or_else(ps: &mut dyn ConcreteParserState, tail: WhenOrElse) {
     }
 }
 
-pub fn format_case(ps: &mut dyn ConcreteParserState, case: Case) {
+pub fn format_case(ps: &mut ParserState, case: Case) {
     if ps.at_start_of_line() {
         ps.emit_indent();
     }
@@ -3338,7 +3296,7 @@ pub fn format_case(ps: &mut dyn ConcreteParserState, case: Case) {
     ps.on_line(case.3.1);
 }
 
-pub fn format_retry(ps: &mut dyn ConcreteParserState, r: Retry) {
+pub fn format_retry(ps: &mut ParserState, r: Retry) {
     format_keyword(
         ps,
         ParenOrArgsAddBlock::Empty(Vec::new()),
@@ -3347,7 +3305,7 @@ pub fn format_retry(ps: &mut dyn ConcreteParserState, r: Retry) {
     );
 }
 
-pub fn format_redo(ps: &mut dyn ConcreteParserState, r: Redo) {
+pub fn format_redo(ps: &mut ParserState, r: Redo) {
     format_keyword(
         ps,
         ParenOrArgsAddBlock::Empty(Vec::new()),
@@ -3356,7 +3314,7 @@ pub fn format_redo(ps: &mut dyn ConcreteParserState, r: Redo) {
     );
 }
 
-pub fn format_sclass(ps: &mut dyn ConcreteParserState, sc: SClass) {
+pub fn format_sclass(ps: &mut ParserState, sc: SClass) {
     if ps.at_start_of_line() {
         ps.emit_indent();
     }
@@ -3398,7 +3356,7 @@ pub fn format_sclass(ps: &mut dyn ConcreteParserState, sc: SClass) {
     }
 }
 
-pub fn format_stabby_lambda(ps: &mut dyn ConcreteParserState, sl: StabbyLambda) {
+pub fn format_stabby_lambda(ps: &mut ParserState, sl: StabbyLambda) {
     if ps.at_start_of_line() {
         ps.emit_indent();
     }
@@ -3463,7 +3421,7 @@ pub fn format_stabby_lambda(ps: &mut dyn ConcreteParserState, sl: StabbyLambda) 
     }
 }
 
-pub fn format_imaginary(ps: &mut dyn ConcreteParserState, imaginary: Imaginary) {
+pub fn format_imaginary(ps: &mut ParserState, imaginary: Imaginary) {
     if ps.at_start_of_line() {
         ps.emit_indent();
     }
@@ -3475,7 +3433,7 @@ pub fn format_imaginary(ps: &mut dyn ConcreteParserState, imaginary: Imaginary) 
     }
 }
 
-pub fn format_rational(ps: &mut dyn ConcreteParserState, rational: Rational) {
+pub fn format_rational(ps: &mut ParserState, rational: Rational) {
     if ps.at_start_of_line() {
         ps.emit_indent();
     }
@@ -3487,7 +3445,7 @@ pub fn format_rational(ps: &mut dyn ConcreteParserState, rational: Rational) {
     }
 }
 
-pub fn format_for(ps: &mut dyn ConcreteParserState, forloop: For) {
+pub fn format_for(ps: &mut ParserState, forloop: For) {
     if ps.at_start_of_line() {
         ps.emit_indent();
     }
@@ -3545,7 +3503,7 @@ pub fn format_for(ps: &mut dyn ConcreteParserState, forloop: For) {
     }
 }
 
-pub fn format_ifop(ps: &mut dyn ConcreteParserState, ifop: IfOp) {
+pub fn format_ifop(ps: &mut ParserState, ifop: IfOp) {
     if ps.at_start_of_line() {
         ps.emit_indent();
     }
@@ -3575,7 +3533,7 @@ pub fn format_ifop(ps: &mut dyn ConcreteParserState, ifop: IfOp) {
     }
 }
 
-pub fn format_return0(ps: &mut dyn ConcreteParserState, r: Return0) {
+pub fn format_return0(ps: &mut ParserState, r: Return0) {
     format_keyword(
         ps,
         ParenOrArgsAddBlock::Empty(Vec::new()),
@@ -3584,7 +3542,7 @@ pub fn format_return0(ps: &mut dyn ConcreteParserState, r: Return0) {
     );
 }
 
-pub fn format_opassign(ps: &mut dyn ConcreteParserState, opassign: OpAssign) {
+pub fn format_opassign(ps: &mut ParserState, opassign: OpAssign) {
     if ps.at_start_of_line() {
         ps.emit_indent();
     }
@@ -3604,16 +3562,16 @@ pub fn format_opassign(ps: &mut dyn ConcreteParserState, opassign: OpAssign) {
         ps.emit_newline();
     }
 }
-pub fn format_to_proc(ps: &mut dyn ConcreteParserState, e: Box<Expression>) {
+pub fn format_to_proc(ps: &mut ParserState, e: Box<Expression>) {
     ps.emit_ident("&".to_string());
     ps.with_start_of_line(false, Box::new(|ps| format_expression(ps, *e)));
 }
 
-pub fn format_anon_block_arg(ps: &mut dyn ConcreteParserState) {
+pub fn format_anon_block_arg(ps: &mut ParserState) {
     ps.emit_ident("&".to_string());
 }
 
-pub fn format_zsuper(ps: &mut dyn ConcreteParserState, start_end: StartEnd) {
+pub fn format_zsuper(ps: &mut ParserState, start_end: StartEnd) {
     format_keyword(
         ps,
         ParenOrArgsAddBlock::Empty(Vec::new()),
@@ -3622,7 +3580,7 @@ pub fn format_zsuper(ps: &mut dyn ConcreteParserState, start_end: StartEnd) {
     )
 }
 
-pub fn format_yield0(ps: &mut dyn ConcreteParserState, start_end: StartEnd) {
+pub fn format_yield0(ps: &mut ParserState, start_end: StartEnd) {
     format_keyword(
         ps,
         ParenOrArgsAddBlock::Empty(Vec::new()),
@@ -3631,11 +3589,11 @@ pub fn format_yield0(ps: &mut dyn ConcreteParserState, start_end: StartEnd) {
     )
 }
 
-pub fn format_yield(ps: &mut dyn ConcreteParserState, y: Yield) {
+pub fn format_yield(ps: &mut ParserState, y: Yield) {
     format_method_call(ps, y.to_method_call())
 }
 
-pub fn format_return(ps: &mut dyn ConcreteParserState, ret: Return) {
+pub fn format_return(ps: &mut ParserState, ret: Return) {
     let args = ret.1;
     let line = (ret.2).0;
     ps.on_line(line);
@@ -3695,7 +3653,7 @@ pub fn format_return(ps: &mut dyn ConcreteParserState, ret: Return) {
 }
 
 pub fn format_bare_return_args(
-    ps: &mut dyn ConcreteParserState,
+    ps: &mut ParserState,
     args: ArgsAddStarOrExpressionListOrArgsForward,
 ) {
     ps.breakable_of(
@@ -3712,7 +3670,7 @@ pub fn format_bare_return_args(
     );
 }
 
-pub fn format_expression(ps: &mut dyn ConcreteParserState, expression: Expression) {
+pub fn format_expression(ps: &mut ParserState, expression: Expression) {
     let expression = normalize(expression);
     match expression {
         Expression::Def(def) => format_def(ps, def),
@@ -3789,7 +3747,7 @@ pub fn format_expression(ps: &mut dyn ConcreteParserState, expression: Expressio
     }
 }
 
-pub fn format_program(ps: &mut BaseParserState, program: Program, end_data: Option<&str>) {
+pub fn format_program(ps: &mut ParserState, program: Program, end_data: Option<&str>) {
     ps.flush_start_of_file_comments();
     for expression in program.1 {
         format_expression(ps, expression);

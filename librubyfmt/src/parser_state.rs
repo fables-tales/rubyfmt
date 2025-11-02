@@ -12,7 +12,7 @@ use log::debug;
 use std::io::{self, Cursor, Write};
 use std::str;
 
-pub type RenderFunc<'a> = Box<dyn FnOnce(&mut dyn ConcreteParserState) + 'a>;
+pub type RenderFunc<'a> = Box<dyn FnOnce(&mut ParserState) + 'a>;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum FormattingContext {
@@ -56,129 +56,8 @@ impl IndentDepth {
     }
 }
 
-pub trait ConcreteParserState
-where
-    Self: std::fmt::Debug,
-{
-    // token emitters
-    fn emit_conditional_keyword(&mut self, contents: String);
-    fn emit_mod_keyword(&mut self, contents: String);
-    fn emit_keyword(&mut self, kw: String);
-    fn emit_def_keyword(&mut self);
-    fn emit_end_block(&mut self);
-    fn emit_colon_colon(&mut self);
-    fn emit_lonely_operator(&mut self);
-    fn emit_dot(&mut self);
-    fn emit_ellipsis(&mut self);
-    fn emit_else(&mut self);
-    fn emit_begin_block(&mut self);
-    fn emit_begin(&mut self);
-    fn emit_ensure(&mut self);
-    fn emit_module_keyword(&mut self);
-    fn emit_class_keyword(&mut self);
-    fn emit_do_keyword(&mut self);
-    fn emit_when_keyword(&mut self);
-    fn emit_case_keyword(&mut self);
-    fn emit_rescue(&mut self);
-    fn emit_open_square_bracket(&mut self);
-    fn emit_close_square_bracket(&mut self);
-    fn emit_open_curly_bracket(&mut self);
-    fn emit_close_curly_bracket(&mut self);
-    fn emit_slash(&mut self);
-    fn emit_close_paren(&mut self);
-    fn emit_comma_space(&mut self);
-    fn emit_open_paren(&mut self);
-    fn emit_space(&mut self);
-    fn emit_comma(&mut self);
-    fn emit_end(&mut self);
-    fn emit_newline(&mut self);
-    fn emit_ident(&mut self, ident: String);
-    fn emit_string_content(&mut self, s: String);
-    fn emit_double_quote(&mut self);
-    fn emit_op(&mut self, op: String);
-    fn emit_def(&mut self, def_name: String);
-    fn emit_indent(&mut self);
-    fn emit_heredoc_start(&mut self, symbol: String, kind: HeredocKind);
-    fn emit_heredoc_close(&mut self, symbol: String);
-    fn emit_after_call_chain(&mut self);
-    fn emit_data_end(&mut self);
-    fn emit_data(&mut self, data: &str);
-    fn emit_single_line_delims(&mut self, delims: BreakableDelims);
-
-    // other state changers
-    fn bind_variable(&mut self, s: String);
-    fn scope_has_variable(&self, s: &str) -> bool;
-    fn insert_comment_collection(&mut self, comments: CommentBlock);
-    fn on_line(&mut self, line_number: LineNumber);
-    fn at_offset(&mut self, source_offset: SourceOffset);
-    fn wind_dumping_comments_until_line(&mut self, line_number: LineNumber);
-    fn wind_dumping_comments_until_offset(&mut self, source_offset: SourceOffset);
-    fn wind_dumping_comments(&mut self, maybe_max_line_number: Option<LineNumber>);
-    fn shift_comments(&mut self);
-    fn shift_comments_at_index(&mut self, index: usize);
-    fn wind_line_forward(&mut self);
-    fn render_heredocs(&mut self, skip: bool);
-    fn push_heredoc_content<'a>(
-        &mut self,
-        symbol: String,
-        kind: HeredocKind,
-        end_line: LineNumber,
-        formatting_func: Box<dyn FnOnce(&mut BaseParserState) + 'a>,
-    );
-
-    // queries
-    fn at_start_of_line(&self) -> bool;
-    fn current_formatting_context_requires_parens(&self) -> bool;
-    fn hash_type_from_formatting_context(&self) -> Option<&HashType>;
-    fn current_formatting_context(&self) -> FormattingContext;
-    fn get_line_number_for_offset(&self, source_offset: SourceOffset) -> LineNumber;
-    fn is_absorbing_indents(&self) -> bool;
-    fn has_comments_in_line(&self, start_line: LineNumber, end_line: LineNumber) -> bool;
-
-    #[allow(unused)]
-    fn current_line_number(&self) -> u64;
-
-    // blocks
-    #[allow(unused)]
-    fn start_indent(&mut self);
-    fn start_indent_for_call_chain(&mut self);
-    fn end_indent_for_call_chain(&mut self);
-    #[allow(unused)]
-    fn end_indent(&mut self);
-    fn with_formatting_context(&mut self, fc: FormattingContext, f: RenderFunc);
-    fn new_scope(&mut self, f: RenderFunc);
-    fn new_block(&mut self, f: RenderFunc);
-    fn with_start_of_line(&mut self, start_of_line: bool, f: RenderFunc);
-    fn breakable_of(&mut self, delims: BreakableDelims, f: RenderFunc);
-    fn inline_breakable_of(&mut self, delims: BreakableDelims, f: RenderFunc);
-    fn breakable_call_chain_of(&mut self, multiline_handling: MultilineHandling, f: RenderFunc);
-    fn dedent(&mut self, f: RenderFunc);
-    fn reset_space_count(&mut self);
-    fn with_absorbing_indent_block(&mut self, f: RenderFunc);
-    fn magic_handle_comments_for_multiline_arrays(
-        &mut self,
-        end_line: Option<LineNumber>,
-        f: RenderFunc,
-    );
-    fn with_suppress_comments(&mut self, suppress: bool, f: RenderFunc);
-    fn will_render_as_multiline(&mut self, f: RenderFunc) -> bool;
-    fn has_comment_in_offset_span(
-        &self,
-        start_offset: SourceOffset,
-        end_offset: SourceOffset,
-    ) -> bool;
-
-    #[allow(unused)]
-    fn will_render_beyond_max_line_length(&mut self, f: RenderFunc) -> bool;
-
-    // stuff to remove from this enum
-    fn emit_soft_newline(&mut self);
-    fn emit_soft_indent(&mut self);
-    fn emit_collapsing_newline(&mut self);
-}
-
 #[derive(Debug)]
-pub struct BaseParserState {
+pub struct ParserState {
     depth_stack: Vec<IndentDepth>,
     start_of_line: Vec<bool>,
     suppress_comments_stack: Vec<bool>,
@@ -195,29 +74,29 @@ pub struct BaseParserState {
     scopes: Vec<Vec<String>>,
 }
 
-impl ConcreteParserState for BaseParserState {
-    fn scope_has_variable(&self, s: &str) -> bool {
+impl ParserState {
+    pub(crate) fn scope_has_variable(&self, s: &str) -> bool {
         self.scopes
             .last()
             .expect("it's never empty")
             .contains(&s.to_string())
     }
-    fn new_scope<'a>(&mut self, f: RenderFunc) {
+    pub(crate) fn new_scope(&mut self, f: RenderFunc) {
         self.scopes.push(vec![]);
         f(self);
         self.scopes.pop();
     }
-    fn bind_variable(&mut self, s: String) {
+    pub(crate) fn bind_variable(&mut self, s: String) {
         self.scopes.last_mut().expect("it's never empty").push(s);
     }
-    fn push_heredoc_content<'a>(
+    pub(crate) fn push_heredoc_content<'a>(
         &mut self,
         symbol: String,
         kind: HeredocKind,
         end_line: LineNumber,
-        formatting_func: Box<dyn FnOnce(&mut BaseParserState) + 'a>,
+        formatting_func: Box<dyn FnOnce(&mut ParserState) + 'a>,
     ) {
-        let mut next_ps = BaseParserState::render_with_blank_state(self, formatting_func);
+        let mut next_ps = ParserState::render_with_blank_state(self, formatting_func);
 
         for hs in next_ps.heredoc_strings.drain(0..) {
             self.heredoc_strings.push(hs);
@@ -240,15 +119,15 @@ impl ConcreteParserState for BaseParserState {
         ));
     }
 
-    fn emit_heredoc_start(&mut self, symbol: String, kind: HeredocKind) {
+    pub(crate) fn emit_heredoc_start(&mut self, symbol: String, kind: HeredocKind) {
         self.push_concrete_token(ConcreteLineToken::HeredocStart { kind, symbol });
     }
 
-    fn emit_heredoc_close(&mut self, symbol: String) {
+    pub(crate) fn emit_heredoc_close(&mut self, symbol: String) {
         self.push_concrete_token(ConcreteLineToken::HeredocClose { symbol });
     }
 
-    fn magic_handle_comments_for_multiline_arrays<'a>(
+    pub(crate) fn magic_handle_comments_for_multiline_arrays(
         &mut self,
         end_line: Option<LineNumber>,
         f: RenderFunc,
@@ -289,8 +168,8 @@ impl ConcreteParserState for BaseParserState {
         }
     }
 
-    fn will_render_as_multiline<'a>(&mut self, f: RenderFunc) -> bool {
-        let mut next_ps = BaseParserState::new_with_depth_stack_from(self);
+    pub(crate) fn will_render_as_multiline(&mut self, f: RenderFunc) -> bool {
+        let mut next_ps = ParserState::new_with_depth_stack_from(self);
         // Ignore commments when determining line length
         next_ps.with_suppress_comments(true, f);
         let data = next_ps.render_to_buffer();
@@ -299,7 +178,7 @@ impl ConcreteParserState for BaseParserState {
         s.trim().contains('\n') || s.len() > MAX_LINE_LENGTH
     }
 
-    fn has_comment_in_offset_span(
+    pub(crate) fn has_comment_in_offset_span(
         &self,
         start_offset: SourceOffset,
         end_offset: SourceOffset,
@@ -308,55 +187,42 @@ impl ConcreteParserState for BaseParserState {
             .has_comment_in_offsets(start_offset, end_offset)
     }
 
-    fn will_render_beyond_max_line_length<'a>(&mut self, f: RenderFunc) -> bool {
-        let mut next_ps = BaseParserState::new_with_depth_stack_from(self);
-        // Ignore commments when determining line length
-        next_ps.with_suppress_comments(true, f);
-        let data = next_ps.render_to_buffer();
-
-        let s = str::from_utf8(&data).expect("string is utf8").to_string();
-
-        // Add current spaces to account for current indentation level
-        (s.split_whitespace().collect::<String>().len() + (self.current_spaces() as usize))
-            > MAX_LINE_LENGTH
-    }
-
-    fn reset_space_count(&mut self) {
+    pub(crate) fn reset_space_count(&mut self) {
         self.spaces_after_last_newline = self.current_spaces();
     }
 
-    fn dedent<'a>(&mut self, f: RenderFunc) {
+    pub(crate) fn dedent(&mut self, f: RenderFunc) {
         let ds_length = self.depth_stack.len();
         self.depth_stack[ds_length - 1].decrement();
         f(self);
         self.depth_stack[ds_length - 1].increment();
     }
 
-    fn start_indent(&mut self) {
+    pub(crate) fn start_indent(&mut self) {
         let ds_length = self.depth_stack.len();
         self.depth_stack[ds_length - 1].increment();
     }
 
-    fn start_indent_for_call_chain(&mut self) {
+    pub(crate) fn start_indent_for_call_chain(&mut self) {
         self.push_concrete_token(ConcreteLineToken::BeginCallChainIndent)
     }
 
-    fn end_indent_for_call_chain(&mut self) {
+    pub(crate) fn end_indent_for_call_chain(&mut self) {
         self.push_concrete_token(ConcreteLineToken::EndCallChainIndent)
     }
 
-    fn end_indent(&mut self) {
+    pub(crate) fn end_indent(&mut self) {
         let ds_length = self.depth_stack.len();
         self.depth_stack[ds_length - 1].decrement();
     }
 
-    fn with_start_of_line<'a>(&mut self, start_of_line: bool, f: RenderFunc) {
+    pub(crate) fn with_start_of_line(&mut self, start_of_line: bool, f: RenderFunc) {
         self.start_of_line.push(start_of_line);
         f(self);
         self.start_of_line.pop();
     }
 
-    fn breakable_of<'a>(&mut self, delims: BreakableDelims, f: RenderFunc) {
+    pub(crate) fn breakable_of(&mut self, delims: BreakableDelims, f: RenderFunc) {
         self.shift_comments();
         let mut be = BreakableEntry::new(delims, self.formatting_context.clone());
         be.push_line_number(self.current_orig_line_number);
@@ -389,7 +255,7 @@ impl ConcreteParserState for BaseParserState {
 
     /// A version of `breakable_of` for list-like things that use whitespace delimiters.
     /// At the moment, this is only for conditions in a `when` clause
-    fn inline_breakable_of<'a>(&mut self, delims: BreakableDelims, f: RenderFunc) {
+    pub(crate) fn inline_breakable_of(&mut self, delims: BreakableDelims, f: RenderFunc) {
         self.shift_comments();
         let mut be = BreakableEntry::new(delims, self.formatting_context.clone());
         be.push_line_number(self.current_orig_line_number);
@@ -414,7 +280,7 @@ impl ConcreteParserState for BaseParserState {
         self.push_target(ConcreteLineTokenAndTargets::BreakableEntry(insert_be));
     }
 
-    fn breakable_call_chain_of<'a>(
+    pub(crate) fn breakable_call_chain_of(
         &mut self,
         mulitiline_handling: MultilineHandling,
         f: RenderFunc,
@@ -438,13 +304,13 @@ impl ConcreteParserState for BaseParserState {
         ));
     }
 
-    fn with_suppress_comments<'a>(&mut self, suppress: bool, f: RenderFunc) {
+    pub(crate) fn with_suppress_comments(&mut self, suppress: bool, f: RenderFunc) {
         self.suppress_comments_stack.push(suppress);
         f(self);
         self.suppress_comments_stack.pop();
     }
 
-    fn with_absorbing_indent_block<'a>(&mut self, f: RenderFunc) {
+    pub(crate) fn with_absorbing_indent_block(&mut self, f: RenderFunc) {
         let was_absorbing = self.absorbing_indents != 0;
         self.absorbing_indents += 1;
         if was_absorbing {
@@ -455,20 +321,20 @@ impl ConcreteParserState for BaseParserState {
         self.absorbing_indents -= 1;
     }
 
-    fn new_block<'a>(&mut self, f: RenderFunc) {
+    pub(crate) fn new_block(&mut self, f: RenderFunc) {
         let ds_length = self.depth_stack.len();
         self.depth_stack[ds_length - 1].increment();
         f(self);
         self.depth_stack[ds_length - 1].decrement();
     }
 
-    fn with_formatting_context<'a>(&mut self, fc: FormattingContext, f: RenderFunc) {
+    pub(crate) fn with_formatting_context(&mut self, fc: FormattingContext, f: RenderFunc) {
         self.formatting_context.push(fc);
         f(self);
         self.formatting_context.pop();
     }
 
-    fn on_line(&mut self, line_number: LineNumber) {
+    pub(crate) fn on_line(&mut self, line_number: LineNumber) {
         if line_number < self.current_orig_line_number {
             return;
         }
@@ -497,79 +363,79 @@ impl ConcreteParserState for BaseParserState {
         self.current_orig_line_number = line_number;
     }
 
-    fn at_offset(&mut self, source_offset: SourceOffset) {
+    pub(crate) fn at_offset(&mut self, source_offset: SourceOffset) {
         self.on_line(self.get_line_number_for_offset(source_offset));
     }
 
-    fn emit_indent(&mut self) {
+    pub(crate) fn emit_indent(&mut self) {
         self.push_concrete_token(ConcreteLineToken::Indent {
             depth: self.current_spaces(),
         });
     }
 
-    fn at_start_of_line(&self) -> bool {
+    pub(crate) fn at_start_of_line(&self) -> bool {
         *self
             .start_of_line
             .last()
             .expect("start of line is never_empty")
     }
 
-    fn has_comments_in_line(&self, start_line: LineNumber, end_line: LineNumber) -> bool {
+    pub(crate) fn has_comments_in_line(
+        &self,
+        start_line: LineNumber,
+        end_line: LineNumber,
+    ) -> bool {
         self.comments_hash
             .has_comments_in_lines(start_line, end_line)
     }
 
-    fn current_line_number(&self) -> u64 {
-        self.current_orig_line_number
-    }
-
-    fn emit_def(&mut self, def_name: String) {
+    pub(crate) fn emit_def(&mut self, def_name: String) {
         self.emit_def_keyword();
         self.push_concrete_token(ConcreteLineToken::DirectPart {
             part: format!(" {}", def_name),
         });
     }
 
-    fn insert_comment_collection(&mut self, comments: CommentBlock) {
+    pub(crate) fn insert_comment_collection(&mut self, comments: CommentBlock) {
         self.comments_to_insert
             .merge(comments.apply_spaces(self.spaces_after_last_newline));
     }
 
-    fn emit_op(&mut self, op: String) {
+    pub(crate) fn emit_op(&mut self, op: String) {
         self.push_concrete_token(ConcreteLineToken::Op { op });
     }
 
-    fn emit_double_quote(&mut self) {
+    pub(crate) fn emit_double_quote(&mut self) {
         self.push_concrete_token(ConcreteLineToken::DoubleQuote);
     }
 
-    fn emit_string_content(&mut self, s: String) {
+    pub(crate) fn emit_string_content(&mut self, s: String) {
         let newline_count = s.matches('\n').count() as u64;
         self.current_orig_line_number += newline_count;
 
         self.push_concrete_token(ConcreteLineToken::LTStringContent { content: s });
     }
 
-    fn emit_ident(&mut self, ident: String) {
+    pub(crate) fn emit_ident(&mut self, ident: String) {
         self.push_concrete_token(ConcreteLineToken::DirectPart { part: ident });
     }
 
-    fn emit_newline(&mut self) {
+    pub(crate) fn emit_newline(&mut self) {
         self.shift_comments();
         self.push_concrete_token(ConcreteLineToken::HardNewLine);
         self.render_heredocs(false);
         self.spaces_after_last_newline = self.current_spaces();
     }
 
-    fn wind_dumping_comments_until_line(&mut self, line_number: LineNumber) {
+    pub(crate) fn wind_dumping_comments_until_line(&mut self, line_number: LineNumber) {
         self.wind_dumping_comments(Some(line_number))
     }
 
-    fn wind_dumping_comments_until_offset(&mut self, source_offset: SourceOffset) {
+    pub(crate) fn wind_dumping_comments_until_offset(&mut self, source_offset: SourceOffset) {
         self.wind_dumping_comments_until_line(self.get_line_number_for_offset(source_offset))
     }
 
-    fn wind_dumping_comments(&mut self, maybe_max_line_number: Option<LineNumber>) {
+    pub(crate) fn wind_dumping_comments(&mut self, maybe_max_line_number: Option<LineNumber>) {
         // Return early if we're already at/past
         // the max line number
         if maybe_max_line_number
@@ -580,7 +446,7 @@ impl ConcreteParserState for BaseParserState {
         }
 
         self.on_line(self.current_orig_line_number + 1);
-        let should_iter = |ps: &BaseParserState, ln| {
+        let should_iter = |ps: &ParserState, ln| {
             // If we have a max line number, it will be the last token
             // of an expression (e.g. the `end` of a `do`/`end` block), so it's
             // fine if we wind forward to that line
@@ -616,7 +482,7 @@ impl ConcreteParserState for BaseParserState {
         }
     }
 
-    fn emit_end(&mut self) {
+    pub(crate) fn emit_end(&mut self) {
         if !self.last_token_is_a_newline() {
             self.emit_newline();
         }
@@ -626,22 +492,22 @@ impl ConcreteParserState for BaseParserState {
         self.push_concrete_token(ConcreteLineToken::End);
     }
 
-    fn emit_comma(&mut self) {
+    pub(crate) fn emit_comma(&mut self) {
         self.push_concrete_token(ConcreteLineToken::Comma);
     }
 
-    fn shift_comments(&mut self) {
+    pub(crate) fn shift_comments(&mut self) {
         let idx_of_prev_hard_newline = self.index_of_prev_hard_newline();
         self.shift_comments_at_index(idx_of_prev_hard_newline.unwrap_or(0));
     }
 
-    fn shift_comments_at_index(&mut self, index: usize) {
+    pub(crate) fn shift_comments_at_index(&mut self, index: usize) {
         if let Some(new_comments) = self.comments_to_insert.take() {
             self.insert_concrete_tokens(index, new_comments.into_line_tokens());
         }
     }
 
-    fn emit_soft_newline(&mut self) {
+    pub(crate) fn emit_soft_newline(&mut self) {
         self.new_block(Box::new(|ps| {
             ps.shift_comments();
         }));
@@ -650,13 +516,13 @@ impl ConcreteParserState for BaseParserState {
         self.spaces_after_last_newline = self.current_spaces();
     }
 
-    fn emit_soft_indent(&mut self) {
+    pub(crate) fn emit_soft_indent(&mut self) {
         self.push_abstract_token(AbstractLineToken::SoftIndent {
             depth: self.current_spaces(),
         });
     }
 
-    fn emit_collapsing_newline(&mut self) {
+    pub(crate) fn emit_collapsing_newline(&mut self) {
         if !self.last_token_is_a_newline() {
             let hd = self.gather_heredocs();
             self.push_abstract_token(AbstractLineToken::CollapsingNewLine(hd));
@@ -664,123 +530,123 @@ impl ConcreteParserState for BaseParserState {
         self.spaces_after_last_newline = self.current_spaces();
     }
 
-    fn emit_after_call_chain(&mut self) {
+    pub(crate) fn emit_after_call_chain(&mut self) {
         self.push_concrete_token(ConcreteLineToken::AfterCallChain)
     }
 
-    fn emit_space(&mut self) {
+    pub(crate) fn emit_space(&mut self) {
         self.push_concrete_token(ConcreteLineToken::Space);
     }
 
-    fn emit_open_paren(&mut self) {
+    pub(crate) fn emit_open_paren(&mut self) {
         self.push_concrete_token(ConcreteLineToken::OpenParen);
     }
 
-    fn emit_single_line_delims(&mut self, delims: BreakableDelims) {
+    pub(crate) fn emit_single_line_delims(&mut self, delims: BreakableDelims) {
         self.push_concrete_token(delims.single_line_open());
         self.push_concrete_token(delims.single_line_close());
     }
 
-    fn emit_comma_space(&mut self) {
+    pub(crate) fn emit_comma_space(&mut self) {
         self.push_concrete_token(ConcreteLineToken::CommaSpace)
     }
 
-    fn emit_close_paren(&mut self) {
+    pub(crate) fn emit_close_paren(&mut self) {
         self.push_concrete_token(ConcreteLineToken::CloseParen);
     }
 
-    fn emit_slash(&mut self) {
+    pub(crate) fn emit_slash(&mut self) {
         self.push_concrete_token(ConcreteLineToken::SingleSlash);
     }
 
-    fn emit_close_curly_bracket(&mut self) {
+    pub(crate) fn emit_close_curly_bracket(&mut self) {
         self.push_concrete_token(ConcreteLineToken::CloseCurlyBracket);
     }
 
-    fn emit_open_curly_bracket(&mut self) {
+    pub(crate) fn emit_open_curly_bracket(&mut self) {
         self.push_concrete_token(ConcreteLineToken::OpenCurlyBracket);
     }
 
-    fn emit_close_square_bracket(&mut self) {
+    pub(crate) fn emit_close_square_bracket(&mut self) {
         self.push_concrete_token(ConcreteLineToken::CloseSquareBracket);
     }
 
-    fn emit_open_square_bracket(&mut self) {
+    pub(crate) fn emit_open_square_bracket(&mut self) {
         self.push_concrete_token(ConcreteLineToken::OpenSquareBracket);
     }
 
-    fn emit_rescue(&mut self) {
+    pub(crate) fn emit_rescue(&mut self) {
         self.push_concrete_token(ConcreteLineToken::Keyword {
             keyword: "rescue".to_string(),
         });
     }
 
-    fn emit_case_keyword(&mut self) {
+    pub(crate) fn emit_case_keyword(&mut self) {
         self.push_concrete_token(ConcreteLineToken::Keyword {
             keyword: "case".to_string(),
         });
     }
 
-    fn emit_when_keyword(&mut self) {
+    pub(crate) fn emit_when_keyword(&mut self) {
         self.push_concrete_token(ConcreteLineToken::Keyword {
             keyword: "when".to_string(),
         });
     }
 
-    fn emit_do_keyword(&mut self) {
+    pub(crate) fn emit_do_keyword(&mut self) {
         self.push_concrete_token(ConcreteLineToken::DoKeyword);
     }
 
-    fn emit_class_keyword(&mut self) {
+    pub(crate) fn emit_class_keyword(&mut self) {
         self.push_concrete_token(ConcreteLineToken::ClassKeyword);
     }
 
-    fn emit_module_keyword(&mut self) {
+    pub(crate) fn emit_module_keyword(&mut self) {
         self.push_concrete_token(ConcreteLineToken::ModuleKeyword);
     }
 
-    fn emit_ensure(&mut self) {
+    pub(crate) fn emit_ensure(&mut self) {
         self.push_concrete_token(ConcreteLineToken::Keyword {
             keyword: "ensure".to_string(),
         });
     }
 
-    fn emit_begin(&mut self) {
+    pub(crate) fn emit_begin(&mut self) {
         self.push_concrete_token(ConcreteLineToken::Keyword {
             keyword: "begin".to_string(),
         });
     }
 
-    fn emit_begin_block(&mut self) {
+    pub(crate) fn emit_begin_block(&mut self) {
         self.push_concrete_token(ConcreteLineToken::Keyword {
             keyword: "BEGIN".to_string(),
         });
     }
 
-    fn emit_else(&mut self) {
+    pub(crate) fn emit_else(&mut self) {
         self.emit_conditional_keyword("else".to_string());
     }
 
-    fn emit_data_end(&mut self) {
+    pub(crate) fn emit_data_end(&mut self) {
         self.push_concrete_token(ConcreteLineToken::DataEnd);
     }
 
-    fn emit_data(&mut self, data: &str) {
+    pub(crate) fn emit_data(&mut self, data: &str) {
         self.push_concrete_token(ConcreteLineToken::DirectPart {
             part: data.to_string(),
         })
     }
 
-    fn wind_line_forward(&mut self) {
+    pub(crate) fn wind_line_forward(&mut self) {
         self.on_line(self.current_orig_line_number + 1);
     }
 
-    fn current_formatting_context_requires_parens(&self) -> bool {
+    pub(crate) fn current_formatting_context_requires_parens(&self) -> bool {
         self.current_formatting_context() == FormattingContext::Binary
             || self.current_formatting_context() == FormattingContext::IfOp
     }
 
-    fn hash_type_from_formatting_context(&self) -> Option<&HashType> {
+    pub(crate) fn hash_type_from_formatting_context(&self) -> Option<&HashType> {
         self.formatting_context
             .iter()
             .filter_map(|fc| match fc {
@@ -790,40 +656,40 @@ impl ConcreteParserState for BaseParserState {
             .last()
     }
 
-    fn emit_dot(&mut self) {
+    pub(crate) fn emit_dot(&mut self) {
         self.push_concrete_token(ConcreteLineToken::Dot);
     }
 
-    fn emit_ellipsis(&mut self) {
+    pub(crate) fn emit_ellipsis(&mut self) {
         self.push_concrete_token(ConcreteLineToken::Ellipsis)
     }
 
-    fn emit_lonely_operator(&mut self) {
+    pub(crate) fn emit_lonely_operator(&mut self) {
         self.push_concrete_token(ConcreteLineToken::LonelyOperator);
     }
 
-    fn emit_colon_colon(&mut self) {
+    pub(crate) fn emit_colon_colon(&mut self) {
         self.push_concrete_token(ConcreteLineToken::ColonColon);
     }
 
-    fn current_formatting_context(&self) -> FormattingContext {
+    pub(crate) fn current_formatting_context(&self) -> FormattingContext {
         *self
             .formatting_context
             .last()
             .expect("formatting context is never empty")
     }
 
-    fn get_line_number_for_offset(&self, source_offset: SourceOffset) -> LineNumber {
+    pub(crate) fn get_line_number_for_offset(&self, source_offset: SourceOffset) -> LineNumber {
         self.comments_hash.get_line_number_for_offset(source_offset)
     }
 
-    fn emit_end_block(&mut self) {
+    pub(crate) fn emit_end_block(&mut self) {
         self.push_concrete_token(ConcreteLineToken::Keyword {
             keyword: "END".to_string(),
         });
     }
 
-    fn render_heredocs(&mut self, skip: bool) {
+    pub(crate) fn render_heredocs(&mut self, skip: bool) {
         while let Some(next_heredoc) = self.heredoc_strings.pop() {
             let want_newline = !self.last_token_is_a_newline();
             if want_newline {
@@ -853,30 +719,30 @@ impl ConcreteParserState for BaseParserState {
         }
     }
 
-    fn is_absorbing_indents(&self) -> bool {
+    pub(crate) fn is_absorbing_indents(&self) -> bool {
         self.absorbing_indents >= 1
     }
 
-    fn emit_def_keyword(&mut self) {
+    pub(crate) fn emit_def_keyword(&mut self) {
         self.push_concrete_token(ConcreteLineToken::DefKeyword);
     }
 
-    fn emit_keyword(&mut self, kw: String) {
+    pub(crate) fn emit_keyword(&mut self, kw: String) {
         self.push_concrete_token(ConcreteLineToken::Keyword { keyword: kw });
     }
 
-    fn emit_mod_keyword(&mut self, contents: String) {
+    pub(crate) fn emit_mod_keyword(&mut self, contents: String) {
         self.push_concrete_token(ConcreteLineToken::ModKeyword { contents });
     }
 
-    fn emit_conditional_keyword(&mut self, contents: String) {
+    pub(crate) fn emit_conditional_keyword(&mut self, contents: String) {
         self.push_concrete_token(ConcreteLineToken::ConditionalKeyword { contents });
     }
 }
 
-impl BaseParserState {
-    pub fn new(fc: FileComments) -> Self {
-        BaseParserState {
+impl ParserState {
+    pub(crate) fn new(fc: FileComments) -> Self {
+        ParserState {
             depth_stack: vec![IndentDepth::new()],
             start_of_line: vec![true],
             suppress_comments_stack: vec![false],
@@ -894,11 +760,11 @@ impl BaseParserState {
         }
     }
 
-    fn consume_to_render_queue(self) -> Vec<ConcreteLineTokenAndTargets> {
+    pub(crate) fn consume_to_render_queue(self) -> Vec<ConcreteLineTokenAndTargets> {
         self.render_queue.into_tokens()
     }
 
-    fn gather_heredocs(&mut self) -> Option<Vec<HeredocString>> {
+    pub(crate) fn gather_heredocs(&mut self) -> Option<Vec<HeredocString>> {
         if self.heredoc_strings.is_empty() {
             None
         } else {
@@ -906,7 +772,7 @@ impl BaseParserState {
         }
     }
 
-    fn push_comments(&mut self, comments: CommentBlock) {
+    pub(crate) fn push_comments(&mut self, comments: CommentBlock) {
         if !self
             .suppress_comments_stack
             .last()
@@ -921,7 +787,7 @@ impl BaseParserState {
         }
     }
 
-    fn insert_extra_newline_at_last_newline(&mut self) {
+    pub(crate) fn insert_extra_newline_at_last_newline(&mut self) {
         let idx = self.index_of_prev_hard_newline();
         let insert_idx = idx.unwrap_or(0);
 
@@ -937,7 +803,7 @@ impl BaseParserState {
         }
     }
 
-    fn current_spaces(&self) -> ColNumber {
+    pub(crate) fn current_spaces(&self) -> ColNumber {
         2 * self
             .depth_stack
             .last()
@@ -945,53 +811,53 @@ impl BaseParserState {
             .get()
     }
 
-    pub fn disable_user_newlines(&mut self) {
+    pub(crate) fn disable_user_newlines(&mut self) {
         self.insert_user_newlines = false;
     }
 
-    fn last_token_is_a_newline(&self) -> bool {
+    pub(crate) fn last_token_is_a_newline(&self) -> bool {
         match self.breakable_entry_stack.last() {
             Some(be) => be.last_token_is_a_newline(),
             None => self.render_queue.last_token_is_a_newline(),
         }
     }
 
-    pub fn index_of_prev_hard_newline(&self) -> Option<usize> {
+    pub(crate) fn index_of_prev_hard_newline(&self) -> Option<usize> {
         match self.breakable_entry_stack.last() {
             Some(be) => be.index_of_prev_newline(),
             None => self.render_queue.index_of_prev_newline(),
         }
     }
 
-    fn new_with_depth_stack_from(ps: &BaseParserState) -> Self {
-        let mut next_ps = BaseParserState::new_with_reset_depth_stack(ps);
+    pub(crate) fn new_with_depth_stack_from(ps: &ParserState) -> Self {
+        let mut next_ps = ParserState::new_with_reset_depth_stack(ps);
         next_ps.depth_stack = ps.depth_stack.clone();
         next_ps
     }
 
     // Creates a copy of the parser state *with the depth_stack reset*.
     // This is used for heredocs, where we explicitly want to ignore current indentation.
-    fn new_with_reset_depth_stack(ps: &BaseParserState) -> Self {
-        let mut next_ps = BaseParserState::new(FileComments::default());
+    pub(crate) fn new_with_reset_depth_stack(ps: &ParserState) -> Self {
+        let mut next_ps = ParserState::new(FileComments::default());
         next_ps.comments_hash = ps.comments_hash.clone();
         next_ps.start_of_line = ps.start_of_line.clone();
         next_ps.current_orig_line_number = ps.current_orig_line_number;
         next_ps
     }
 
-    fn render_to_buffer(self) -> Vec<u8> {
+    pub(crate) fn render_to_buffer(self) -> Vec<u8> {
         let mut bufio = Cursor::new(Vec::new());
         self.write(&mut bufio).expect("in memory io cannot fail");
         bufio.set_position(0);
         bufio.into_inner()
     }
 
-    pub fn write<W: Write>(self, writer: &mut W) -> io::Result<()> {
+    pub(crate) fn write<W: Write>(self, writer: &mut W) -> io::Result<()> {
         let rqw = RenderQueueWriter::new(self.consume_to_render_queue());
         rqw.write(writer)
     }
 
-    fn dangerously_convert(t: AbstractLineToken) -> ConcreteLineTokenAndTargets {
+    pub(crate) fn dangerously_convert(t: AbstractLineToken) -> ConcreteLineTokenAndTargets {
         match t {
             AbstractLineToken::ConcreteLineToken(clt) => {
                 ConcreteLineTokenAndTargets::ConcreteLineToken(clt)
@@ -1006,7 +872,7 @@ impl BaseParserState {
         }
     }
 
-    pub fn flush_start_of_file_comments(&mut self) {
+    pub(crate) fn flush_start_of_file_comments(&mut self) {
         match self
             .comments_hash
             .take_start_of_file_contiguous_comment_lines()
@@ -1025,7 +891,11 @@ impl BaseParserState {
         }
     }
 
-    fn insert_concrete_tokens(&mut self, insert_idx: usize, clts: Vec<ConcreteLineToken>) {
+    pub(crate) fn insert_concrete_tokens(
+        &mut self,
+        insert_idx: usize,
+        clts: Vec<ConcreteLineToken>,
+    ) {
         match self.breakable_entry_stack.last_mut() {
             Some(be) => be.insert_at(
                 insert_idx,
@@ -1044,7 +914,7 @@ impl BaseParserState {
         }
     }
 
-    fn push_concrete_token(&mut self, t: ConcreteLineToken) {
+    pub(crate) fn push_concrete_token(&mut self, t: ConcreteLineToken) {
         match self.breakable_entry_stack.last_mut() {
             Some(be) => be.push(AbstractLineToken::ConcreteLineToken(t)),
             None => self
@@ -1053,25 +923,25 @@ impl BaseParserState {
         }
     }
 
-    fn push_target(&mut self, t: ConcreteLineTokenAndTargets) {
+    pub(crate) fn push_target(&mut self, t: ConcreteLineTokenAndTargets) {
         match self.breakable_entry_stack.last_mut() {
             Some(be) => be.push(t.into()),
             None => self.render_queue.push(t),
         }
     }
 
-    fn push_abstract_token(&mut self, t: AbstractLineToken) {
+    pub(crate) fn push_abstract_token(&mut self, t: AbstractLineToken) {
         match self.breakable_entry_stack.last_mut() {
             Some(be) => be.push(t),
             None => self.render_queue.push(Self::dangerously_convert(t)),
         }
     }
 
-    fn render_with_blank_state<F>(ps: &mut BaseParserState, f: F) -> BaseParserState
+    pub(crate) fn render_with_blank_state<F>(ps: &mut ParserState, f: F) -> ParserState
     where
-        F: FnOnce(&mut BaseParserState),
+        F: FnOnce(&mut ParserState),
     {
-        let mut next_ps = BaseParserState::new_with_reset_depth_stack(ps);
+        let mut next_ps = ParserState::new_with_reset_depth_stack(ps);
         f(&mut next_ps);
         next_ps
     }
