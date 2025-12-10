@@ -505,8 +505,21 @@ fn format_begin_node(ps: &mut ParserState, begin_node: prism::BeginNode) {
     ps.at_offset(begin_node.location().end_offset());
 }
 
-fn format_break_node(_ps: &mut ParserState, _break_node: prism::BreakNode) {
-    todo!()
+fn format_break_node(ps: &mut ParserState, break_node: prism::BreakNode) {
+    ps.emit_ident("break".to_string());
+    if let Some(arguments_node) = break_node.arguments() {
+        ps.with_start_of_line(
+            false,
+            Box::new(|ps| {
+                ps.breakable_of(
+                    BreakableDelims::for_kw(),
+                    Box::new(|ps| {
+                        format_arguments_node(ps, arguments_node);
+                    }),
+                );
+            }),
+        );
+    }
 }
 
 fn format_capture_pattern_node(

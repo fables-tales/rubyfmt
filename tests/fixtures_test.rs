@@ -68,7 +68,6 @@ const DISABLED_PRISM_TESTS: &[&'static str] = &[
     "small_break_all_the_things",
     "small_breakable_binary_op",
     "small_breakables_over_line_length",
-    "small_breaks",
     "small_cannibalization_1",
     "small_case",
     "small_case_else",
