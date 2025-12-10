@@ -411,8 +411,17 @@ fn format_alias_global_variable_node(
     todo!()
 }
 
-fn format_alias_method_node(_ps: &mut ParserState, _alias_method_node: prism::AliasMethodNode) {
-    todo!()
+fn format_alias_method_node(ps: &mut ParserState, alias_method_node: prism::AliasMethodNode) {
+    ps.emit_ident("alias ".to_string());
+
+    ps.with_start_of_line(
+        false,
+        Box::new(|ps| {
+            format_node(ps, alias_method_node.new_name());
+            ps.emit_space();
+            format_node(ps, alias_method_node.old_name());
+        }),
+    );
 }
 
 fn format_alternation_pattern_node(
@@ -496,8 +505,21 @@ fn format_begin_node(ps: &mut ParserState, begin_node: prism::BeginNode) {
     ps.at_offset(begin_node.location().end_offset());
 }
 
-fn format_break_node(_ps: &mut ParserState, _break_node: prism::BreakNode) {
-    todo!()
+fn format_break_node(ps: &mut ParserState, break_node: prism::BreakNode) {
+    ps.emit_ident("break".to_string());
+    if let Some(arguments_node) = break_node.arguments() {
+        ps.with_start_of_line(
+            false,
+            Box::new(|ps| {
+                ps.breakable_of(
+                    BreakableDelims::for_kw(),
+                    Box::new(|ps| {
+                        format_arguments_node(ps, arguments_node);
+                    }),
+                );
+            }),
+        );
+    }
 }
 
 fn format_capture_pattern_node(
@@ -1141,8 +1163,15 @@ fn format_def_body(ps: &mut ParserState, def_node: prism::DefNode) {
     }
 }
 
-fn format_defined_node(_ps: &mut ParserState, _defined_node: prism::DefinedNode) {
-    todo!()
+fn format_defined_node(ps: &mut ParserState, defined_node: prism::DefinedNode) {
+    ps.with_start_of_line(
+        false,
+        Box::new(|ps| {
+            ps.emit_ident("defined?(".to_string());
+            format_node(ps, defined_node.value());
+            ps.emit_close_paren();
+        }),
+    );
 }
 
 fn format_else_node(ps: &mut ParserState, else_node: prism::ElseNode) {
@@ -1535,6 +1564,12 @@ fn format_symbol_node(ps: &mut ParserState, symbol_node: prism::SymbolNode) {
     }
     if let Some(value_loc) = symbol_node.value_loc() {
         ps.emit_ident(loc_to_string(value_loc));
+    }
+    if let Some(closing_loc) = symbol_node.closing_loc() {
+        let closing_str = loc_to_string(closing_loc);
+        if closing_str != ":" {
+            ps.emit_ident(closing_str);
+        }
     }
 }
 
@@ -2603,15 +2638,56 @@ fn format_pinned_variable_node(
     todo!()
 }
 
-fn format_post_execution_node(
-    _ps: &mut ParserState,
-    _post_execution_node: prism::PostExecutionNode,
-) {
-    todo!()
+fn format_post_execution_node(ps: &mut ParserState, post_execution_node: prism::PostExecutionNode) {
+    ps.emit_keyword("END".to_string());
+    ps.emit_space();
+    ps.emit_open_curly_bracket();
+
+    // END { } blocks are always multi-lined
+    ps.new_block(Box::new(|ps| {
+        ps.with_start_of_line(
+            true,
+            Box::new(|ps| {
+                ps.emit_newline();
+                if let Some(statements) = post_execution_node.statements() {
+                    format_node(ps, statements.as_node());
+                }
+            }),
+        )
+    }));
+
+    ps.with_start_of_line(
+        true,
+        Box::new(|ps| {
+            ps.emit_close_curly_bracket();
+        }),
+    );
 }
 
-fn format_pre_execution_node(_ps: &mut ParserState, _pre_execution_node: prism::PreExecutionNode) {
-    todo!()
+fn format_pre_execution_node(ps: &mut ParserState, pre_execution_node: prism::PreExecutionNode) {
+    ps.emit_keyword("BEGIN".to_string());
+    ps.emit_space();
+    ps.emit_open_curly_bracket();
+
+    // BEGIN { } blocks are always multi-lined
+    ps.new_block(Box::new(|ps| {
+        ps.with_start_of_line(
+            true,
+            Box::new(|ps| {
+                ps.emit_newline();
+                if let Some(statements) = pre_execution_node.statements() {
+                    format_node(ps, statements.as_node());
+                }
+            }),
+        )
+    }));
+
+    ps.with_start_of_line(
+        true,
+        Box::new(|ps| {
+            ps.emit_close_curly_bracket();
+        }),
+    );
 }
 
 fn format_range_node(ps: &mut ParserState, range_node: prism::RangeNode) {
@@ -2629,8 +2705,12 @@ fn format_range_node(ps: &mut ParserState, range_node: prism::RangeNode) {
     );
 }
 
-fn format_rational_node(_ps: &mut ParserState, _rational_node: prism::RationalNode) {
-    todo!()
+fn format_rational_node(ps: &mut ParserState, rational_node: prism::RationalNode) {
+    handle_string_at_offset(
+        ps,
+        loc_to_string(rational_node.location()),
+        rational_node.location().start_offset(),
+    );
 }
 
 fn format_redo_node(ps: &mut ParserState) {
@@ -2782,8 +2862,22 @@ fn format_true_node(ps: &mut ParserState, true_node: prism::TrueNode) {
     handle_string_at_offset(ps, "true".to_string(), true_node.location().start_offset());
 }
 
-fn format_undef_node(_ps: &mut ParserState, _undef_node: prism::UndefNode) {
-    todo!()
+fn format_undef_node(ps: &mut ParserState, undef_node: prism::UndefNode) {
+    let names = undef_node.names();
+    let end_offset = names
+        .iter()
+        .last()
+        .expect("`undef` must have at least one argument")
+        .location()
+        .end_offset();
+
+    ps.emit_ident("undef ".to_string());
+    ps.with_start_of_line(
+        false,
+        Box::new(|ps| {
+            format_list_like_thing(ps, names, end_offset, true);
+        }),
+    );
 }
 
 fn format_unless_node(_ps: &mut ParserState, _unless_node: prism::UnlessNode) {
