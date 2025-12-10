@@ -1405,6 +1405,7 @@ fn format_call_node(ps: &mut ParserState, call_node: prism::CallNode, skip_recei
                                     if has_arguments {
                                         ps.emit_comma();
                                         ps.emit_soft_newline();
+                                        ps.emit_soft_indent();
                                     }
                                     format_block_argument_node(ps, block_argument_node);
                                 }
