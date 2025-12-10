@@ -1352,9 +1352,18 @@ fn format_call_node(ps: &mut ParserState, call_node: prism::CallNode, skip_recei
 
     if skip_receiver || call_node.receiver().is_none() {
         if !is_aref {
+            let method_ident = if call_node.is_attribute_write() {
+                loc_to_string(
+                    call_node
+                        .message_loc()
+                        .expect("Attribute writes must have a message"),
+                )
+            } else {
+                method_name
+            };
             handle_string_at_offset(
                 ps,
-                method_name,
+                method_ident,
                 call_node.message_loc().unwrap().start_offset(),
             );
         }
@@ -1380,6 +1389,9 @@ fn format_call_node(ps: &mut ParserState, call_node: prism::CallNode, skip_recei
                     .as_def_node()
                     .unwrap();
                 format_def_node(ps, def_node);
+            } else if call_node.is_attribute_write() {
+                ps.emit_ident(" = ".to_string());
+                format_arguments_node(ps, arguments);
             } else {
                 let delims = if is_aref {
                     BreakableDelims::for_array()
