@@ -1430,7 +1430,7 @@ fn format_call_node(ps: &mut ParserState, call_node: prism::CallNode, skip_recei
             ps.inline_breakable_of(
                 BreakableDelims::for_binary_op(),
                 Box::new(|ps| {
-                    format_binary_inner(
+                    format_infix_operator(
                         ps,
                         call_node.receiver().unwrap(),
                         method_name,
@@ -1439,13 +1439,13 @@ fn format_call_node(ps: &mut ParserState, call_node: prism::CallNode, skip_recei
                 }),
             );
         } else {
-            format_full_call_chain(ps, call_node);
+            format_call_chain(ps, call_node);
         }
         ps.emit_after_call_chain();
     }
 }
 
-fn format_binary_inner(
+fn format_infix_operator(
     ps: &mut ParserState,
     left: prism::Node,
     operator: String,
@@ -1465,14 +1465,14 @@ fn format_binary_inner(
                     //   baz
                     // ```
                     if let Some(and_node) = left.as_and_node() {
-                        format_binary_inner(
+                        format_infix_operator(
                             ps,
                             and_node.left(),
                             loc_to_string(and_node.operator_loc()),
                             and_node.right(),
                         );
                     } else if let Some(or_node) = left.as_or_node() {
-                        format_binary_inner(
+                        format_infix_operator(
                             ps,
                             or_node.left(),
                             loc_to_string(or_node.operator_loc()),
@@ -1501,14 +1501,14 @@ fn format_binary_inner(
                     ps.reset_space_count();
 
                     if let Some(and_node) = right.as_and_node() {
-                        format_binary_inner(
+                        format_infix_operator(
                             ps,
                             and_node.left(),
                             loc_to_string(and_node.operator_loc()),
                             and_node.right(),
                         );
                     } else if let Some(or_node) = right.as_or_node() {
-                        format_binary_inner(
+                        format_infix_operator(
                             ps,
                             or_node.left(),
                             loc_to_string(or_node.operator_loc()),
@@ -1523,7 +1523,7 @@ fn format_binary_inner(
     );
 }
 
-fn format_full_call_chain(ps: &mut ParserState, call_node: ruby_prism::CallNode<'_>) {
+fn format_call_chain(ps: &mut ParserState, call_node: ruby_prism::CallNode<'_>) {
     ps.with_start_of_line(
         false,
         Box::new(|ps| {
