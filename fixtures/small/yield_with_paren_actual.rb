@@ -1,1 +1,3 @@
-return path if yield(path)
+def bees!
+  return path if yield(path)
+end
