@@ -411,8 +411,17 @@ fn format_alias_global_variable_node(
     todo!()
 }
 
-fn format_alias_method_node(_ps: &mut ParserState, _alias_method_node: prism::AliasMethodNode) {
-    todo!()
+fn format_alias_method_node(ps: &mut ParserState, alias_method_node: prism::AliasMethodNode) {
+    ps.emit_ident("alias ".to_string());
+
+    ps.with_start_of_line(
+        false,
+        Box::new(|ps| {
+            format_node(ps, alias_method_node.new_name());
+            ps.emit_space();
+            format_node(ps, alias_method_node.old_name());
+        }),
+    );
 }
 
 fn format_alternation_pattern_node(
@@ -1535,6 +1544,12 @@ fn format_symbol_node(ps: &mut ParserState, symbol_node: prism::SymbolNode) {
     }
     if let Some(value_loc) = symbol_node.value_loc() {
         ps.emit_ident(loc_to_string(value_loc));
+    }
+    if let Some(closing_loc) = symbol_node.closing_loc() {
+        let closing_str = loc_to_string(closing_loc);
+        if closing_str != ":" {
+            ps.emit_ident(closing_str);
+        }
     }
 }
 
