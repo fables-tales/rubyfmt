@@ -10,15 +10,10 @@ use std::fs::{File, OpenOptions, read_to_string};
 use std::io::{self, BufRead, BufReader, IsTerminal, Read, Write};
 use std::path::Path;
 use std::process::{Command, exit};
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, LazyLock, Mutex};
 
-#[macro_use]
-extern crate lazy_static;
-
-lazy_static! {
-    static ref MAGIC_COMMENT_REGEX: Regex =
-        Regex::new(r"(?m)^#\s*rubyfmt:\s*(?P<enabled>true|false)\s*$").unwrap();
-}
+static MAGIC_COMMENT_REGEX: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"(?m)^#\s*rubyfmt:\s*(?P<enabled>true|false)\s*$").unwrap());
 
 /// Simple Enum to exit on errors or not
 #[derive(Debug, PartialEq, Copy, Clone)]

@@ -1,4 +1,5 @@
 use std::collections::HashSet;
+use std::sync::LazyLock;
 
 use crate::delimiters::BreakableDelims;
 use crate::heredoc_string::HeredocKind;
@@ -674,20 +675,17 @@ pub fn args_has_single_def_expression(args: &ArgsAddStarOrExpressionListOrArgsFo
     false
 }
 
-lazy_static! {
-    static ref RSPEC_METHODS: HashSet<&'static str> = vec!["it", "describe"].into_iter().collect();
-    static ref GEMFILE_METHODS: HashSet<&'static str> = vec![
-        // Gemfile
-        "gem",
-        "source",
-        "ruby",
-        "group",
-    ].into_iter().collect();
-    static ref OPTIONALLY_PARENTHESIZED_METHODS: HashSet<&'static str> =
-        vec!["super", "require", "require_relative",]
-            .into_iter()
-            .collect::<HashSet<_>>();
-}
+static RSPEC_METHODS: LazyLock<HashSet<&'static str>> =
+    LazyLock::new(|| vec!["it", "describe"].into_iter().collect());
+
+static GEMFILE_METHODS: LazyLock<HashSet<&'static str>> =
+    LazyLock::new(|| vec!["gem", "source", "ruby", "group"].into_iter().collect());
+
+static OPTIONALLY_PARENTHESIZED_METHODS: LazyLock<HashSet<&'static str>> = LazyLock::new(|| {
+    vec!["super", "require", "require_relative"]
+        .into_iter()
+        .collect::<HashSet<_>>()
+});
 
 pub fn use_parens_for_method_call(
     ps: &ParserState,
