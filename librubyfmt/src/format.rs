@@ -678,17 +678,8 @@ pub fn args_has_single_def_expression(args: &ArgsAddStarOrExpressionListOrArgsFo
 static RSPEC_METHODS: LazyLock<HashSet<&'static str>> =
     LazyLock::new(|| vec!["it", "describe"].into_iter().collect());
 
-static GEMFILE_METHODS: LazyLock<HashSet<&'static str>> = LazyLock::new(|| {
-    vec![
-        // Gemfile
-        "gem",
-        "source",
-        "ruby",
-        "group",
-    ]
-    .into_iter()
-    .collect()
-});
+static GEMFILE_METHODS: LazyLock<HashSet<&'static str>> =
+    LazyLock::new(|| vec!["gem", "source", "ruby", "group"].into_iter().collect());
 
 static OPTIONALLY_PARENTHESIZED_METHODS: LazyLock<HashSet<&'static str>> = LazyLock::new(|| {
     vec!["super", "require", "require_relative"]
