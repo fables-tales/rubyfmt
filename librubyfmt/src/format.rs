@@ -2674,7 +2674,7 @@ fn can_elide_parens_for_reserved_names(cc: &[CallChainElement]) -> bool {
         return true;
     }
 
-    let is_rspec_describe = match (cc.first(), cc.get(2)) {
+    match (cc.first(), cc.get(2)) {
         (
             Some(CallChainElement::VarRef(VarRef(_, VarRefType::Const(Const(_, c, _))))),
             Some(CallChainElement::IdentOrOpOrKeywordOrConst(IdentOrOpOrKeywordOrConst::Ident(
@@ -2682,9 +2682,7 @@ fn can_elide_parens_for_reserved_names(cc: &[CallChainElement]) -> bool {
             ))),
         ) => c == "RSpec" && i == "describe",
         _ => false,
-    };
-
-    is_rspec_describe
+    }
 }
 
 /// Returns `true` if the call chain is indented, `false` if not

@@ -90,10 +90,11 @@ impl Intermediary {
 
         match &lt {
             ConcreteLineToken::HardNewLine => {
-                if let Some(prev) = &self.previous_line_metadata {
-                    if !self.current_line_metadata.has_require() && prev.has_require() {
-                        self.insert_trailing_blankline(BlanklineReason::EndOfRequireBlock);
-                    }
+                if let Some(prev) = &self.previous_line_metadata
+                    && !self.current_line_metadata.has_require()
+                    && prev.has_require()
+                {
+                    self.insert_trailing_blankline(BlanklineReason::EndOfRequireBlock);
                 }
 
                 let mut md = LineMetadata::new();
@@ -101,17 +102,17 @@ impl Intermediary {
                 self.previous_line_metadata = Some(md);
                 self.index_of_last_hard_newline = self.tokens.len();
 
-                if self.tokens.len() >= 2 {
-                    if let (
+                if self.tokens.len() >= 2
+                    && let (
                         Some(&ConcreteLineToken::HardNewLine),
                         Some(&ConcreteLineToken::HardNewLine),
                     ) = (
                         self.tokens.get(self.index_of_last_hard_newline - 2),
                         self.tokens.get(self.index_of_last_hard_newline - 1),
-                    ) {
-                        do_push = false;
-                        self.index_of_last_hard_newline = self.tokens.len() - 1;
-                    }
+                    )
+                {
+                    do_push = false;
+                    self.index_of_last_hard_newline = self.tokens.len() - 1;
                 }
             }
             ConcreteLineToken::ModuleKeyword | ConcreteLineToken::ClassKeyword => {
@@ -126,13 +127,13 @@ impl Intermediary {
             ConcreteLineToken::Indent { depth } => {
                 self.current_line_metadata.observe_indent_level(*depth);
 
-                if let Some(prev) = &mut self.previous_line_metadata {
-                    if LineMetadata::indent_level_increases_between(
+                if let Some(prev) = &mut self.previous_line_metadata
+                    && LineMetadata::indent_level_increases_between(
                         prev,
                         &self.current_line_metadata,
-                    ) {
-                        prev.set_gets_indented()
-                    }
+                    )
+                {
+                    prev.set_gets_indented()
                 }
             }
             ConcreteLineToken::DirectPart { part } => {
@@ -195,10 +196,10 @@ impl Intermediary {
     }
 
     fn handle_class_or_module(&mut self) {
-        if let Some(prev) = &self.previous_line_metadata {
-            if !prev.gets_indented() {
-                self.insert_trailing_blankline(BlanklineReason::ClassOrModule);
-            }
+        if let Some(prev) = &self.previous_line_metadata
+            && !prev.gets_indented()
+        {
+            self.insert_trailing_blankline(BlanklineReason::ClassOrModule);
         }
     }
 

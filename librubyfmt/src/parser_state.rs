@@ -653,7 +653,7 @@ impl ParserState {
                 FormattingContext::HashType(hash_type) => Some(hash_type),
                 _ => None,
             })
-            .last()
+            .next_back()
     }
 
     pub(crate) fn emit_dot(&mut self) {

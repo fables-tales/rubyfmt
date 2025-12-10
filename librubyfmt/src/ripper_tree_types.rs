@@ -869,10 +869,10 @@ pub enum ArgsAddStarOrExpressionListOrArgsForward {
 
 impl ArgsAddStarOrExpressionListOrArgsForward {
     pub fn is_empty(&self) -> bool {
-        if let ArgsAddStarOrExpressionListOrArgsForward::ExpressionList(el, ..) = self {
-            if el.is_empty() {
-                return true;
-            }
+        if let ArgsAddStarOrExpressionListOrArgsForward::ExpressionList(el, ..) = self
+            && el.is_empty()
+        {
+            return true;
         }
 
         false
