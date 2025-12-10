@@ -431,8 +431,23 @@ fn format_alternation_pattern_node(
     todo!()
 }
 
-fn format_and_node(_ps: &mut ParserState, _and_node: prism::AndNode) {
-    todo!()
+fn format_and_node(ps: &mut ParserState, and_node: prism::AndNode) {
+    ps.inline_breakable_of(
+        BreakableDelims::for_binary_op(),
+        Box::new(|ps| {
+            ps.with_start_of_line(
+                false,
+                Box::new(|ps| {
+                    format_infix_operator(
+                        ps,
+                        and_node.left(),
+                        loc_to_string(and_node.operator_loc()),
+                        and_node.right(),
+                    );
+                }),
+            );
+        }),
+    );
 }
 
 fn format_back_reference_read_node(
@@ -2720,8 +2735,23 @@ fn format_optional_parameter_node(
     format_node(ps, optional_parameter_node.value());
 }
 
-fn format_or_node(_ps: &mut ParserState, _or_node: prism::OrNode) {
-    todo!()
+fn format_or_node(ps: &mut ParserState, or_node: prism::OrNode) {
+    ps.inline_breakable_of(
+        BreakableDelims::for_binary_op(),
+        Box::new(|ps| {
+            ps.with_start_of_line(
+                false,
+                Box::new(|ps| {
+                    format_infix_operator(
+                        ps,
+                        or_node.left(),
+                        loc_to_string(or_node.operator_loc()),
+                        or_node.right(),
+                    );
+                }),
+            );
+        }),
+    );
 }
 
 fn format_pinned_expression_node(
