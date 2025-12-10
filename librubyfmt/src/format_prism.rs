@@ -1332,9 +1332,10 @@ fn format_block_argument_node(ps: &mut ParserState, block_argument_node: prism::
 }
 
 fn format_call_node(ps: &mut ParserState, call_node: prism::CallNode, skip_receiver: bool) {
+    let method_name = const_to_string(call_node.name());
+    let is_aref = &method_name == "[]";
+
     if skip_receiver || call_node.receiver().is_none() {
-        let method_name = const_to_string(call_node.name());
-        let is_aref = &method_name == "[]";
         if !is_aref {
             handle_string_at_offset(
                 ps,
@@ -1421,59 +1422,158 @@ fn format_call_node(ps: &mut ParserState, call_node: prism::CallNode, skip_recei
             }
         }
     } else {
-        ps.with_start_of_line(
-            false,
-            Box::new(|ps| {
-                let mut call_chain_elements = collapse_nodes_to_call_chain(call_node.as_node());
-                ps.breakable_call_chain_of(
-                    MultilineHandling::Prism(call_chain_elements_are_user_multilined(
+        // Note: infix operators *can* be called with dots, e.g. `1.<=(2)`,
+        // but in those cases we render them as regular method calls.
+        let is_infix_operator = !is_aref && call_node.call_operator_loc().is_none();
+
+        if is_infix_operator {
+            ps.inline_breakable_of(
+                BreakableDelims::for_binary_op(),
+                Box::new(|ps| {
+                    format_binary_inner(
                         ps,
-                        call_chain_elements.iter().clone().collect(),
-                    )),
-                    Box::new(|ps| {
-                        // The first node can be *any* expression, whereas following receivers
-                        // must be additional calls -- you cannot insert literals into call chains
-                        let first_expression = call_chain_elements.remove(0);
-                        format_node(ps, first_expression);
-                        // Eagerly render heredocs if they're in the first expression.
-                        // We want the full heredoc to get rendered _before_ we emit the
-                        // BeginCallChainIndent token so that it gets correctly indented
-                        // (or in the case of it being the first expression, _not_ indented).
-                        ps.render_heredocs(true);
-
-                        ps.start_indent_for_call_chain();
-
-                        ps.with_start_of_line(
-                            false,
-                            Box::new(|ps| {
-                                for element in call_chain_elements {
-                                    let element = element.as_call_node().unwrap();
-
-                                    // `call_operator_loc` is the `.`/`::`/`&.` etc.
-                                    // it may be None in the case of arefs, e.g. foo[bar]
-                                    let call_operator =
-                                        element.call_operator_loc().map(|loc| loc_to_string(loc));
-                                    if let Some(call_operator) = call_operator {
-                                        if call_operator != *"::" {
-                                            ps.emit_collapsing_newline();
-                                            ps.emit_soft_indent();
-                                        }
-                                        ps.emit_ident(call_operator);
-                                    }
-
-                                    ps.at_offset(element.location().start_offset());
-                                    format_call_node(ps, element, true);
-                                }
-                            }),
-                        );
-                        ps.end_indent_for_call_chain();
-                    }),
-                );
-            }),
-        );
-
+                        call_node.receiver().unwrap(),
+                        method_name,
+                        call_node.arguments().unwrap().as_node(),
+                    );
+                }),
+            );
+        } else {
+            format_full_call_chain(ps, call_node);
+        }
         ps.emit_after_call_chain();
     }
+}
+
+fn format_binary_inner(
+    ps: &mut ParserState,
+    left: prism::Node,
+    operator: String,
+    right: prism::Node,
+) {
+    ps.with_formatting_context(
+        FormattingContext::Binary,
+        Box::new(|ps| {
+            ps.with_start_of_line(
+                false,
+                Box::new(|ps| {
+                    // Check if left and right are also binary operators so we recurse back and handle it here.
+                    // This is so that chained and/or operations get indented correctly as one big chain.
+                    // ```ruby
+                    // foo &&
+                    //   bar &&
+                    //   baz
+                    // ```
+                    if let Some(and_node) = left.as_and_node() {
+                        format_binary_inner(
+                            ps,
+                            and_node.left(),
+                            loc_to_string(and_node.operator_loc()),
+                            and_node.right(),
+                        );
+                    } else if let Some(or_node) = left.as_or_node() {
+                        format_binary_inner(
+                            ps,
+                            or_node.left(),
+                            loc_to_string(or_node.operator_loc()),
+                            or_node.right(),
+                        );
+                    } else {
+                        ps.dedent(Box::new(|ps| {
+                            format_node(ps, left);
+                        }));
+                    }
+
+                    let comparison_operators = [">", ">=", "===", "==", "<", "<=", "<=>", "!="];
+                    let is_comparison = comparison_operators.iter().any(|o| o == &operator);
+
+                    ps.emit_space();
+                    ps.emit_ident(operator);
+
+                    if is_comparison {
+                        // For comparison operators, we always put the right-hand side
+                        // on the same line as the left-hand side.
+                        ps.emit_space();
+                    } else {
+                        ps.emit_soft_newline();
+                        ps.emit_soft_indent();
+                    }
+                    ps.reset_space_count();
+
+                    if let Some(and_node) = right.as_and_node() {
+                        format_binary_inner(
+                            ps,
+                            and_node.left(),
+                            loc_to_string(and_node.operator_loc()),
+                            and_node.right(),
+                        );
+                    } else if let Some(or_node) = right.as_or_node() {
+                        format_binary_inner(
+                            ps,
+                            or_node.left(),
+                            loc_to_string(or_node.operator_loc()),
+                            or_node.right(),
+                        );
+                    } else {
+                        format_node(ps, right);
+                    }
+                }),
+            );
+        }),
+    );
+}
+
+fn format_full_call_chain(ps: &mut ParserState, call_node: ruby_prism::CallNode<'_>) {
+    ps.with_start_of_line(
+        false,
+        Box::new(|ps| {
+            let mut call_chain_elements = collapse_nodes_to_call_chain(call_node.as_node());
+            ps.breakable_call_chain_of(
+                MultilineHandling::Prism(call_chain_elements_are_user_multilined(
+                    ps,
+                    call_chain_elements.iter().clone().collect(),
+                )),
+                Box::new(|ps| {
+                    // The first node can be *any* expression, whereas following receivers
+                    // must be additional calls -- you cannot insert literals into call chains
+                    let first_expression = call_chain_elements.remove(0);
+                    format_node(ps, first_expression);
+                    // Eagerly render heredocs if they're in the first expression.
+                    // We want the full heredoc to get rendered _before_ we emit the
+                    // BeginCallChainIndent token so that it gets correctly indented
+                    // (or in the case of it being the first expression, _not_ indented).
+                    ps.render_heredocs(true);
+
+                    ps.start_indent_for_call_chain();
+
+                    ps.with_start_of_line(
+                        false,
+                        Box::new(|ps| {
+                            for element in call_chain_elements {
+                                let element = element.as_call_node().unwrap();
+
+                                // `call_operator_loc` is the `.`/`::`/`&.` etc.
+                                // it may be None in the case of arefs, e.g. foo[bar]
+                                let call_operator =
+                                    element.call_operator_loc().map(|loc| loc_to_string(loc));
+                                if let Some(call_operator) = call_operator {
+                                    if call_operator != *"::" {
+                                        ps.emit_collapsing_newline();
+                                        ps.emit_soft_indent();
+                                    }
+                                    ps.emit_ident(call_operator);
+                                }
+
+                                ps.at_offset(element.location().start_offset());
+                                format_call_node(ps, element, true);
+                            }
+                        }),
+                    );
+                    ps.end_indent_for_call_chain();
+                }),
+            );
+        }),
+    );
 }
 
 fn call_chain_elements_are_user_multilined(
@@ -2591,10 +2691,10 @@ fn format_numbered_parameters_node(
 }
 
 fn format_numbered_reference_read_node(
-    _ps: &mut ParserState,
-    _numbered_reference_read_node: prism::NumberedReferenceReadNode,
+    ps: &mut ParserState,
+    numbered_reference_read_node: prism::NumberedReferenceReadNode,
 ) {
-    todo!()
+    ps.emit_ident(loc_to_string(numbered_reference_read_node.location()));
 }
 
 fn format_optional_keyword_parameter_node(
