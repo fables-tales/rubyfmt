@@ -88,7 +88,6 @@ const DISABLED_PRISM_TESTS: &[&'static str] = &[
     "small_const_call",
     "small_cursed_call_01",
     "small_cvar",
-    "small_defined",
     "small_dotcall",
     "small_dyna_symbol_with_escapes",
     "small_empty_arg_paren",

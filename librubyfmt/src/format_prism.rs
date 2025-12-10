@@ -1150,8 +1150,15 @@ fn format_def_body(ps: &mut ParserState, def_node: prism::DefNode) {
     }
 }
 
-fn format_defined_node(_ps: &mut ParserState, _defined_node: prism::DefinedNode) {
-    todo!()
+fn format_defined_node(ps: &mut ParserState, defined_node: prism::DefinedNode) {
+    ps.with_start_of_line(
+        false,
+        Box::new(|ps| {
+            ps.emit_ident("defined?(".to_string());
+            format_node(ps, defined_node.value());
+            ps.emit_close_paren();
+        }),
+    );
 }
 
 fn format_else_node(ps: &mut ParserState, else_node: prism::ElseNode) {
