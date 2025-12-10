@@ -285,23 +285,21 @@ impl AbstractTokenTarget for BreakableCallChainEntry {
             } else if let AbstractLineToken::BreakableEntry(BreakableEntry {
                 delims, tokens, ..
             }) = token
+                && *delims == BreakableDelims::for_brace_block()
             {
-                if *delims == BreakableDelims::for_brace_block() {
-                    if let Some(AbstractLineToken::BreakableEntry(BreakableEntry {
-                        delims, ..
-                    })) = tokens.first()
-                    {
-                        if *delims == BreakableDelims::for_block_params() {
-                            // Wipe away the body of the block and leave only the params
-                            *tokens = vec![tokens.first().unwrap().clone()];
-                        } else {
-                            // No params, so wipe away the whole thing
-                            *tokens = Vec::new();
-                        }
+                if let Some(AbstractLineToken::BreakableEntry(BreakableEntry { delims, .. })) =
+                    tokens.first()
+                {
+                    if *delims == BreakableDelims::for_block_params() {
+                        // Wipe away the body of the block and leave only the params
+                        *tokens = vec![tokens.first().unwrap().clone()];
                     } else {
                         // No params, so wipe away the whole thing
                         *tokens = Vec::new();
                     }
+                } else {
+                    // No params, so wipe away the whole thing
+                    *tokens = Vec::new();
                 }
             }
         }
@@ -330,13 +328,12 @@ impl AbstractTokenTarget for BreakableCallChainEntry {
         //
         // However, if there's only one item in the chain, try our best to leave that in place.
         // `foo\n.bar` is always a little awkward.
-        if let Some(AbstractLineToken::BreakableEntry(be)) = tokens.last() {
-            if (call_count == 1 || be.is_multiline())
-                && be.delims != BreakableDelims::for_brace_block()
-                && be.delims != BreakableDelims::for_block_params()
-            {
-                tokens.pop();
-            }
+        if let Some(AbstractLineToken::BreakableEntry(be)) = tokens.last()
+            && (call_count == 1 || be.is_multiline())
+            && be.delims != BreakableDelims::for_brace_block()
+            && be.delims != BreakableDelims::for_block_params()
+        {
+            tokens.pop();
         }
         tokens.insert(
             0,
@@ -403,14 +400,12 @@ impl AbstractTokenTarget for BreakableCallChainEntry {
                     call_chain_to_check = &call_chain_to_check[1..];
                 }
 
-                let chain_is_user_multilined = call_chain_to_check
+                call_chain_to_check
                     .iter()
                     .filter_map(|cc_elem| cc_elem.start_line())
                     .collect::<HashSet<_>>()
                     .len()
-                    > 1;
-
-                chain_is_user_multilined
+                    > 1
             }
         }
     }

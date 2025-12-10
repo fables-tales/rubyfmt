@@ -142,18 +142,16 @@ impl RenderQueueWriter {
                     x,
                 ],
             ) = accum.last::<4>()
+                && x.is_in_need_of_a_trailing_blankline()
             {
-                if x.is_in_need_of_a_trailing_blankline() {
-                    accum.insert_trailing_blankline(BlanklineReason::ComesAfterEnd);
-                }
+                accum.insert_trailing_blankline(BlanklineReason::ComesAfterEnd);
             }
 
             if let Some([HardNewLine, HardNewLine, Comment { contents }, HardNewLine]) =
                 accum.last::<4>()
+                && contents.is_empty()
             {
-                if contents.is_empty() {
-                    accum.pop_require_comment_whitespace();
-                }
+                accum.pop_require_comment_whitespace();
             }
 
             if let Some(
