@@ -2348,6 +2348,170 @@ fn format_hash_pattern_node(_ps: &mut ParserState, _hash_pattern_node: prism::Ha
     todo!()
 }
 
+fn format_inline_conditional(
+    ps: &mut ParserState,
+    predicate: prism::Node,
+    statements: Option<prism::StatementsNode>,
+    keyword: String,
+) {
+    if let Some(statements) = statements {
+        // There can only be a single statement in modifier form.
+        // Format it directly to skip the StatementsNode machinery
+        if let Some(first_statement) = statements.body().iter().next() {
+            ps.with_start_of_line(false, Box::new(|ps| format_node(ps, first_statement)));
+        }
+        ps.emit_space();
+    }
+    ps.emit_conditional_keyword(keyword);
+    ps.emit_space();
+    ps.with_start_of_line(false, Box::new(|ps| format_node(ps, predicate)));
+}
+
+enum Conditional<'pr> {
+    If(prism::IfNode<'pr>),
+    Unless(prism::UnlessNode<'pr>),
+}
+
+impl<'pr> Conditional<'pr> {
+    fn predicate(&self) -> prism::Node<'pr> {
+        match self {
+            Conditional::If(node) => node.predicate(),
+            Conditional::Unless(node) => node.predicate(),
+        }
+    }
+
+    fn statements(&self) -> Option<prism::StatementsNode<'pr>> {
+        match self {
+            Conditional::If(node) => node.statements(),
+            Conditional::Unless(node) => node.statements(),
+        }
+    }
+
+    fn subsequent_or_else(&self) -> Option<prism::Node<'pr>> {
+        match self {
+            Conditional::If(node) => node.subsequent(),
+            Conditional::Unless(node) => node.else_clause().map(|ec| ec.as_node()),
+        }
+    }
+
+    fn location_start_offset(&self) -> usize {
+        match self {
+            Conditional::If(node) => node.location().start_offset(),
+            Conditional::Unless(node) => node.location().start_offset(),
+        }
+    }
+}
+
+fn format_conditional_node(
+    ps: &mut ParserState,
+    conditional_keyword: &str,
+    requires_end_keyword: bool,
+    conditional: &Conditional,
+) {
+    let is_modifier = if let Some(statements) = conditional.statements() {
+        statements.location().start_offset() == conditional.location_start_offset()
+    } else {
+        false
+    };
+
+    if is_modifier {
+        let should_be_block = {
+            let predicate = conditional.predicate();
+            let statements = conditional.statements();
+            let predicate_start_line =
+                ps.get_line_number_for_offset(predicate.location().start_offset());
+            let predicate_end_line =
+                ps.get_line_number_for_offset(predicate.location().end_offset());
+            if predicate_start_line != predicate_end_line {
+                true
+            } else {
+                // Check if it renders multiline due to length
+                ps.will_render_as_multiline(Box::new(move |next_ps| {
+                    format_inline_conditional(
+                        next_ps,
+                        predicate,
+                        statements,
+                        conditional_keyword.to_string(),
+                    )
+                }))
+            }
+        };
+
+        if should_be_block {
+            format_conditional_block_form(
+                ps,
+                conditional_keyword,
+                conditional.predicate(),
+                conditional.statements(),
+                conditional.subsequent_or_else(),
+                requires_end_keyword,
+            );
+        } else {
+            format_inline_conditional(
+                ps,
+                conditional.predicate(),
+                conditional.statements(),
+                conditional_keyword.to_string(),
+            );
+        }
+    } else {
+        format_conditional_block_form(
+            ps,
+            conditional_keyword,
+            conditional.predicate(),
+            conditional.statements(),
+            conditional.subsequent_or_else(),
+            requires_end_keyword,
+        );
+    }
+}
+
+fn format_conditional_block_form<'pr>(
+    ps: &mut ParserState,
+    conditional_keyword: &str,
+    predicate: prism::Node<'pr>,
+    statements: Option<prism::StatementsNode<'pr>>,
+    subsequent_or_else: Option<prism::Node<'pr>>,
+    requires_end_keyword: bool,
+) {
+    ps.emit_conditional_keyword(conditional_keyword.to_string());
+    ps.emit_space();
+
+    ps.with_start_of_line(
+        false,
+        Box::new(|ps| {
+            ps.new_block(Box::new(|ps| {
+                format_node(ps, predicate);
+            }));
+        }),
+    );
+
+    ps.new_block(Box::new(|ps| {
+        ps.emit_newline();
+        if let Some(statements) = statements {
+            format_node(ps, statements.as_node());
+        }
+    }));
+
+    if let Some(subsequent_or_else) = subsequent_or_else {
+        ps.with_start_of_line(
+            false,
+            Box::new(|ps| {
+                ps.emit_indent();
+                format_node(ps, subsequent_or_else);
+            }),
+        );
+    }
+    if requires_end_keyword {
+        ps.with_start_of_line(
+            true,
+            Box::new(|ps| {
+                ps.emit_end();
+            }),
+        );
+    }
+}
+
 fn format_if_node(ps: &mut ParserState, if_node: prism::IfNode) {
     // If a keyword is present, we're in an `if/elsif` block.
     // If it's not there, this is actually a ternary, which is sufficiently
@@ -2357,29 +2521,13 @@ fn format_if_node(ps: &mut ParserState, if_node: prism::IfNode) {
         // `elsif` nodes don't need an `else` keyword, that's handled
         // by the parent `if` node.
         let requires_end_keyword = &conditional_keyword == "if";
-        ps.emit_conditional_keyword(conditional_keyword);
-        ps.emit_space();
-        ps.with_start_of_line(false, Box::new(|ps| format_node(ps, if_node.predicate())));
 
-        ps.new_block(Box::new(|ps| {
-            ps.emit_newline();
-            if let Some(statements) = if_node.statements() {
-                format_node(ps, statements.as_node());
-            }
-        }));
-
-        if let Some(subsequent) = if_node.subsequent() {
-            ps.with_start_of_line(
-                false,
-                Box::new(|ps| {
-                    ps.emit_indent();
-                    format_node(ps, subsequent);
-                }),
-            );
-        }
-        if requires_end_keyword {
-            ps.emit_end();
-        }
+        format_conditional_node(
+            ps,
+            &conditional_keyword,
+            requires_end_keyword,
+            &Conditional::If(if_node),
+        );
     } else {
         // No keyword, so this is a ternary
         ps.with_start_of_line(
@@ -3010,8 +3158,8 @@ fn format_undef_node(ps: &mut ParserState, undef_node: prism::UndefNode) {
     );
 }
 
-fn format_unless_node(_ps: &mut ParserState, _unless_node: prism::UnlessNode) {
-    todo!()
+fn format_unless_node(ps: &mut ParserState, unless_node: prism::UnlessNode) {
+    format_conditional_node(ps, "unless", true, &Conditional::Unless(unless_node));
 }
 
 fn format_until_node(_ps: &mut ParserState, _until_node: prism::UntilNode) {
