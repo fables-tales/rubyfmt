@@ -174,7 +174,7 @@ impl ParserState {
         next_ps.with_suppress_comments(true, f);
         let data = next_ps.render_to_buffer();
 
-        let s = str::from_utf8(&data).expect("string is utf8").to_string();
+        let s = str::from_utf8(&data).expect("string is utf8");
         s.trim().contains('\n') || s.len() > MAX_LINE_LENGTH
     }
 
