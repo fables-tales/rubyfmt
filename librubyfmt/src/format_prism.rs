@@ -1399,11 +1399,7 @@ fn use_parens_for_call_node(
     // Foo # class reference
     // Foo() # method call
     // ```
-    if method_name
-        .chars()
-        .next()
-        .is_some_and(|c| c.is_uppercase())
-    {
+    if method_name.chars().next().is_some_and(|c| c.is_uppercase()) {
         return true;
     }
 
@@ -1415,9 +1411,10 @@ fn use_parens_for_call_node(
         if call_node.receiver().is_none() {
             return original_used_parens;
         } else if let Some(receiver) = call_node.receiver()
-            && receiver.as_self_node().is_some() {
-                return true;
-            }
+            && receiver.as_self_node().is_some()
+        {
+            return true;
+        }
     }
 
     if method_name == "yield" {
@@ -1434,9 +1431,9 @@ fn use_parens_for_call_node(
                 .arguments()
                 .iter()
                 .any(|arg| arg.as_splat_node().is_some())
-            {
-                return true;
-            }
+        {
+            return true;
+        }
         return false;
     }
 
