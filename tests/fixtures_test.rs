@@ -51,7 +51,6 @@ const DISABLED_PRISM_TESTS: &[&'static str] = &[
     "small_aref_field",
     "small_aref_in_call",
     "small_aref_rest_param",
-    "small_assign_field",
     "small_bare_rescue_comments",
     "small_binary_operators",
     "small_bitwise_not",
