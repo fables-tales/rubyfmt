@@ -2558,8 +2558,12 @@ fn format_if_node(ps: &mut ParserState, if_node: prism::IfNode) {
     }
 }
 
-fn format_imaginary_node(_ps: &mut ParserState, _imaginary_node: prism::ImaginaryNode) {
-    todo!()
+fn format_imaginary_node(ps: &mut ParserState, imaginary_node: prism::ImaginaryNode) {
+    handle_string_at_offset(
+        ps,
+        loc_to_string(imaginary_node.location()),
+        imaginary_node.location().start_offset(),
+    );
 }
 
 fn format_implicit_node() {

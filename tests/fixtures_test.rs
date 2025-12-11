@@ -70,7 +70,6 @@ const DISABLED_PRISM_TESTS: &[&'static str] = &[
     "small_command_call_raise",
     "small_comments_at_indentation_changes",
     "small_comments_with_breaks",
-    "small_complex_numbers",
     "small_const_call",
     "small_dotcall",
     "small_dyna_symbol_with_escapes",
