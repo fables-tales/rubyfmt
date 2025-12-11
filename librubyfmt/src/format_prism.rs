@@ -1376,9 +1376,10 @@ fn format_block_argument_node(ps: &mut ParserState, block_argument_node: prism::
 fn format_call_node(ps: &mut ParserState, call_node: prism::CallNode, skip_receiver: bool) {
     let method_name = const_to_string(call_node.name());
     let is_aref = &method_name == "[]";
+    let is_aref_write = &method_name == "[]=";
 
     if skip_receiver || call_node.receiver().is_none() {
-        if !is_aref {
+        if !is_aref && !is_aref_write {
             let method_ident = if call_node.is_attribute_write() {
                 loc_to_string(
                     call_node
@@ -1416,6 +1417,38 @@ fn format_call_node(ps: &mut ParserState, call_node: prism::CallNode, skip_recei
                     .as_def_node()
                     .unwrap();
                 format_def_node(ps, def_node);
+            } else if is_aref_write {
+                let arg_count = arguments.arguments().iter().count();
+
+                ps.with_start_of_line(
+                    false,
+                    Box::new(|ps| {
+                        ps.breakable_of(
+                            BreakableDelims::for_array(),
+                            Box::new(|ps| {
+                                // All arguments except the last are index arguments
+                                for (i, arg) in
+                                    arguments.arguments().iter().take(arg_count - 1).enumerate()
+                                {
+                                    if i > 0 {
+                                        ps.emit_comma();
+                                        ps.emit_soft_newline();
+                                    }
+                                    ps.emit_soft_indent();
+                                    format_node(ps, arg);
+                                }
+                            }),
+                        );
+                    }),
+                );
+
+                ps.emit_ident(" = ".to_string());
+
+                let last_arg =
+                    arguments.arguments().iter().last().expect(
+                        "The last argument is the value being assigned and must be present",
+                    );
+                ps.with_start_of_line(false, Box::new(|ps| format_node(ps, last_arg)));
             } else if call_node.is_attribute_write() {
                 ps.emit_ident(" = ".to_string());
                 format_arguments_node(ps, arguments);
@@ -1453,6 +1486,10 @@ fn format_call_node(ps: &mut ParserState, call_node: prism::CallNode, skip_recei
                     }),
                 );
             };
+        } else if is_aref {
+            // For a[] or a[]= with no arguments, we still need to emit the brackets
+            ps.emit_open_square_bracket();
+            ps.emit_close_square_bracket();
         }
         if let Some(block) = call_node.block() {
             if block.as_block_argument_node().is_none() {
@@ -1479,7 +1516,8 @@ fn format_call_node(ps: &mut ParserState, call_node: prism::CallNode, skip_recei
     } else {
         // Note: infix operators *can* be called with dots, e.g. `1.<=(2)`,
         // but in those cases we render them as regular method calls.
-        let is_infix_operator = !is_aref && call_node.call_operator_loc().is_none();
+        let is_infix_operator =
+            !is_aref && !is_aref_write && call_node.call_operator_loc().is_none();
 
         if is_infix_operator {
             ps.inline_breakable_of(
