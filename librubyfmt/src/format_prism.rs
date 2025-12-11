@@ -1990,6 +1990,17 @@ fn format_array_pattern_node(_ps: &mut ParserState, _array_pattern_node: prism::
 
 fn format_parentheses_node(ps: &mut ParserState, parentheses_node: prism::ParenthesesNode) {
     ps.emit_open_paren();
+
+    let is_multiline = if let Some(body) = parentheses_node.body() {
+        if let Some(statements_node) = body.as_statements_node() {
+            statements_node.body().iter().count() > 1
+        } else {
+            true
+        }
+    } else {
+        false
+    };
+
     if let Some(body) = parentheses_node.body() {
         ps.with_start_of_line(
             false,
@@ -2029,7 +2040,13 @@ fn format_parentheses_node(ps: &mut ParserState, parentheses_node: prism::Parent
             }),
         );
     }
-    ps.emit_close_paren();
+
+    if is_multiline {
+        ps.emit_indent();
+        ps.emit_close_paren();
+    } else {
+        ps.emit_close_paren();
+    }
 }
 
 fn collapse_nodes_to_call_chain(node: prism::Node) -> Vec<prism::Node> {
@@ -2448,6 +2465,8 @@ fn format_inline_conditional(
 enum Conditional<'pr> {
     If(prism::IfNode<'pr>),
     Unless(prism::UnlessNode<'pr>),
+    While(prism::WhileNode<'pr>),
+    Until(prism::UntilNode<'pr>),
 }
 
 impl<'pr> Conditional<'pr> {
@@ -2455,6 +2474,8 @@ impl<'pr> Conditional<'pr> {
         match self {
             Conditional::If(node) => node.predicate(),
             Conditional::Unless(node) => node.predicate(),
+            Conditional::While(node) => node.predicate(),
+            Conditional::Until(node) => node.predicate(),
         }
     }
 
@@ -2462,6 +2483,8 @@ impl<'pr> Conditional<'pr> {
         match self {
             Conditional::If(node) => node.statements(),
             Conditional::Unless(node) => node.statements(),
+            Conditional::While(node) => node.statements(),
+            Conditional::Until(node) => node.statements(),
         }
     }
 
@@ -2469,13 +2492,27 @@ impl<'pr> Conditional<'pr> {
         match self {
             Conditional::If(node) => node.subsequent(),
             Conditional::Unless(node) => node.else_clause().map(|ec| ec.as_node()),
+            Conditional::While(_) | Conditional::Until(_) => None,
         }
     }
 
-    fn location_start_offset(&self) -> usize {
+    fn is_begin_modifier(&self) -> bool {
         match self {
-            Conditional::If(node) => node.location().start_offset(),
-            Conditional::Unless(node) => node.location().start_offset(),
+            Conditional::If(_) | Conditional::Unless(_) => false,
+            Conditional::While(node) => node.is_begin_modifier(),
+            Conditional::Until(node) => node.is_begin_modifier(),
+        }
+    }
+
+    fn keyword_start_offset(&self) -> usize {
+        match self {
+            Conditional::If(node) => node
+                .if_keyword_loc()
+                .map(|loc| loc.start_offset())
+                .unwrap_or(node.location().start_offset()),
+            Conditional::Unless(node) => node.keyword_loc().start_offset(),
+            Conditional::While(node) => node.keyword_loc().start_offset(),
+            Conditional::Until(node) => node.keyword_loc().start_offset(),
         }
     }
 }
@@ -2486,36 +2523,68 @@ fn format_conditional_node(
     requires_end_keyword: bool,
     conditional: &Conditional,
 ) {
+    // while/until nodes have special behavior if they're modifiers on `begin` nodes.
+    // This is because `begin; end while false` will always run the begin block once, whereas
+    // `while false; begin; end; end` will not run it at all, so it is unsafe to convert to block
+    if conditional.is_begin_modifier() {
+        let begin_node = conditional
+            .statements()
+            .expect("Begin modifiers must have a StatementsNode")
+            .body()
+            .iter()
+            .next()
+            .expect("Begin modifiers must have a single statement")
+            .as_begin_node()
+            .expect("Statement in a begin modifier must be a BeginNode");
+        ps.with_start_of_line(
+            false,
+            Box::new(|ps| {
+                format_begin_node(ps, begin_node);
+                ps.emit_space();
+                ps.emit_keyword(conditional_keyword.to_string());
+                ps.emit_space();
+                format_node(ps, conditional.predicate());
+            }),
+        );
+        return;
+    }
+
     let is_modifier = if let Some(statements) = conditional.statements() {
-        statements.location().start_offset() == conditional.location_start_offset()
+        statements.location().start_offset() < conditional.keyword_start_offset()
     } else {
         false
     };
 
     if is_modifier {
-        let should_be_block = {
-            let predicate = conditional.predicate();
-            let statements = conditional.statements();
-            let predicate_start_line =
-                ps.get_line_number_for_offset(predicate.location().start_offset());
-            let predicate_end_line =
-                ps.get_line_number_for_offset(predicate.location().end_offset());
-            if predicate_start_line != predicate_end_line {
-                true
-            } else {
-                // Check if it renders multiline due to length
-                ps.will_render_as_multiline(Box::new(move |next_ps| {
-                    format_inline_conditional(
-                        next_ps,
-                        predicate,
-                        statements,
-                        conditional_keyword.to_string(),
-                    )
-                }))
+        // For while/until, always use the inline format for modifiers, since
+        //   some transformations are unsafe.
+        // For if/unless, check if we should convert to block form.
+        let should_convert_to_block = match conditional {
+            Conditional::While(_) | Conditional::Until(_) => false,
+            Conditional::If(_) | Conditional::Unless(_) => {
+                let predicate = conditional.predicate();
+                let statements = conditional.statements();
+                let predicate_start_line =
+                    ps.get_line_number_for_offset(predicate.location().start_offset());
+                let predicate_end_line =
+                    ps.get_line_number_for_offset(predicate.location().end_offset());
+                if predicate_start_line != predicate_end_line {
+                    true
+                } else {
+                    // Check if it renders multiline due to length
+                    ps.will_render_as_multiline(Box::new(move |next_ps| {
+                        format_inline_conditional(
+                            next_ps,
+                            predicate,
+                            statements,
+                            conditional_keyword.to_string(),
+                        )
+                    }))
+                }
             }
         };
 
-        if should_be_block {
+        if should_convert_to_block {
             format_conditional_block_form(
                 ps,
                 conditional_keyword,
@@ -3244,8 +3313,8 @@ fn format_unless_node(ps: &mut ParserState, unless_node: prism::UnlessNode) {
     format_conditional_node(ps, "unless", true, &Conditional::Unless(unless_node));
 }
 
-fn format_until_node(_ps: &mut ParserState, _until_node: prism::UntilNode) {
-    todo!()
+fn format_until_node(ps: &mut ParserState, until_node: prism::UntilNode) {
+    format_conditional_node(ps, "until", true, &Conditional::Until(until_node));
 }
 
 fn format_when_node(ps: &mut ParserState, when_node: prism::WhenNode) {
@@ -3287,24 +3356,7 @@ fn format_when_node(ps: &mut ParserState, when_node: prism::WhenNode) {
 }
 
 fn format_while_node(ps: &mut ParserState, while_node: prism::WhileNode) {
-    ps.with_start_of_line(
-        false,
-        Box::new(|ps| {
-            ps.emit_keyword("while".to_string());
-            ps.emit_space();
-            format_node(ps, while_node.predicate());
-            ps.emit_newline();
-        }),
-    );
-
-    if let Some(statements) = while_node.statements() {
-        ps.new_block(Box::new(|ps| {
-            format_statements(ps, statements);
-        }));
-    }
-
-    ps.wind_dumping_comments_until_offset(while_node.location().end_offset());
-    ps.emit_end();
+    format_conditional_node(ps, "while", true, &Conditional::While(while_node));
 }
 
 fn format_x_string_node(ps: &mut ParserState, x_string_node: prism::XStringNode) {
