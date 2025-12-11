@@ -113,14 +113,10 @@ const DISABLED_PRISM_TESTS: &[&'static str] = &[
     "small_string_literals_dont_break_comments",
     "small_string_with_embexpr_dyna_symbol",
     "small_unary",
-    "small_until",
-    "small_until_while_mod",
     "small_variable_binding",
     "small_visibility_modifier",
     "small_w_array",
     "small_w_arrays",
-    "small_while_block_comment",
-    "small_while_mod",
     "small_yield_hash_args",
 ];
 
