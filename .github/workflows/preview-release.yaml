@@ -15,7 +15,7 @@ jobs:
   bump-tag:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v6
       - uses: actions-ecosystem/action-get-latest-tag@v1
         id: get-latest-tag
       - uses: actions-ecosystem/action-bump-semver@v1
@@ -37,7 +37,7 @@ jobs:
           - os: macos-latest
           - os: ubuntu-22.04-arm
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v6
         with:
           submodules: true
           fetch-depth: 0
@@ -66,7 +66,7 @@ jobs:
     runs-on: macos-latest
     needs: [bump-tag]
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v6
         with:
           submodules: true
           fetch-depth: 0
@@ -85,7 +85,7 @@ jobs:
       - build
       - source-release
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v6
       - uses: actions-ecosystem/action-get-latest-tag@v1
         id: get-latest-tag
       - uses: actions/download-artifact@v4
