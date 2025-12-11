@@ -2,7 +2,7 @@ use ruby_prism as prism;
 
 use crate::{
     delimiters::BreakableDelims,
-    format::SpecialCase,
+    format::{GEMFILE_METHODS, OPTIONALLY_PARENTHESIZED_METHODS, SpecialCase},
     heredoc_string::HeredocKind,
     parser_state::{FormattingContext, HashType, ParserState, RenderFunc},
     render_targets::MultilineHandling,
@@ -973,10 +973,15 @@ fn format_class_node(ps: &mut ParserState, class_node: prism::ClassNode) {
         ps.with_start_of_line(
             true,
             Box::new(|ps| {
-                ps.emit_newline();
-                if let Some(body) = class_node.body() {
-                    format_node(ps, body);
-                }
+                ps.with_formatting_context(
+                    FormattingContext::ClassOrModule,
+                    Box::new(|ps| {
+                        ps.emit_newline();
+                        if let Some(body) = class_node.body() {
+                            format_node(ps, body);
+                        }
+                    }),
+                );
             }),
         )
     }));
@@ -1081,10 +1086,15 @@ fn format_module_node(ps: &mut ParserState, module_node: prism::ModuleNode) {
         ps.with_start_of_line(
             true,
             Box::new(|ps| {
-                ps.emit_newline();
-                if let Some(body) = module_node.body() {
-                    format_node(ps, body);
-                }
+                ps.with_formatting_context(
+                    FormattingContext::ClassOrModule,
+                    Box::new(|ps| {
+                        ps.emit_newline();
+                        if let Some(body) = module_node.body() {
+                            format_node(ps, body);
+                        }
+                    }),
+                );
             }),
         )
     }));
@@ -1373,6 +1383,87 @@ fn format_block_argument_node(ps: &mut ParserState, block_argument_node: prism::
     }
 }
 
+fn use_parens_for_call_node(
+    ps: &ParserState,
+    call_node: &prism::CallNode,
+    method_name: &str,
+    context: FormattingContext,
+) -> bool {
+    let original_used_parens = call_node.opening_loc().is_some();
+
+    // If the calling method is a const, the parens become
+    // semantically important, e.g.
+    // ```
+    // class Foo; end
+    // def Foo; end
+    // Foo # class reference
+    // Foo() # method call
+    // ```
+    if method_name
+        .chars()
+        .next()
+        .map_or(false, |c| c.is_uppercase())
+    {
+        return true;
+    }
+
+    if method_name.starts_with("attr_") && context == FormattingContext::ClassOrModule {
+        return original_used_parens;
+    }
+
+    if ps.scope_has_variable(method_name) {
+        if call_node.receiver().is_none() {
+            return original_used_parens;
+        } else if let Some(receiver) = call_node.receiver() {
+            if receiver.as_self_node().is_some() {
+                return true;
+            }
+        }
+    }
+
+    if method_name == "yield" {
+        return ps.current_formatting_context_requires_parens() || original_used_parens;
+    }
+
+    if method_name == "return" || method_name == "raise" || method_name == "break" {
+        if ps.current_formatting_context_requires_parens() {
+            return true;
+        }
+
+        if let Some(arguments) = call_node.arguments() {
+            if arguments
+                .arguments()
+                .iter()
+                .any(|arg| arg.as_splat_node().is_some())
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    if OPTIONALLY_PARENTHESIZED_METHODS.contains(method_name)
+        || GEMFILE_METHODS.contains(method_name)
+    {
+        return original_used_parens;
+    }
+
+    let has_arguments = call_node
+        .arguments()
+        .map(|args| !node_list_is_empty(&args.arguments()))
+        .unwrap_or(false);
+
+    if !has_arguments {
+        return false;
+    }
+
+    if context == FormattingContext::ClassOrModule && !original_used_parens {
+        return false;
+    }
+
+    true
+}
+
 fn format_call_node(ps: &mut ParserState, call_node: prism::CallNode, skip_receiver: bool) {
     let method_name = const_to_string(call_node.name());
     let is_aref = &method_name == "[]";
@@ -1387,7 +1478,7 @@ fn format_call_node(ps: &mut ParserState, call_node: prism::CallNode, skip_recei
                         .expect("Attribute writes must have a message"),
                 )
             } else {
-                method_name
+                method_name.clone()
             };
             handle_string_at_offset(
                 ps,
@@ -1453,10 +1544,19 @@ fn format_call_node(ps: &mut ParserState, call_node: prism::CallNode, skip_recei
                 ps.emit_ident(" = ".to_string());
                 format_arguments_node(ps, arguments);
             } else {
+                let should_use_parens = use_parens_for_call_node(
+                    ps,
+                    &call_node,
+                    &method_name,
+                    ps.current_formatting_context(),
+                );
+
                 let delims = if is_aref {
                     BreakableDelims::for_array()
-                } else {
+                } else if should_use_parens {
                     BreakableDelims::for_method_call()
+                } else {
+                    BreakableDelims::for_kw()
                 };
                 ps.with_start_of_line(
                     false,
