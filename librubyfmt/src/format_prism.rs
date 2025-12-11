@@ -2086,18 +2086,30 @@ fn format_array_node(ps: &mut ParserState, array_node: prism::ArrayNode) {
         ps.with_start_of_line(
             false,
             Box::new(|ps| {
-                ps.breakable_of(
-                    BreakableDelims::for_array(),
-                    Box::new(|ps| {
-                        format_list_like_thing(
-                            ps,
-                            array_node.elements(),
-                            array_node.location().end_offset(),
-                            false,
-                        );
-                        ps.wind_dumping_comments_until_offset(array_node.location().end_offset());
-                    }),
-                );
+                if array_node.opening_loc().is_none() {
+                    // Array node is an implicit array, e.g. `a = 1, 2`
+                    format_list_like_thing(
+                        ps,
+                        array_node.elements(),
+                        array_node.location().end_offset(),
+                        true,
+                    );
+                } else {
+                    ps.breakable_of(
+                        BreakableDelims::for_array(),
+                        Box::new(|ps| {
+                            format_list_like_thing(
+                                ps,
+                                array_node.elements(),
+                                array_node.location().end_offset(),
+                                false,
+                            );
+                            ps.wind_dumping_comments_until_offset(
+                                array_node.location().end_offset(),
+                            );
+                        }),
+                    );
+                }
             }),
         );
     }
@@ -3106,12 +3118,75 @@ fn format_match_write_node(_ps: &mut ParserState, _match_write_node: prism::Matc
     todo!()
 }
 
-fn format_multi_target_node(_ps: &mut ParserState, _multi_target_node: prism::MultiTargetNode) {
-    todo!()
+fn format_multi_target_node(ps: &mut ParserState, multi_target_node: prism::MultiTargetNode) {
+    let has_parens = multi_target_node.lparen_loc().is_some();
+
+    if has_parens {
+        ps.emit_open_paren();
+    }
+
+    format_multi_targets(
+        ps,
+        multi_target_node.lefts(),
+        multi_target_node.rest(),
+        multi_target_node.rights(),
+    );
+
+    if has_parens {
+        ps.emit_close_paren();
+    }
 }
 
-fn format_multi_write_node(_ps: &mut ParserState, _multi_write_node: prism::MultiWriteNode) {
-    todo!()
+fn format_multi_targets(
+    ps: &mut ParserState,
+    lefts: prism::NodeList,
+    rest: Option<prism::Node>,
+    rights: prism::NodeList,
+) {
+    let has_lefts = lefts.iter().count() > 0;
+    let has_rest = rest.is_some();
+    let has_rights = rights.iter().count() > 0;
+
+    ps.with_start_of_line(
+        false,
+        Box::new(|ps| {
+            if has_lefts {
+                let lefts_offset = lefts.iter().last().unwrap().location().end_offset();
+                format_list_like_thing(ps, lefts, lefts_offset, true);
+            }
+
+            if let Some(rest) = rest {
+                if has_lefts {
+                    ps.emit_comma_space();
+                }
+                format_node(ps, rest);
+            }
+
+            if has_rights {
+                if has_lefts || has_rest {
+                    ps.emit_comma_space();
+                }
+                let rights_offset = rights.iter().last().unwrap().location().end_offset();
+                format_list_like_thing(ps, rights, rights_offset, true);
+            }
+        }),
+    );
+}
+
+fn format_multi_write_node(ps: &mut ParserState, multi_write_node: prism::MultiWriteNode) {
+    format_multi_targets(
+        ps,
+        multi_write_node.lefts(),
+        multi_write_node.rest(),
+        multi_write_node.rights(),
+    );
+
+    ps.emit_ident(" = ".to_string());
+
+    ps.with_start_of_line(
+        false,
+        Box::new(|ps| format_node(ps, multi_write_node.value())),
+    );
 }
 
 fn format_next_node(ps: &mut ParserState, next_node: prism::NextNode) {
