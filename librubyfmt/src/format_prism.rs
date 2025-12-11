@@ -2433,8 +2433,36 @@ fn format_float_node(ps: &mut ParserState, float_node: prism::FloatNode) {
     );
 }
 
-fn format_for_node(_ps: &mut ParserState, _for_node: prism::ForNode) {
-    todo!()
+fn format_for_node(ps: &mut ParserState, for_node: prism::ForNode) {
+    ps.emit_keyword("for".to_string());
+    ps.emit_space();
+
+    ps.with_start_of_line(
+        false,
+        Box::new(|ps| {
+            format_node(ps, for_node.index());
+
+            ps.emit_space();
+            ps.emit_keyword("in".to_string());
+            ps.emit_space();
+
+            format_node(ps, for_node.collection());
+        }),
+    );
+
+    ps.new_block(Box::new(|ps| {
+        ps.emit_newline();
+        if let Some(statements_node) = for_node.statements() {
+            format_statements(ps, statements_node);
+        }
+    }));
+
+    ps.with_start_of_line(
+        true,
+        Box::new(|ps| {
+            ps.emit_end();
+        }),
+    );
 }
 
 fn format_forwarding_arguments_node(
