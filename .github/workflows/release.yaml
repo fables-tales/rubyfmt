@@ -21,7 +21,7 @@ jobs:
           - os: macos-latest
           - os: ubuntu-22.04-arm
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v6
         with:
           submodules: true
           fetch-depth: 0
@@ -49,7 +49,7 @@ jobs:
   source-release:
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v6
         with:
           submodules: true
           fetch-depth: 0
