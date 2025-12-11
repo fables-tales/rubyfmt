@@ -548,8 +548,35 @@ fn format_case_match_node(_ps: &mut ParserState, _case_match_node: prism::CaseMa
     todo!()
 }
 
-fn format_case_node(_ps: &mut ParserState, _case_node: prism::CaseNode) {
-    todo!()
+fn format_case_node(ps: &mut ParserState, case_node: prism::CaseNode) {
+    ps.emit_case_keyword();
+
+    if let Some(predicate) = case_node.predicate() {
+        ps.with_start_of_line(
+            false,
+            Box::new(|ps| {
+                ps.emit_space();
+                format_node(ps, predicate);
+            }),
+        );
+    }
+
+    ps.emit_newline();
+    ps.with_start_of_line(
+        true,
+        Box::new(|ps| {
+            for condition in case_node.conditions().iter() {
+                format_when_node(ps, condition.as_when_node().unwrap());
+            }
+
+            if let Some(else_node) = case_node.else_clause() {
+                ps.emit_indent();
+                format_else_node(ps, else_node);
+            }
+
+            ps.emit_end();
+        }),
+    );
 }
 
 pub fn format_program(
@@ -3183,8 +3210,42 @@ fn format_until_node(_ps: &mut ParserState, _until_node: prism::UntilNode) {
     todo!()
 }
 
-fn format_when_node(_ps: &mut ParserState, _when_node: prism::WhenNode) {
-    todo!()
+fn format_when_node(ps: &mut ParserState, when_node: prism::WhenNode) {
+    ps.at_offset(when_node.location().start_offset());
+    ps.emit_indent();
+    ps.emit_when_keyword();
+
+    ps.with_start_of_line(
+        false,
+        Box::new(|ps| {
+            ps.new_block(Box::new(|ps| {
+                ps.inline_breakable_of(
+                    BreakableDelims::for_when(),
+                    Box::new(|ps| {
+                        ps.emit_collapsing_newline();
+                        format_list_like_thing(
+                            ps,
+                            when_node.conditions(),
+                            when_node.location().end_offset(),
+                            false,
+                        );
+                    }),
+                );
+            }));
+        }),
+    );
+
+    ps.new_block(Box::new(|ps| {
+        ps.with_start_of_line(
+            true,
+            Box::new(|ps| {
+                ps.emit_newline();
+                if let Some(statements) = when_node.statements() {
+                    format_node(ps, statements.as_node());
+                }
+            }),
+        );
+    }));
 }
 
 fn format_while_node(ps: &mut ParserState, while_node: prism::WhileNode) {
