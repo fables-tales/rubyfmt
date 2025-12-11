@@ -74,7 +74,6 @@ const DISABLED_PRISM_TESTS: &[&'static str] = &[
     "small_heredocs_ending_blocks",
     "small_inline_rescue",
     "small_lambda",
-    "small_list_like_things_with_comments",
     "small_long_raise",
     "small_many_opassigns",
     "small_massign",
