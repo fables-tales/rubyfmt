@@ -1482,7 +1482,7 @@ fn format_call_node(ps: &mut ParserState, call_node: prism::CallNode, skip_recei
                                     format_block_argument_node(ps, block_argument_node);
                                 }
 
-                                // Ensure that we render comments between the last argument and closign parens
+                                // Ensure that we render comments between the last argument and closing parens
                                 if let Some(closing_loc) = call_node.closing_loc() {
                                     ps.wind_dumping_comments_until_offset(closing_loc.end_offset());
                                 }
