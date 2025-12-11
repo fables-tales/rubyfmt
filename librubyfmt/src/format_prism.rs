@@ -1843,8 +1843,27 @@ fn format_call_operator_write_node(
     todo!()
 }
 
-fn format_call_or_write_node(_ps: &mut ParserState, _call_or_write_node: prism::CallOrWriteNode) {
-    todo!()
+fn format_call_or_write_node(ps: &mut ParserState, call_or_write_node: prism::CallOrWriteNode) {
+    if let Some(receiver) = call_or_write_node.receiver() {
+        ps.with_start_of_line(false, Box::new(|ps| format_node(ps, receiver)));
+    }
+
+    if let Some(call_operator_loc) = call_or_write_node.call_operator_loc() {
+        ps.emit_ident(loc_to_string(call_operator_loc));
+    }
+
+    if let Some(message_loc) = call_or_write_node.message_loc() {
+        ps.emit_ident(loc_to_string(message_loc));
+    }
+
+    ps.emit_space();
+    ps.emit_op(loc_to_string(call_or_write_node.operator_loc()));
+    ps.emit_space();
+
+    ps.with_start_of_line(
+        false,
+        Box::new(|ps| format_node(ps, call_or_write_node.value())),
+    );
 }
 
 fn format_call_target_node(_ps: &mut ParserState, _call_target_node: prism::CallTargetNode) {
@@ -2303,10 +2322,21 @@ fn format_local_variable_operator_write_node(
 }
 
 fn format_local_variable_or_write_node(
-    _ps: &mut ParserState,
-    _local_variable_or_write_node: prism::LocalVariableOrWriteNode,
+    ps: &mut ParserState,
+    local_variable_or_write_node: prism::LocalVariableOrWriteNode,
 ) {
-    todo!()
+    let variable_name = const_to_string(local_variable_or_write_node.name());
+    ps.bind_variable(variable_name.clone());
+    ps.emit_ident(variable_name);
+
+    ps.emit_space();
+    ps.emit_op(loc_to_string(local_variable_or_write_node.operator_loc()));
+    ps.emit_space();
+
+    ps.with_start_of_line(
+        false,
+        Box::new(|ps| format_node(ps, local_variable_or_write_node.value())),
+    );
 }
 
 fn format_local_variable_target_node(
@@ -2846,11 +2876,26 @@ fn format_index_operator_write_node(
     todo!()
 }
 
-fn format_index_or_write_node(
-    _ps: &mut ParserState,
-    _index_or_write_node: prism::IndexOrWriteNode,
-) {
-    todo!()
+fn format_index_or_write_node(ps: &mut ParserState, index_or_write_node: prism::IndexOrWriteNode) {
+    if let Some(receiver) = index_or_write_node.receiver() {
+        ps.with_start_of_line(false, Box::new(|ps| format_node(ps, receiver)));
+    }
+
+    if let Some(arguments) = index_or_write_node.arguments() {
+        ps.breakable_of(
+            BreakableDelims::for_array(),
+            Box::new(|ps| format_arguments_node(ps, arguments)),
+        );
+    }
+
+    ps.emit_space();
+    ps.emit_op(loc_to_string(index_or_write_node.operator_loc()));
+    ps.emit_space();
+
+    ps.with_start_of_line(
+        false,
+        Box::new(|ps| format_node(ps, index_or_write_node.value())),
+    );
 }
 
 fn format_index_target_node(_ps: &mut ParserState, _index_target_node: prism::IndexTargetNode) {
