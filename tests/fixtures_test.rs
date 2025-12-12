@@ -32,11 +32,9 @@ const DISABLED_RIPPER_TESTS: &[&'static str] = &[
 
 // These tests will have their prism variants automatically ignored
 const DISABLED_PRISM_TESTS: &[&'static str] = &[
-    "large_concurrent-ruby_atom",
     "large_concurrent-ruby_ivar",
     "large_rspec_core_notifications",
     "large_rspec_mocks_proxy",
-    "small_2.5_lambda_do_end",
     "small_aref_in_call",
     "small_aref_rest_param",
     "small_bare_rescue_comments",
@@ -51,7 +49,6 @@ const DISABLED_PRISM_TESTS: &[&'static str] = &[
     "small_gemfile",
     "small_hash_rocket_usage",
     "small_inline_rescue",
-    "small_lambda",
     "small_method_annotation",
     "small_multi_rescue",
     "small_multiline_method_chain_with_arguments",
@@ -63,7 +60,6 @@ const DISABLED_PRISM_TESTS: &[&'static str] = &[
     "small_sclass",
     "small_scoping",
     "small_single_massign",
-    "small_stabby_lambda",
     "small_string_dvar",
     "small_string_first_item_is_embed",
     "small_string_literal_with_class_interp",

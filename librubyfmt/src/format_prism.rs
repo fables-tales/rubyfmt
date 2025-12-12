@@ -1941,23 +1941,32 @@ fn format_block_parameters_node(
     }
 
     ps.breakable_of(BreakableDelims::for_block_params(), |ps| {
-        let has_locals = !node_list_is_empty(&block_parameters_node.locals());
-
-        if let Some(parameters) = block_parameters_node.parameters() {
-            format_parameters_node(ps, parameters);
-        }
-        if has_locals {
-            ps.emit_ident(";".to_string());
-            ps.with_start_of_line(false, |ps| {
-                format_list_like_thing(
-                    ps,
-                    block_parameters_node.locals(),
-                    block_parameters_node.location().end_offset(),
-                    false,
-                );
-            });
-        }
+        format_block_parameters_names(
+            ps,
+            block_parameters_node.locals(),
+            block_parameters_node.parameters(),
+            block_parameters_node.location().end_offset(),
+        );
     });
+}
+
+fn format_block_parameters_names(
+    ps: &mut ParserState,
+    locals: prism::NodeList,
+    parameters: Option<prism::ParametersNode>,
+    end_offset: usize,
+) {
+    let has_locals = !node_list_is_empty(&locals);
+
+    if let Some(parameters) = parameters {
+        format_parameters_node(ps, parameters);
+    }
+    if has_locals {
+        ps.emit_ident(";".to_string());
+        ps.with_start_of_line(false, |ps| {
+            format_list_like_thing(ps, locals, end_offset, false);
+        });
+    }
 }
 
 fn format_block_local_variable_node(
@@ -2990,8 +2999,93 @@ fn format_constant_write_node(ps: &mut ParserState, constant_write_node: prism::
     ps.with_start_of_line(false, |ps| format_node(ps, constant_write_node.value()));
 }
 
-fn format_lambda_node(_ps: &mut ParserState, _lambda_node: prism::LambdaNode) {
-    todo!()
+fn format_lambda_node(ps: &mut ParserState, lambda_node: prism::LambdaNode) {
+    let operator = loc_to_string(lambda_node.operator_loc());
+
+    ps.with_start_of_line(false, |ps| {
+        ps.emit_ident(operator.clone());
+
+        if let Some(parameters_node) = lambda_node.parameters() {
+            if &operator == "->"
+                && let Some(block_parameters) = parameters_node.as_block_parameters_node()
+            {
+                if block_parameters.parameters().is_some()
+                    || !node_list_is_empty(&block_parameters.locals())
+                {
+                    ps.emit_space();
+                    ps.breakable_of(BreakableDelims::for_method_call(), |ps| {
+                        format_block_parameters_names(
+                            ps,
+                            block_parameters.locals(),
+                            block_parameters.parameters(),
+                            block_parameters.location().end_offset(),
+                        );
+                    });
+                }
+            } else {
+                format_node(ps, parameters_node);
+            }
+        }
+
+        let opening = loc_to_string(lambda_node.opening_loc());
+
+        if &opening == "do" {
+            ps.emit_space();
+            ps.new_block(|ps| {
+                ps.emit_do_keyword();
+
+                ps.emit_newline();
+
+                if let Some(body) = lambda_node.body() {
+                    ps.with_start_of_line(true, |ps| {
+                        format_node(ps, body);
+                    });
+                }
+            });
+
+            ps.with_start_of_line(true, |ps| {
+                ps.wind_dumping_comments_until_offset(lambda_node.location().end_offset());
+                ps.emit_end();
+                ps.shift_comments();
+            });
+        } else {
+            ps.emit_space();
+            ps.inline_breakable_of(BreakableDelims::for_brace_block(), |ps| {
+                if let Some(body) = lambda_node.body() {
+                    let has_multiple_statements = body
+                        .as_statements_node()
+                        .map(|statements_node| statements_node.body().iter().count() > 1)
+                        .unwrap_or(false);
+                    if has_multiple_statements {
+                        ps.emit_soft_newline();
+                        ps.with_start_of_line(true, |ps| {
+                            format_node(ps, body);
+                        });
+                    } else {
+                        ps.with_start_of_line(false, |ps| {
+                            if let Some(node) =
+                                body.as_statements_node().unwrap().body().iter().next()
+                            {
+                                ps.emit_soft_newline();
+                                ps.emit_soft_indent();
+                                format_node(ps, node);
+                                ps.emit_soft_newline();
+                            }
+                        });
+                    }
+                } else if ps.has_comment_in_offset_span(
+                    lambda_node.opening_loc().start_offset(),
+                    lambda_node.closing_loc().end_offset(),
+                ) {
+                    ps.emit_soft_newline();
+                }
+
+                ps.dedent(|ps| ps.emit_soft_indent());
+                ps.wind_dumping_comments_until_offset(lambda_node.location().end_offset());
+                ps.shift_comments();
+            });
+        }
+    });
 }
 
 fn format_match_last_line_node(
