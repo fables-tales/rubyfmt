@@ -2047,7 +2047,7 @@ fn format_word_array_elements(
                 }
 
                 if idx != args_count - 1 {
-                    ps.emit_collapsing_newline();
+                    ps.emit_soft_newline();
                 }
             }
         },
