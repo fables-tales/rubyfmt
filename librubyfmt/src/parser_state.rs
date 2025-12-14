@@ -12,8 +12,6 @@ use log::debug;
 use std::io::{self, Cursor, Write};
 use std::str;
 
-pub type RenderFunc<'a> = Box<dyn FnOnce(&mut ParserState) + 'a>;
-
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum FormattingContext {
     Main,
@@ -81,7 +79,10 @@ impl ParserState {
             .expect("it's never empty")
             .contains(&s.to_string())
     }
-    pub(crate) fn new_scope(&mut self, f: RenderFunc) {
+    pub(crate) fn new_scope<F>(&mut self, f: F)
+    where
+        F: FnOnce(&mut ParserState),
+    {
         self.scopes.push(vec![]);
         f(self);
         self.scopes.pop();
@@ -89,13 +90,15 @@ impl ParserState {
     pub(crate) fn bind_variable(&mut self, s: String) {
         self.scopes.last_mut().expect("it's never empty").push(s);
     }
-    pub(crate) fn push_heredoc_content<'a>(
+    pub(crate) fn push_heredoc_content<F>(
         &mut self,
         symbol: String,
         kind: HeredocKind,
         end_line: LineNumber,
-        formatting_func: Box<dyn FnOnce(&mut ParserState) + 'a>,
-    ) {
+        formatting_func: F,
+    ) where
+        F: FnOnce(&mut ParserState),
+    {
         let mut next_ps = ParserState::render_with_blank_state(self, formatting_func);
 
         for hs in next_ps.heredoc_strings.drain(0..) {
@@ -127,15 +130,17 @@ impl ParserState {
         self.push_concrete_token(ConcreteLineToken::HeredocClose { symbol });
     }
 
-    pub(crate) fn magic_handle_comments_for_multiline_arrays(
+    pub(crate) fn magic_handle_comments_for_multiline_arrays<F>(
         &mut self,
         end_line: Option<LineNumber>,
-        f: RenderFunc,
-    ) {
+        f: F,
+    ) where
+        F: FnOnce(&mut ParserState),
+    {
         let current_line_number = self.current_orig_line_number;
-        self.new_block(Box::new(|ps| {
+        self.new_block(|ps| {
             ps.shift_comments();
-        }));
+        });
         f(self);
         // Reset here -- this resets when we emit newlines, but this may be out of date
         // if the most recent array didn't emit a newline
@@ -168,7 +173,10 @@ impl ParserState {
         }
     }
 
-    pub(crate) fn will_render_as_multiline(&mut self, f: RenderFunc) -> bool {
+    pub(crate) fn will_render_as_multiline<F>(&mut self, f: F) -> bool
+    where
+        F: FnOnce(&mut ParserState),
+    {
         let mut next_ps = ParserState::new_with_depth_stack_from(self);
         // Ignore commments when determining line length
         next_ps.with_suppress_comments(true, f);
@@ -191,7 +199,10 @@ impl ParserState {
         self.spaces_after_last_newline = self.current_spaces();
     }
 
-    pub(crate) fn dedent(&mut self, f: RenderFunc) {
+    pub(crate) fn dedent<F>(&mut self, f: F)
+    where
+        F: FnOnce(&mut ParserState),
+    {
         let ds_length = self.depth_stack.len();
         self.depth_stack[ds_length - 1].decrement();
         f(self);
@@ -216,23 +227,29 @@ impl ParserState {
         self.depth_stack[ds_length - 1].decrement();
     }
 
-    pub(crate) fn with_start_of_line(&mut self, start_of_line: bool, f: RenderFunc) {
+    pub(crate) fn with_start_of_line<F>(&mut self, start_of_line: bool, f: F)
+    where
+        F: FnOnce(&mut ParserState),
+    {
         self.start_of_line.push(start_of_line);
         f(self);
         self.start_of_line.pop();
     }
 
-    pub(crate) fn breakable_of(&mut self, delims: BreakableDelims, f: RenderFunc) {
+    pub(crate) fn breakable_of<F>(&mut self, delims: BreakableDelims, f: F)
+    where
+        F: FnOnce(&mut ParserState),
+    {
         self.shift_comments();
         let mut be = BreakableEntry::new(delims, self.formatting_context.clone());
         be.push_line_number(self.current_orig_line_number);
         self.breakable_entry_stack.push(Box::new(be));
 
-        self.new_block(Box::new(|ps| {
+        self.new_block(|ps| {
             ps.emit_collapsing_newline();
             f(ps);
             ps.emit_collapsing_newline();
-        }));
+        });
 
         // The last newline is in the old block, so we need
         // to reset to ensure that any comments between now and the
@@ -255,15 +272,16 @@ impl ParserState {
 
     /// A version of `breakable_of` for list-like things that use whitespace delimiters.
     /// At the moment, this is only for conditions in a `when` clause
-    pub(crate) fn inline_breakable_of(&mut self, delims: BreakableDelims, f: RenderFunc) {
+    pub(crate) fn inline_breakable_of<F>(&mut self, delims: BreakableDelims, f: F)
+    where
+        F: FnOnce(&mut ParserState),
+    {
         self.shift_comments();
         let mut be = BreakableEntry::new(delims, self.formatting_context.clone());
         be.push_line_number(self.current_orig_line_number);
         self.breakable_entry_stack.push(Box::new(be));
 
-        self.new_block(Box::new(|ps| {
-            f(ps);
-        }));
+        self.new_block(|ps| f(ps));
 
         // The last newline is in the old block, so we need
         // to reset to ensure that any comments between now and the
@@ -280,11 +298,13 @@ impl ParserState {
         self.push_target(ConcreteLineTokenAndTargets::BreakableEntry(insert_be));
     }
 
-    pub(crate) fn breakable_call_chain_of(
+    pub(crate) fn breakable_call_chain_of<F>(
         &mut self,
         mulitiline_handling: MultilineHandling,
-        f: RenderFunc,
-    ) {
+        f: F,
+    ) where
+        F: FnOnce(&mut ParserState),
+    {
         self.shift_comments();
         let mut be =
             BreakableCallChainEntry::new(self.formatting_context.clone(), mulitiline_handling);
@@ -304,13 +324,19 @@ impl ParserState {
         ));
     }
 
-    pub(crate) fn with_suppress_comments(&mut self, suppress: bool, f: RenderFunc) {
+    pub(crate) fn with_suppress_comments<F>(&mut self, suppress: bool, f: F)
+    where
+        F: FnOnce(&mut ParserState),
+    {
         self.suppress_comments_stack.push(suppress);
         f(self);
         self.suppress_comments_stack.pop();
     }
 
-    pub(crate) fn with_absorbing_indent_block(&mut self, f: RenderFunc) {
+    pub(crate) fn with_absorbing_indent_block<F>(&mut self, f: F)
+    where
+        F: FnOnce(&mut ParserState),
+    {
         let was_absorbing = self.absorbing_indents != 0;
         self.absorbing_indents += 1;
         if was_absorbing {
@@ -321,14 +347,20 @@ impl ParserState {
         self.absorbing_indents -= 1;
     }
 
-    pub(crate) fn new_block(&mut self, f: RenderFunc) {
+    pub(crate) fn new_block<F>(&mut self, f: F)
+    where
+        F: FnOnce(&mut ParserState),
+    {
         let ds_length = self.depth_stack.len();
         self.depth_stack[ds_length - 1].increment();
         f(self);
         self.depth_stack[ds_length - 1].decrement();
     }
 
-    pub(crate) fn with_formatting_context(&mut self, fc: FormattingContext, f: RenderFunc) {
+    pub(crate) fn with_formatting_context<F>(&mut self, fc: FormattingContext, f: F)
+    where
+        F: FnOnce(&mut ParserState),
+    {
         self.formatting_context.push(fc);
         f(self);
         self.formatting_context.pop();
@@ -508,9 +540,7 @@ impl ParserState {
     }
 
     pub(crate) fn emit_soft_newline(&mut self) {
-        self.new_block(Box::new(|ps| {
-            ps.shift_comments();
-        }));
+        self.new_block(|ps| ps.shift_comments());
         let hd = self.gather_heredocs();
         self.push_abstract_token(AbstractLineToken::SoftNewline(hd));
         self.spaces_after_last_newline = self.current_spaces();
