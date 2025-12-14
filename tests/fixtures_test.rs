@@ -78,8 +78,6 @@ const DISABLED_PRISM_TESTS: &[&'static str] = &[
     "small_string_with_embexpr_dyna_symbol",
     "small_variable_binding",
     "small_visibility_modifier",
-    "small_w_array",
-    "small_w_arrays",
 ];
 
 fn main() -> io::Result<()> {
