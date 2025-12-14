@@ -3,6 +3,7 @@ use crate::render_targets::{
     AbstractTokenTarget, BreakableCallChainEntry, BreakableEntry, ConvertType,
 };
 use crate::types::ColNumber;
+use std::borrow::Cow;
 
 pub fn cltats_hard_newline() -> ConcreteLineTokenAndTargets {
     ConcreteLineTokenAndTargets::ConcreteLineToken(ConcreteLineToken::HardNewLine)
@@ -65,45 +66,45 @@ pub enum ConcreteLineToken {
 }
 
 impl ConcreteLineToken {
-    pub fn into_ruby(self) -> String {
+    pub fn into_ruby(self) -> Cow<'static, str> {
         match self {
-            Self::HardNewLine => "\n".to_string(),
-            Self::Indent { depth } => (0..depth).map(|_| ' ').collect(),
-            Self::Keyword { keyword } => keyword,
-            Self::ModKeyword { contents } => contents,
-            Self::ConditionalKeyword { contents } => contents,
-            Self::DoKeyword => "do".to_string(),
-            Self::ClassKeyword => "class".to_string(),
-            Self::DefKeyword => "def".to_string(),
-            Self::ModuleKeyword => "module".to_string(),
-            Self::DirectPart { part } => part,
-            Self::CommaSpace => ", ".to_string(),
-            Self::Comma => ",".to_string(),
-            Self::Space => " ".to_string(),
-            Self::Dot => ".".to_string(),
-            Self::Ellipsis => "...".to_string(),
-            Self::ColonColon => "::".to_string(),
-            Self::LonelyOperator => "&.".to_string(),
-            Self::OpenSquareBracket => "[".to_string(),
-            Self::CloseSquareBracket => "]".to_string(),
-            Self::OpenCurlyBracket => "{".to_string(),
-            Self::CloseCurlyBracket => "}".to_string(),
-            Self::OpenParen => "(".to_string(),
-            Self::CloseParen => ")".to_string(),
-            Self::Op { op } => op,
-            Self::DoubleQuote => "\"".to_string(),
-            Self::LTStringContent { content } => content,
-            Self::SingleSlash => "\\".to_string(),
-            Self::Comment { contents } => contents,
-            Self::Delim { contents } => contents,
-            Self::End => "end".to_string(),
-            Self::HeredocClose { symbol } => symbol,
-            Self::DataEnd => "__END__".to_string(),
-            Self::HeredocStart { symbol, .. } => symbol,
+            Self::HardNewLine => Cow::Borrowed("\n"),
+            Self::Indent { depth } => Cow::Owned((0..depth).map(|_| ' ').collect()),
+            Self::Keyword { keyword } => Cow::Owned(keyword),
+            Self::ModKeyword { contents } => Cow::Owned(contents),
+            Self::ConditionalKeyword { contents } => Cow::Owned(contents),
+            Self::DoKeyword => Cow::Borrowed("do"),
+            Self::ClassKeyword => Cow::Borrowed("class"),
+            Self::DefKeyword => Cow::Borrowed("def"),
+            Self::ModuleKeyword => Cow::Borrowed("module"),
+            Self::DirectPart { part } => Cow::Owned(part),
+            Self::CommaSpace => Cow::Borrowed(", "),
+            Self::Comma => Cow::Borrowed(","),
+            Self::Space => Cow::Borrowed(" "),
+            Self::Dot => Cow::Borrowed("."),
+            Self::Ellipsis => Cow::Borrowed("..."),
+            Self::ColonColon => Cow::Borrowed("::"),
+            Self::LonelyOperator => Cow::Borrowed("&."),
+            Self::OpenSquareBracket => Cow::Borrowed("["),
+            Self::CloseSquareBracket => Cow::Borrowed("]"),
+            Self::OpenCurlyBracket => Cow::Borrowed("{"),
+            Self::CloseCurlyBracket => Cow::Borrowed("}"),
+            Self::OpenParen => Cow::Borrowed("("),
+            Self::CloseParen => Cow::Borrowed(")"),
+            Self::Op { op } => Cow::Owned(op),
+            Self::DoubleQuote => Cow::Borrowed("\""),
+            Self::LTStringContent { content } => Cow::Owned(content),
+            Self::SingleSlash => Cow::Borrowed("\\"),
+            Self::Comment { contents } => Cow::Owned(contents),
+            Self::Delim { contents } => Cow::Owned(contents),
+            Self::End => Cow::Borrowed("end"),
+            Self::HeredocClose { symbol } => Cow::Owned(symbol),
+            Self::DataEnd => Cow::Borrowed("__END__"),
+            Self::HeredocStart { symbol, .. } => Cow::Owned(symbol),
             // no-op, this is purely semantic information
             // for the render queue
             Self::AfterCallChain | Self::BeginCallChainIndent | Self::EndCallChainIndent => {
-                "".to_string()
+                Cow::Borrowed("")
             }
         }
     }
@@ -142,7 +143,7 @@ impl ConcreteLineToken {
         match self {
             Self::End => true,
             Self::DirectPart { part } => part == "}" || part == "]" || part == ")",
-            Self::Delim { contents } => contents == "}" || contents == "]" || contents == ")",
+            Self::Delim { contents } => *contents == "}" || *contents == "]" || *contents == ")",
             _ => false,
         }
     }
@@ -235,22 +236,26 @@ impl ConcreteLineTokenAndTargets {
         }
     }
 
-    pub fn into_ruby(self) -> String {
+    pub fn into_ruby(self) -> Cow<'static, str> {
         match self {
-            Self::BreakableEntry(be) => be.into_tokens(ConvertType::SingleLine).into_iter().fold(
-                "".to_string(),
-                |mut accum, tok| {
-                    accum.push_str(&tok.into_ruby());
-                    accum
-                },
-            ),
-            Self::BreakableCallChainEntry(bcce) => bcce
-                .into_tokens(ConvertType::SingleLine)
-                .into_iter()
-                .fold("".to_string(), |mut accum, tok| {
-                    accum.push_str(&tok.into_ruby());
-                    accum
-                }),
+            Self::BreakableEntry(be) => {
+                Cow::Owned(be.into_tokens(ConvertType::SingleLine).into_iter().fold(
+                    String::new(),
+                    |mut accum, tok| {
+                        accum.push_str(&tok.into_ruby());
+                        accum
+                    },
+                ))
+            }
+            Self::BreakableCallChainEntry(bcce) => {
+                Cow::Owned(bcce.into_tokens(ConvertType::SingleLine).into_iter().fold(
+                    String::new(),
+                    |mut accum, tok| {
+                        accum.push_str(&tok.into_ruby());
+                        accum
+                    },
+                ))
+            }
             Self::ConcreteLineToken(clt) => clt.into_ruby(),
         }
     }
