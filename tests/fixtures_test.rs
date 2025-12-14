@@ -33,7 +33,6 @@ const DISABLED_RIPPER_TESTS: &[&'static str] = &[
 // These tests will have their prism variants automatically ignored
 const DISABLED_PRISM_TESTS: &[&'static str] = &[
     "large_concurrent-ruby_atom",
-    "large_concurrent-ruby_copy_on_notify_observer_set",
     "large_concurrent-ruby_ivar",
     "large_concurrent-ruby_java_non_concurrent_priority_queue",
     "large_concurrent-ruby_ruby_non_concurrent_priority_queue",
@@ -44,7 +43,6 @@ const DISABLED_PRISM_TESTS: &[&'static str] = &[
     "small_aref_rest_param",
     "small_bare_rescue_comments",
     "small_binary_operators",
-    "small_bitwise_not",
     "small_block_param_line_length",
     "small_brace_blocks_with_no_args",
     "small_break_all_the_things",
@@ -65,7 +63,6 @@ const DISABLED_PRISM_TESTS: &[&'static str] = &[
     "small_multi_rescue",
     "small_multiline_chain_in_block",
     "small_multiline_method_chain_with_arguments",
-    "small_not",
     "small_paren_expr_calls",
     "small_pathological_heredocs",
     "small_percent_q",
@@ -79,7 +76,6 @@ const DISABLED_PRISM_TESTS: &[&'static str] = &[
     "small_string_first_item_is_embed",
     "small_string_literal_with_class_interp",
     "small_string_with_embexpr_dyna_symbol",
-    "small_unary",
     "small_variable_binding",
     "small_visibility_modifier",
     "small_w_array",

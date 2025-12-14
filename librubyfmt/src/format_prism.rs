@@ -1513,25 +1513,77 @@ fn format_call_node(ps: &mut ParserState, call_node: prism::CallNode, skip_recei
             }
         }
     } else {
-        // Note: infix operators *can* be called with dots, e.g. `1.<=(2)`,
-        // but in those cases we render them as regular method calls.
-        let is_infix_operator =
-            !is_aref && !is_aref_write && call_node.call_operator_loc().is_none();
+        let is_unary_operator = call_node.arguments().is_none()
+            && call_node.call_operator_loc().is_none()
+            && matches!(method_name.as_str(), "-@" | "+@" | "!" | "~");
 
-        if is_infix_operator {
-            ps.inline_breakable_of(BreakableDelims::for_binary_op(), |ps| {
-                format_infix_operator(
-                    ps,
-                    call_node.receiver().unwrap(),
-                    method_name,
-                    call_node.arguments().unwrap().as_node(),
-                );
-            });
+        if is_unary_operator {
+            format_unary_operator(ps, call_node, method_name);
         } else {
-            format_call_chain(ps, call_node);
+            // Note: infix operators *can* be called with dots, e.g. `1.<=(2)`,
+            // but in those cases we render them as regular method calls.
+            let is_infix_operator =
+                !is_aref && !is_aref_write && call_node.call_operator_loc().is_none();
+
+            if is_infix_operator {
+                ps.inline_breakable_of(BreakableDelims::for_binary_op(), |ps| {
+                    format_infix_operator(
+                        ps,
+                        call_node.receiver().unwrap(),
+                        method_name,
+                        call_node.arguments().unwrap().as_node(),
+                    );
+                });
+            } else {
+                format_call_chain(ps, call_node);
+            }
+            ps.emit_after_call_chain();
         }
-        ps.emit_after_call_chain();
     }
+}
+
+fn format_unary_operator(ps: &mut ParserState, call_node: prism::CallNode, method_name: String) {
+    let operator_symbol = match method_name.as_str() {
+        "!" => {
+            // `not` and `!` both have a `name` of `!` but different messages
+            if let Some(message_loc) = call_node.message_loc() {
+                let message_text = loc_to_string(message_loc);
+                if message_text == "not" {
+                    "not ".to_string()
+                } else {
+                    "!".to_string()
+                }
+            } else {
+                "!".to_string()
+            }
+        }
+        "-@" => "-".to_string(),
+        "+@" => "+".to_string(),
+        "~" => "~".to_string(),
+        _ => {
+            if cfg!(debug_assertions) {
+                unreachable!("Received unexpected unary operator: {}", method_name);
+            }
+
+            // Try to render the message loc as a fallback in unexpected cases, but
+            // panic if we don't find one, otherwise we're rendering a total guess.
+            loc_to_string(
+                call_node
+                    .message_loc()
+                    .expect("Expected unary operator to have a message loc"),
+            )
+        }
+    };
+
+    ps.with_start_of_line(false, |ps| {
+        ps.emit_ident(operator_symbol);
+        format_node(
+            ps,
+            call_node
+                .receiver()
+                .expect("Unary operators must have a receiver"),
+        );
+    });
 }
 
 fn format_infix_operator(
