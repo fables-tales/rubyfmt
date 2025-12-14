@@ -2,12 +2,12 @@ use crate::line_tokens::ConcreteLineToken;
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 struct DelimiterPair {
-    open: String,
-    close: String,
+    open: &'static str,
+    close: &'static str,
 }
 
 impl DelimiterPair {
-    fn new(open: String, close: String) -> Self {
+    fn new(open: &'static str, close: &'static str) -> Self {
         DelimiterPair { open, close }
     }
 }
@@ -21,88 +21,88 @@ pub struct BreakableDelims {
 impl BreakableDelims {
     pub fn for_method_call() -> Self {
         BreakableDelims {
-            single_line: DelimiterPair::new("(".to_string(), ")".to_string()),
-            multi_line: DelimiterPair::new("(".to_string(), ")".to_string()),
+            single_line: DelimiterPair::new("(", ")"),
+            multi_line: DelimiterPair::new("(", ")"),
         }
     }
 
     pub fn for_return_kw() -> Self {
         BreakableDelims {
-            single_line: DelimiterPair::new(" ".to_string(), "".to_string()),
-            multi_line: DelimiterPair::new(" [".to_string(), "]".to_string()),
+            single_line: DelimiterPair::new(" ", ""),
+            multi_line: DelimiterPair::new(" [", "]"),
         }
     }
 
     pub fn for_kw() -> Self {
         BreakableDelims {
-            single_line: DelimiterPair::new(" ".to_string(), "".to_string()),
-            multi_line: DelimiterPair::new("(".to_string(), ")".to_string()),
+            single_line: DelimiterPair::new(" ", ""),
+            multi_line: DelimiterPair::new("(", ")"),
         }
     }
 
     pub fn for_block_params() -> Self {
         BreakableDelims {
-            single_line: DelimiterPair::new(" |".to_string(), "|".to_string()),
-            multi_line: DelimiterPair::new(" |".to_string(), "|".to_string()),
+            single_line: DelimiterPair::new(" |", "|"),
+            multi_line: DelimiterPair::new(" |", "|"),
         }
     }
 
     pub fn for_array() -> Self {
         BreakableDelims {
-            single_line: DelimiterPair::new("[".to_string(), "]".to_string()),
-            multi_line: DelimiterPair::new("[".to_string(), "]".to_string()),
+            single_line: DelimiterPair::new("[", "]"),
+            multi_line: DelimiterPair::new("[", "]"),
         }
     }
 
     pub fn for_when() -> Self {
         BreakableDelims {
-            single_line: DelimiterPair::new(" ".to_string(), "".to_string()),
-            multi_line: DelimiterPair::new("".to_string(), "".to_string()),
+            single_line: DelimiterPair::new(" ", ""),
+            multi_line: DelimiterPair::new("", ""),
         }
     }
 
     pub fn for_hash() -> Self {
         BreakableDelims {
-            single_line: DelimiterPair::new("{".to_string(), "}".to_string()),
-            multi_line: DelimiterPair::new("{".to_string(), "}".to_string()),
+            single_line: DelimiterPair::new("{", "}"),
+            multi_line: DelimiterPair::new("{", "}"),
         }
     }
 
     pub fn for_brace_block() -> Self {
         BreakableDelims {
-            single_line: DelimiterPair::new("{".to_string(), " }".to_string()),
-            multi_line: DelimiterPair::new("{".to_string(), "}".to_string()),
+            single_line: DelimiterPair::new("{", " }"),
+            multi_line: DelimiterPair::new("{", "}"),
         }
     }
 
     pub fn for_binary_op() -> Self {
         BreakableDelims {
-            single_line: DelimiterPair::new("".to_string(), "".to_string()),
-            multi_line: DelimiterPair::new("".to_string(), "".to_string()),
+            single_line: DelimiterPair::new("", ""),
+            multi_line: DelimiterPair::new("", ""),
         }
     }
 
     pub fn single_line_open(&self) -> ConcreteLineToken {
         ConcreteLineToken::Delim {
-            contents: self.single_line.open.clone(),
+            contents: self.single_line.open,
         }
     }
 
     pub fn single_line_close(&self) -> ConcreteLineToken {
         ConcreteLineToken::Delim {
-            contents: self.single_line.close.clone(),
+            contents: self.single_line.close,
         }
     }
 
     pub fn multi_line_open(&self) -> ConcreteLineToken {
         ConcreteLineToken::Delim {
-            contents: self.multi_line.open.clone(),
+            contents: self.multi_line.open,
         }
     }
 
     pub fn multi_line_close(&self) -> ConcreteLineToken {
         ConcreteLineToken::Delim {
-            contents: self.multi_line.close.clone(),
+            contents: self.multi_line.close,
         }
     }
 

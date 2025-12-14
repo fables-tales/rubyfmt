@@ -53,7 +53,7 @@ pub enum ConcreteLineToken {
     LTStringContent { content: String },
     SingleSlash,
     Comment { contents: String },
-    Delim { contents: String },
+    Delim { contents: &'static str },
     End,
     HeredocClose { symbol: String },
     DataEnd,
@@ -96,7 +96,7 @@ impl ConcreteLineToken {
             Self::LTStringContent { content } => Cow::Owned(content),
             Self::SingleSlash => Cow::Borrowed("\\"),
             Self::Comment { contents } => Cow::Owned(contents),
-            Self::Delim { contents } => Cow::Owned(contents),
+            Self::Delim { contents } => Cow::Borrowed(contents),
             Self::End => Cow::Borrowed("end"),
             Self::HeredocClose { symbol } => Cow::Owned(symbol),
             Self::DataEnd => Cow::Borrowed("__END__"),
@@ -118,13 +118,13 @@ impl ConcreteLineToken {
         match self {
             AfterCallChain | BeginCallChainIndent | EndCallChainIndent => 0, // purely semantic tokens, don't render
             HeredocStart { symbol, .. } => symbol.len(),
+            Delim { contents } => contents.len(),
             Indent { depth } => *depth as usize,
             Keyword { keyword: contents }
             | Op { op: contents }
             | DirectPart { part: contents }
             | LTStringContent { content: contents }
             | Comment { contents }
-            | Delim { contents }
             | ConditionalKeyword { contents }
             | HeredocClose { symbol: contents }
             | ModKeyword { contents } => contents.len(),
