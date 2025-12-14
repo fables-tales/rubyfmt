@@ -2120,7 +2120,7 @@ pub fn format_conditional(
     ps: &mut ParserState,
     cond_expr: Expression,
     body: Vec<Expression>,
-    kw: String,
+    kw: &'static str,
     tail: Option<ElsifOrElse>,
     start_end: Option<StartEnd>,
 ) {
@@ -2153,7 +2153,7 @@ pub fn format_conditional(
                 ps,
                 *elsif.1,
                 elsif.2,
-                "elsif".to_string(),
+                "elsif",
                 (elsif.3).map(|v| *v),
                 Some(elsif.4),
             );
@@ -2183,7 +2183,7 @@ pub fn format_conditional(
 
 pub fn format_if(ps: &mut ParserState, ifs: If) {
     let vifs = ifs.clone();
-    format_conditional(ps, *ifs.1, ifs.2, "if".to_string(), ifs.3, Some(ifs.4));
+    format_conditional(ps, *ifs.1, ifs.2, "if", ifs.3, Some(ifs.4));
 
     ps.with_start_of_line(true, |ps| {
         ps.wind_dumping_comments_until_line(vifs.4.1);
@@ -2200,7 +2200,7 @@ pub fn format_unless(ps: &mut ParserState, unless: Unless) {
         ps,
         *unless.1,
         unless.2,
-        "unless".to_string(),
+        "unless",
         (unless.3).map(ElsifOrElse::Else),
         Some(unless.4),
     );
@@ -2778,7 +2778,7 @@ pub fn format_do_block(ps: &mut ParserState, do_block: DoBlock) {
 pub fn format_keyword(
     ps: &mut ParserState,
     args: ParenOrArgsAddBlock,
-    kw: String,
+    kw: &'static str,
     start_end: StartEnd,
 ) {
     if ps.at_start_of_line() {
@@ -2833,7 +2833,7 @@ pub fn format_while(
     ps: &mut ParserState,
     conditional: Expression,
     exprs: Vec<Expression>,
-    kw: String,
+    kw: &'static str,
     start_end: StartEnd,
 ) {
     format_conditional(ps, conditional, exprs, kw, None, Some(start_end));
@@ -2867,7 +2867,7 @@ pub fn format_inline_mod(
     ps: &mut ParserState,
     conditional: Box<Expression>,
     body: Box<Expression>,
-    name: String,
+    name: &'static str,
 ) {
     if ps.at_start_of_line() {
         ps.emit_indent();
@@ -2876,7 +2876,9 @@ pub fn format_inline_mod(
     ps.with_start_of_line(false, |ps| {
         format_expression(ps, *body);
 
-        ps.emit_mod_keyword(format!(" {} ", name));
+        ps.emit_space();
+        ps.emit_mod_keyword(name);
+        ps.emit_space();
         format_expression(ps, *conditional);
     });
 
@@ -2891,10 +2893,10 @@ pub fn format_multilinable_mod(
     ps: &mut ParserState,
     conditional: Box<Expression>,
     body: Box<Expression>,
-    name: String,
+    name: &'static str,
 ) {
     let is_multiline = ps.will_render_as_multiline(|next_ps| {
-        format_inline_mod(next_ps, conditional.clone(), body.clone(), name.clone())
+        format_inline_mod(next_ps, conditional.clone(), body.clone(), name)
     });
 
     if is_multiline {
@@ -3004,21 +3006,11 @@ pub fn format_case(ps: &mut ParserState, case: Case) {
 }
 
 pub fn format_retry(ps: &mut ParserState, r: Retry) {
-    format_keyword(
-        ps,
-        ParenOrArgsAddBlock::Empty(Vec::new()),
-        "retry".to_string(),
-        r.1,
-    );
+    format_keyword(ps, ParenOrArgsAddBlock::Empty(Vec::new()), "retry", r.1);
 }
 
 pub fn format_redo(ps: &mut ParserState, r: Redo) {
-    format_keyword(
-        ps,
-        ParenOrArgsAddBlock::Empty(Vec::new()),
-        "redo".to_string(),
-        r.1,
-    );
+    format_keyword(ps, ParenOrArgsAddBlock::Empty(Vec::new()), "redo", r.1);
 }
 
 pub fn format_sclass(ps: &mut ParserState, sc: SClass) {
@@ -3066,7 +3058,7 @@ pub fn format_stabby_lambda(ps: &mut ParserState, sl: StabbyLambda) {
     let body = sl.2;
 
     ps.with_start_of_line(false, |ps| {
-        ps.emit_keyword("->".to_string());
+        ps.emit_keyword("->");
         if params.is_present() {
             ps.emit_space();
         }
@@ -3141,7 +3133,7 @@ pub fn format_for(ps: &mut ParserState, forloop: For) {
     let body = forloop.3;
 
     ps.with_start_of_line(false, |ps| {
-        ps.emit_keyword("for".to_string());
+        ps.emit_keyword("for");
         ps.emit_space();
         match variables {
             VarFieldOrVarFields::VarField(vf) => {
@@ -3159,7 +3151,7 @@ pub fn format_for(ps: &mut ParserState, forloop: For) {
         }
 
         ps.emit_space();
-        ps.emit_keyword("in".to_string());
+        ps.emit_keyword("in");
         ps.emit_space();
         format_expression(ps, *collection);
         ps.emit_newline();
@@ -3189,11 +3181,11 @@ pub fn format_ifop(ps: &mut ParserState, ifop: IfOp) {
         ps.with_formatting_context(FormattingContext::IfOp, |ps| {
             format_expression(ps, *ifop.1);
             ps.emit_space();
-            ps.emit_keyword("?".to_string());
+            ps.emit_keyword("?");
             ps.emit_space();
             format_expression(ps, *ifop.2);
             ps.emit_space();
-            ps.emit_keyword(":".to_string());
+            ps.emit_keyword(":");
             ps.emit_space();
             format_expression(ps, *ifop.3);
         });
@@ -3205,12 +3197,7 @@ pub fn format_ifop(ps: &mut ParserState, ifop: IfOp) {
 }
 
 pub fn format_return0(ps: &mut ParserState, r: Return0) {
-    format_keyword(
-        ps,
-        ParenOrArgsAddBlock::Empty(Vec::new()),
-        "return".to_string(),
-        r.1,
-    );
+    format_keyword(ps, ParenOrArgsAddBlock::Empty(Vec::new()), "return", r.1);
 }
 
 pub fn format_opassign(ps: &mut ParserState, opassign: OpAssign) {
@@ -3243,7 +3230,7 @@ pub fn format_zsuper(ps: &mut ParserState, start_end: StartEnd) {
     format_keyword(
         ps,
         ParenOrArgsAddBlock::Empty(Vec::new()),
-        "super".to_string(),
+        "super",
         start_end,
     )
 }
@@ -3252,7 +3239,7 @@ pub fn format_yield0(ps: &mut ParserState, start_end: StartEnd) {
     format_keyword(
         ps,
         ParenOrArgsAddBlock::Empty(Vec::new()),
-        "yield".to_string(),
+        "yield",
         start_end,
     )
 }
@@ -3271,7 +3258,7 @@ pub fn format_return(ps: &mut ParserState, ret: Return) {
     }
 
     let args = normalize_args(args);
-    ps.emit_keyword("return".to_string());
+    ps.emit_keyword("return");
 
     ps.with_start_of_line(false, |ps| {
         if !args.is_empty() {
@@ -3372,14 +3359,14 @@ pub fn format_expression(ps: &mut ParserState, expression: Expression) {
         Expression::RegexpLiteral(regexp) => format_regexp_literal(ps, regexp),
         Expression::Backref(backref) => format_backref(ps, backref),
         Expression::Yield(y) => format_yield(ps, y),
-        Expression::Break(b) => format_keyword(ps, b.1, "break".to_string(), b.2),
+        Expression::Break(b) => format_keyword(ps, b.1, "break", b.2),
         Expression::MethodAddBlock(mab) => format_method_add_block(ps, mab),
-        Expression::While(w) => format_while(ps, *w.1, w.2, "while".to_string(), w.3),
-        Expression::Until(u) => format_while(ps, *u.1, u.2, "until".to_string(), u.3),
-        Expression::WhileMod(wm) => format_inline_mod(ps, wm.1, wm.2, "while".to_string()),
-        Expression::UntilMod(um) => format_inline_mod(ps, um.1, um.2, "until".to_string()),
-        Expression::IfMod(wm) => format_multilinable_mod(ps, wm.1, wm.2, "if".to_string()),
-        Expression::UnlessMod(um) => format_multilinable_mod(ps, um.1, um.2, "unless".to_string()),
+        Expression::While(w) => format_while(ps, *w.1, w.2, "while", w.3),
+        Expression::Until(u) => format_while(ps, *u.1, u.2, "until", u.3),
+        Expression::WhileMod(wm) => format_inline_mod(ps, wm.1, wm.2, "while"),
+        Expression::UntilMod(um) => format_inline_mod(ps, um.1, um.2, "until"),
+        Expression::IfMod(wm) => format_multilinable_mod(ps, wm.1, wm.2, "if"),
+        Expression::UnlessMod(um) => format_multilinable_mod(ps, um.1, um.2, "unless"),
         Expression::Case(c) => format_case(ps, c),
         Expression::Retry(r) => format_retry(ps, r),
         Expression::Redo(r) => format_redo(ps, r),

@@ -27,13 +27,13 @@ pub fn clats_indent(depth: ColNumber) -> ConcreteLineTokenAndTargets {
 pub enum ConcreteLineToken {
     HardNewLine,
     Indent { depth: u32 },
-    Keyword { keyword: String },
+    Keyword { keyword: &'static str },
     DefKeyword,
     ClassKeyword,
     ModuleKeyword,
     DoKeyword,
-    ModKeyword { contents: String },
-    ConditionalKeyword { contents: String },
+    ModKeyword { contents: &'static str },
+    ConditionalKeyword { contents: &'static str },
     DirectPart { part: String },
     CommaSpace,
     Comma,
@@ -70,9 +70,9 @@ impl ConcreteLineToken {
         match self {
             Self::HardNewLine => Cow::Borrowed("\n"),
             Self::Indent { depth } => Cow::Owned((0..depth).map(|_| ' ').collect()),
-            Self::Keyword { keyword } => Cow::Owned(keyword),
-            Self::ModKeyword { contents } => Cow::Owned(contents),
-            Self::ConditionalKeyword { contents } => Cow::Owned(contents),
+            Self::Keyword { keyword } => Cow::Borrowed(keyword),
+            Self::ModKeyword { contents } => Cow::Borrowed(contents),
+            Self::ConditionalKeyword { contents } => Cow::Borrowed(contents),
             Self::DoKeyword => Cow::Borrowed("do"),
             Self::ClassKeyword => Cow::Borrowed("class"),
             Self::DefKeyword => Cow::Borrowed("def"),
@@ -121,13 +121,13 @@ impl ConcreteLineToken {
             Delim { contents } => contents.len(),
             Indent { depth } => *depth as usize,
             Keyword { keyword: contents }
-            | Op { op: contents }
+            | ModKeyword { contents }
+            | ConditionalKeyword { contents } => contents.len(),
+            Op { op: contents }
             | DirectPart { part: contents }
             | LTStringContent { content: contents }
             | Comment { contents }
-            | ConditionalKeyword { contents }
-            | HeredocClose { symbol: contents }
-            | ModKeyword { contents } => contents.len(),
+            | HeredocClose { symbol: contents } => contents.len(),
             HardNewLine | Comma | Space | Dot | OpenSquareBracket | CloseSquareBracket
             | OpenCurlyBracket | CloseCurlyBracket | OpenParen | CloseParen | SingleSlash
             | DoubleQuote => 1,
@@ -150,7 +150,7 @@ impl ConcreteLineToken {
 
     fn is_conditional_spaced_token(&self) -> bool {
         match self {
-            Self::ConditionalKeyword { contents } => !(contents == "else" || contents == "elsif"),
+            Self::ConditionalKeyword { contents } => !(*contents == "else" || *contents == "elsif"),
             Self::Dot => false,
             Self::DirectPart { part } => part != "&.",
             _ => true,

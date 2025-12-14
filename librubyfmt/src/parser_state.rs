@@ -606,21 +606,15 @@ impl ParserState {
     }
 
     pub(crate) fn emit_rescue(&mut self) {
-        self.push_concrete_token(ConcreteLineToken::Keyword {
-            keyword: "rescue".to_string(),
-        });
+        self.push_concrete_token(ConcreteLineToken::Keyword { keyword: "rescue" });
     }
 
     pub(crate) fn emit_case_keyword(&mut self) {
-        self.push_concrete_token(ConcreteLineToken::Keyword {
-            keyword: "case".to_string(),
-        });
+        self.push_concrete_token(ConcreteLineToken::Keyword { keyword: "case" });
     }
 
     pub(crate) fn emit_when_keyword(&mut self) {
-        self.push_concrete_token(ConcreteLineToken::Keyword {
-            keyword: "when".to_string(),
-        });
+        self.push_concrete_token(ConcreteLineToken::Keyword { keyword: "when" });
     }
 
     pub(crate) fn emit_do_keyword(&mut self) {
@@ -636,25 +630,19 @@ impl ParserState {
     }
 
     pub(crate) fn emit_ensure(&mut self) {
-        self.push_concrete_token(ConcreteLineToken::Keyword {
-            keyword: "ensure".to_string(),
-        });
+        self.push_concrete_token(ConcreteLineToken::Keyword { keyword: "ensure" });
     }
 
     pub(crate) fn emit_begin(&mut self) {
-        self.push_concrete_token(ConcreteLineToken::Keyword {
-            keyword: "begin".to_string(),
-        });
+        self.push_concrete_token(ConcreteLineToken::Keyword { keyword: "begin" });
     }
 
     pub(crate) fn emit_begin_block(&mut self) {
-        self.push_concrete_token(ConcreteLineToken::Keyword {
-            keyword: "BEGIN".to_string(),
-        });
+        self.push_concrete_token(ConcreteLineToken::Keyword { keyword: "BEGIN" });
     }
 
     pub(crate) fn emit_else(&mut self) {
-        self.emit_conditional_keyword("else".to_string());
+        self.emit_conditional_keyword("else");
     }
 
     pub(crate) fn emit_data_end(&mut self) {
@@ -714,9 +702,7 @@ impl ParserState {
     }
 
     pub(crate) fn emit_end_block(&mut self) {
-        self.push_concrete_token(ConcreteLineToken::Keyword {
-            keyword: "END".to_string(),
-        });
+        self.push_concrete_token(ConcreteLineToken::Keyword { keyword: "END" });
     }
 
     pub(crate) fn render_heredocs(&mut self, skip: bool) {
@@ -757,15 +743,15 @@ impl ParserState {
         self.push_concrete_token(ConcreteLineToken::DefKeyword);
     }
 
-    pub(crate) fn emit_keyword(&mut self, kw: String) {
-        self.push_concrete_token(ConcreteLineToken::Keyword { keyword: kw });
+    pub(crate) fn emit_keyword(&mut self, keyword: &'static str) {
+        self.push_concrete_token(ConcreteLineToken::Keyword { keyword });
     }
 
-    pub(crate) fn emit_mod_keyword(&mut self, contents: String) {
+    pub(crate) fn emit_mod_keyword(&mut self, contents: &'static str) {
         self.push_concrete_token(ConcreteLineToken::ModKeyword { contents });
     }
 
-    pub(crate) fn emit_conditional_keyword(&mut self, contents: String) {
+    pub(crate) fn emit_conditional_keyword(&mut self, contents: &'static str) {
         self.push_concrete_token(ConcreteLineToken::ConditionalKeyword { contents });
     }
 }
