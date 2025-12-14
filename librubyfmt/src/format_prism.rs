@@ -617,10 +617,19 @@ fn format_string_node(ps: &mut ParserState, string_node: prism::StringNode) {
         let string_content = if in_escaped_context {
             loc_to_string(string_node.content_loc())
         } else {
+            // For character literals (`?a`), there can be an opening loc without
+            // a closing loc. In that case, fall back to a double quote, since
+            // we render character literals as double-quoted string literals
+            let end_delim = if let Some(ref closer) = closer {
+                closer.as_str()
+            } else {
+                "\""
+            };
+
             crate::string_escape::single_to_double_quoted(
                 loc_to_string(string_node.content_loc()),
                 opener.clone().unwrap().as_str(),
-                closer.clone().unwrap().as_str(),
+                end_delim,
             )
         };
 

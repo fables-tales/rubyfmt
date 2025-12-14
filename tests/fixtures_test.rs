@@ -52,7 +52,6 @@ const DISABLED_PRISM_TESTS: &[&'static str] = &[
     "small_brace_blocks_with_no_args",
     "small_break_all_the_things",
     "small_breakables_over_line_length",
-    "small_character_literal",
     "small_comments_at_indentation_changes",
     "small_const_call",
     "small_dotcall",
