@@ -65,7 +65,6 @@ const DISABLED_PRISM_TESTS: &[&'static str] = &[
     "small_method_annotation",
     "small_method_chains",
     "small_more_methods",
-    "small_multi_line_word_arrays",
     "small_multi_rescue",
     "small_multiline_chain_in_block",
     "small_multiline_method_chain_with_arguments",

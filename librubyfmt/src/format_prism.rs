@@ -1909,6 +1909,18 @@ fn format_block_local_variable_node(
 }
 
 fn format_array_node(ps: &mut ParserState, array_node: prism::ArrayNode) {
+    let opening = array_node
+        .opening_loc()
+        .map(|loc| loc_to_string(loc).trim().to_string());
+    let is_word_array = opening
+        .as_ref()
+        .map(|s| s.starts_with("%"))
+        .unwrap_or(false);
+
+    if is_word_array {
+        ps.emit_ident(opening.unwrap().split_at(2).0.to_string());
+    }
+
     if node_list_is_empty(&array_node.elements()) {
         if ps.has_comment_in_offset_span(
             array_node.location().start_offset(),
@@ -1923,6 +1935,18 @@ fn format_array_node(ps: &mut ParserState, array_node: prism::ArrayNode) {
             ps.emit_open_square_bracket();
             ps.emit_close_square_bracket();
         }
+    } else if is_word_array {
+        // For word arrays, preserve the original syntax
+        ps.breakable_of(BreakableDelims::for_array(), |ps| {
+            ps.with_start_of_line(false, |ps| {
+                format_word_array_elements(
+                    ps,
+                    array_node.elements(),
+                    array_node.location().end_offset(),
+                );
+                ps.wind_dumping_comments_until_offset(array_node.location().end_offset());
+            });
+        });
     } else {
         ps.with_start_of_line(false, |ps| {
             if array_node.opening_loc().is_none() {
@@ -1946,6 +1970,36 @@ fn format_array_node(ps: &mut ParserState, array_node: prism::ArrayNode) {
             }
         });
     }
+}
+
+fn format_word_array_elements(
+    ps: &mut ParserState,
+    node_list: prism::NodeList,
+    end_offset: SourceOffset,
+) {
+    let args_count = node_list.iter().count();
+
+    ps.magic_handle_comments_for_multiline_arrays(
+        Some(ps.get_line_number_for_offset(end_offset)),
+        |ps| {
+            for (idx, expr) in node_list.iter().enumerate() {
+                ps.emit_soft_indent();
+
+                if let Some(string_node) = expr.as_string_node() {
+                    ps.at_offset(string_node.location().start_offset());
+
+                    ps.emit_string_content(loc_to_string(string_node.content_loc()));
+                } else {
+                    // This branch shouldn't happen, but we'll have a fallback just in case
+                    format_node(ps, expr);
+                }
+
+                if idx != args_count - 1 {
+                    ps.emit_collapsing_newline();
+                }
+            }
+        },
+    );
 }
 
 fn format_array_pattern_node(_ps: &mut ParserState, _array_pattern_node: prism::ArrayPatternNode) {
