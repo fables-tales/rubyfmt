@@ -3366,8 +3366,23 @@ fn format_x_string_node(ps: &mut ParserState, x_string_node: prism::XStringNode)
 fn format_yield_node(ps: &mut ParserState, yield_node: prism::YieldNode) {
     ps.emit_ident("yield".to_string());
     if let Some(arguments) = yield_node.arguments() {
-        let use_parens =
-            ps.current_formatting_context_requires_parens() || yield_node.lparen_loc().is_some();
+        let use_parens = ps.current_formatting_context_requires_parens()
+            || yield_node.lparen_loc().is_some()
+            // For single assoc values (`yield a: b`) we keep parens
+            || (yield_node
+                .arguments()
+                .map(|args| {
+                    args.arguments().iter().count() == 1
+                        && args
+                            .arguments()
+                            .iter()
+                            .last()
+                            .unwrap()
+                            .as_keyword_hash_node()
+                            .is_some()
+                })
+                .unwrap_or(false));
+
         let delims = if use_parens {
             BreakableDelims::for_method_call()
         } else {

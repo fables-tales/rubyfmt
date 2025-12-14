@@ -84,7 +84,6 @@ const DISABLED_PRISM_TESTS: &[&'static str] = &[
     "small_visibility_modifier",
     "small_w_array",
     "small_w_arrays",
-    "small_yield_hash_args",
 ];
 
 fn main() -> io::Result<()> {
