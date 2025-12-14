@@ -15,10 +15,7 @@ jobs:
           toolchain: stable
           components: rustfmt
           override: true
-      - uses: actions-rs/cargo@v1
-        with:
-          command: fmt
-          args: --all -- --check
+      - run: cargo fmt --all -- --check
 
   clippy:
     runs-on: ubuntu-latest
