@@ -468,7 +468,7 @@ fn format_begin_node(ps: &mut ParserState, begin_node: prism::BeginNode) {
         // the body of a `def`
         ps.end_indent();
     } else {
-        ps.emit_keyword("begin".to_string());
+        ps.emit_keyword("begin");
     }
     ps.new_block(|ps| {
         // For implicit nodes, this newline was already emitted by the caller
@@ -882,7 +882,7 @@ fn format_ensure_node(ps: &mut ParserState, ensure_node: prism::EnsureNode) {
     // aren't always handled with `format_node`, which usually handles this
     ps.at_offset(ensure_node.location().start_offset());
 
-    ps.emit_keyword("ensure".to_string());
+    ps.emit_keyword("ensure");
     ps.new_block(|ps| {
         ps.emit_newline();
         if let Some(statements) = ensure_node.statements() {
@@ -1033,7 +1033,7 @@ fn format_module_node(ps: &mut ParserState, module_node: prism::ModuleNode) {
 }
 
 fn format_def_node(ps: &mut ParserState, def_node: prism::DefNode) {
-    ps.emit_keyword("def".to_string());
+    ps.emit_keyword("def");
     ps.emit_space();
 
     ps.with_start_of_line(false, |ps| {
@@ -1149,9 +1149,11 @@ fn format_else_node(ps: &mut ParserState, else_node: prism::ElseNode) {
 
     // `else_keyword_loc` is somewhat misleading, since this can be either the `else`
     // keyword or the `:` separator in a ternary
-    let keyword = loc_to_string(else_node.else_keyword_loc());
-    if &keyword == "else" {
-        ps.emit_conditional_keyword(keyword);
+    // Given those two options, we can check the length to avoid copying the loc.
+    let else_keyword_loc = else_node.else_keyword_loc();
+    let keyword_len = else_keyword_loc.end_offset() - else_keyword_loc.start_offset();
+    if keyword_len == 4 {
+        ps.emit_else();
 
         ps.new_block(|ps| {
             ps.emit_newline();
@@ -1162,7 +1164,7 @@ fn format_else_node(ps: &mut ParserState, else_node: prism::ElseNode) {
     } else {
         // In a ternary
         ps.emit_space();
-        ps.emit_conditional_keyword(keyword);
+        ps.emit_conditional_keyword(":");
         ps.emit_space();
         ps.with_start_of_line(false, |ps| {
             format_node(
@@ -2221,14 +2223,14 @@ fn format_float_node(ps: &mut ParserState, float_node: prism::FloatNode) {
 }
 
 fn format_for_node(ps: &mut ParserState, for_node: prism::ForNode) {
-    ps.emit_keyword("for".to_string());
+    ps.emit_keyword("for");
     ps.emit_space();
 
     ps.with_start_of_line(false, |ps| {
         format_node(ps, for_node.index());
 
         ps.emit_space();
-        ps.emit_keyword("in".to_string());
+        ps.emit_keyword("in");
         ps.emit_space();
 
         format_node(ps, for_node.collection());
@@ -2381,7 +2383,7 @@ fn format_inline_conditional(
     ps: &mut ParserState,
     predicate: prism::Node,
     statements: Option<prism::StatementsNode>,
-    keyword: String,
+    keyword: &'static str,
 ) {
     if let Some(statements) = statements {
         // There can only be a single statement in modifier form.
@@ -2453,7 +2455,7 @@ impl<'pr> Conditional<'pr> {
 
 fn format_conditional_node(
     ps: &mut ParserState,
-    conditional_keyword: &str,
+    conditional_keyword: &'static str,
     requires_end_keyword: bool,
     conditional: &Conditional,
 ) {
@@ -2473,7 +2475,7 @@ fn format_conditional_node(
         ps.with_start_of_line(false, |ps| {
             format_begin_node(ps, begin_node);
             ps.emit_space();
-            ps.emit_keyword(conditional_keyword.to_string());
+            ps.emit_keyword(conditional_keyword);
             ps.emit_space();
             format_node(ps, conditional.predicate());
         });
@@ -2508,7 +2510,7 @@ fn format_conditional_node(
                             next_ps,
                             predicate,
                             statements,
-                            conditional_keyword.to_string(),
+                            conditional_keyword,
                         )
                     })
                 }
@@ -2529,7 +2531,7 @@ fn format_conditional_node(
                 ps,
                 conditional.predicate(),
                 conditional.statements(),
-                conditional_keyword.to_string(),
+                conditional_keyword,
             );
         }
     } else {
@@ -2546,13 +2548,13 @@ fn format_conditional_node(
 
 fn format_conditional_block_form<'pr>(
     ps: &mut ParserState,
-    conditional_keyword: &str,
+    conditional_keyword: &'static str,
     predicate: prism::Node<'pr>,
     statements: Option<prism::StatementsNode<'pr>>,
     subsequent_or_else: Option<prism::Node<'pr>>,
     requires_end_keyword: bool,
 ) {
-    ps.emit_conditional_keyword(conditional_keyword.to_string());
+    ps.emit_conditional_keyword(conditional_keyword);
     ps.emit_space();
 
     ps.with_start_of_line(false, |ps| {
@@ -2584,15 +2586,15 @@ fn format_if_node(ps: &mut ParserState, if_node: prism::IfNode) {
     // If it's not there, this is actually a ternary, which is sufficiently
     // different that we handle it in its own branch
     if let Some(if_loc) = if_node.if_keyword_loc() {
-        let conditional_keyword = loc_to_string(if_loc);
-        // `elsif` nodes don't need an `else` keyword, that's handled
-        // by the parent `if` node.
-        let requires_end_keyword = &conditional_keyword == "if";
+        let is_if_keyword = (if_loc.end_offset() - if_loc.start_offset()) == 2;
+        let conditional_keyword = if is_if_keyword { "if" } else { "elsif" };
 
         format_conditional_node(
             ps,
-            &conditional_keyword,
-            requires_end_keyword,
+            conditional_keyword,
+            // `elsif` nodes don't need an `else` keyword, that's handled
+            // by the parent `if` node.
+            is_if_keyword,
             &Conditional::If(if_node),
         );
     } else {
@@ -3028,7 +3030,7 @@ fn format_pinned_variable_node(
 }
 
 fn format_post_execution_node(ps: &mut ParserState, post_execution_node: prism::PostExecutionNode) {
-    ps.emit_keyword("END".to_string());
+    ps.emit_keyword("END");
     ps.emit_space();
     ps.emit_open_curly_bracket();
 
@@ -3048,7 +3050,7 @@ fn format_post_execution_node(ps: &mut ParserState, post_execution_node: prism::
 }
 
 fn format_pre_execution_node(ps: &mut ParserState, pre_execution_node: prism::PreExecutionNode) {
-    ps.emit_keyword("BEGIN".to_string());
+    ps.emit_keyword("BEGIN");
     ps.emit_space();
     ps.emit_open_curly_bracket();
 
@@ -3112,7 +3114,7 @@ fn format_rescue_node(ps: &mut ParserState, rescue_node: prism::RescueNode) {
     // aren't always handled with `format_node`, which usually handles this
     ps.at_offset(rescue_node.location().start_offset());
 
-    ps.emit_keyword("rescue".to_string());
+    ps.emit_keyword("rescue");
     let exceptions = rescue_node.exceptions();
     if !node_list_is_empty(&exceptions) {
         ps.with_start_of_line(false, |ps| {
@@ -3155,7 +3157,7 @@ fn format_rescue_node(ps: &mut ParserState, rescue_node: prism::RescueNode) {
 }
 
 fn format_retry_node(ps: &mut ParserState) {
-    ps.emit_keyword("retry".to_string());
+    ps.emit_keyword("retry");
 }
 
 fn format_return_node(ps: &mut ParserState, return_node: prism::ReturnNode) {
