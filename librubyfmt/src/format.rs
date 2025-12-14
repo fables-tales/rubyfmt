@@ -3023,7 +3023,7 @@ pub fn format_sclass(ps: &mut ParserState, sc: SClass) {
     let end_line = sc.3.end_line();
 
     ps.with_start_of_line(false, |ps| {
-        ps.emit_keyword("class".into());
+        ps.emit_keyword("class");
         ps.emit_space();
         ps.emit_ident("<<".to_string());
         ps.emit_space();
