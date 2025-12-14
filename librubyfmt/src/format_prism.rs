@@ -1690,7 +1690,16 @@ fn format_call_chain(ps: &mut ParserState, call_node: ruby_prism::CallNode<'_>) 
                                 ps.emit_collapsing_newline();
                                 ps.emit_soft_indent();
                             }
-                            ps.emit_ident(call_operator);
+
+                            // Emit the proper token type so that call_count is computed correctly
+                            // in single_line_string_length (which is used to determine whether to
+                            // break the call chain or just the arguments)
+                            match call_operator.as_str() {
+                                "." => ps.emit_dot(),
+                                "&." => ps.emit_lonely_operator(),
+                                "::" => ps.emit_colon_colon(),
+                                _ => ps.emit_ident(call_operator),
+                            }
                         }
 
                         ps.at_offset(element.location().start_offset());
