@@ -4,12 +4,6 @@ on:
     tags:
       - "*"
 
-env:
-  BUNDLE_PATH: /tmp/.bundle
-  GEM_HOME: /tmp/.bundle
-  GEM_PATH: /tmp/.bundle
-  TERM: xterm256
-
 jobs:
   build:
     runs-on: ${{ matrix.os }}

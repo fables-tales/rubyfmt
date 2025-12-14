@@ -5,12 +5,6 @@ on:
   pull_request:
     branches: [ trunk ]
 
-env:
-    BUNDLE_PATH: /tmp/.bundle
-    GEM_HOME: /tmp/.bundle
-    GEM_PATH: /tmp/.bundle
-    TERM: xterm256
-
 jobs:
   rustfmt:
     runs-on: ubuntu-latest
