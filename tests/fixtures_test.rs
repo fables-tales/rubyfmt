@@ -37,7 +37,6 @@ const DISABLED_PRISM_TESTS: &[&'static str] = &[
     "large_concurrent-ruby_copy_on_notify_observer_set",
     "large_concurrent-ruby_ivar",
     "large_concurrent-ruby_java_non_concurrent_priority_queue",
-    "large_concurrent-ruby_non_concurrent_map_backend",
     "large_concurrent-ruby_ruby_non_concurrent_priority_queue",
     "large_concurrent_ruby_future",
     "large_rspec_core_notifications",
