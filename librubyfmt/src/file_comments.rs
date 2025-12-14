@@ -77,7 +77,7 @@ impl FileComments {
         for comment in comments {
             file_comments.push_comment(
                 line_index.get_line_number(comment.location().start_offset()) as u64,
-                u8_to_string(comment.text()),
+                u8_to_string(comment.text().trim_ascii_end()),
             );
             file_comments
                 .comment_start_offsets
