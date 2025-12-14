@@ -184,7 +184,7 @@ fn rubyfmt_string(
             while !buffer.is_char_boundary(slice_size) && slice_size < blength {
                 slice_size += 1;
             }
-            slice = &buffer[..slice_size]
+            slice =     &buffer[..slice_size]
         }
 
         let matched = MAGIC_COMMENT_REGEX
