@@ -13,7 +13,6 @@ use assert_cmd::Command;
 #[cfg(debug_assertions)]
 const IGNORED_IN_DEBUG: &[&'static str] = &[
     "test_prism_large_concurrent-ruby_non_concurrent_map_backend",
-    "test_prism_large_concurrent_ruby_future",
     "test_prism_large_rspec_mocks_proxy",
     "test_ripper_large_concurrent-ruby_non_concurrent_map_backend",
     "test_ripper_large_concurrent_ruby_future",
@@ -39,7 +38,6 @@ const DISABLED_PRISM_TESTS: &[&'static str] = &[
     "large_concurrent-ruby_java_non_concurrent_priority_queue",
     "large_concurrent-ruby_non_concurrent_map_backend",
     "large_concurrent-ruby_ruby_non_concurrent_priority_queue",
-    "large_concurrent_ruby_future",
     "large_rspec_core_notifications",
     "large_rspec_mocks_proxy",
     "small_2.5_lambda_do_end",
