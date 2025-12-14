@@ -34,8 +34,6 @@ const DISABLED_RIPPER_TESTS: &[&'static str] = &[
 const DISABLED_PRISM_TESTS: &[&'static str] = &[
     "large_concurrent-ruby_atom",
     "large_concurrent-ruby_ivar",
-    "large_concurrent-ruby_java_non_concurrent_priority_queue",
-    "large_concurrent-ruby_ruby_non_concurrent_priority_queue",
     "large_rspec_core_notifications",
     "large_rspec_mocks_proxy",
     "small_2.5_lambda_do_end",
