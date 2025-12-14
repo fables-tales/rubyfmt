@@ -35,7 +35,7 @@ jobs:
           toolchain: 1.91.1
           components: clippy
           override: true
-      - uses: actions/cache@v4
+      - uses: actions/cache@v5
         with:
           path: |
             ~/.cargo/registry
@@ -78,7 +78,7 @@ jobs:
         toolchain: 1.91.1
         override: true
         target: aarch64-unknown-linux-gnu
-    - uses: actions/cache@v4
+    - uses: actions/cache@v5
       with:
         path: |
           ~/.cargo/registry
@@ -90,7 +90,7 @@ jobs:
         brew link bison --force
         echo "/usr/local/opt/bison/bin:$PATH" >> $GITHUB_PATH
     - run: cargo test --release
-    - uses: actions/upload-artifact@v4
+    - uses: actions/upload-artifact@v6
       with:
         name: rubyfmt-artifact-${{ matrix.os }}
         path: target/release/rubyfmt-main
