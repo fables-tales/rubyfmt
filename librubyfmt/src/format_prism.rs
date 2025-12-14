@@ -2351,12 +2351,24 @@ fn format_super_node(ps: &mut ParserState, super_node: prism::SuperNode) {
             if let Some(arguments) = super_node.arguments() {
                 format_arguments_node(ps, arguments);
             }
+            if let Some(block) = super_node.block()
+                && let Some(block_arg) = block.as_block_argument_node()
+            {
+                if super_node.arguments().is_some() {
+                    ps.emit_comma();
+                    ps.emit_soft_newline();
+                }
+                ps.with_start_of_line(false, |ps| format_block_argument_node(ps, block_arg));
+            }
         });
+
+        if let Some(block) = super_node.block()
+            && let Some(block_node) = block.as_block_node()
+        {
+            ps.emit_space();
+            ps.with_start_of_line(false, |ps| format_block_node(ps, block_node));
+        }
     });
-    if let Some(block) = super_node.block() {
-        ps.emit_space();
-        ps.with_start_of_line(false, |ps| format_node(ps, block));
-    }
 }
 
 fn format_global_variable_and_write_node(
