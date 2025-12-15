@@ -3289,7 +3289,8 @@ fn format_rescue_node(ps: &mut ParserState, rescue_node: prism::RescueNode) {
     });
 
     if let Some(subsequent) = rescue_node.subsequent() {
-        format_node(ps, subsequent.as_node());
+        ps.emit_indent();
+        ps.with_start_of_line(false, |ps| format_node(ps, subsequent.as_node()));
     }
 
     ps.at_offset(rescue_node.location().end_offset());
