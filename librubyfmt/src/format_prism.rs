@@ -3429,10 +3429,27 @@ fn format_shareable_constant_node(
 }
 
 fn format_singleton_class_node(
-    _ps: &mut ParserState,
-    _singleton_class_node: prism::SingletonClassNode,
+    ps: &mut ParserState,
+    singleton_class_node: prism::SingletonClassNode,
 ) {
-    todo!()
+    ps.emit_class_keyword();
+    ps.emit_space();
+    ps.emit_ident("<<".to_string());
+    ps.emit_space();
+    ps.emit_ident("self".to_string());
+
+    ps.new_block(|ps| {
+        ps.with_start_of_line(true, |ps| {
+            ps.with_formatting_context(FormattingContext::ClassOrModule, |ps| {
+                ps.emit_newline();
+                if let Some(body) = singleton_class_node.body() {
+                    format_node(ps, body);
+                }
+            });
+        })
+    });
+
+    ps.with_start_of_line(true, |ps| ps.emit_end());
 }
 
 fn format_source_encoding_node(

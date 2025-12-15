@@ -55,7 +55,6 @@ const DISABLED_PRISM_TESTS: &[&'static str] = &[
     "small_percent_q",
     "small_return",
     "small_rspec_its",
-    "small_sclass",
     "small_scoping",
     "small_single_massign",
     "small_string_dvar",
