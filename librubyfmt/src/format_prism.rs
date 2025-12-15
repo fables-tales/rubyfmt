@@ -4,12 +4,12 @@ use ruby_prism as prism;
 
 use crate::{
     delimiters::BreakableDelims,
-    format::{GEMFILE_METHODS, OPTIONALLY_PARENTHESIZED_METHODS, SpecialCase},
+    format::{GEMFILE_METHODS, OPTIONALLY_PARENTHESIZED_METHODS, RSPEC_METHODS, SpecialCase},
     heredoc_string::HeredocKind,
     parser_state::{FormattingContext, HashType, ParserState},
     render_targets::MultilineHandling,
     types::SourceOffset,
-    util::{const_to_string, loc_to_str, loc_to_string, u8_to_string},
+    util::{const_to_str, const_to_string, loc_to_str, loc_to_string, u8_to_string},
 };
 
 pub fn format_node(ps: &mut ParserState, node: prism::Node) {
@@ -1375,6 +1375,31 @@ fn use_parens_for_call_node(
 
     if !has_arguments {
         return false;
+    }
+
+    let has_brace_block = call_node
+        .block()
+        .and_then(|b| b.as_block_node())
+        .map(|block| &loc_to_string(block.opening_loc()) != "do")
+        .unwrap_or(false);
+
+    if has_brace_block {
+        // Brace blocks require parens, eliding is a syntax error
+        return true;
+    }
+
+    if RSPEC_METHODS.contains(method_name) && call_node.receiver().is_none() {
+        return false;
+    }
+
+    // Check for `RSpec.describe`
+    if let Some(receiver) = call_node.receiver()
+        && let Some(const_read) = receiver.as_constant_read_node()
+    {
+        let const_name = const_to_str(const_read.name());
+        if const_name == "RSpec" && method_name == "describe" {
+            return false;
+        }
     }
 
     if context == FormattingContext::ClassOrModule && !original_used_parens {

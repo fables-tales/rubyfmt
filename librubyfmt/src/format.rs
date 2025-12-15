@@ -619,7 +619,7 @@ pub fn args_has_single_def_expression(args: &ArgsAddStarOrExpressionListOrArgsFo
     false
 }
 
-static RSPEC_METHODS: LazyLock<HashSet<&'static str>> =
+pub static RSPEC_METHODS: LazyLock<HashSet<&'static str>> =
     LazyLock::new(|| vec!["it", "describe"].into_iter().collect());
 
 pub static GEMFILE_METHODS: LazyLock<HashSet<&'static str>> =
