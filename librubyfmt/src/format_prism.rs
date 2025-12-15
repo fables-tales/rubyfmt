@@ -7,7 +7,7 @@ use crate::{
     parser_state::{FormattingContext, HashType, ParserState},
     render_targets::MultilineHandling,
     types::SourceOffset,
-    util::{const_to_string, loc_to_string, u8_to_string},
+    util::{const_to_string, loc_to_str, loc_to_string, u8_to_string},
 };
 
 pub fn format_node(ps: &mut ParserState, node: prism::Node) {
@@ -587,10 +587,10 @@ fn format_string_node(ps: &mut ParserState, string_node: prism::StringNode) {
     // (e.g. the inner contents of a heredoc)
     let opener = string_node
         .opening_loc()
-        .map(|s| loc_to_string(s).trim().to_string());
+        .map(|s| loc_to_str(s).trim().to_string());
     let closer = string_node
         .closing_loc()
-        .map(|s| loc_to_string(s).trim().to_string());
+        .map(|s| loc_to_str(s).trim().to_string());
     let is_heredoc = opener.clone().map(|s| s.starts_with("<")).unwrap_or(false);
 
     if is_heredoc {
@@ -650,7 +650,7 @@ fn format_interpolated_string_node(
 ) {
     let opener = interpolated_string_node
         .opening_loc()
-        .map(|s| loc_to_string(s).trim().to_string());
+        .map(|s| loc_to_str(s).trim().to_string());
     let is_heredoc = opener.as_ref().map(|s| s.starts_with("<")).unwrap_or(false);
 
     // Prism actually handles string concatenation when using "\", so it treats
@@ -708,7 +708,7 @@ fn format_interpolated_string_node(
             // so we don't need to handle that ourselves.
             if is_backslash_string_interpolation && i < string_parts_count - 1 {
                 if let Some(s) = interpolated_string_node.closing_loc() {
-                    ps.emit_string_content(loc_to_string(s).trim().to_string());
+                    ps.emit_string_content(loc_to_str(s).trim().to_string());
                 }
                 ps.emit_space();
                 ps.emit_slash();
@@ -722,7 +722,7 @@ fn format_interpolated_string_node(
     });
 
     if let Some(closing_loc) = interpolated_string_node.closing_loc() {
-        ps.emit_string_content(loc_to_string(closing_loc).trim().to_string());
+        ps.emit_string_content(loc_to_str(closing_loc).trim().to_string());
     }
 }
 
@@ -758,7 +758,7 @@ fn format_heredoc(ps: &mut ParserState, heredoc: HeredocNodeType, heredoc_symbol
     ps.emit_heredoc_start(heredoc_symbol, heredoc_kind);
 
     ps.push_heredoc_content(
-        loc_to_string(heredoc.closing_loc()).trim().to_string(),
+        loc_to_str(heredoc.closing_loc()).trim().to_string(),
         heredoc_kind,
         ps.get_line_number_for_offset(heredoc.closing_loc().start_offset()),
         Box::new(|n: &mut ParserState| {
