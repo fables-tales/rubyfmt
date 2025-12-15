@@ -1847,8 +1847,14 @@ fn format_symbol_node(ps: &mut ParserState, symbol_node: prism::SymbolNode) {
         ps.emit_ident(loc_to_string(value_loc));
     }
     if let Some(closing_loc) = symbol_node.closing_loc() {
-        let closing_str = loc_to_string(closing_loc);
-        if closing_str != ":" {
+        let mut closing_str = loc_to_string(closing_loc);
+        // String symbols, such as the key in `{ "a": b }` will have
+        // a closing_str of `"\":"`, so we have to trim instead of
+        // dropping the entire closing item.
+        if closing_str.ends_with(":") {
+            closing_str.pop();
+        }
+        if !closing_str.is_empty() {
             ps.emit_ident(closing_str);
         }
     }
@@ -1863,6 +1869,12 @@ fn format_assoc_node(ps: &mut ParserState, assoc_node: prism::AssocNode) {
     };
 
     ps.with_start_of_line(false, |ps| {
+        // Check if we're rendering a symbol key as a rocket,
+        // in which case we need to add back the leading colon
+        if !as_symbol && assoc_node.operator_loc().is_none() {
+            ps.emit_ident(":".to_string());
+        }
+
         format_node(ps, assoc_node.key());
         if as_symbol {
             ps.emit_ident(":".to_string());
@@ -2539,15 +2551,29 @@ fn format_hash_node(ps: &mut ParserState, hash_node: prism::HashNode) {
                 ps.wind_dumping_comments_until_offset(end_offset);
             }
         } else {
-            ps.breakable_of(BreakableDelims::for_hash(), |ps| {
-                ps.emit_soft_indent();
-                format_list_like_thing(
-                    ps,
-                    hash_node.elements(),
-                    hash_node.closing_loc().end_offset(),
-                    false,
-                );
-                ps.wind_dumping_comments_until_offset(hash_node.closing_loc().end_offset());
+            let all_symbol_keys = hash_node
+                .elements()
+                .iter()
+                .filter_map(|node| node.as_assoc_node())
+                // The operator loc is empty for symbol keys
+                .all(|assoc| assoc.operator_loc().is_none());
+            let hash_type = if all_symbol_keys {
+                HashType::SymbolKey
+            } else {
+                HashType::HashRocket
+            };
+
+            ps.with_formatting_context(FormattingContext::HashType(hash_type), |ps| {
+                ps.breakable_of(BreakableDelims::for_hash(), |ps| {
+                    ps.emit_soft_indent();
+                    format_list_like_thing(
+                        ps,
+                        hash_node.elements(),
+                        hash_node.closing_loc().end_offset(),
+                        false,
+                    );
+                    ps.wind_dumping_comments_until_offset(hash_node.closing_loc().end_offset());
+                });
             });
         }
     });
