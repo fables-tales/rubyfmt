@@ -77,7 +77,8 @@ impl ParserState {
         self.scopes
             .last()
             .expect("it's never empty")
-            .contains(&s.to_string())
+            .iter()
+            .any(|e| e == s)
     }
     pub(crate) fn new_scope<F>(&mut self, f: F)
     where
