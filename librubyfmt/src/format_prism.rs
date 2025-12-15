@@ -1848,7 +1848,7 @@ fn format_assoc_node(ps: &mut ParserState, assoc_node: prism::AssocNode) {
             ps.emit_ident(":".to_string());
         }
 
-        format_node(ps, dbg!(assoc_node.key()));
+        format_node(ps, assoc_node.key());
         if as_symbol {
             ps.emit_ident(":".to_string());
         } else {
@@ -2511,7 +2511,7 @@ fn format_hash_node(ps: &mut ParserState, hash_node: prism::HashNode) {
                 ps.wind_dumping_comments_until_offset(end_offset);
             }
         } else {
-            let all_symbol_keys = dbg!(&hash_node)
+            let all_symbol_keys = hash_node
                 .elements()
                 .iter()
                 .filter_map(|node| node.as_assoc_node())
