@@ -446,6 +446,9 @@ impl ParserState {
     pub(crate) fn emit_string_content(&mut self, s: String) {
         let newline_count = s.matches('\n').count() as u64;
         self.current_orig_line_number += newline_count;
+        for be in self.breakable_entry_stack.iter_mut().rev() {
+            be.push_line_number(self.current_orig_line_number);
+        }
 
         self.push_concrete_token(ConcreteLineToken::LTStringContent { content: s });
     }
