@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::collections::HashSet;
 use std::sync::LazyLock;
 
@@ -48,7 +49,7 @@ fn format_def_body(
             }
             DefBodyStmt::EndlessBodyStmt(bodystmt) => {
                 ps.emit_space();
-                ps.emit_op("=".to_string());
+                ps.emit_op(Cow::Borrowed("="));
                 ps.emit_space();
 
                 ps.with_start_of_line(false, |ps| {
@@ -1661,7 +1662,7 @@ pub fn format_assign(ps: &mut ParserState, assign: Assign) {
         let right = assign.2;
 
         ps.emit_space();
-        ps.emit_op("=".to_string());
+        ps.emit_op(Cow::Borrowed("="));
         ps.emit_space();
 
         ps.with_formatting_context(FormattingContext::Assign, |ps| match right {

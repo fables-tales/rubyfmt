@@ -9,6 +9,7 @@ use crate::render_targets::{
 };
 use crate::types::{ColNumber, LineNumber, SourceOffset};
 use log::debug;
+use std::borrow::Cow;
 use std::io::{self, Cursor, Write};
 use std::str;
 
@@ -434,7 +435,7 @@ impl ParserState {
             .merge(comments.apply_spaces(self.spaces_after_last_newline));
     }
 
-    pub(crate) fn emit_op(&mut self, op: String) {
+    pub(crate) fn emit_op(&mut self, op: Cow<'static, str>) {
         self.push_concrete_token(ConcreteLineToken::Op { op });
     }
 
