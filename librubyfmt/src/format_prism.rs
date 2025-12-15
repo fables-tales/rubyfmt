@@ -833,14 +833,19 @@ fn format_interpolated_x_string_node(
 }
 
 fn format_it_local_variable_read_node(
-    _ps: &mut ParserState,
-    _it_local_variable_read_node: prism::ItLocalVariableReadNode,
+    ps: &mut ParserState,
+    it_local_variable_read_node: prism::ItLocalVariableReadNode,
 ) {
-    todo!()
+    handle_string_at_offset(
+        ps,
+        loc_to_string(it_local_variable_read_node.location()),
+        it_local_variable_read_node.location().start_offset(),
+    );
 }
 
 fn format_it_parameters_node(_ps: &mut ParserState, _it_parameters_node: prism::ItParametersNode) {
-    todo!()
+    // No-op. This node represents the implicit 'it' parameter,
+    // and the actual parameter references are rendered separately.
 }
 
 fn format_interpolated_last_line_node(
@@ -1864,7 +1869,12 @@ fn format_block_node(ps: &mut ParserState, block_node: prism::BlockNode) {
     if &loc_to_string(block_node.opening_loc()) == "do" {
         ps.new_block(|ps| {
             ps.emit_do_keyword();
-            if let Some(block_parameters) = block_node.parameters() {
+            if let Some(block_parameters) = block_node.parameters()
+                // `it` parameters nodes are implicit nodes with no content, but they have
+                // a loc that is the entire loc of the block. This will cause major line
+                // winding problems if we try to format with `format_node`, so we just skip it.
+                && block_parameters.as_it_parameters_node().is_none()
+            {
                 format_node(ps, block_parameters);
             }
 
