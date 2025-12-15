@@ -1502,6 +1502,26 @@ fn format_call_node(ps: &mut ParserState, call_node: prism::CallNode, skip_recei
             // For a[] or a[]= with no arguments, we still need to emit the brackets
             ps.emit_open_square_bracket();
             ps.emit_close_square_bracket();
+        } else if !skip_receiver
+            || call_node
+                .receiver()
+                .map(|r| r.as_self_node().is_some())
+                .unwrap_or(false)
+        {
+            // Check if we need parens in two cases: we're the
+            // first/only item in a call chain (thus `!skip_receiver`)
+            // or we're in a chain but the receiver is `self`
+            let should_use_parens = use_parens_for_call_node(
+                ps,
+                &call_node,
+                &method_name,
+                ps.current_formatting_context(),
+            );
+
+            if should_use_parens {
+                ps.emit_open_paren();
+                ps.emit_close_paren();
+            }
         }
         if let Some(block) = call_node.block() {
             if block.as_block_argument_node().is_none() {
@@ -2306,7 +2326,6 @@ fn format_local_variable_read_node(
     local_variable_read_node: prism::LocalVariableReadNode,
 ) {
     let name = const_to_string(local_variable_read_node.name());
-    ps.bind_variable(name.clone());
     ps.emit_ident(name);
 }
 
@@ -3243,7 +3262,9 @@ fn format_optional_parameter_node(
     ps: &mut ParserState,
     optional_parameter_node: prism::OptionalParameterNode,
 ) {
-    ps.emit_ident(const_to_string(optional_parameter_node.name()));
+    let name = const_to_string(optional_parameter_node.name());
+    ps.bind_variable(name.clone());
+    ps.emit_ident(name);
     ps.emit_space();
     ps.emit_op(Cow::Borrowed("="));
     ps.emit_space();
