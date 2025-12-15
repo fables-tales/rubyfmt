@@ -48,7 +48,7 @@ pub enum ConcreteLineToken {
     CloseCurlyBracket,
     OpenParen,
     CloseParen,
-    Op { op: String },
+    Op { op: Cow<'static, str> },
     DoubleQuote,
     LTStringContent { content: String },
     SingleSlash,
@@ -91,7 +91,7 @@ impl ConcreteLineToken {
             Self::CloseCurlyBracket => Cow::Borrowed("}"),
             Self::OpenParen => Cow::Borrowed("("),
             Self::CloseParen => Cow::Borrowed(")"),
-            Self::Op { op } => Cow::Owned(op),
+            Self::Op { op } => op,
             Self::DoubleQuote => Cow::Borrowed("\""),
             Self::LTStringContent { content } => Cow::Owned(content),
             Self::SingleSlash => Cow::Borrowed("\\"),
@@ -123,8 +123,8 @@ impl ConcreteLineToken {
             Keyword { keyword: contents }
             | ModKeyword { contents }
             | ConditionalKeyword { contents } => contents.len(),
-            Op { op: contents }
-            | DirectPart { part: contents }
+            Op { op: contents } => contents.len(),
+            DirectPart { part: contents }
             | LTStringContent { content: contents }
             | Comment { contents }
             | HeredocClose { symbol: contents } => contents.len(),
