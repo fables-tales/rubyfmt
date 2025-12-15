@@ -17,8 +17,10 @@ scope(
   :with_ticket_types,
   -> {
     group("shops.id")
-      .joins("LEFT JOIN foos ON foos.bar_id
-= bars.id")
+      .joins(
+        "LEFT JOIN foos ON foos.bar_id
+= bars.id"
+      )
       .select("foos.*, COUNT(bars.id) count")
   }
 )
