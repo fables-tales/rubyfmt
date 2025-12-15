@@ -159,7 +159,6 @@ impl ParserState {
                     .as_ref()
                     .map(|comments| comments.has_comments())
                     .unwrap_or(false)
-                    .to_owned()
                 {
                     self.push_concrete_token(ConcreteLineToken::HardNewLine);
                 }
