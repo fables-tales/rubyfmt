@@ -12,6 +12,10 @@ pub fn const_to_string(constant_id: ConstantId) -> String {
     u8_to_string(constant_id.as_slice())
 }
 
+pub fn const_to_str(constant_id: ConstantId<'_>) -> &str {
+    u8_to_str(constant_id.as_slice())
+}
+
 pub fn loc_to_str(loc: Location<'_>) -> &str {
     u8_to_str(loc.as_slice())
 }
