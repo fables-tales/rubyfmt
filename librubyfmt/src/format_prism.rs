@@ -591,7 +591,7 @@ fn format_string_node(ps: &mut ParserState, string_node: prism::StringNode) {
     let closer = string_node
         .closing_loc()
         .map(|s| loc_to_str(s).trim().to_string());
-    let is_heredoc = opener.clone().map(|s| s.starts_with("<")).unwrap_or(false);
+    let is_heredoc = opener.as_ref().map(|s| s.starts_with("<")).unwrap_or(false);
 
     if is_heredoc {
         format_heredoc(
@@ -613,7 +613,7 @@ fn format_string_node(ps: &mut ParserState, string_node: prism::StringNode) {
         // If opener is nil, we must be in some kind of interpolated string context, which
         // means the contents must already be appropriately escaped -- hence we default to `true` here
         let in_escaped_context =
-            is_heredoc || opener.clone().map(|s| s.starts_with("\"")).unwrap_or(true);
+            is_heredoc || opener.as_ref().map(|s| s.starts_with("\"")).unwrap_or(true);
         let string_content = if in_escaped_context {
             loc_to_string(string_node.content_loc())
         } else {
@@ -628,7 +628,7 @@ fn format_string_node(ps: &mut ParserState, string_node: prism::StringNode) {
 
             crate::string_escape::single_to_double_quoted(
                 loc_to_string(string_node.content_loc()),
-                opener.clone().unwrap().as_str(),
+                opener.as_ref().unwrap(),
                 end_delim,
             )
         };
