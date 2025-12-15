@@ -1707,6 +1707,7 @@ fn format_call_chain(ps: &mut ParserState, call_node: ruby_prism::CallNode<'_>) 
                     }
                 });
                 ps.end_indent_for_call_chain();
+                ps.shift_comments();
             },
         );
     });
@@ -1727,6 +1728,7 @@ fn call_chain_elements_are_user_multilined(
             prism::Node::CallNode { .. }
                 | prism::Node::ConstantReadNode { .. }
                 | prism::Node::ConstantPathNode { .. }
+                | prism::Node::ParenthesesNode { .. }
         );
 
         // _However_, don't ignore this if there are comments in the call chain though; this check may
@@ -3108,7 +3110,8 @@ fn format_numbered_parameters_node(
     _ps: &mut ParserState,
     _numbered_parameters_node: prism::NumberedParametersNode,
 ) {
-    todo!()
+    // No-op. This node represents the implicit set of numbered parameters,
+    // and the actual parameter references are rendered separately.
 }
 
 fn format_numbered_reference_read_node(
