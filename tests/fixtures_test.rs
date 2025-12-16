@@ -36,7 +36,6 @@ const DISABLED_PRISM_TESTS: &[&'static str] = &[
     "large_rspec_core_notifications",
     "large_rspec_mocks_proxy",
     "small_aref_in_call",
-    "small_aref_rest_param",
     "small_binary_operators",
     "small_brace_blocks_with_no_args",
     "small_break_all_the_things",
