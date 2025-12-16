@@ -3274,10 +3274,14 @@ fn format_multi_targets(
         }
 
         if let Some(rest) = rest {
-            if has_lefts {
-                ps.emit_comma_space();
+            if rest.as_implicit_rest_node().is_some() {
+                ps.emit_comma();
+            } else {
+                if has_lefts {
+                    ps.emit_comma_space();
+                }
+                format_node(ps, rest);
             }
-            format_node(ps, rest);
         }
 
         if has_rights {

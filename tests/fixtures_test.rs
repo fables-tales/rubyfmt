@@ -43,7 +43,6 @@ const DISABLED_PRISM_TESTS: &[&'static str] = &[
     "small_paren_expr_calls",
     "small_pathological_heredocs",
     "small_percent_q",
-    "small_single_massign",
     "small_string_dvar",
     "small_string_first_item_is_embed",
     "small_string_with_embexpr_dyna_symbol",
