@@ -1583,7 +1583,15 @@ fn format_call_node(ps: &mut ParserState, call_node: prism::CallNode, skip_recei
                         ps,
                         call_node.receiver().unwrap(),
                         method_name,
-                        call_node.arguments().unwrap().as_node(),
+                        // For infix operators, we still get an ArgumentsNode, but it will
+                        // always be an argument list of a single node.
+                        call_node
+                            .arguments()
+                            .unwrap()
+                            .arguments()
+                            .iter()
+                            .next()
+                            .unwrap(),
                     );
                 });
             } else {
