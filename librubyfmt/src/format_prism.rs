@@ -663,11 +663,20 @@ fn format_interpolated_string_node(
     // as an interpolated node with the contents `"foobar"` (in two `parts` of "foo" and "bar").
     // To detect this, we can look for any `InterpolatedStringNode` that has multiple `parts`
     // and isn't a heredoc.
+    //
+    // Note that Prism itself essentially scrubs any traces of heredocs, and so we have to detect it ourselves.
+    // The logic for this is taken straight from Prism's Ripper translator:
+    // https://github.com/ruby/prism/blob/609c80c91e146d9ac8f70deedfadca729e8a3e4f/lib/prism/translation/ripper.rb#L2183-L2189
     let is_backslash_string_interpolation = !is_heredoc
-        && interpolated_string_node.parts().iter().all(|node| {
+        && interpolated_string_node.parts().iter().count() > 1
+        && interpolated_string_node.parts().iter().any(|node| {
             node.as_string_node()
-                .map(|s| s.opening_loc().is_some())
+                .map(|node| node.opening_loc().is_some())
                 .unwrap_or(false)
+                || node
+                    .as_interpolated_string_node()
+                    .map(|node| node.opening_loc().is_some())
+                    .unwrap_or(false)
         });
 
     ps.at_offset(interpolated_string_node.location().start_offset());
