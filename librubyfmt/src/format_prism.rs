@@ -2033,7 +2033,7 @@ fn format_block_parameters_names(
     if has_locals {
         ps.emit_ident(";".to_string());
         ps.with_start_of_line(false, |ps| {
-            format_list_like_thing(ps, locals, end_offset, false);
+            format_list_like_thing(ps, locals, end_offset, true);
         });
     }
 }
