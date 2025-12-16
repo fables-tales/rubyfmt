@@ -3487,15 +3487,22 @@ fn format_return_node(ps: &mut ParserState, return_node: prism::ReturnNode) {
     ps.emit_ident("return".to_string());
     ps.with_start_of_line(false, |ps| {
         if let Some(arguments) = return_node.arguments() {
-            ps.emit_space();
-            ps.with_start_of_line(false, |ps| {
-                format_list_like_thing(
-                    ps,
-                    arguments.arguments(),
-                    arguments.location().end_offset(),
-                    true,
-                );
-            });
+            let arguments_list = arguments.arguments();
+            if arguments_list.iter().count() == 1 {
+                ps.emit_space();
+                format_node(ps, arguments_list.iter().last().unwrap());
+            } else {
+                ps.breakable_of(BreakableDelims::for_return_kw(), |ps| {
+                    ps.with_start_of_line(false, |ps| {
+                        format_list_like_thing(
+                            ps,
+                            arguments_list,
+                            arguments.location().end_offset(),
+                            false,
+                        );
+                    });
+                });
+            }
         }
     });
 }
