@@ -3423,10 +3423,16 @@ fn format_regular_expression_node(
 }
 
 fn format_rescue_modifier_node(
-    _ps: &mut ParserState,
-    _rescue_modifier_node: prism::RescueModifierNode,
+    ps: &mut ParserState,
+    rescue_modifier_node: prism::RescueModifierNode,
 ) {
-    todo!()
+    ps.with_start_of_line(false, |ps| {
+        format_node(ps, rescue_modifier_node.expression());
+        ps.emit_space();
+        ps.emit_rescue();
+        ps.emit_space();
+        format_node(ps, rescue_modifier_node.rescue_expression());
+    });
 }
 
 fn format_rescue_node(ps: &mut ParserState, rescue_node: prism::RescueNode) {
