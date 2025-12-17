@@ -39,7 +39,6 @@ const DISABLED_PRISM_TESTS: &[&'static str] = &[
     "small_comments_at_indentation_changes",
     "small_dyna_symbol_with_escapes",
     "small_empty_arg_paren",
-    "small_inline_rescue",
     "small_method_annotation",
     "small_paren_expr_calls",
     "small_pathological_heredocs",
