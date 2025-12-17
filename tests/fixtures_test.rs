@@ -8,20 +8,6 @@ use std::{
 
 use assert_cmd::Command;
 
-// TODO: These tests fail in debug but work in release builds
-// due to some newline shenanigans, we should investigate why
-#[cfg(debug_assertions)]
-const IGNORED_IN_DEBUG: &[&'static str] = &[
-    "test_prism_large_concurrent-ruby_non_concurrent_map_backend",
-    "test_prism_large_rspec_mocks_proxy",
-    "test_ripper_large_concurrent-ruby_non_concurrent_map_backend",
-    "test_ripper_large_concurrent_ruby_future",
-    "test_ripper_large_rspec_mocks_proxy",
-];
-
-#[cfg(not(debug_assertions))]
-const IGNORED_IN_DEBUG: &[&'static str] = &[];
-
 // These tests are disabled due to ripper issues
 const DISABLED_RIPPER_TESTS: &[&'static str] = &[
     // TODO: The Ripper implementation does not currently support args forwarding with additional
@@ -39,14 +25,12 @@ const DISABLED_PRISM_TESTS: &[&'static str] = &[
     "small_comments_at_indentation_changes",
     "small_dyna_symbol_with_escapes",
     "small_empty_arg_paren",
-    "small_method_annotation",
     "small_paren_expr_calls",
     "small_pathological_heredocs",
     "small_percent_q",
     "small_string_dvar",
     "small_string_first_item_is_embed",
     "small_string_with_embexpr_dyna_symbol",
-    "small_visibility_modifier",
 ];
 
 fn main() -> io::Result<()> {
@@ -94,8 +78,7 @@ struct Fixture {
 impl Fixture {
     fn to_trial(&self, flavor: Flavor) -> Trial {
         let name = format!("test_{}_{}", flavor.to_str(), self.name);
-        let is_ignored = IGNORED_IN_DEBUG.contains(&name.as_str())
-            || flavor.disabled_list().contains(&self.name.as_str());
+        let is_ignored = flavor.disabled_list().contains(&self.name.as_str());
         let actual = self.actual.clone();
         let expected = self.expected.clone();
         Trial::test(name.clone(), move || {
