@@ -1058,7 +1058,7 @@ fn format_module_node(ps: &mut ParserState, module_node: prism::ModuleNode) {
 }
 
 fn format_def_node(ps: &mut ParserState, def_node: prism::DefNode) {
-    ps.emit_keyword("def");
+    ps.emit_def_keyword();
     ps.emit_space();
 
     ps.with_start_of_line(false, |ps| {
@@ -1571,6 +1571,11 @@ fn format_call_node(ps: &mut ParserState, call_node: prism::CallNode, skip_recei
                 ps.with_start_of_line(false, |ps| {
                     format_node(ps, block);
                 });
+                // Only emit this when we're not inside a call chain (`skip_receiver` is false),
+                // since call chains emit AfterCallChain after the entire chain is done.
+                if !skip_receiver {
+                    ps.emit_after_call_chain();
+                }
             // If there's an arguments node, we've handled this block arg with
             // the rest of the args (since it's included in the comma-separated
             // args list), otherwise the only argument is the &blk node, so we
