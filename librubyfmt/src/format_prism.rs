@@ -1672,26 +1672,14 @@ fn format_infix_operator(
     ps.with_formatting_context(FormattingContext::Binary, |ps| {
         ps.with_start_of_line(false, |ps| {
             // Check if left and right are also binary operators so we recurse back and handle it here.
-            // This is so that chained and/or operations get indented correctly as one big chain.
+            // This is so that chained binary operations get indented correctly as one big chain.
             // ```ruby
             // foo &&
             //   bar &&
             //   baz
             // ```
-            if let Some(and_node) = left.as_and_node() {
-                format_infix_operator(
-                    ps,
-                    and_node.left(),
-                    loc_to_string(and_node.operator_loc()),
-                    and_node.right(),
-                );
-            } else if let Some(or_node) = left.as_or_node() {
-                format_infix_operator(
-                    ps,
-                    or_node.left(),
-                    loc_to_string(or_node.operator_loc()),
-                    or_node.right(),
-                );
+            if let Some((inner_left, inner_op, inner_right)) = as_binary_op(&left) {
+                format_infix_operator(ps, inner_left, inner_op, inner_right);
             } else {
                 ps.dedent(|ps| format_node(ps, left));
             }
@@ -1712,25 +1700,57 @@ fn format_infix_operator(
             }
             ps.reset_space_count();
 
-            if let Some(and_node) = right.as_and_node() {
-                format_infix_operator(
-                    ps,
-                    and_node.left(),
-                    loc_to_string(and_node.operator_loc()),
-                    and_node.right(),
-                );
-            } else if let Some(or_node) = right.as_or_node() {
-                format_infix_operator(
-                    ps,
-                    or_node.left(),
-                    loc_to_string(or_node.operator_loc()),
-                    or_node.right(),
-                );
+            if let Some((inner_left, inner_op, inner_right)) = as_binary_op(&right) {
+                format_infix_operator(ps, inner_left, inner_op, inner_right);
             } else {
                 format_node(ps, right);
             }
         });
     });
+}
+
+/// Check if a node is a binary operator (and/or nodes, or infix CallNodes like `+`, `-`, etc.)
+/// and return its components (left, operator, right) if so.
+fn as_binary_op<'a>(
+    node: &'a prism::Node<'a>,
+) -> Option<(prism::Node<'a>, String, prism::Node<'a>)> {
+    if let Some(and_node) = node.as_and_node() {
+        return Some((
+            and_node.left(),
+            loc_to_string(and_node.operator_loc()),
+            and_node.right(),
+        ));
+    }
+
+    if let Some(or_node) = node.as_or_node() {
+        return Some((
+            or_node.left(),
+            loc_to_string(or_node.operator_loc()),
+            or_node.right(),
+        ));
+    }
+
+    let call_node = node.as_call_node()?;
+
+    if call_node.call_operator_loc().is_some() {
+        return None;
+    }
+
+    let left = call_node.receiver()?;
+
+    let arguments = call_node.arguments()?.arguments();
+    if arguments.iter().count() != 1 {
+        return None;
+    }
+
+    let right = arguments.iter().next().unwrap();
+    let method_name = const_to_string(call_node.name());
+
+    if method_name == "[]" || method_name == "[]=" {
+        return None;
+    }
+
+    Some((left, method_name, right))
 }
 
 fn format_call_chain(ps: &mut ParserState, call_node: ruby_prism::CallNode<'_>) {
