@@ -1420,6 +1420,7 @@ fn use_parens_for_call_node(
 
 fn format_call_node(ps: &mut ParserState, call_node: prism::CallNode, skip_receiver: bool) {
     let method_name = const_to_string(call_node.name());
+    let is_dot_call = &method_name == "call" && call_node.message_loc().is_none(); // e.g. `a.()`
     let is_aref = &method_name == "[]";
     let is_aref_write = &method_name == "[]=";
 
@@ -1431,13 +1432,15 @@ fn format_call_node(ps: &mut ParserState, call_node: prism::CallNode, skip_recei
                         .message_loc()
                         .expect("Attribute writes must have a message"),
                 )
+            } else if is_dot_call {
+                String::new()
             } else {
                 method_name.clone()
             };
             handle_string_at_offset(
                 ps,
                 method_ident,
-                call_node.message_loc().unwrap().start_offset(),
+                start_loc_for_call_node_in_chain(&call_node),
             );
         }
         if let Some(arguments) = call_node.arguments() {
@@ -1556,7 +1559,12 @@ fn format_call_node(ps: &mut ParserState, call_node: prism::CallNode, skip_recei
                 ps.emit_open_paren();
                 ps.emit_close_paren();
             }
-        }
+        } else if is_dot_call {
+            // We've checked earlier that there's no arguments
+            ps.emit_open_paren();
+            ps.emit_close_paren();
+        };
+
         if let Some(block) = call_node.block() {
             if block.as_block_argument_node().is_none() {
                 ps.emit_space();
@@ -1813,12 +1821,7 @@ fn call_chain_elements_are_user_multilined(
         // placement, the user probably intended to break this onto multiple lines anyways.
         let has_comment = ps.has_comment_in_offset_span(
             call_chain_elements[0].location().end_offset(),
-            call_chain_elements[1]
-                .as_call_node()
-                .unwrap()
-                .message_loc()
-                .unwrap()
-                .start_offset(),
+            start_loc_for_call_node_in_chain(&call_chain_elements[1].as_call_node().unwrap()),
         );
         if is_literal_expression && !has_comment {
             call_chain_elements = &call_chain_elements[1..];
@@ -1841,6 +1844,23 @@ fn call_chain_elements_are_user_multilined(
                 .map(|loc| ps.get_line_number_for_offset(loc.start_offset()))
                 .unwrap_or(start_line)
     })
+}
+
+/// Finds an appropriate starting loc for for a call node inside a call chain.
+/// In the middle of a chain, the node's `location().start_offset()` is always the
+/// beginning of the chain, since `receiver()` is the entirety of the chain so far.
+/// To find the loc in the middle of the chain, we need to use something else to approximate that,
+/// which in this case is either the name of the method or, in the case of method calls without
+/// names (e.g. `.()`), we use the call operator loc.
+fn start_loc_for_call_node_in_chain(call_chain_element: &prism::CallNode<'_>) -> usize {
+    call_chain_element
+        .message_loc()
+        .unwrap_or_else(|| {
+            call_chain_element.call_operator_loc().expect(
+                "If we're in a call chain and there's no message loc, we must be in a dot-call (`.()`), so there must be a call operator loc",
+            )
+        })
+        .start_offset()
 }
 
 fn format_call_and_write_node(

@@ -37,7 +37,6 @@ const DISABLED_PRISM_TESTS: &[&'static str] = &[
     "small_binary_operators",
     "small_brace_blocks_with_no_args",
     "small_comments_at_indentation_changes",
-    "small_dotcall",
     "small_dyna_symbol_with_escapes",
     "small_empty_arg_paren",
     "small_inline_rescue",
