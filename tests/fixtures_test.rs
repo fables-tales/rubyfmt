@@ -34,7 +34,6 @@ const DISABLED_RIPPER_TESTS: &[&'static str] = &[
 const DISABLED_PRISM_TESTS: &[&'static str] = &[
     "large_rspec_core_notifications",
     "small_aref_in_call",
-    "small_aref_rest_param",
     "small_binary_operators",
     "small_brace_blocks_with_no_args",
     "small_comments_at_indentation_changes",

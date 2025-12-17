@@ -2920,8 +2920,14 @@ fn format_index_or_write_node(ps: &mut ParserState, index_or_write_node: prism::
     ps.with_start_of_line(false, |ps| format_node(ps, index_or_write_node.value()));
 }
 
-fn format_index_target_node(_ps: &mut ParserState, _index_target_node: prism::IndexTargetNode) {
-    todo!()
+fn format_index_target_node(ps: &mut ParserState, index_target_node: prism::IndexTargetNode) {
+    ps.with_start_of_line(false, |ps| format_node(ps, index_target_node.receiver()));
+
+    if let Some(arguments) = index_target_node.arguments() {
+        ps.breakable_of(BreakableDelims::for_array(), |ps| {
+            format_arguments_node(ps, arguments)
+        });
+    }
 }
 
 fn format_instance_variable_and_write_node(
