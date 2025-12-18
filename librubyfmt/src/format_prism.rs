@@ -3288,9 +3288,9 @@ fn format_multi_targets(
     rest: Option<prism::Node>,
     rights: prism::NodeList,
 ) {
-    let has_lefts = lefts.len() > 0;
+    let has_lefts = !lefts.is_empty();
     let has_rest = rest.is_some();
-    let has_rights = rights.len() > 0;
+    let has_rights = !rights.is_empty();
 
     ps.with_start_of_line(false, |ps| {
         if has_lefts {
