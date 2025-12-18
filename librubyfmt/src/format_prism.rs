@@ -1448,7 +1448,7 @@ fn format_call_node(ps: &mut ParserState, call_node: prism::CallNode, skip_recei
         let has_only_empty_paren_arg = !is_aref
             && !is_aref_write
             && call_node.arguments().is_some_and(|args| {
-                args.arguments().iter().count() == 1
+                args.arguments().len() == 1
                     && is_empty_parentheses_node(&args.arguments().iter().next().unwrap())
             });
 
@@ -1524,7 +1524,7 @@ fn format_call_node(ps: &mut ParserState, call_node: prism::CallNode, skip_recei
                 // method call parens. This handles cases like `a (1)` -> `a(1)` where the
                 // parens around `1` were just for argument grouping, not expression grouping.
                 let maybe_unwrapped_single_arg = if should_use_parens
-                    && arguments.arguments().iter().count() == 1
+                    && arguments.arguments().len() == 1
                     && call_node
                         .block()
                         .and_then(|b| b.as_block_argument_node())
@@ -3811,7 +3811,7 @@ fn is_empty_parentheses_node(node: &prism::Node) -> bool {
             None => true,
             Some(body) => {
                 if let Some(statements) = body.as_statements_node() {
-                    statements.body().iter().count() == 0
+                    statements.body().is_empty()
                 } else {
                     false
                 }
@@ -3830,7 +3830,7 @@ fn unwrap_single_arg_paren<'a>(node: &prism::Node<'a>) -> Option<prism::Node<'a>
     let statements = body.as_statements_node()?;
 
     // Only unwrap if there's exactly one statement
-    if statements.body().iter().count() != 1 {
+    if statements.body().len() != 1 {
         return None;
     }
 
