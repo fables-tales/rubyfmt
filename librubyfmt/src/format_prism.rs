@@ -1239,14 +1239,14 @@ fn format_parameters_node(ps: &mut ParserState, params: prism::ParametersNode) {
 
     let formats: Vec<ParamFormattingFunc> = vec![
         Box::new(move |ps: &mut ParserState| {
-            if node_list_is_empty(&requireds) {
+            if requireds.is_empty() {
                 return;
             }
             let end_offset = requireds.iter().last().unwrap().location().end_offset();
             format_list_like_thing(ps, requireds, end_offset, false);
         }),
         Box::new(move |ps: &mut ParserState| {
-            if node_list_is_empty(&optionals) {
+            if optionals.is_empty() {
                 return;
             }
             let end_offset = optionals.iter().last().unwrap().location().end_offset();
@@ -1258,14 +1258,14 @@ fn format_parameters_node(ps: &mut ParserState, params: prism::ParametersNode) {
             }
         }),
         Box::new(move |ps: &mut ParserState| {
-            if node_list_is_empty(&posts) {
+            if posts.is_empty() {
                 return;
             }
             let end_offset = posts.iter().last().unwrap().location().end_offset();
             format_list_like_thing(ps, posts, end_offset, false);
         }),
         Box::new(move |ps: &mut ParserState| {
-            if node_list_is_empty(&keywords) {
+            if keywords.is_empty() {
                 return;
             }
             let end_offset = keywords.iter().last().unwrap().location().end_offset();
@@ -1379,7 +1379,7 @@ fn use_parens_for_call_node(
 
     let has_arguments = call_node
         .arguments()
-        .map(|args| !node_list_is_empty(&args.arguments()))
+        .map(|args| !args.arguments().is_empty())
         .unwrap_or(false);
 
     if !has_arguments {
@@ -1538,7 +1538,7 @@ fn format_call_node(ps: &mut ParserState, call_node: prism::CallNode, skip_recei
 
                 ps.with_start_of_line(false, |ps| {
                     ps.breakable_of(delims, |ps| {
-                        let has_arguments = !node_list_is_empty(&arguments.arguments());
+                        let has_arguments = !arguments.arguments().is_empty();
 
                         if let Some(unwrapped_arg) = maybe_unwrapped_single_arg {
                             ps.emit_collapsing_newline();
@@ -2102,9 +2102,7 @@ fn format_block_parameters_node(
     block_parameters_node: prism::BlockParametersNode,
 ) {
     // Exit early if there's no params
-    if node_list_is_empty(&block_parameters_node.locals())
-        && block_parameters_node.parameters().is_none()
-    {
+    if block_parameters_node.locals().is_empty() && block_parameters_node.parameters().is_none() {
         return;
     }
 
@@ -2124,7 +2122,7 @@ fn format_block_parameters_names(
     parameters: Option<prism::ParametersNode>,
     end_offset: usize,
 ) {
-    let has_locals = !node_list_is_empty(&locals);
+    let has_locals = !locals.is_empty();
 
     if let Some(parameters) = parameters {
         format_parameters_node(ps, parameters);
@@ -2161,7 +2159,7 @@ fn format_array_node(ps: &mut ParserState, array_node: prism::ArrayNode) {
         ps.emit_ident(opening.unwrap().split_at(2).0.to_string());
     }
 
-    if node_list_is_empty(&array_node.elements()) {
+    if array_node.elements().is_empty() {
         if ps.has_comment_in_offset_span(
             array_node.location().start_offset(),
             array_node.location().end_offset(),
@@ -2654,7 +2652,7 @@ fn format_global_variable_write_node(
 
 fn format_hash_node(ps: &mut ParserState, hash_node: prism::HashNode) {
     ps.with_start_of_line(false, |ps| {
-        if node_list_is_empty(&hash_node.elements()) {
+        if hash_node.elements().is_empty() {
             let start_offset = hash_node.location().start_offset();
             let end_offset = hash_node.location().end_offset();
             let is_multiline = ps.get_line_number_for_offset(start_offset)
@@ -3196,8 +3194,7 @@ fn format_lambda_node(ps: &mut ParserState, lambda_node: prism::LambdaNode) {
             if &operator == "->"
                 && let Some(block_parameters) = parameters_node.as_block_parameters_node()
             {
-                if block_parameters.parameters().is_some()
-                    || !node_list_is_empty(&block_parameters.locals())
+                if block_parameters.parameters().is_some() || !block_parameters.locals().is_empty()
                 {
                     ps.emit_space();
                     ps.breakable_of(BreakableDelims::for_method_call(), |ps| {
@@ -3551,7 +3548,7 @@ fn format_rescue_node(ps: &mut ParserState, rescue_node: prism::RescueNode) {
 
     ps.emit_keyword("rescue");
     let exceptions = rescue_node.exceptions();
-    if !node_list_is_empty(&exceptions) {
+    if !exceptions.is_empty() {
         ps.with_start_of_line(false, |ps| {
             ps.emit_space();
             format_list_like_thing(
@@ -3789,18 +3786,14 @@ fn handle_string_at_offset(ps: &mut ParserState, ident: String, offset: usize) {
 
 fn non_null_positions(params: &prism::ParametersNode) -> Vec<bool> {
     vec![
-        !node_list_is_empty(&params.requireds()),
-        !node_list_is_empty(&params.optionals()),
+        !params.requireds().is_empty(),
+        !params.optionals().is_empty(),
         params.rest().is_some(),
-        !node_list_is_empty(&params.posts()),
-        !node_list_is_empty(&params.keywords()),
+        !params.posts().is_empty(),
+        !params.keywords().is_empty(),
         params.keyword_rest().is_some(),
         params.block().is_some(),
     ]
-}
-
-fn node_list_is_empty(node_list: &prism::NodeList) -> bool {
-    node_list.iter().next().is_none()
 }
 
 /// Checks if a node is an empty ParenthesesNode (like `()` in `foo ()`).
