@@ -668,7 +668,7 @@ fn format_interpolated_string_node(
     // The logic for this is taken straight from Prism's Ripper translator:
     // https://github.com/ruby/prism/blob/609c80c91e146d9ac8f70deedfadca729e8a3e4f/lib/prism/translation/ripper.rb#L2183-L2189
     let is_backslash_string_interpolation = !is_heredoc
-        && interpolated_string_node.parts().iter().count() > 1
+        && interpolated_string_node.parts().len() > 1
         && interpolated_string_node.parts().iter().any(|node| {
             node.as_string_node()
                 .map(|node| node.opening_loc().is_some())
@@ -699,7 +699,7 @@ fn format_interpolated_string_node(
     }
 
     ps.with_start_of_line(false, |ps| {
-        let string_parts_count = interpolated_string_node.parts().iter().count();
+        let string_parts_count = interpolated_string_node.parts().len();
         for (i, part) in interpolated_string_node.parts().iter().enumerate() {
             let start_offset = part.location().start_offset();
             let end_offset = part.location().end_offset();
@@ -880,7 +880,7 @@ fn format_embedded_statements_node(
     ps.emit_string_content("#{".to_string());
     if let Some(statements) = embedded_statements_node.statements() {
         ps.with_formatting_context(FormattingContext::StringEmbexpr, |ps| {
-            let has_multiple_statements = statements.body().iter().count() > 1;
+            let has_multiple_statements = statements.body().len() > 1;
             ps.with_start_of_line(has_multiple_statements, |ps| {
                 if has_multiple_statements {
                     ps.emit_newline();
@@ -1446,7 +1446,7 @@ fn format_call_node(ps: &mut ParserState, call_node: prism::CallNode, skip_recei
         if let Some(arguments) = call_node.arguments() {
             // For callers where the only arg is a def node,
             // we assume that's a `public def` style modifier and don't use parens
-            if arguments.arguments().iter().count() == 1
+            if arguments.arguments().len() == 1
                 && arguments
                     .arguments()
                     .iter()
@@ -1466,7 +1466,7 @@ fn format_call_node(ps: &mut ParserState, call_node: prism::CallNode, skip_recei
                     .unwrap();
                 format_def_node(ps, def_node);
             } else if is_aref_write {
-                let arg_count = arguments.arguments().iter().count();
+                let arg_count = arguments.arguments().len();
 
                 ps.with_start_of_line(false, |ps| {
                     ps.breakable_of(BreakableDelims::for_array(), |ps| {
@@ -1744,7 +1744,7 @@ fn as_binary_op<'a>(
     let left = call_node.receiver()?;
 
     let arguments = call_node.arguments()?.arguments();
-    if arguments.iter().count() != 1 {
+    if arguments.len() != 1 {
         return None;
     }
 
@@ -2025,7 +2025,7 @@ fn format_block_node(ps: &mut ParserState, block_node: prism::BlockNode) {
             if let Some(body) = block_node.body() {
                 let has_multiple_statements = body
                     .as_statements_node()
-                    .map(|statements_node| statements_node.body().iter().count() > 1)
+                    .map(|statements_node| statements_node.body().len() > 1)
                     .unwrap_or(false);
                 if has_multiple_statements {
                     ps.emit_soft_newline();
@@ -2180,7 +2180,7 @@ fn format_word_array_elements(
     node_list: prism::NodeList,
     end_offset: SourceOffset,
 ) {
-    let args_count = node_list.iter().count();
+    let args_count = node_list.len();
 
     ps.magic_handle_comments_for_multiline_arrays(
         Some(ps.get_line_number_for_offset(end_offset)),
@@ -2214,7 +2214,7 @@ fn format_parentheses_node(ps: &mut ParserState, parentheses_node: prism::Parent
 
     let is_multiline = if let Some(body) = parentheses_node.body() {
         if let Some(statements_node) = body.as_statements_node() {
-            statements_node.body().iter().count() > 1
+            statements_node.body().len() > 1
         } else {
             true
         }
@@ -2225,7 +2225,7 @@ fn format_parentheses_node(ps: &mut ParserState, parentheses_node: prism::Parent
     if let Some(body) = parentheses_node.body() {
         ps.with_start_of_line(false, |ps| {
             if let Some(statements_node) = body.as_statements_node() {
-                if statements_node.body().iter().count() == 1 {
+                if statements_node.body().len() == 1 {
                     ps.with_start_of_line(false, |ps| {
                         format_node(ps, statements_node.body().iter().next().unwrap())
                     });
@@ -3204,7 +3204,7 @@ fn format_lambda_node(ps: &mut ParserState, lambda_node: prism::LambdaNode) {
                 if let Some(body) = lambda_node.body() {
                     let has_multiple_statements = body
                         .as_statements_node()
-                        .map(|statements_node| statements_node.body().iter().count() > 1)
+                        .map(|statements_node| statements_node.body().len() > 1)
                         .unwrap_or(false);
                     if has_multiple_statements {
                         ps.emit_soft_newline();
@@ -3288,9 +3288,9 @@ fn format_multi_targets(
     rest: Option<prism::Node>,
     rights: prism::NodeList,
 ) {
-    let has_lefts = lefts.iter().count() > 0;
+    let has_lefts = !lefts.is_empty();
     let has_rest = rest.is_some();
-    let has_rights = rights.iter().count() > 0;
+    let has_rights = !rights.is_empty();
 
     ps.with_start_of_line(false, |ps| {
         if has_lefts {
@@ -3566,7 +3566,7 @@ fn format_return_node(ps: &mut ParserState, return_node: prism::ReturnNode) {
     ps.with_start_of_line(false, |ps| {
         if let Some(arguments) = return_node.arguments() {
             let arguments_list = arguments.arguments();
-            if arguments_list.iter().count() == 1 {
+            if arguments_list.len() == 1 {
                 ps.emit_space();
                 format_node(ps, arguments_list.iter().last().unwrap());
             } else {
@@ -3722,7 +3722,7 @@ fn format_yield_node(ps: &mut ParserState, yield_node: prism::YieldNode) {
             || (yield_node
                 .arguments()
                 .map(|args| {
-                    args.arguments().iter().count() == 1
+                    args.arguments().len() == 1
                         && args
                             .arguments()
                             .iter()
@@ -3773,7 +3773,7 @@ fn format_list_like_thing(
     single_line: bool,
 ) -> bool {
     let mut emitted_args = false;
-    let args_count = node_list.iter().count();
+    let args_count = node_list.len();
 
     ps.magic_handle_comments_for_multiline_arrays(
         Some(ps.get_line_number_for_offset(end_offset)),
