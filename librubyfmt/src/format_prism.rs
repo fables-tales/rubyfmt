@@ -1443,7 +1443,18 @@ fn format_call_node(ps: &mut ParserState, call_node: prism::CallNode, skip_recei
                 start_loc_for_call_node_in_chain(&call_node),
             );
         }
-        if let Some(arguments) = call_node.arguments() {
+
+        // Calls with only empty parens (`foo ()`) are treated as calls without args
+        let has_only_empty_paren_arg = !is_aref
+            && !is_aref_write
+            && call_node.arguments().is_some_and(|args| {
+                args.arguments().len() == 1
+                    && is_empty_parentheses_node(&args.arguments().iter().next().unwrap())
+            });
+
+        if let Some(arguments) = call_node.arguments()
+            && !has_only_empty_paren_arg
+        {
             // For callers where the only arg is a def node,
             // we assume that's a `public def` style modifier and don't use parens
             if arguments.arguments().len() == 1
@@ -1508,10 +1519,35 @@ fn format_call_node(ps: &mut ParserState, call_node: prism::CallNode, skip_recei
                 } else {
                     BreakableDelims::for_kw()
                 };
+
+                // Check if we can unwrap a single parenthesized argument when we're adding
+                // method call parens. This handles cases like `a (1)` -> `a(1)` where the
+                // parens around `1` were just for argument grouping, not expression grouping.
+                let maybe_unwrapped_single_arg = if should_use_parens
+                    && arguments.arguments().len() == 1
+                    && call_node
+                        .block()
+                        .and_then(|b| b.as_block_argument_node())
+                        .is_none()
+                {
+                    let first_arg = arguments.arguments().iter().next().unwrap();
+                    unwrap_single_arg_paren(&first_arg)
+                } else {
+                    None
+                };
+
                 ps.with_start_of_line(false, |ps| {
                     ps.breakable_of(delims, |ps| {
                         let has_arguments = !node_list_is_empty(&arguments.arguments());
-                        format_arguments_node(ps, arguments);
+
+                        if let Some(unwrapped_arg) = maybe_unwrapped_single_arg {
+                            ps.emit_collapsing_newline();
+                            ps.emit_soft_indent();
+                            format_node(ps, unwrapped_arg);
+                            ps.shift_comments();
+                        } else {
+                            format_arguments_node(ps, arguments);
+                        }
 
                         // Somewhat confusingly, the block argument node (&blk) is
                         // separate from the rest of the arguments node. If it's present,
@@ -1539,11 +1575,12 @@ fn format_call_node(ps: &mut ParserState, call_node: prism::CallNode, skip_recei
             // For a[] or a[]= with no arguments, we still need to emit the brackets
             ps.emit_open_square_bracket();
             ps.emit_close_square_bracket();
-        } else if !skip_receiver
-            || call_node
-                .receiver()
-                .map(|r| r.as_self_node().is_some())
-                .unwrap_or(false)
+        } else if !has_only_empty_paren_arg
+            && (!skip_receiver
+                || call_node
+                    .receiver()
+                    .map(|r| r.as_self_node().is_some())
+                    .unwrap_or(false))
         {
             // Check if we need parens in two cases: we're the
             // first/only item in a call chain (thus `!skip_receiver`)
@@ -3764,6 +3801,40 @@ fn non_null_positions(params: &prism::ParametersNode) -> Vec<bool> {
 
 fn node_list_is_empty(node_list: &prism::NodeList) -> bool {
     node_list.iter().next().is_none()
+}
+
+/// Checks if a node is an empty ParenthesesNode (like `()` in `foo ()`).
+/// These should be treated as "no arguments" and the parens removed entirely.
+fn is_empty_parentheses_node(node: &prism::Node) -> bool {
+    if let Some(paren_node) = node.as_parentheses_node() {
+        match paren_node.body() {
+            None => true,
+            Some(body) => {
+                if let Some(statements) = body.as_statements_node() {
+                    statements.body().is_empty()
+                } else {
+                    false
+                }
+            }
+        }
+    } else {
+        false
+    }
+}
+
+/// Returns Some(inner_node) if this is a ParenthesesNode containing a single expression that
+/// can be unwrapped when used as a method argument
+fn unwrap_single_arg_paren<'a>(node: &prism::Node<'a>) -> Option<prism::Node<'a>> {
+    let paren_node = node.as_parentheses_node()?;
+    let body = paren_node.body()?;
+    let statements = body.as_statements_node()?;
+
+    // Only unwrap if there's exactly one statement
+    if statements.body().len() != 1 {
+        return None;
+    }
+
+    statements.body().iter().next()
 }
 
 fn format_list_like_thing(
