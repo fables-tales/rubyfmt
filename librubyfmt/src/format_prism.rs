@@ -1815,6 +1815,23 @@ fn format_call_chain(ps: &mut ParserState, call_node: ruby_prism::CallNode<'_>) 
                 // must be additional calls -- you cannot insert literals into call chains
                 let first_expression = call_chain_elements.remove(0);
                 format_node(ps, first_expression);
+
+                // Arefs like `Array[1, 2]` are represented as a call chain where
+                // the receiver is the constant name `Array` and the aref is a separate call node.
+                // However, we don't want to start the call chain indent until after the aref, since the
+                // aref is "part of" the first expression.
+                // We loop here to handle chained arefs like `matrix[0][1].foo`.
+                while let Some(next) = call_chain_elements.first() {
+                    if let Some(call_node) = next.as_call_node()
+                        && call_node.call_operator_loc().is_none()
+                    {
+                        let aref = call_chain_elements.remove(0);
+                        format_call_node(ps, aref.as_call_node().unwrap(), true);
+                        continue;
+                    }
+                    break;
+                }
+
                 // Eagerly render heredocs if they're in the first expression.
                 // We want the full heredoc to get rendered _before_ we emit the
                 // BeginCallChainIndent token so that it gets correctly indented
@@ -1895,6 +1912,32 @@ fn call_chain_elements_are_user_multilined(
         );
         if is_literal_expression && !has_comment {
             call_chain_elements = &call_chain_elements[1..];
+        }
+    }
+
+    // The first element can be any expression (constant, local var, etc.), so we need
+    // to first skip it if it's not a CallNode and there's an aref following it.
+    let first_is_not_call = call_chain_elements
+        .first()
+        .map(|n| n.as_call_node().is_none())
+        .unwrap_or(false);
+    let second_is_aref = call_chain_elements.get(1).is_some_and(|n| {
+        n.as_call_node()
+            .map(|c| c.call_operator_loc().is_none())
+            .unwrap_or(false)
+    });
+
+    if first_is_not_call && second_is_aref {
+        call_chain_elements = &call_chain_elements[1..];
+        while call_chain_elements.len() > 1
+            && let Some(call_node) = call_chain_elements.first().and_then(|n| n.as_call_node())
+        {
+            // Pop all leading arefs
+            if call_node.call_operator_loc().is_none() {
+                call_chain_elements = &call_chain_elements[1..];
+                continue;
+            }
+            break;
         }
     }
 
