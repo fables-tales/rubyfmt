@@ -1825,8 +1825,8 @@ fn format_call_chain(ps: &mut ParserState, call_node: ruby_prism::CallNode<'_>) 
                     if let Some(call_node) = next.as_call_node()
                         && call_node.call_operator_loc().is_none()
                     {
-                        let aref = call_chain_elements.remove(0);
-                        format_call_node(ps, aref.as_call_node().unwrap(), true);
+                        call_chain_elements.remove(0);
+                        format_call_node(ps, call_node, true);
                         continue;
                     }
                     break;
