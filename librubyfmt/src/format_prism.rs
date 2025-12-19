@@ -9,7 +9,7 @@ use crate::{
     parser_state::{FormattingContext, HashType, ParserState},
     render_targets::MultilineHandling,
     types::SourceOffset,
-    util::{const_to_str, const_to_string, loc_to_str, loc_to_string, u8_to_string},
+    util::{const_to_str, const_to_string, loc_to_str, loc_to_string},
 };
 
 pub fn format_node(ps: &mut ParserState, node: prism::Node) {
@@ -813,7 +813,7 @@ fn format_heredoc(ps: &mut ParserState, heredoc: HeredocNodeType, heredoc_symbol
         ps.get_line_number_for_offset(heredoc.closing_loc().start_offset()),
         Box::new(|n: &mut ParserState| {
             n.disable_user_newlines();
-            format_inner_string(n, heredoc.parts(), true);
+            format_inner_string(n, heredoc.parts(), heredoc_kind);
         }),
     );
     ps.wind_dumping_comments_until_offset(heredoc.closing_loc().start_offset());
@@ -821,38 +821,114 @@ fn format_heredoc(ps: &mut ParserState, heredoc: HeredocNodeType, heredoc_symbol
 
 fn maybe_render_heredocs_in_string<'a>(
     ps: &mut ParserState,
-    peekable: &mut std::iter::Peekable<impl Iterator<Item = &'a prism::Node<'a>>>,
-    is_heredoc: bool,
+    peekable: &mut std::iter::Peekable<impl Iterator<Item = (usize, &'a prism::Node<'a>)>>,
 ) {
-    let should_render = is_heredoc
-        && match peekable.peek() {
-            Some(prism::Node::StringNode { .. }) => loc_to_string(
-                peekable
-                    .peek()
-                    .unwrap()
-                    .as_string_node()
-                    .unwrap()
-                    .content_loc(),
-            )
-            .starts_with('\n'),
-            _ => false,
-        };
+    let should_render = match peekable.peek() {
+        Some((_, prism::Node::StringNode { .. })) => loc_to_string(
+            peekable
+                .peek()
+                .unwrap()
+                .1
+                .as_string_node()
+                .unwrap()
+                .content_loc(),
+        )
+        .starts_with('\n'),
+        _ => false,
+    };
     if should_render {
         ps.render_heredocs(true)
     }
 }
 
-fn format_inner_string(ps: &mut ParserState, parts: Vec<prism::Node>, is_heredoc: bool) {
-    let mut peekable = parts.iter().peekable();
-    while let Some(part) = peekable.next() {
+fn format_inner_string(ps: &mut ParserState, parts: Vec<prism::Node>, heredoc_kind: HeredocKind) {
+    // For squiggly heredocs, calculate the common indentation to strip.
+    // We only look at lines that start at the beginning of a StringNode part
+    // (not continuations after an interpolation on the same line).
+    let common_indent = if heredoc_kind.is_squiggly() {
+        parts
+            .iter()
+            .enumerate()
+            .filter_map(|(i, part)| {
+                if let prism::Node::StringNode { .. } = part {
+                    let content = loc_to_str(part.as_string_node().unwrap().content_loc());
+                    // Only consider the first line of this part if it follows a newline
+                    // (i.e., if the previous part ended with a newline, or this is the first part)
+                    let prev_ends_with_newline = if i == 0 {
+                        true
+                    } else {
+                        match &parts[i - 1] {
+                            prism::Node::StringNode { .. } => {
+                                loc_to_str(parts[i - 1].as_string_node().unwrap().content_loc())
+                                    .ends_with('\n')
+                            }
+                            _ => false, // After interpolation, might not be at line start
+                        }
+                    };
+
+                    // Find minimum indent, but skip the first line if it doesn't start
+                    // at a line boundary (i.e., it follows an interpolation)
+                    content
+                        .lines()
+                        .enumerate()
+                        .filter(|(line_idx, line)| {
+                            !line.trim().is_empty() && (*line_idx > 0 || prev_ends_with_newline)
+                        })
+                        .map(|(_, line)| line.len() - line.trim_start().len())
+                        .min()
+                } else {
+                    None
+                }
+            })
+            .min()
+            .unwrap_or(0)
+    } else {
+        0
+    };
+
+    let mut peekable = parts.iter().enumerate().peekable();
+    let mut prev_ended_with_newline = true;
+
+    while let Some((idx, part)) = peekable.next() {
         match part {
             prism::Node::StringNode { .. } => {
                 let part = part.as_string_node().unwrap();
-                // We use the `unescaped` contents here since they
-                // have the appropriate leading whitespace stripped for <<~ heredocs
-                let mut contents = u8_to_string(part.unescaped());
+                // For heredocs, use raw `content_loc` to preserve escape sequences like `\n`
+                let mut contents = {
+                    let raw = loc_to_str(part.content_loc());
+                    if common_indent > 0 {
+                        // Track whether this part's first line is at a true line boundary
+                        let first_line_is_at_boundary = if idx == 0 {
+                            true
+                        } else {
+                            prev_ended_with_newline
+                        };
 
-                if is_heredoc && peekable.peek().is_none() && contents.ends_with('\n') {
+                        raw.split('\n')
+                            .enumerate()
+                            .map(|(line_idx, line)| {
+                                // Only strip from lines that:
+                                // 1. Are at a true line boundary
+                                // 2. Have enough characters to strip
+                                let should_strip = (line_idx > 0 || first_line_is_at_boundary)
+                                    && !line.is_empty()
+                                    && line.len() >= common_indent;
+                                if should_strip {
+                                    &line[common_indent..]
+                                } else {
+                                    line
+                                }
+                            })
+                            .collect::<Vec<_>>()
+                            .join("\n")
+                    } else {
+                        raw.to_string()
+                    }
+                };
+
+                prev_ended_with_newline = contents.ends_with('\n');
+
+                if peekable.peek().is_none() && contents.ends_with('\n') {
                     contents.pop();
                 }
 
@@ -862,14 +938,17 @@ fn format_inner_string(ps: &mut ParserState, parts: Vec<prism::Node>, is_heredoc
             prism::Node::InterpolatedStringNode { .. } => {
                 ps.at_offset(part.location().start_offset());
                 format_interpolated_string_node(ps, part.as_interpolated_string_node().unwrap());
-                maybe_render_heredocs_in_string(ps, &mut peekable, is_heredoc);
+                maybe_render_heredocs_in_string(ps, &mut peekable);
+                prev_ended_with_newline = false;
             }
             prism::Node::EmbeddedStatementsNode { .. } => {
                 format_embedded_statements_node(ps, part.as_embedded_statements_node().unwrap());
-                maybe_render_heredocs_in_string(ps, &mut peekable, is_heredoc);
+                maybe_render_heredocs_in_string(ps, &mut peekable);
+                prev_ended_with_newline = false;
             }
             prism::Node::EmbeddedVariableNode { .. } => {
-                format_embedded_variable_node(ps, part.as_embedded_variable_node().unwrap())
+                format_embedded_variable_node(ps, part.as_embedded_variable_node().unwrap());
+                prev_ended_with_newline = false;
             }
             x => unreachable!("Unexpected Node type in heredoc: {:?}", x),
         }
