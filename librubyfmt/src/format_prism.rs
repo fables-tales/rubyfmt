@@ -4271,6 +4271,11 @@ fn format_list_like_thing(
                                 ps.emit_soft_indent();
                             }
                             format_assoc_node(ps, assoc_node)
+                        } else if let Some(splat_node) = expr.as_assoc_splat_node() {
+                            if idx > 0 {
+                                ps.emit_soft_indent();
+                            }
+                            format_assoc_splat_node(ps, splat_node)
                         } else {
                             ps.emit_soft_indent();
                             format_node(ps, expr);
