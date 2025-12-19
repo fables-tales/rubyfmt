@@ -451,10 +451,13 @@ fn format_and_node(ps: &mut ParserState, and_node: prism::AndNode) {
 }
 
 fn format_back_reference_read_node(
-    _ps: &mut ParserState,
-    _back_reference_read_node: prism::BackReferenceReadNode,
+    ps: &mut ParserState,
+    back_reference_read_node: prism::BackReferenceReadNode,
 ) {
-    todo!()
+    let back_reference_loc = back_reference_read_node.location();
+    let end_offset = back_reference_loc.end_offset();
+
+    handle_string_at_offset(ps, loc_to_string(back_reference_loc), end_offset);
 }
 
 fn format_begin_node(ps: &mut ParserState, begin_node: prism::BeginNode) {
