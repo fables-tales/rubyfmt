@@ -44,6 +44,62 @@ pub fn single_to_double_quoted(content: &str, start_delim: &str, end_delim: &str
     }
 }
 
+/// Escapes content for word arrays when converting to bracket delimiters.
+/// This handles unescaping the original delimiter and escaping [ and ] (since they're the new delimiters)
+pub fn escape_word_array_content(
+    content: &str,
+    orig_open_delim: char,
+    orig_close_delim: char,
+) -> String {
+    // Output is always [] delimited
+    const TARGET_OPEN: char = '[';
+    const TARGET_CLOSE: char = ']';
+
+    let chars: Vec<char> = content.chars().collect();
+    let mut output = String::new();
+    let mut i = 0;
+
+    while i < chars.len() {
+        let c = chars[i];
+
+        if c == '\\' && i + 1 < chars.len() {
+            let next = chars[i + 1];
+            if next == '\\' {
+                // Escaped backslash, keep both
+                output.push('\\');
+                output.push('\\');
+                i += 2;
+            } else if next == orig_open_delim || next == orig_close_delim {
+                // Original delimiter was escaped - unescape unless it's also a target delimiter
+                if next == TARGET_OPEN || next == TARGET_CLOSE {
+                    output.push('\\');
+                }
+                output.push(next);
+                i += 2;
+            } else if next == TARGET_OPEN || next == TARGET_CLOSE {
+                // Already escaped target delimiter, keep it
+                output.push('\\');
+                output.push(next);
+                i += 2;
+            } else {
+                output.push('\\');
+                output.push(next);
+                i += 2;
+            }
+        } else if c == TARGET_OPEN || c == TARGET_CLOSE {
+            // Unescaped target delimiter needs escaping
+            output.push('\\');
+            output.push(c);
+            i += 1;
+        } else {
+            output.push(c);
+            i += 1;
+        }
+    }
+
+    output
+}
+
 fn escape_string(content: &str, opening_delim: char, closing_delim: char) -> String {
     if opening_delim == '"' {
         return content.to_string();

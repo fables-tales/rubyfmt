@@ -2474,6 +2474,11 @@ fn format_array_node(ps: &mut ParserState, array_node: prism::ArrayNode) {
         .map(|s| s.starts_with("%"))
         .unwrap_or(false);
 
+    let orig_delim = opening
+        .as_ref()
+        .and_then(|s| s.chars().nth(2))
+        .unwrap_or('[');
+
     if is_word_array {
         ps.emit_ident(opening.unwrap().split_at(2).0.to_string());
     }
@@ -2500,6 +2505,7 @@ fn format_array_node(ps: &mut ParserState, array_node: prism::ArrayNode) {
                     ps,
                     array_node.elements(),
                     array_node.location().end_offset(),
+                    orig_delim,
                 );
                 ps.wind_dumping_comments_until_offset(array_node.location().end_offset());
             });
@@ -2533,8 +2539,10 @@ fn format_word_array_elements(
     ps: &mut ParserState,
     node_list: prism::NodeList,
     end_offset: SourceOffset,
+    orig_open_delim: char,
 ) {
     let args_count = node_list.len();
+    let orig_close_delim = matching_delimiter(orig_open_delim);
 
     ps.magic_handle_comments_for_multiline_arrays(
         Some(ps.get_line_number_for_offset(end_offset)),
@@ -2545,9 +2553,46 @@ fn format_word_array_elements(
                 if let Some(string_node) = expr.as_string_node() {
                     ps.at_offset(string_node.location().start_offset());
 
-                    ps.emit_string_content(loc_to_string(string_node.content_loc()));
+                    let content = loc_to_string(string_node.content_loc());
+                    let escaped = crate::string_escape::escape_word_array_content(
+                        &content,
+                        orig_open_delim,
+                        orig_close_delim,
+                    );
+                    ps.emit_string_content(escaped);
+                } else if let Some(symbol_node) = expr.as_symbol_node() {
+                    ps.at_offset(symbol_node.location().start_offset());
+
+                    if let Some(value_loc) = symbol_node.value_loc() {
+                        let content = loc_to_string(value_loc);
+                        let escaped = crate::string_escape::escape_word_array_content(
+                            &content,
+                            orig_open_delim,
+                            orig_close_delim,
+                        );
+                        ps.emit_string_content(escaped);
+                    }
+                } else if let Some(interpolated_symbol_node) = expr.as_interpolated_symbol_node() {
+                    ps.at_offset(interpolated_symbol_node.location().start_offset());
+                    format_word_array_interpolated_parts(
+                        ps,
+                        interpolated_symbol_node.parts(),
+                        orig_open_delim,
+                        orig_close_delim,
+                    );
+                } else if let Some(interpolated_string_node) = expr.as_interpolated_string_node() {
+                    ps.at_offset(interpolated_string_node.location().start_offset());
+                    format_word_array_interpolated_parts(
+                        ps,
+                        interpolated_string_node.parts(),
+                        orig_open_delim,
+                        orig_close_delim,
+                    );
                 } else {
                     // This branch shouldn't happen, but we'll have a fallback just in case
+                    if cfg!(debug_assertions) {
+                        unreachable!("Received unexpected node in word array: {:?}", expr);
+                    }
                     format_node(ps, expr);
                 }
 
@@ -2557,6 +2602,47 @@ fn format_word_array_elements(
             }
         },
     );
+}
+
+fn matching_delimiter(open: char) -> char {
+    match open {
+        '[' => ']',
+        '(' => ')',
+        '{' => '}',
+        '<' => '>',
+        // For non-paired delimiters (like ^, |, etc.), the closing is the same
+        c => c,
+    }
+}
+
+fn format_word_array_interpolated_parts(
+    ps: &mut ParserState,
+    parts: prism::NodeList,
+    orig_open_delim: char,
+    orig_close_delim: char,
+) {
+    for part in parts.iter() {
+        let start_offset = part.location().start_offset();
+        let end_offset = part.location().end_offset();
+
+        ps.at_offset(start_offset);
+
+        if let Some(string_node) = part.as_string_node() {
+            let content = loc_to_string(string_node.content_loc());
+            let escaped = crate::string_escape::escape_word_array_content(
+                &content,
+                orig_open_delim,
+                orig_close_delim,
+            );
+            ps.emit_string_content(escaped);
+        } else if let Some(embedded_statements_node) = part.as_embedded_statements_node() {
+            format_embedded_statements_node(ps, embedded_statements_node);
+        } else {
+            format_node(ps, part);
+        }
+
+        ps.at_offset(end_offset);
+    }
 }
 
 fn format_array_pattern_node(_ps: &mut ParserState, _array_pattern_node: prism::ArrayPatternNode) {
