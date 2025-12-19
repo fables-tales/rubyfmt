@@ -2628,9 +2628,9 @@ fn format_word_array_interpolated_parts(
         ps.at_offset(start_offset);
 
         if let Some(string_node) = part.as_string_node() {
-            let content = loc_to_string(string_node.content_loc());
+            let content = loc_to_str(string_node.content_loc());
             let escaped = crate::string_escape::escape_word_array_content(
-                &content,
+                content,
                 orig_open_delim,
                 orig_close_delim,
             );
