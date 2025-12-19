@@ -17,9 +17,6 @@ const DISABLED_RIPPER_TESTS: &[&'static str] = &[
     "small_alias_global_var",
 ];
 
-// These tests will have their prism variants automatically ignored
-const DISABLED_PRISM_TESTS: &[&'static str] = &["small_dyna_symbol_with_escapes"];
-
 fn main() -> io::Result<()> {
     let args = Arguments::from_args();
 
@@ -27,8 +24,8 @@ fn main() -> io::Result<()> {
 
     let fixtures = collect_fixtures("fixtures".into())?;
 
-    tests.extend(fixtures.iter().map(|f| f.to_trial(Flavor::Ripper)));
-    tests.extend(fixtures.iter().map(|f| f.to_trial(Flavor::Prism)));
+    tests.extend(fixtures.iter().filter_map(|f| f.to_trial(Flavor::Ripper)));
+    tests.extend(fixtures.iter().filter_map(|f| f.to_trial(Flavor::Prism)));
 
     libtest_mimic::run(&args, tests).exit();
 }
@@ -50,9 +47,16 @@ impl Flavor {
     fn disabled_list(&self) -> &[&'static str] {
         match self {
             Flavor::Ripper => DISABLED_RIPPER_TESTS,
-            Flavor::Prism => DISABLED_PRISM_TESTS,
+            Flavor::Prism => &[],
         }
     }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum FlavorRestriction {
+    RipperOnly,
+    PrismOnly,
+    Both,
 }
 
 #[derive(Debug)]
@@ -60,15 +64,22 @@ struct Fixture {
     name: String,
     actual: Option<PathBuf>,
     expected: Option<PathBuf>,
+    restriction: FlavorRestriction,
 }
 
 impl Fixture {
-    fn to_trial(&self, flavor: Flavor) -> Trial {
+    fn to_trial(&self, flavor: Flavor) -> Option<Trial> {
+        match (self.restriction, flavor) {
+            (FlavorRestriction::RipperOnly, Flavor::Prism) => return None,
+            (FlavorRestriction::PrismOnly, Flavor::Ripper) => return None,
+            _ => {}
+        }
+
         let name = format!("test_{}_{}", flavor.to_str(), self.name);
         let is_ignored = flavor.disabled_list().contains(&self.name.as_str());
         let actual = self.actual.clone();
         let expected = self.expected.clone();
-        Trial::test(name.clone(), move || {
+        let trial = Trial::test(name.clone(), move || {
             let Some(actual) = actual else {
                 return Result::Err(format!("Test {} is missing an _actual.rb file", name).into());
             };
@@ -102,7 +113,9 @@ impl Fixture {
             cmd.assert().success().stdout(expected_text);
             Ok(())
         })
-        .with_ignored_flag(is_ignored)
+        .with_ignored_flag(is_ignored);
+
+        Some(trial)
     }
 }
 
@@ -113,7 +126,11 @@ fn collect_fixtures(path: PathBuf) -> io::Result<Vec<Fixture>> {
         expected: Option<PathBuf>,
     }
 
-    fn recurse(results: &mut Vec<Fixture>, path: &Path) -> io::Result<()> {
+    fn recurse(
+        results: &mut Vec<Fixture>,
+        path: &Path,
+        restriction: FlavorRestriction,
+    ) -> io::Result<()> {
         let mut partial: HashMap<String, Partial> = HashMap::new();
 
         for entry in fs::read_dir(path)? {
@@ -121,7 +138,14 @@ fn collect_fixtures(path: PathBuf) -> io::Result<Vec<Fixture>> {
             let path = entry.path();
 
             if entry.file_type()?.is_dir() {
-                recurse(results, &path)?;
+                let dir_name = entry.file_name();
+                let dir_name_str = dir_name.to_str().unwrap_or("");
+                let child_restriction = match dir_name_str {
+                    "ripper" => FlavorRestriction::RipperOnly,
+                    "prism" => FlavorRestriction::PrismOnly,
+                    _ => restriction,
+                };
+                recurse(results, &path, child_restriction)?;
                 continue;
             }
 
@@ -147,6 +171,7 @@ fn collect_fixtures(path: PathBuf) -> io::Result<Vec<Fixture>> {
                 name: k.replace('/', "_"),
                 actual: v.actual,
                 expected: v.expected,
+                restriction,
             });
         }
 
@@ -154,6 +179,6 @@ fn collect_fixtures(path: PathBuf) -> io::Result<Vec<Fixture>> {
     }
 
     let mut results = Vec::new();
-    recurse(&mut results, &path)?;
+    recurse(&mut results, &path, FlavorRestriction::Both)?;
     Ok(results)
 }
