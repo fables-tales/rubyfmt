@@ -3117,80 +3117,144 @@ fn format_constant_path_node(ps: &mut ParserState, constant_path_node: prism::Co
 }
 
 fn format_constant_and_write_node(
-    _ps: &mut ParserState,
-    _constant_and_write_node: prism::ConstantAndWriteNode,
+    ps: &mut ParserState,
+    constant_and_write_node: prism::ConstantAndWriteNode,
 ) {
-    todo!()
+    format_write_node(
+        ps,
+        const_to_string(constant_and_write_node.name()),
+        Cow::Borrowed("&&="),
+        constant_and_write_node.value(),
+    );
 }
 
 fn format_constant_operator_write_node(
-    _ps: &mut ParserState,
-    _constant_operator_write_node: prism::ConstantOperatorWriteNode,
+    ps: &mut ParserState,
+    constant_operator_write_node: prism::ConstantOperatorWriteNode,
 ) {
-    todo!()
+    format_write_node(
+        ps,
+        const_to_string(constant_operator_write_node.name()),
+        Cow::Owned(loc_to_string(
+            constant_operator_write_node.binary_operator_loc(),
+        )),
+        constant_operator_write_node.value(),
+    );
 }
 
 fn format_constant_or_write_node(
-    _ps: &mut ParserState,
-    _constant_or_write_node: prism::ConstantOrWriteNode,
+    ps: &mut ParserState,
+    constant_or_write_node: prism::ConstantOrWriteNode,
 ) {
-    todo!()
+    format_write_node(
+        ps,
+        const_to_string(constant_or_write_node.name()),
+        Cow::Borrowed("||="),
+        constant_or_write_node.value(),
+    );
 }
 
 fn format_constant_path_and_write_node(
-    _ps: &mut ParserState,
-    _constant_path_and_write_node: prism::ConstantPathAndWriteNode,
+    ps: &mut ParserState,
+    constant_path_and_write_node: prism::ConstantPathAndWriteNode,
 ) {
-    todo!()
+    format_constant_path_write(
+        ps,
+        constant_path_and_write_node.target(),
+        Cow::Borrowed("&&="),
+        constant_path_and_write_node.value(),
+    );
 }
 
 fn format_constant_path_operator_write_node(
-    _ps: &mut ParserState,
-    _constant_path_operator_write_node: prism::ConstantPathOperatorWriteNode,
+    ps: &mut ParserState,
+    constant_path_operator_write_node: prism::ConstantPathOperatorWriteNode,
 ) {
-    todo!()
+    format_constant_path_write(
+        ps,
+        constant_path_operator_write_node.target(),
+        Cow::Owned(loc_to_string(
+            constant_path_operator_write_node.binary_operator_loc(),
+        )),
+        constant_path_operator_write_node.value(),
+    );
 }
 
 fn format_constant_path_or_write_node(
-    _ps: &mut ParserState,
-    _constant_path_or_write_node: prism::ConstantPathOrWriteNode,
+    ps: &mut ParserState,
+    constant_path_or_write_node: prism::ConstantPathOrWriteNode,
 ) {
-    todo!()
+    format_constant_path_write(
+        ps,
+        constant_path_or_write_node.target(),
+        Cow::Borrowed("||="),
+        constant_path_or_write_node.value(),
+    );
 }
 
 fn format_constant_path_target_node(
-    _ps: &mut ParserState,
-    _constant_path_target_node: prism::ConstantPathTargetNode,
+    ps: &mut ParserState,
+    constant_path_target_node: prism::ConstantPathTargetNode,
 ) {
-    todo!()
+    ps.with_start_of_line(false, |ps| {
+        if let Some(parent) = constant_path_target_node.parent() {
+            format_node(ps, parent);
+        }
+        // Emit :: regardless of if there's a parent
+        // since it could be a top reference
+        ps.emit_colon_colon();
+
+        handle_string_at_offset(
+            ps,
+            const_to_string(constant_path_target_node.name().unwrap()),
+            constant_path_target_node.name_loc().start_offset(),
+        );
+    });
 }
 
 fn format_constant_path_write_node(
     ps: &mut ParserState,
     constant_path_write_node: prism::ConstantPathWriteNode,
 ) {
-    format_constant_path_node(ps, constant_path_write_node.target());
-    ps.emit_space();
-    ps.emit_op(Cow::Borrowed("="));
-    ps.emit_space();
-    ps.with_start_of_line(false, |ps| {
-        format_node(ps, constant_path_write_node.value())
-    });
+    format_constant_path_write(
+        ps,
+        constant_path_write_node.target(),
+        Cow::Borrowed("="),
+        constant_path_write_node.value(),
+    );
 }
 
 fn format_constant_target_node(
-    _ps: &mut ParserState,
-    _constant_target_node: prism::ConstantTargetNode,
+    ps: &mut ParserState,
+    constant_target_node: prism::ConstantTargetNode,
 ) {
-    todo!()
+    handle_string_at_offset(
+        ps,
+        const_to_string(constant_target_node.name()),
+        constant_target_node.location().start_offset(),
+    );
+}
+
+fn format_constant_path_write(
+    ps: &mut ParserState,
+    target: prism::ConstantPathNode,
+    op: Cow<'static, str>,
+    value: prism::Node,
+) {
+    format_constant_path_node(ps, target);
+    ps.emit_space();
+    ps.emit_op(op);
+    ps.emit_space();
+    ps.with_start_of_line(false, |ps| format_node(ps, value));
 }
 
 fn format_constant_write_node(ps: &mut ParserState, constant_write_node: prism::ConstantWriteNode) {
-    ps.emit_ident(const_to_string(constant_write_node.name()));
-    ps.emit_space();
-    ps.emit_op(Cow::Borrowed("="));
-    ps.emit_space();
-    ps.with_start_of_line(false, |ps| format_node(ps, constant_write_node.value()));
+    format_write_node(
+        ps,
+        const_to_string(constant_write_node.name()),
+        Cow::Borrowed("="),
+        constant_write_node.value(),
+    );
 }
 
 fn format_lambda_node(ps: &mut ParserState, lambda_node: prism::LambdaNode) {
