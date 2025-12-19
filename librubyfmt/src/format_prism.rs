@@ -3573,10 +3573,12 @@ fn format_lambda_node(ps: &mut ParserState, lambda_node: prism::LambdaNode) {
 }
 
 fn format_match_last_line_node(
-    _ps: &mut ParserState,
-    _match_last_line_node: prism::MatchLastLineNode,
+    ps: &mut ParserState,
+    match_last_line_node: prism::MatchLastLineNode,
 ) {
-    todo!()
+    ps.emit_ident(loc_to_string(match_last_line_node.opening_loc()));
+    ps.emit_string_content(loc_to_string(match_last_line_node.content_loc()));
+    ps.emit_ident(loc_to_string(match_last_line_node.closing_loc()));
 }
 
 fn format_match_predicate_node(
@@ -3593,8 +3595,8 @@ fn format_match_required_node(
     todo!()
 }
 
-fn format_match_write_node(_ps: &mut ParserState, _match_write_node: prism::MatchWriteNode) {
-    todo!()
+fn format_match_write_node(ps: &mut ParserState, match_write_node: prism::MatchWriteNode) {
+    format_call_node(ps, match_write_node.call(), false);
 }
 
 fn format_multi_target_node(ps: &mut ParserState, multi_target_node: prism::MultiTargetNode) {
