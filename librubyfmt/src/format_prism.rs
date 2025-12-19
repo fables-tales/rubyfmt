@@ -787,6 +787,29 @@ fn format_heredoc(ps: &mut ParserState, heredoc: HeredocNodeType, heredoc_symbol
     ps.wind_dumping_comments_until_offset(heredoc.closing_loc().start_offset());
 }
 
+fn maybe_render_heredocs_in_string<'a>(
+    ps: &mut ParserState,
+    peekable: &mut std::iter::Peekable<impl Iterator<Item = &'a prism::Node<'a>>>,
+    is_heredoc: bool,
+) {
+    let should_render = is_heredoc
+        && match peekable.peek() {
+            Some(prism::Node::StringNode { .. }) => loc_to_string(
+                peekable
+                    .peek()
+                    .unwrap()
+                    .as_string_node()
+                    .unwrap()
+                    .content_loc(),
+            )
+            .starts_with('\n'),
+            _ => false,
+        };
+    if should_render {
+        ps.render_heredocs(true)
+    }
+}
+
 fn format_inner_string(ps: &mut ParserState, parts: Vec<prism::Node>, is_heredoc: bool) {
     let mut peekable = parts.iter().peekable();
     while let Some(part) = peekable.next() {
@@ -807,26 +830,11 @@ fn format_inner_string(ps: &mut ParserState, parts: Vec<prism::Node>, is_heredoc
             prism::Node::InterpolatedStringNode { .. } => {
                 ps.at_offset(part.location().start_offset());
                 format_interpolated_string_node(ps, part.as_interpolated_string_node().unwrap());
-
-                let on_line_skip = is_heredoc
-                    && match peekable.peek() {
-                        Some(prism::Node::StringNode { .. }) => loc_to_string(
-                            peekable
-                                .peek()
-                                .unwrap()
-                                .as_string_node()
-                                .unwrap()
-                                .content_loc(),
-                        )
-                        .starts_with('\n'),
-                        _ => false,
-                    };
-                if on_line_skip {
-                    ps.render_heredocs(true)
-                }
+                maybe_render_heredocs_in_string(ps, &mut peekable, is_heredoc);
             }
             prism::Node::EmbeddedStatementsNode { .. } => {
-                format_embedded_statements_node(ps, part.as_embedded_statements_node().unwrap())
+                format_embedded_statements_node(ps, part.as_embedded_statements_node().unwrap());
+                maybe_render_heredocs_in_string(ps, &mut peekable, is_heredoc);
             }
             prism::Node::EmbeddedVariableNode { .. } => {
                 format_embedded_variable_node(ps, part.as_embedded_variable_node().unwrap())

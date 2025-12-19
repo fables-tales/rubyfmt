@@ -22,7 +22,6 @@ const DISABLED_PRISM_TESTS: &[&'static str] = &[
     "small_aref_in_call",
     "small_brace_blocks_with_no_args",
     "small_dyna_symbol_with_escapes",
-    "small_pathological_heredocs",
     "small_percent_q",
     "small_string_dvar",
     "small_string_first_item_is_embed",
