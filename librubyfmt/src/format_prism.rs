@@ -407,10 +407,17 @@ pub fn format_node(ps: &mut ParserState, node: prism::Node) {
 }
 
 fn format_alias_global_variable_node(
-    _ps: &mut ParserState,
-    _alias_global_variable_node: prism::AliasGlobalVariableNode,
+    ps: &mut ParserState,
+    alias_global_variable_node: prism::AliasGlobalVariableNode,
 ) {
-    todo!()
+    ps.emit_ident("alias".to_string());
+    ps.emit_space();
+
+    ps.with_start_of_line(false, |ps| {
+        format_node(ps, alias_global_variable_node.new_name());
+        ps.emit_space();
+        format_node(ps, alias_global_variable_node.old_name());
+    });
 }
 
 fn format_alias_method_node(ps: &mut ParserState, alias_method_node: prism::AliasMethodNode) {
@@ -2609,45 +2616,71 @@ fn format_super_node(ps: &mut ParserState, super_node: prism::SuperNode) {
 }
 
 fn format_global_variable_and_write_node(
-    _ps: &mut ParserState,
-    _global_variable_and_write_node: prism::GlobalVariableAndWriteNode,
+    ps: &mut ParserState,
+    global_variable_and_write_node: prism::GlobalVariableAndWriteNode,
 ) {
-    todo!()
+    ps.emit_ident(const_to_string(global_variable_and_write_node.name()));
+    ps.emit_space();
+    ps.emit_op(Cow::Borrowed("&&="));
+    ps.emit_space();
+    ps.with_start_of_line(false, |ps| {
+        format_node(ps, global_variable_and_write_node.value())
+    });
 }
 
 fn format_global_variable_operator_write_node(
-    _ps: &mut ParserState,
-    _global_variable_operator_write_node: prism::GlobalVariableOperatorWriteNode,
+    ps: &mut ParserState,
+    global_variable_operator_write_node: prism::GlobalVariableOperatorWriteNode,
 ) {
-    todo!()
+    ps.emit_ident(const_to_string(global_variable_operator_write_node.name()));
+    ps.emit_space();
+    ps.emit_op(Cow::Owned(loc_to_string(
+        global_variable_operator_write_node.binary_operator_loc(),
+    )));
+    ps.emit_space();
+    ps.with_start_of_line(false, |ps| {
+        format_node(ps, global_variable_operator_write_node.value())
+    });
 }
 
 fn format_global_variable_or_write_node(
-    _ps: &mut ParserState,
-    _global_variable_or_write_node: prism::GlobalVariableOrWriteNode,
+    ps: &mut ParserState,
+    global_variable_or_write_node: prism::GlobalVariableOrWriteNode,
 ) {
-    todo!()
+    ps.emit_ident(const_to_string(global_variable_or_write_node.name()));
+    ps.emit_space();
+    ps.emit_op(Cow::Borrowed("||="));
+    ps.emit_space();
+    ps.with_start_of_line(false, |ps| {
+        format_node(ps, global_variable_or_write_node.value())
+    });
 }
 
 fn format_global_variable_read_node(
-    _ps: &mut ParserState,
-    _global_variable_read_node: prism::GlobalVariableReadNode,
+    ps: &mut ParserState,
+    global_variable_read_node: prism::GlobalVariableReadNode,
 ) {
-    todo!()
+    ps.emit_ident(loc_to_string(global_variable_read_node.location()));
 }
 
 fn format_global_variable_target_node(
-    _ps: &mut ParserState,
-    _global_variable_target_node: prism::GlobalVariableTargetNode,
+    ps: &mut ParserState,
+    global_variable_target_node: prism::GlobalVariableTargetNode,
 ) {
-    todo!()
+    ps.emit_ident(const_to_string(global_variable_target_node.name()));
 }
 
 fn format_global_variable_write_node(
-    _ps: &mut ParserState,
-    _global_variable_write_node: prism::GlobalVariableWriteNode,
+    ps: &mut ParserState,
+    global_variable_write_node: prism::GlobalVariableWriteNode,
 ) {
-    todo!()
+    ps.emit_ident(const_to_string(global_variable_write_node.name()));
+    ps.emit_space();
+    ps.emit_op(Cow::Borrowed("="));
+    ps.emit_space();
+    ps.with_start_of_line(false, |ps| {
+        format_node(ps, global_variable_write_node.value())
+    });
 }
 
 fn format_hash_node(ps: &mut ParserState, hash_node: prism::HashNode) {
