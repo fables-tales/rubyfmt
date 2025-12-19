@@ -940,10 +940,12 @@ fn format_embedded_statements_node(
 }
 
 fn format_embedded_variable_node(
-    _ps: &mut ParserState,
-    _embedded_variable_node: prism::EmbeddedVariableNode,
+    ps: &mut ParserState,
+    embedded_variable_node: prism::EmbeddedVariableNode,
 ) {
-    todo!()
+    ps.emit_string_content("#{".to_string());
+    format_node(ps, embedded_variable_node.variable());
+    ps.emit_string_content("}".to_string());
 }
 
 fn format_ensure_node(ps: &mut ParserState, ensure_node: prism::EnsureNode) {
