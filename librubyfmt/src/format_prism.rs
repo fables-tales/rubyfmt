@@ -1016,7 +1016,9 @@ fn format_interpolated_last_line_node(
     ps: &mut ParserState,
     interpolated_match_last_line_node: prism::InterpolatedMatchLastLineNode,
 ) {
-    ps.emit_ident(loc_to_string(interpolated_match_last_line_node.opening_loc()));
+    ps.emit_ident(loc_to_string(
+        interpolated_match_last_line_node.opening_loc(),
+    ));
 
     ps.with_start_of_line(false, |ps| {
         for part in interpolated_match_last_line_node.parts().iter() {
@@ -1029,14 +1031,18 @@ fn format_interpolated_last_line_node(
         }
     });
 
-    ps.emit_ident(loc_to_string(interpolated_match_last_line_node.closing_loc()));
+    ps.emit_ident(loc_to_string(
+        interpolated_match_last_line_node.closing_loc(),
+    ));
 }
 
 fn format_interpolated_regular_expression_node(
     ps: &mut ParserState,
     interpolated_regular_expression_node: prism::InterpolatedRegularExpressionNode,
 ) {
-    ps.emit_ident(loc_to_string(interpolated_regular_expression_node.opening_loc()));
+    ps.emit_ident(loc_to_string(
+        interpolated_regular_expression_node.opening_loc(),
+    ));
 
     ps.with_start_of_line(false, |ps| {
         for part in interpolated_regular_expression_node.parts().iter() {
@@ -1049,7 +1055,9 @@ fn format_interpolated_regular_expression_node(
         }
     });
 
-    ps.emit_ident(loc_to_string(interpolated_regular_expression_node.closing_loc()));
+    ps.emit_ident(loc_to_string(
+        interpolated_regular_expression_node.closing_loc(),
+    ));
 }
 
 fn format_embedded_statements_node(
