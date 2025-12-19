@@ -18,10 +18,7 @@ const DISABLED_RIPPER_TESTS: &[&'static str] = &[
 ];
 
 // These tests will have their prism variants automatically ignored
-const DISABLED_PRISM_TESTS: &[&'static str] = &[
-    "small_brace_blocks_with_no_args",
-    "small_dyna_symbol_with_escapes",
-];
+const DISABLED_PRISM_TESTS: &[&'static str] = &["small_dyna_symbol_with_escapes"];
 
 fn main() -> io::Result<()> {
     let args = Arguments::from_args();
