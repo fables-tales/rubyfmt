@@ -3140,17 +3140,47 @@ fn format_in_node(_ps: &mut ParserState, _in_node: prism::InNode) {
 }
 
 fn format_index_and_write_node(
-    _ps: &mut ParserState,
-    _index_and_write_node: prism::IndexAndWriteNode,
+    ps: &mut ParserState,
+    index_and_write_node: prism::IndexAndWriteNode,
 ) {
-    todo!()
+    if let Some(receiver) = index_and_write_node.receiver() {
+        ps.with_start_of_line(false, |ps| format_node(ps, receiver));
+    }
+
+    if let Some(arguments) = index_and_write_node.arguments() {
+        ps.breakable_of(BreakableDelims::for_array(), |ps| {
+            format_arguments_node(ps, arguments)
+        });
+    }
+
+    ps.emit_space();
+    ps.emit_op(Cow::Borrowed("&&="));
+    ps.emit_space();
+
+    ps.with_start_of_line(false, |ps| format_node(ps, index_and_write_node.value()));
 }
 
 fn format_index_operator_write_node(
-    _ps: &mut ParserState,
-    _index_operator_write_node: prism::IndexOperatorWriteNode,
+    ps: &mut ParserState,
+    index_operator_write_node: prism::IndexOperatorWriteNode,
 ) {
-    todo!()
+    if let Some(receiver) = index_operator_write_node.receiver() {
+        ps.with_start_of_line(false, |ps| format_node(ps, receiver));
+    }
+
+    if let Some(arguments) = index_operator_write_node.arguments() {
+        ps.breakable_of(BreakableDelims::for_array(), |ps| {
+            format_arguments_node(ps, arguments)
+        });
+    }
+
+    ps.emit_space();
+    ps.emit_op(Cow::Owned(loc_to_string(
+        index_operator_write_node.binary_operator_loc(),
+    )));
+    ps.emit_space();
+
+    ps.with_start_of_line(false, |ps| format_node(ps, index_operator_write_node.value()));
 }
 
 fn format_index_or_write_node(ps: &mut ParserState, index_or_write_node: prism::IndexOrWriteNode) {
