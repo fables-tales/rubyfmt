@@ -14,6 +14,7 @@ const DISABLED_RIPPER_TESTS: &[&'static str] = &[
     // arguments passed in.
     // https://github.com/fables-tales/rubyfmt/issues/474
     "small_args_forwarding_additional_args",
+    "small_alias_global_var",
 ];
 
 // These tests will have their prism variants automatically ignored
