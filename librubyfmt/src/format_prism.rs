@@ -2553,9 +2553,9 @@ fn format_word_array_elements(
                 if let Some(string_node) = expr.as_string_node() {
                     ps.at_offset(string_node.location().start_offset());
 
-                    let content = loc_to_string(string_node.content_loc());
+                    let content = loc_to_str(string_node.content_loc());
                     let escaped = crate::string_escape::escape_word_array_content(
-                        &content,
+                        content,
                         orig_open_delim,
                         orig_close_delim,
                     );
