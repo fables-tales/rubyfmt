@@ -2130,6 +2130,12 @@ fn call_chain_elements_are_user_multilined(
             prism::Node::CallNode { .. }
                 | prism::Node::ConstantReadNode { .. }
                 | prism::Node::ConstantPathNode { .. }
+                | prism::Node::LocalVariableReadNode { .. }
+                | prism::Node::GlobalVariableReadNode { .. }
+                | prism::Node::InstanceVariableReadNode { .. }
+                | prism::Node::ClassVariableReadNode { .. }
+                | prism::Node::ItLocalVariableReadNode { .. }
+                | prism::Node::NumberedReferenceReadNode { .. }
                 | prism::Node::ParenthesesNode { .. }
         );
 
@@ -2383,9 +2389,9 @@ fn format_block_node(ps: &mut ParserState, block_node: prism::BlockNode) {
         ps.new_block(|ps| {
             ps.emit_do_keyword();
             if let Some(block_parameters) = block_node.parameters()
-                // `it` parameters nodes are implicit nodes with no content, but they have
-                // a loc that is the entire loc of the block. This will cause major line
-                // winding problems if we try to format with `format_node`, so we just skip it.
+                // These node types are implicit types -- they don't represent anything
+                // and have misleading locs that we don't want to use
+                && block_parameters.as_numbered_parameters_node().is_none()
                 && block_parameters.as_it_parameters_node().is_none()
             {
                 format_node(ps, block_parameters);
@@ -2410,7 +2416,12 @@ fn format_block_node(ps: &mut ParserState, block_node: prism::BlockNode) {
         });
     } else {
         ps.inline_breakable_of(BreakableDelims::for_brace_block(), |ps| {
-            if let Some(parameters) = block_node.parameters() {
+            if let Some(parameters) = block_node.parameters()
+                // These node types are implicit types -- they don't represent anything
+                // and have misleading locs that we don't want to use
+                && parameters.as_numbered_parameters_node().is_none()
+                && parameters.as_it_parameters_node().is_none()
+            {
                 format_node(ps, parameters);
             }
 
