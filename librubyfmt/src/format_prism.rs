@@ -3180,7 +3180,9 @@ fn format_index_operator_write_node(
     )));
     ps.emit_space();
 
-    ps.with_start_of_line(false, |ps| format_node(ps, index_operator_write_node.value()));
+    ps.with_start_of_line(false, |ps| {
+        format_node(ps, index_operator_write_node.value())
+    });
 }
 
 fn format_index_or_write_node(ps: &mut ParserState, index_or_write_node: prism::IndexOrWriteNode) {
