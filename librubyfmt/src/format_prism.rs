@@ -1607,8 +1607,11 @@ fn use_parens_for_call_node(
 fn format_call_node(ps: &mut ParserState, call_node: prism::CallNode, skip_receiver: bool) {
     let method_name = const_to_string(call_node.name());
     let is_dot_call = &method_name == "call" && call_node.message_loc().is_none(); // e.g. `a.()`
-    let is_aref = &method_name == "[]";
-    let is_aref_write = &method_name == "[]=";
+
+    // Only treat [] and []= as aref syntax when there's no explicit call operator.
+    let has_call_operator = call_node.call_operator_loc().is_some();
+    let is_aref = &method_name == "[]" && !has_call_operator;
+    let is_aref_write = &method_name == "[]=" && !has_call_operator;
 
     if skip_receiver || call_node.receiver().is_none() {
         if !is_aref && !is_aref_write {
