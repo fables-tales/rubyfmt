@@ -4036,10 +4036,10 @@ fn format_return_node(ps: &mut ParserState, return_node: prism::ReturnNode) {
 }
 
 fn format_shareable_constant_node(
-    _ps: &mut ParserState,
-    _shareable_constant_node: prism::ShareableConstantNode,
+    ps: &mut ParserState,
+    shareable_constant_node: prism::ShareableConstantNode,
 ) {
-    todo!()
+    format_node(ps, shareable_constant_node.write());
 }
 
 fn format_singleton_class_node(
