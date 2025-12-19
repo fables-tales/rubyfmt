@@ -977,10 +977,23 @@ fn format_interpolated_symbol_node(
 }
 
 fn format_interpolated_x_string_node(
-    _ps: &mut ParserState,
-    _interpolated_x_string_node: prism::InterpolatedXStringNode,
+    ps: &mut ParserState,
+    interpolated_x_string_node: prism::InterpolatedXStringNode,
 ) {
-    todo!()
+    ps.emit_ident("`".to_string());
+
+    ps.with_start_of_line(false, |ps| {
+        for part in interpolated_x_string_node.parts().iter() {
+            let start_offset = part.location().start_offset();
+            let end_offset = part.location().end_offset();
+
+            ps.at_offset(start_offset);
+            format_node(ps, part);
+            ps.at_offset(end_offset);
+        }
+    });
+
+    ps.emit_ident("`".to_string());
 }
 
 fn format_it_local_variable_read_node(
@@ -1000,17 +1013,51 @@ fn format_it_parameters_node(_ps: &mut ParserState, _it_parameters_node: prism::
 }
 
 fn format_interpolated_last_line_node(
-    _ps: &mut ParserState,
-    _interpolated_match_last_line_node: prism::InterpolatedMatchLastLineNode,
+    ps: &mut ParserState,
+    interpolated_match_last_line_node: prism::InterpolatedMatchLastLineNode,
 ) {
-    todo!()
+    ps.emit_ident(loc_to_string(
+        interpolated_match_last_line_node.opening_loc(),
+    ));
+
+    ps.with_start_of_line(false, |ps| {
+        for part in interpolated_match_last_line_node.parts().iter() {
+            let start_offset = part.location().start_offset();
+            let end_offset = part.location().end_offset();
+
+            ps.at_offset(start_offset);
+            format_node(ps, part);
+            ps.at_offset(end_offset);
+        }
+    });
+
+    ps.emit_ident(loc_to_string(
+        interpolated_match_last_line_node.closing_loc(),
+    ));
 }
 
 fn format_interpolated_regular_expression_node(
-    _ps: &mut ParserState,
-    _interpolated_regular_expression_node: prism::InterpolatedRegularExpressionNode,
+    ps: &mut ParserState,
+    interpolated_regular_expression_node: prism::InterpolatedRegularExpressionNode,
 ) {
-    todo!()
+    ps.emit_ident(loc_to_string(
+        interpolated_regular_expression_node.opening_loc(),
+    ));
+
+    ps.with_start_of_line(false, |ps| {
+        for part in interpolated_regular_expression_node.parts().iter() {
+            let start_offset = part.location().start_offset();
+            let end_offset = part.location().end_offset();
+
+            ps.at_offset(start_offset);
+            format_node(ps, part);
+            ps.at_offset(end_offset);
+        }
+    });
+
+    ps.emit_ident(loc_to_string(
+        interpolated_regular_expression_node.closing_loc(),
+    ));
 }
 
 fn format_embedded_statements_node(
