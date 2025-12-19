@@ -2202,8 +2202,20 @@ fn format_block_node(ps: &mut ParserState, block_node: prism::BlockNode) {
                     .map(|statements_node| statements_node.body().len() > 1)
                     .unwrap_or(false);
                 if has_multiple_statements {
-                    ps.emit_soft_newline();
-                    ps.with_start_of_line(true, |ps| format_node(ps, body));
+                    ps.emit_newline();
+                    ps.emit_indent();
+                    ps.with_start_of_line(false, |ps| {
+                        let statements = body.as_statements_node().unwrap().body();
+                        let mut peekable = statements.iter().peekable();
+                        while peekable.peek().is_some() {
+                            format_node(ps, peekable.next().unwrap());
+                            ps.emit_soft_newline();
+                            if peekable.peek().is_some() {
+                                ps.emit_soft_indent();
+                            }
+                        }
+                        ps.shift_comments();
+                    });
                 } else {
                     ps.with_start_of_line(false, |ps| {
                         if let Some(node) = body.as_statements_node().unwrap().body().iter().next()
