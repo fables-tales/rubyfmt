@@ -28,6 +28,11 @@ fn string_literals_prism_stress_test() {
     stress_test("ci/string_literals_stress_test.rb", true).unwrap()
 }
 
+#[test]
+fn arrays_prism_stress_test() {
+    stress_test("ci/array_literals_stress_test.rb", true).unwrap()
+}
+
 /// Test helper for running "stress tests", tests that
 /// execute a ruby script before and after being formatted
 /// to confirm that its behavior/output is the same.
