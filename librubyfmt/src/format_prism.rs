@@ -2037,17 +2037,49 @@ fn start_loc_for_call_node_in_chain(call_chain_element: &prism::CallNode<'_>) ->
 }
 
 fn format_call_and_write_node(
-    _ps: &mut ParserState,
-    _call_and_write_node: prism::CallAndWriteNode,
+    ps: &mut ParserState,
+    call_and_write_node: prism::CallAndWriteNode,
 ) {
-    todo!()
+    if let Some(receiver) = call_and_write_node.receiver() {
+        ps.with_start_of_line(false, |ps| format_node(ps, receiver));
+    }
+
+    if let Some(call_operator_loc) = call_and_write_node.call_operator_loc() {
+        ps.emit_ident(loc_to_string(call_operator_loc));
+    }
+
+    if let Some(message_loc) = call_and_write_node.message_loc() {
+        ps.emit_ident(loc_to_string(message_loc));
+    }
+
+    ps.emit_space();
+    ps.emit_op(Cow::Borrowed("&&="));
+    ps.emit_space();
+
+    ps.with_start_of_line(false, |ps| format_node(ps, call_and_write_node.value()));
 }
 
 fn format_call_operator_write_node(
-    _ps: &mut ParserState,
-    _call_operator_write_node: prism::CallOperatorWriteNode,
+    ps: &mut ParserState,
+    call_operator_write_node: prism::CallOperatorWriteNode,
 ) {
-    todo!()
+    if let Some(receiver) = call_operator_write_node.receiver() {
+        ps.with_start_of_line(false, |ps| format_node(ps, receiver));
+    }
+
+    if let Some(call_operator_loc) = call_operator_write_node.call_operator_loc() {
+        ps.emit_ident(loc_to_string(call_operator_loc));
+    }
+
+    if let Some(message_loc) = call_operator_write_node.message_loc() {
+        ps.emit_ident(loc_to_string(message_loc));
+    }
+
+    ps.emit_space();
+    ps.emit_op(Cow::Owned(loc_to_string(call_operator_write_node.binary_operator_loc())));
+    ps.emit_space();
+
+    ps.with_start_of_line(false, |ps| format_node(ps, call_operator_write_node.value()));
 }
 
 fn format_call_or_write_node(ps: &mut ParserState, call_or_write_node: prism::CallOrWriteNode) {
@@ -2070,8 +2102,10 @@ fn format_call_or_write_node(ps: &mut ParserState, call_or_write_node: prism::Ca
     ps.with_start_of_line(false, |ps| format_node(ps, call_or_write_node.value()));
 }
 
-fn format_call_target_node(_ps: &mut ParserState, _call_target_node: prism::CallTargetNode) {
-    todo!()
+fn format_call_target_node(ps: &mut ParserState, call_target_node: prism::CallTargetNode) {
+    ps.with_start_of_line(false, |ps| format_node(ps, call_target_node.receiver()));
+    ps.emit_ident(loc_to_string(call_target_node.call_operator_loc()));
+    ps.emit_ident(loc_to_string(call_target_node.message_loc()));
 }
 
 fn format_symbol_node(ps: &mut ParserState, symbol_node: prism::SymbolNode) {
