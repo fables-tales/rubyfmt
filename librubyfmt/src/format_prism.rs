@@ -992,8 +992,16 @@ fn format_find_pattern_node(_ps: &mut ParserState, _find_pattern_node: prism::Fi
     todo!()
 }
 
-fn format_flip_flop_node(_ps: &mut ParserState, _flip_flop_node: prism::FlipFlopNode) {
-    todo!()
+fn format_flip_flop_node(ps: &mut ParserState, flip_flop_node: prism::FlipFlopNode) {
+    ps.with_start_of_line(false, |ps| {
+        if let Some(left) = flip_flop_node.left() {
+            format_node(ps, left);
+        }
+        ps.emit_op(Cow::Owned(loc_to_string(flip_flop_node.operator_loc())));
+        if let Some(right) = flip_flop_node.right() {
+            format_node(ps, right);
+        }
+    });
 }
 
 fn format_class_node(ps: &mut ParserState, class_node: prism::ClassNode) {
