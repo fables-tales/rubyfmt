@@ -824,16 +824,14 @@ fn maybe_render_heredocs_in_string<'a>(
     peekable: &mut std::iter::Peekable<impl Iterator<Item = (usize, &'a prism::Node<'a>)>>,
 ) {
     let should_render = match peekable.peek() {
-        Some((_, prism::Node::StringNode { .. })) => loc_to_string(
-            peekable
-                .peek()
-                .unwrap()
-                .1
-                .as_string_node()
-                .unwrap()
-                .content_loc(),
-        )
-        .starts_with('\n'),
+        Some((_, prism::Node::StringNode { .. })) => peekable
+            .peek()
+            .map(|(_, node)| {
+                node.as_string_node()
+                    .map(|sn| loc_to_str(sn.content_loc()).starts_with('\n'))
+                    .unwrap_or(false)
+            })
+            .unwrap_or(false),
         _ => false,
     };
     if should_render {
@@ -850,18 +848,18 @@ fn format_inner_string(ps: &mut ParserState, parts: Vec<prism::Node>, heredoc_ki
             .iter()
             .enumerate()
             .filter_map(|(i, part)| {
-                if let prism::Node::StringNode { .. } = part {
-                    let content = loc_to_str(part.as_string_node().unwrap().content_loc());
+                if let Some(node) = part.as_string_node() {
+                    let content = loc_to_str(node.content_loc());
                     // Only consider the first line of this part if it follows a newline
                     // (i.e., if the previous part ended with a newline, or this is the first part)
                     let prev_ends_with_newline = if i == 0 {
                         true
                     } else {
                         match &parts[i - 1] {
-                            prism::Node::StringNode { .. } => {
-                                loc_to_str(parts[i - 1].as_string_node().unwrap().content_loc())
-                                    .ends_with('\n')
-                            }
+                            prism::Node::StringNode { .. } => parts[i - 1]
+                                .as_string_node()
+                                .map(|node| loc_to_str(node.content_loc()).ends_with('\n'))
+                                .unwrap_or(false),
                             _ => false, // After interpolation, might not be at line start
                         }
                     };
