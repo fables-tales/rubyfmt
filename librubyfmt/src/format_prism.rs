@@ -639,7 +639,7 @@ fn format_string_node(ps: &mut ParserState, string_node: prism::StringNode) {
             };
 
             crate::string_escape::single_to_double_quoted(
-                loc_to_string(string_node.content_loc()),
+                loc_to_str(string_node.content_loc()),
                 opener.as_ref().unwrap(),
                 end_delim,
             )
@@ -735,7 +735,7 @@ fn format_interpolated_string_node(
             }
 
             if needs_escape && let Some(string_node) = part.as_string_node() {
-                let content = loc_to_string(string_node.content_loc());
+                let content = loc_to_str(string_node.content_loc());
                 let escaped = crate::string_escape::single_to_double_quoted(
                     content,
                     opener.as_ref().unwrap(),
@@ -2254,7 +2254,7 @@ fn format_symbol_node(ps: &mut ParserState, symbol_node: prism::SymbolNode) {
         ps.emit_double_quote();
 
         if let Some(value_loc) = symbol_node.value_loc() {
-            let content = loc_to_string(value_loc);
+            let content = loc_to_str(value_loc);
             let escaped = crate::string_escape::single_to_double_quoted(
                 content,
                 opener
