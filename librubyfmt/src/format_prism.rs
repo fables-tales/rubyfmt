@@ -874,10 +874,26 @@ fn format_inner_string(ps: &mut ParserState, parts: Vec<prism::Node>, is_heredoc
 }
 
 fn format_interpolated_symbol_node(
-    _ps: &mut ParserState,
-    _interpolated_string_node: prism::InterpolatedSymbolNode,
+    ps: &mut ParserState,
+    interpolated_symbol_node: prism::InterpolatedSymbolNode,
 ) {
-    todo!()
+    ps.emit_ident(":".to_string());
+    ps.emit_double_quote();
+
+    ps.with_start_of_line(false, |ps| {
+        for part in interpolated_symbol_node.parts().iter() {
+            let start_offset = part.location().start_offset();
+            let end_offset = part.location().end_offset();
+
+            ps.at_offset(start_offset);
+
+            format_node(ps, part);
+
+            ps.at_offset(end_offset);
+        }
+    });
+
+    ps.emit_double_quote();
 }
 
 fn format_interpolated_x_string_node(
@@ -2056,22 +2072,51 @@ fn format_call_target_node(_ps: &mut ParserState, _call_target_node: prism::Call
 }
 
 fn format_symbol_node(ps: &mut ParserState, symbol_node: prism::SymbolNode) {
-    if let Some(opening_loc) = symbol_node.opening_loc() {
-        ps.emit_ident(loc_to_string(opening_loc));
-    }
-    if let Some(value_loc) = symbol_node.value_loc() {
-        ps.emit_ident(loc_to_string(value_loc));
-    }
-    if let Some(closing_loc) = symbol_node.closing_loc() {
-        let mut closing_str = loc_to_string(closing_loc);
-        // String symbols, such as the key in `{ "a": b }` will have
-        // a closing_str of `"\":"`, so we have to trim instead of
-        // dropping the entire closing item.
-        if closing_str.ends_with(":") {
-            closing_str.pop();
+    let opener = symbol_node.opening_loc().map(|s| loc_to_string(s));
+    let closer = symbol_node.closing_loc().map(|s| loc_to_string(s));
+
+    // Check if this is a quoted symbol that needs normalization to double quotes
+    // Symbols like :'"foo"' (single-quoted) should become :"\"foo\""
+    let is_single_quoted = opener.as_ref().map(|s| s == ":'").unwrap_or(false);
+
+    if is_single_quoted {
+        ps.emit_ident(":".to_string());
+        ps.emit_double_quote();
+
+        if let Some(value_loc) = symbol_node.value_loc() {
+            let content = loc_to_string(value_loc);
+            let escaped = crate::string_escape::single_to_double_quoted(
+                content,
+                opener
+                    .expect("We must have an opener to know we're single-quoted")
+                    .as_str(),
+                closer
+                    .expect("We must have a closer when wrapped in single quotes")
+                    .as_str(),
+            );
+            ps.emit_string_content(escaped);
         }
-        if !closing_str.is_empty() {
-            ps.emit_ident(closing_str);
+
+        ps.emit_double_quote();
+    } else {
+        // For other symbols, emit as-is
+        if let Some(ref opening) = opener {
+            ps.emit_ident(opening.clone());
+        }
+        if let Some(value_loc) = symbol_node.value_loc() {
+            ps.emit_ident(loc_to_string(value_loc));
+        }
+        if let Some(closing_str) = closer {
+            let mut closing_str = closing_str;
+            // String symbols, such as the key in `{ "a": b }` will have
+            // a closing_str of `"\":"`, so we have to trim instead of
+            // dropping the entire closing item.
+            if closing_str.ends_with(":") {
+                closing_str.pop();
+            }
+            if !closing_str.is_empty() {
+                ps.emit_ident(closing_str);
+            }
         }
     }
 }
