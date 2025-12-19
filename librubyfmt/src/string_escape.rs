@@ -17,7 +17,7 @@ pub fn single_to_double_quoted(content: String, start_delim: &str, end_delim: &s
         };
 
         let regexp = Regex::new(&format!(
-            r#"(?<!\\)(\\\\)*(\"|\\\\{}|\\\\{})"#,
+            r#"(?<!\\)(\\\\)*(\"|\\{}|\\{})"#,
             fancy_regex::escape(start_delim),
             fancy_regex::escape(end_delim)
         ))

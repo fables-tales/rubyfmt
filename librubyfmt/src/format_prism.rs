@@ -660,7 +660,14 @@ fn format_interpolated_string_node(
     let opener = interpolated_string_node
         .opening_loc()
         .map(|s| loc_to_str(s).trim().to_string());
+    let closer = interpolated_string_node
+        .closing_loc()
+        .map(|s| loc_to_str(s).trim().to_string());
     let is_heredoc = opener.as_ref().map(|s| s.starts_with("<")).unwrap_or(false);
+    let needs_escape = opener
+        .as_ref()
+        .map(|s| !s.starts_with("\"") && !is_heredoc)
+        .unwrap_or(false);
 
     // Prism actually handles string concatenation when using "\", so it treats
     // ```ruby
@@ -702,7 +709,11 @@ fn format_interpolated_string_node(
     }
 
     if let Some(s) = &opener {
-        ps.emit_string_content(s.clone());
+        if needs_escape {
+            ps.emit_double_quote();
+        } else {
+            ps.emit_string_content(s.clone());
+        }
     }
 
     ps.with_start_of_line(false, |ps| {
@@ -720,13 +731,27 @@ fn format_interpolated_string_node(
                 ps.emit_indent();
             }
 
-            format_node(ps, part);
+            if needs_escape && let Some(string_node) = part.as_string_node() {
+                let content = loc_to_string(string_node.content_loc());
+                let escaped = crate::string_escape::single_to_double_quoted(
+                    content,
+                    opener.as_ref().unwrap(),
+                    closer.as_deref().unwrap_or("\""),
+                );
+                ps.emit_string_content(escaped);
+            } else {
+                format_node(ps, part);
+            }
 
             // For non-backslash-concatenated multiline strings, `part` contains newlines and indentation,
             // so we don't need to handle that ourselves.
             if is_backslash_string_interpolation && i < string_parts_count - 1 {
-                if let Some(s) = interpolated_string_node.closing_loc() {
-                    ps.emit_string_content(loc_to_str(s).trim().to_string());
+                if let Some(s) = &closer {
+                    if needs_escape {
+                        ps.emit_double_quote();
+                    } else {
+                        ps.emit_string_content(s.clone());
+                    }
                 }
                 ps.emit_space();
                 ps.emit_slash();
@@ -739,8 +764,12 @@ fn format_interpolated_string_node(
         }
     });
 
-    if let Some(closing_loc) = interpolated_string_node.closing_loc() {
-        ps.emit_string_content(loc_to_str(closing_loc).trim().to_string());
+    if let Some(closer) = &closer {
+        if needs_escape {
+            ps.emit_double_quote();
+        } else {
+            ps.emit_string_content(closer.clone());
+        }
     }
 }
 
