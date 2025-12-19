@@ -1,6 +1,6 @@
 use fancy_regex::Regex;
 
-pub fn single_to_double_quoted(content: String, start_delim: &str, end_delim: &str) -> String {
+pub fn single_to_double_quoted(content: &str, start_delim: &str, end_delim: &str) -> String {
     if start_delim == "'" || start_delim.starts_with("%q") {
         escape_string(
             content,
@@ -24,7 +24,7 @@ pub fn single_to_double_quoted(content: String, start_delim: &str, end_delim: &s
         .unwrap();
 
         regexp
-            .replace_all(&content, |captures: &fancy_regex::Captures| {
+            .replace_all(content, |captures: &fancy_regex::Captures| {
                 // first capture is the entire match
                 let val = captures.get(0).unwrap();
                 let val_str = val.as_str().to_string();
@@ -44,9 +44,9 @@ pub fn single_to_double_quoted(content: String, start_delim: &str, end_delim: &s
     }
 }
 
-fn escape_string(content: String, opening_delim: char, closing_delim: char) -> String {
+fn escape_string(content: &str, opening_delim: char, closing_delim: char) -> String {
     if opening_delim == '"' {
-        return content;
+        return content.to_string();
     }
 
     let chars = content.chars().collect::<Vec<char>>();
