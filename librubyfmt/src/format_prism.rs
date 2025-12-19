@@ -2036,10 +2036,7 @@ fn start_loc_for_call_node_in_chain(call_chain_element: &prism::CallNode<'_>) ->
         .start_offset()
 }
 
-fn format_call_and_write_node(
-    ps: &mut ParserState,
-    call_and_write_node: prism::CallAndWriteNode,
-) {
+fn format_call_and_write_node(ps: &mut ParserState, call_and_write_node: prism::CallAndWriteNode) {
     if let Some(receiver) = call_and_write_node.receiver() {
         ps.with_start_of_line(false, |ps| format_node(ps, receiver));
     }
@@ -2076,10 +2073,14 @@ fn format_call_operator_write_node(
     }
 
     ps.emit_space();
-    ps.emit_op(Cow::Owned(loc_to_string(call_operator_write_node.binary_operator_loc())));
+    ps.emit_op(Cow::Owned(loc_to_string(
+        call_operator_write_node.binary_operator_loc(),
+    )));
     ps.emit_space();
 
-    ps.with_start_of_line(false, |ps| format_node(ps, call_operator_write_node.value()));
+    ps.with_start_of_line(false, |ps| {
+        format_node(ps, call_operator_write_node.value())
+    });
 }
 
 fn format_call_or_write_node(ps: &mut ParserState, call_or_write_node: prism::CallOrWriteNode) {
