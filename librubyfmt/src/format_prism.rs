@@ -1824,6 +1824,7 @@ fn format_call_node(ps: &mut ParserState, call_node: prism::CallNode, skip_recei
             // have to handle that here separately
             } else if call_node.arguments().is_none() && block.as_block_argument_node().is_some() {
                 ps.breakable_of(BreakableDelims::for_method_call(), |ps| {
+                    ps.emit_soft_indent();
                     format_block_argument_node(ps, block.as_block_argument_node().unwrap());
                 });
             }
