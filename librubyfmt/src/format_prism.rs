@@ -1536,6 +1536,10 @@ fn format_call_node(ps: &mut ParserState, call_node: prism::CallNode, skip_recei
                     None
                 };
 
+                let maybe_closing_line = call_node
+                    .closing_loc()
+                    .map(|closing_loc| ps.get_line_number_for_offset(closing_loc.start_offset()));
+
                 ps.with_start_of_line(false, |ps| {
                     ps.breakable_of(delims, |ps| {
                         let has_arguments = !arguments.arguments().is_empty();
@@ -1564,12 +1568,19 @@ fn format_call_node(ps: &mut ParserState, call_node: prism::CallNode, skip_recei
                             format_block_argument_node(ps, block_argument_node);
                         }
 
-                        // Ensure that we render comments between the last argument and closing parens
-                        if let Some(closing_loc) = call_node.closing_loc() {
-                            ps.wind_dumping_comments_until_offset(closing_loc.end_offset());
+                        // Ensure that we render comments between the last argument and
+                        // closing parens. We wind to one line before the closing paren
+                        // to pick up comments that are inside the args but not trailing
+                        // comments on the same line as the closing delim (like `) # comment`).
+                        if let Some(closing_line) = maybe_closing_line {
+                            ps.wind_dumping_comments_until_line(closing_line - 1);
                         }
                     });
                 });
+
+                if let Some(closing_line) = maybe_closing_line {
+                    ps.on_line(closing_line);
+                }
             };
         } else if is_aref {
             // For a[] or a[]= with no arguments, we still need to emit the brackets
@@ -1841,12 +1852,13 @@ fn format_call_chain(ps: &mut ParserState, call_node: ruby_prism::CallNode<'_>) 
                             }
                         }
 
-                        ps.at_offset(element.location().start_offset());
+                        ps.at_offset(start_loc_for_call_node_in_chain(&element));
+                        ps.shift_comments();
+
                         format_call_node(ps, element, true);
                     }
                 });
                 ps.end_indent_for_call_chain();
-                ps.shift_comments();
             },
         );
     });
