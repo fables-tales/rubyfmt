@@ -1890,16 +1890,18 @@ fn call_chain_elements_are_user_multilined(
         }
     }
 
-    let start_line = ps.get_line_number_for_offset(
-        call_chain_elements
-            .first()
-            .unwrap()
-            .location()
-            .start_offset(),
-    );
-    !call_chain_elements[1..].iter().all(|cce| {
+    let start_line = {
+        let start_node = call_chain_elements.first().unwrap();
+        if let Some(call_node) = start_node.as_call_node() {
+            ps.get_line_number_for_offset(start_loc_for_call_node_in_chain(&call_node))
+        } else {
+            ps.get_line_number_for_offset(start_node.location().start_offset())
+        }
+    };
+
+    call_chain_elements[1..].iter().any(|cce| {
         start_line
-            == cce
+            != cce
                 .as_call_node()
                 .unwrap()
                 .call_operator_loc()
