@@ -1689,7 +1689,12 @@ fn format_call_node(ps: &mut ParserState, call_node: prism::CallNode, skip_recei
                 ps.with_start_of_line(false, |ps| format_node(ps, last_arg));
             } else if call_node.is_attribute_write() {
                 ps.emit_ident(" = ".to_string());
-                format_arguments_node(ps, arguments);
+                let value = arguments
+                    .arguments()
+                    .iter()
+                    .next()
+                    .expect("Attribute writes must have a value");
+                ps.with_start_of_line(false, |ps| format_node(ps, value));
             } else {
                 let should_use_parens = use_parens_for_call_node(
                     ps,
@@ -1995,75 +2000,114 @@ fn as_binary_op<'a>(
 fn format_call_chain(ps: &mut ParserState, call_node: ruby_prism::CallNode<'_>) {
     ps.with_start_of_line(false, |ps| {
         let mut call_chain_elements = collapse_nodes_to_call_chain(call_node.as_node());
-        ps.breakable_call_chain_of(
-            MultilineHandling::Prism(call_chain_elements_are_user_multilined(
+
+        let is_attr_write = call_chain_elements.len() == 2
+            && call_chain_elements
+                .get(1)
+                .and_then(|n| n.as_call_node())
+                .map(|c| c.is_attribute_write())
+                .unwrap_or(false);
+
+        let is_user_multilined = if is_attr_write {
+            // For attribute writes, never consider the outer chain as multilined.
+            // The values will handle their own breaking.
+            false
+        } else {
+            call_chain_elements_are_user_multilined(
                 ps,
                 call_chain_elements.iter().clone().collect(),
-            )),
-            |ps| {
-                // The first node can be *any* expression, whereas following receivers
-                // must be additional calls -- you cannot insert literals into call chains
-                let first_expression = call_chain_elements.remove(0);
-                format_node(ps, first_expression);
+            )
+        };
 
-                // Arefs like `Array[1, 2]` are represented as a call chain where
-                // the receiver is the constant name `Array` and the aref is a separate call node.
-                // However, we don't want to start the call chain indent until after the aref, since the
-                // aref is "part of" the first expression.
-                // We loop here to handle chained arefs like `matrix[0][1].foo`.
-                while let Some(next) = call_chain_elements.first() {
-                    if let Some(call_node) = next.as_call_node()
-                        && call_node.call_operator_loc().is_none()
-                    {
-                        call_chain_elements.remove(0);
-                        format_call_node(ps, call_node, true);
-                        continue;
+        ps.breakable_call_chain_of(MultilineHandling::Prism(is_user_multilined), |ps| {
+            // The first node can be *any* expression, whereas following receivers
+            // must be additional calls -- you cannot insert literals into call chains
+            let first_expression = call_chain_elements.remove(0);
+            format_node(ps, first_expression);
+
+            // Arefs like `Array[1, 2]` are represented as a call chain where
+            // the receiver is the constant name `Array` and the aref is a separate call node.
+            // However, we don't want to start the call chain indent until after the aref, since the
+            // aref is "part of" the first expression.
+            // We loop here to handle chained arefs like `matrix[0][1].foo`.
+            while let Some(next) = call_chain_elements.first() {
+                if let Some(call_node) = next.as_call_node()
+                    && call_node.call_operator_loc().is_none()
+                {
+                    call_chain_elements.remove(0);
+                    format_call_node(ps, call_node, true);
+                    continue;
+                }
+                break;
+            }
+
+            // Eagerly render heredocs if they're in the first expression.
+            // We want the full heredoc to get rendered _before_ we emit the
+            // BeginCallChainIndent token so that it gets correctly indented
+            // (or in the case of it being the first expression, _not_ indented).
+            ps.render_heredocs(true);
+
+            // Attribute writes like `self.foo = bar` should have both sides
+            // rendered separately so they can break independently
+            if call_chain_elements.len() == 1
+                && let Some(attr_write) = call_chain_elements
+                    .first()
+                    .and_then(|n| n.as_call_node())
+                    .filter(|c| c.is_attribute_write())
+            {
+                // Format `.attr_name = ` directly without call chain indent
+                let call_operator = attr_write.call_operator_loc().map(|loc| loc_to_string(loc));
+                if let Some(call_operator) = call_operator {
+                    match call_operator.as_str() {
+                        "." => ps.emit_dot(),
+                        "&." => ps.emit_lonely_operator(),
+                        "::" => ps.emit_colon_colon(),
+                        _ => ps.emit_ident(call_operator),
                     }
-                    break;
                 }
 
-                // Eagerly render heredocs if they're in the first expression.
-                // We want the full heredoc to get rendered _before_ we emit the
-                // BeginCallChainIndent token so that it gets correctly indented
-                // (or in the case of it being the first expression, _not_ indented).
-                ps.render_heredocs(true);
+                ps.at_offset(start_loc_for_call_node_in_chain(&attr_write));
+                ps.shift_comments();
 
-                ps.start_indent_for_call_chain();
+                // Format just the attribute name and ` = `, then the value separately
+                format_call_node(ps, attr_write, true);
+                return;
+            }
 
-                ps.with_start_of_line(false, |ps| {
-                    for element in call_chain_elements {
-                        let element = element.as_call_node().unwrap();
+            ps.start_indent_for_call_chain();
 
-                        // `call_operator_loc` is the `.`/`::`/`&.` etc.
-                        // it may be None in the case of arefs, e.g. foo[bar]
-                        let call_operator =
-                            element.call_operator_loc().map(|loc| loc_to_string(loc));
-                        if let Some(call_operator) = call_operator {
-                            if call_operator != *"::" {
-                                ps.emit_collapsing_newline();
-                                ps.emit_soft_indent();
-                            }
+            ps.with_start_of_line(false, |ps| {
+                for element in call_chain_elements {
+                    let element = element.as_call_node().unwrap();
 
-                            // Emit the proper token type so that call_count is computed correctly
-                            // in single_line_string_length (which is used to determine whether to
-                            // break the call chain or just the arguments)
-                            match call_operator.as_str() {
-                                "." => ps.emit_dot(),
-                                "&." => ps.emit_lonely_operator(),
-                                "::" => ps.emit_colon_colon(),
-                                _ => ps.emit_ident(call_operator),
-                            }
+                    // `call_operator_loc` is the `.`/`::`/`&.` etc.
+                    // it may be None in the case of arefs, e.g. foo[bar]
+                    let call_operator = element.call_operator_loc().map(|loc| loc_to_string(loc));
+                    if let Some(call_operator) = call_operator {
+                        if call_operator != *"::" {
+                            ps.emit_collapsing_newline();
+                            ps.emit_soft_indent();
                         }
 
-                        ps.at_offset(start_loc_for_call_node_in_chain(&element));
-                        ps.shift_comments();
-
-                        format_call_node(ps, element, true);
+                        // Emit the proper token type so that call_count is computed correctly
+                        // in single_line_string_length (which is used to determine whether to
+                        // break the call chain or just the arguments)
+                        match call_operator.as_str() {
+                            "." => ps.emit_dot(),
+                            "&." => ps.emit_lonely_operator(),
+                            "::" => ps.emit_colon_colon(),
+                            _ => ps.emit_ident(call_operator),
+                        }
                     }
-                });
-                ps.end_indent_for_call_chain();
-            },
-        );
+
+                    ps.at_offset(start_loc_for_call_node_in_chain(&element));
+                    ps.shift_comments();
+
+                    format_call_node(ps, element, true);
+                }
+            });
+            ps.end_indent_for_call_chain();
+        });
     });
 }
 
