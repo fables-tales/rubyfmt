@@ -65,7 +65,11 @@ pub fn format_node(ps: &mut ParserState, node: prism::Node) {
         Node::CallAndWriteNode { .. } => {
             format_call_and_write_node(ps, node.as_call_and_write_node().unwrap())
         }
-        Node::CallNode { .. } => format_call_node(ps, node.as_call_node().unwrap(), false),
+        Node::CallNode { .. } => {
+            let call_node = node.as_call_node().unwrap();
+            let is_last_call_in_chain = call_node.receiver().is_none();
+            format_call_node(ps, call_node, false, is_last_call_in_chain)
+        }
         Node::CallOperatorWriteNode { .. } => {
             format_call_operator_write_node(ps, node.as_call_operator_write_node().unwrap())
         }
@@ -1498,6 +1502,10 @@ fn use_parens_for_call_node(
     ps: &ParserState,
     call_node: &prism::CallNode,
     method_name: &str,
+    // Whether we're the final call in a chain, e.g.
+    // foo.bar.baz
+    //         ^ terminal call
+    is_terminal_call: bool,
     context: FormattingContext,
 ) -> bool {
     let original_used_parens = call_node.opening_loc().is_some();
@@ -1510,7 +1518,7 @@ fn use_parens_for_call_node(
     // Foo # class reference
     // Foo() # method call
     // ```
-    if method_name.chars().next().is_some_and(|c| c.is_uppercase()) {
+    if is_terminal_call && method_name.chars().next().is_some_and(|c| c.is_uppercase()) {
         return true;
     }
 
@@ -1528,11 +1536,7 @@ fn use_parens_for_call_node(
         }
     }
 
-    if method_name == "yield" {
-        return ps.current_formatting_context_requires_parens() || original_used_parens;
-    }
-
-    if method_name == "return" || method_name == "raise" || method_name == "break" {
+    if method_name == "raise" {
         if ps.current_formatting_context_requires_parens() {
             return true;
         }
@@ -1556,7 +1560,11 @@ fn use_parens_for_call_node(
 
     let has_arguments = call_node
         .arguments()
-        .map(|args| !args.arguments().is_empty())
+        .map(|args| {
+            !(args.arguments().is_empty()
+                || (args.arguments().len() == 1
+                    && is_empty_parentheses_node(&args.arguments().iter().next().unwrap())))
+        })
         .unwrap_or(false);
 
     if !has_arguments {
@@ -1569,7 +1577,7 @@ fn use_parens_for_call_node(
         .map(|block| loc_to_str(block.opening_loc()) != "do")
         .unwrap_or(false);
 
-    if has_brace_block {
+    if has_arguments && has_brace_block {
         // Brace blocks require parens, eliding is a syntax error
         return true;
     }
@@ -1595,7 +1603,12 @@ fn use_parens_for_call_node(
     true
 }
 
-fn format_call_node(ps: &mut ParserState, call_node: prism::CallNode, skip_receiver: bool) {
+fn format_call_node(
+    ps: &mut ParserState,
+    call_node: prism::CallNode,
+    skip_receiver: bool,
+    is_final_call_in_chain: bool,
+) {
     let method_name = const_to_string(call_node.name());
     let is_dot_call = &method_name == "call" && call_node.message_loc().is_none(); // e.g. `a.()`
 
@@ -1694,6 +1707,7 @@ fn format_call_node(ps: &mut ParserState, call_node: prism::CallNode, skip_recei
                     ps,
                     &call_node,
                     &method_name,
+                    is_final_call_in_chain,
                     ps.current_formatting_context(),
                 );
 
@@ -1785,6 +1799,7 @@ fn format_call_node(ps: &mut ParserState, call_node: prism::CallNode, skip_recei
                 ps,
                 &call_node,
                 &method_name,
+                is_final_call_in_chain,
                 ps.current_formatting_context(),
             );
 
@@ -1792,10 +1807,20 @@ fn format_call_node(ps: &mut ParserState, call_node: prism::CallNode, skip_recei
                 ps.emit_open_paren();
                 ps.emit_close_paren();
             }
-        } else if is_dot_call {
-            // We've checked earlier that there's no arguments
-            ps.emit_open_paren();
-            ps.emit_close_paren();
+        } else {
+            // There's no arguments, but we may still need parens
+            let should_use_parens = is_dot_call
+                || use_parens_for_call_node(
+                    ps,
+                    &call_node,
+                    &method_name,
+                    is_final_call_in_chain,
+                    ps.current_formatting_context(),
+                );
+            if should_use_parens {
+                ps.emit_open_paren();
+                ps.emit_close_paren();
+            }
         };
 
         if let Some(block) = call_node.block() {
@@ -2037,7 +2062,7 @@ fn format_call_chain_body(
             && call_node.call_operator_loc().is_none()
         {
             call_chain_elements.remove(0);
-            format_call_node(ps, call_node, true);
+            format_call_node(ps, call_node, true, false);
             continue;
         }
         break;
@@ -2072,7 +2097,7 @@ fn format_call_chain_body(
         ps.shift_comments();
 
         // Format just the attribute name and ` = `, then the value separately
-        format_call_node(ps, attr_write, true);
+        format_call_node(ps, attr_write, true, true);
     } else {
         // attr_writes are not wrapped in a breakable, so they
         // cannot emit abstract token types
@@ -2081,8 +2106,10 @@ fn format_call_chain_body(
         }
 
         ps.with_start_of_line(false, |ps| {
-            for element in call_chain_elements {
+            let call_chain_element_count = call_chain_elements.len();
+            for (idx, element) in call_chain_elements.iter().enumerate() {
                 let element = element.as_call_node().unwrap();
+                let is_final_call = idx == call_chain_element_count - 1;
 
                 // `call_operator_loc` is the `.`/`::`/`&.` etc.
                 // it may be None in the case of arefs, e.g. foo[bar]
@@ -2107,7 +2134,7 @@ fn format_call_chain_body(
                 ps.at_offset(start_loc_for_call_node_in_chain(&element));
                 ps.shift_comments();
 
-                format_call_node(ps, element, true);
+                format_call_node(ps, element, true, is_final_call);
             }
         });
         if !is_attr_write {
@@ -3857,7 +3884,7 @@ fn format_match_required_node(
 }
 
 fn format_match_write_node(ps: &mut ParserState, match_write_node: prism::MatchWriteNode) {
-    format_call_node(ps, match_write_node.call(), false);
+    format_call_node(ps, match_write_node.call(), false, true);
 }
 
 fn format_multi_target_node(ps: &mut ParserState, multi_target_node: prism::MultiTargetNode) {
