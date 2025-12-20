@@ -1389,8 +1389,6 @@ fn format_else_node(ps: &mut ParserState, else_node: prism::ElseNode) {
     ps.at_offset(else_node.location().end_offset());
 }
 
-type ParamFormattingFunc<'a> = Box<dyn FnOnce(&mut ParserState) + 'a>;
-
 fn format_parameters_node(ps: &mut ParserState, params: prism::ParametersNode) {
     let non_null_positions = non_null_positions(&params);
 
@@ -1410,62 +1408,18 @@ fn format_parameters_node(ps: &mut ParserState, params: prism::ParametersNode) {
     //        | optionals
     //        |
     //    requireds
-    let requireds = params.requireds();
-    let optionals = params.optionals();
-    let rest = params.rest();
-    let posts = params.posts();
-    let keywords = params.keywords();
-    let keyword_rest = params.keyword_rest();
-    let block = params.block();
-
-    let formats: Vec<ParamFormattingFunc> = vec![
-        Box::new(move |ps: &mut ParserState| {
-            if requireds.is_empty() {
-                return;
-            }
-            let end_offset = requireds.iter().last().unwrap().location().end_offset();
-            format_list_like_thing(ps, requireds, end_offset, false);
-        }),
-        Box::new(move |ps: &mut ParserState| {
-            if optionals.is_empty() {
-                return;
-            }
-            let end_offset = optionals.iter().last().unwrap().location().end_offset();
-            format_list_like_thing(ps, optionals, end_offset, false);
-        }),
-        Box::new(move |ps: &mut ParserState| {
-            if let Some(rest) = rest {
-                format_node(ps, rest);
-            }
-        }),
-        Box::new(move |ps: &mut ParserState| {
-            if posts.is_empty() {
-                return;
-            }
-            let end_offset = posts.iter().last().unwrap().location().end_offset();
-            format_list_like_thing(ps, posts, end_offset, false);
-        }),
-        Box::new(move |ps: &mut ParserState| {
-            if keywords.is_empty() {
-                return;
-            }
-            let end_offset = keywords.iter().last().unwrap().location().end_offset();
-            format_list_like_thing(ps, keywords, end_offset, false);
-        }),
-        Box::new(move |ps: &mut ParserState| {
-            if let Some(keyword_rest) = keyword_rest {
-                format_node(ps, keyword_rest);
-            }
-        }),
-        Box::new(move |ps: &mut ParserState| {
-            if let Some(block) = block {
-                format_block_parameter_node(ps, block);
-            }
-        }),
+    let formats: &'static [fn(&mut ParserState, prism::ParametersNode)] = &[
+        fmt_requireds,
+        fmt_optionals,
+        fmt_rest,
+        fmt_posts,
+        fmt_keywords,
+        fmt_keyword_rest,
+        fmt_block,
     ];
 
-    for (idx, format_fn) in formats.into_iter().enumerate() {
-        format_fn(ps);
+    for (idx, format_fn) in formats.iter().enumerate() {
+        format_fn(ps, params.as_node().as_parameters_node().unwrap());
         let did_emit = non_null_positions[idx];
         let have_more = non_null_positions[idx + 1..].iter().any(|&v| v);
 
@@ -1474,6 +1428,57 @@ fn format_parameters_node(ps: &mut ParserState, params: prism::ParametersNode) {
             ps.emit_soft_newline();
         }
         ps.shift_comments();
+    }
+
+    fn fmt_requireds(ps: &mut ParserState, params: prism::ParametersNode) {
+        let requireds = params.requireds();
+        if requireds.is_empty() {
+            return;
+        }
+        let end_offset = requireds.iter().last().unwrap().location().end_offset();
+        format_list_like_thing(ps, requireds, end_offset, false);
+    }
+    fn fmt_optionals(ps: &mut ParserState, params: prism::ParametersNode) {
+        let optionals = params.optionals();
+        if optionals.is_empty() {
+            return;
+        }
+        let end_offset = optionals.iter().last().unwrap().location().end_offset();
+        format_list_like_thing(ps, optionals, end_offset, false);
+    }
+    fn fmt_rest(ps: &mut ParserState, params: prism::ParametersNode) {
+        let rest = params.rest();
+        if let Some(rest) = rest {
+            format_node(ps, rest);
+        }
+    }
+    fn fmt_posts(ps: &mut ParserState, params: prism::ParametersNode) {
+        let posts = params.posts();
+        if posts.is_empty() {
+            return;
+        }
+        let end_offset = posts.iter().last().unwrap().location().end_offset();
+        format_list_like_thing(ps, posts, end_offset, false);
+    }
+    fn fmt_keywords(ps: &mut ParserState, params: prism::ParametersNode) {
+        let keywords = params.keywords();
+        if keywords.is_empty() {
+            return;
+        }
+        let end_offset = keywords.iter().last().unwrap().location().end_offset();
+        format_list_like_thing(ps, keywords, end_offset, false);
+    }
+    fn fmt_keyword_rest(ps: &mut ParserState, params: prism::ParametersNode) {
+        let keyword_rest = params.keyword_rest();
+        if let Some(keyword_rest) = keyword_rest {
+            format_node(ps, keyword_rest);
+        }
+    }
+    fn fmt_block(ps: &mut ParserState, params: prism::ParametersNode) {
+        let block = params.block();
+        if let Some(block) = block {
+            format_block_parameter_node(ps, block);
+        }
     }
 }
 
