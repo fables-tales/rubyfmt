@@ -19,8 +19,10 @@ def cheese
   head = 1
   self.head()
   self.head()
+  self.head("oops arg")
   self.next.head
   self.next.head
+  self.next.head("oops arg")
 end
 
 bees
