@@ -662,7 +662,9 @@ pub fn use_parens_for_method_call(
             None => return original_used_parens,
             Some(CallChainElement::VarRef(VarRef(_, VarRefType::Kw(Kw(_, x, _))))) => {
                 if x == "self" {
-                    return true;
+                    // self.foo has a chain length of 2 -- `self` and `.`.
+                    // original_used_parens does not seem to be reliable in this case.
+                    return chain.len() == 2;
                 }
             }
             _ => {}
