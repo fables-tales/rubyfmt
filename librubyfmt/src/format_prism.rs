@@ -255,9 +255,7 @@ pub fn format_node(ps: &mut ParserState, node: prism::Node) {
         Node::ItLocalVariableReadNode { .. } => {
             format_it_local_variable_read_node(ps, node.as_it_local_variable_read_node().unwrap())
         }
-        Node::ItParametersNode { .. } => {
-            format_it_parameters_node(ps, node.as_it_parameters_node().unwrap())
-        }
+        Node::ItParametersNode { .. } => format_it_parameters_node(),
         Node::KeywordHashNode { .. } => {
             format_keyword_hash_node(ps, node.as_keyword_hash_node().unwrap())
         }
@@ -308,13 +306,11 @@ pub fn format_node(ps: &mut ParserState, node: prism::Node) {
             format_multi_write_node(ps, node.as_multi_write_node().unwrap())
         }
         Node::NextNode { .. } => format_next_node(ps, node.as_next_node().unwrap()),
-        Node::NilNode { .. } => format_nil_node(ps, node.as_nil_node().unwrap()),
+        Node::NilNode { .. } => format_nil_node(ps),
         Node::NoKeywordsParameterNode { .. } => {
             format_no_keywords_parameter_node(ps, node.as_no_keywords_parameter_node().unwrap())
         }
-        Node::NumberedParametersNode { .. } => {
-            format_numbered_parameters_node(ps, node.as_numbered_parameters_node().unwrap())
-        }
+        Node::NumberedParametersNode { .. } => format_numbered_parameters_node(),
         Node::NumberedReferenceReadNode { .. } => {
             format_numbered_reference_read_node(ps, node.as_numbered_reference_read_node().unwrap())
         }
@@ -369,7 +365,7 @@ pub fn format_node(ps: &mut ParserState, node: prism::Node) {
         ),
         Node::RetryNode { .. } => format_retry_node(ps),
         Node::ReturnNode { .. } => format_return_node(ps, node.as_return_node().unwrap()),
-        Node::SelfNode { .. } => format_self_node(ps, node.as_self_node().unwrap()),
+        Node::SelfNode { .. } => format_self_node(ps),
         Node::ShareableConstantNode { .. } => {
             format_shareable_constant_node(ps, node.as_shareable_constant_node().unwrap())
         }
@@ -1007,7 +1003,7 @@ fn format_it_local_variable_read_node(
     );
 }
 
-fn format_it_parameters_node(_ps: &mut ParserState, _it_parameters_node: prism::ItParametersNode) {
+fn format_it_parameters_node() {
     // No-op. This node represents the implicit 'it' parameter,
     // and the actual parameter references are rendered separately.
 }
@@ -3939,7 +3935,7 @@ fn format_next_node(ps: &mut ParserState, next_node: prism::NextNode) {
     }
 }
 
-fn format_nil_node(ps: &mut ParserState, _nil_node: prism::NilNode) {
+fn format_nil_node(ps: &mut ParserState) {
     ps.emit_ident("nil".to_string());
 }
 
@@ -3950,10 +3946,7 @@ fn format_no_keywords_parameter_node(
     todo!()
 }
 
-fn format_numbered_parameters_node(
-    _ps: &mut ParserState,
-    _numbered_parameters_node: prism::NumberedParametersNode,
-) {
+fn format_numbered_parameters_node() {
     // No-op. This node represents the implicit set of numbered parameters,
     // and the actual parameter references are rendered separately.
 }
@@ -4239,7 +4232,7 @@ fn format_source_line_node(ps: &mut ParserState, source_line_node: prism::Source
     );
 }
 
-fn format_self_node(ps: &mut ParserState, _self_node: prism::SelfNode) {
+fn format_self_node(ps: &mut ParserState) {
     ps.emit_ident("self".to_string());
 }
 
