@@ -17,6 +17,7 @@ end
 def cheese
   head = 1
   self.head
+  self.next.head
 end
 
 bees
