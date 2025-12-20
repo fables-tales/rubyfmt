@@ -1571,7 +1571,7 @@ fn use_parens_for_call_node(
     let has_brace_block = call_node
         .block()
         .and_then(|b| b.as_block_node())
-        .map(|block| &loc_to_string(block.opening_loc()) != "do")
+        .map(|block| loc_to_str(block.opening_loc()) != "do")
         .unwrap_or(false);
 
     if has_brace_block {
@@ -2391,7 +2391,7 @@ fn format_assoc_splat_node(ps: &mut ParserState, assoc_splat_node: prism::AssocS
 }
 
 fn format_block_node(ps: &mut ParserState, block_node: prism::BlockNode) {
-    if &loc_to_string(block_node.opening_loc()) == "do" {
+    if loc_to_str(block_node.opening_loc()) == "do" {
         ps.new_block(|ps| {
             ps.emit_do_keyword();
             if let Some(block_parameters) = block_node.parameters()
@@ -3777,9 +3777,9 @@ fn format_lambda_node(ps: &mut ParserState, lambda_node: prism::LambdaNode) {
             }
         }
 
-        let opening = loc_to_string(lambda_node.opening_loc());
+        let opening = loc_to_str(lambda_node.opening_loc());
 
-        if &opening == "do" {
+        if opening == "do" {
             ps.emit_space();
             ps.new_block(|ps| {
                 ps.emit_do_keyword();
