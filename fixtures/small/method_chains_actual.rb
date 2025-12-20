@@ -54,6 +54,12 @@ foo.items.map { p(_1) }.last
 
 hashes.sort_by { |hsh| hsh[:start_time] }.reverse
 
+hash.sort_by(
+    &:max
+  )
+  .keys
+
+
 params(
   route: String,
   config: T.nilable(Some::Really::Long::Type::Name),
