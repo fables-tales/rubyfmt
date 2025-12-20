@@ -2830,6 +2830,7 @@ fn format_keyword_rest_parameter_node(
     ps: &mut ParserState,
     keyword_rest_parameter_node: prism::KeywordRestParameterNode,
 ) {
+    ps.emit_soft_indent();
     ps.emit_ident("**".to_string());
     if let Some(constant_id) = keyword_rest_parameter_node.name() {
         let name = const_to_string(constant_id);
