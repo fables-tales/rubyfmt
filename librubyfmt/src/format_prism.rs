@@ -1597,6 +1597,7 @@ fn use_parens_for_call_node(
 
 fn format_call_node(ps: &mut ParserState, call_node: prism::CallNode, skip_receiver: bool) {
     let method_name = const_to_string(call_node.name());
+    let end_offset = call_node.location().end_offset();
     let is_dot_call = &method_name == "call" && call_node.message_loc().is_none(); // e.g. `a.()`
 
     // Only treat [] and []= as aref syntax when there's no explicit call operator.
@@ -1856,6 +1857,9 @@ fn format_call_node(ps: &mut ParserState, call_node: prism::CallNode, skip_recei
             ps.emit_after_call_chain();
         }
     }
+    // We've been manually handling line winding while rendering the chain,
+    // so we need to manually check that we wind to the closing loc
+    ps.wind_dumping_comments_until_offset(end_offset);
 }
 
 fn format_unary_operator(ps: &mut ParserState, call_node: prism::CallNode, method_name: String) {
