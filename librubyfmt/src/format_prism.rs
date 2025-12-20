@@ -819,17 +819,13 @@ fn maybe_render_heredocs_in_string<'a>(
     ps: &mut ParserState,
     peekable: &mut std::iter::Peekable<impl Iterator<Item = (usize, &'a prism::Node<'a>)>>,
 ) {
-    let should_render = match peekable.peek() {
-        Some((_, prism::Node::StringNode { .. })) => peekable
-            .peek()
-            .map(|(_, node)| {
-                node.as_string_node()
-                    .map(|sn| loc_to_str(sn.content_loc()).starts_with('\n'))
-                    .unwrap_or(false)
-            })
-            .unwrap_or(false),
-        _ => false,
-    };
+    let should_render = peekable
+        .peek()
+        .and_then(|(_, node)| {
+            node.as_string_node()
+                .map(|sn| loc_to_str(sn.content_loc()).starts_with('\n'))
+        })
+        .unwrap_or(false);
     if should_render {
         ps.render_heredocs(true)
     }
@@ -851,13 +847,12 @@ fn format_inner_string(ps: &mut ParserState, parts: Vec<prism::Node>, heredoc_ki
                     let prev_ends_with_newline = if i == 0 {
                         true
                     } else {
-                        match &parts[i - 1] {
-                            prism::Node::StringNode { .. } => parts[i - 1]
-                                .as_string_node()
-                                .map(|node| loc_to_str(node.content_loc()).ends_with('\n'))
-                                .unwrap_or(false),
-                            _ => false, // After interpolation, might not be at line start
-                        }
+                        // After interpolation, might not be at line start
+                        let default_value = false;
+                        parts[i - 1]
+                            .as_string_node()
+                            .map(|node| loc_to_str(node.content_loc()).ends_with('\n'))
+                            .unwrap_or(default_value)
                     };
 
                     // Find minimum indent, but skip the first line if it doesn't start
