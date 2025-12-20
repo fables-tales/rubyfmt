@@ -3401,26 +3401,28 @@ fn format_if_node(ps: &mut ParserState, if_node: prism::IfNode) {
         );
     } else {
         // No keyword, so this is a ternary
-        ps.with_start_of_line(false, |ps| {
-            format_node(ps, if_node.predicate());
-            ps.emit_ident(" ? ".to_string());
+        ps.with_formatting_context(FormattingContext::IfOp, |ps| {
+            ps.with_start_of_line(false, |ps| {
+                format_node(ps, if_node.predicate());
+                ps.emit_ident(" ? ".to_string());
 
-            format_node(
-                ps,
-                if_node
-                    .statements()
-                    .expect("Ternaries must have a `statements` branch")
-                    .body()
-                    .iter()
-                    .next()
-                    .expect("There must be exactly one statement inside a ternary branch"),
-            );
-            format_node(
-                ps,
-                if_node
-                    .subsequent()
-                    .expect("Ternaries must have a subsequent branch"),
-            )
+                format_node(
+                    ps,
+                    if_node
+                        .statements()
+                        .expect("Ternaries must have a `statements` branch")
+                        .body()
+                        .iter()
+                        .next()
+                        .expect("There must be exactly one statement inside a ternary branch"),
+                );
+                format_node(
+                    ps,
+                    if_node
+                        .subsequent()
+                        .expect("Ternaries must have a subsequent branch"),
+                )
+            });
         });
     }
 }

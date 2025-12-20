@@ -1,0 +1,1 @@
+bees? ? raise("Not the bees!") : safe
