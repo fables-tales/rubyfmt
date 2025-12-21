@@ -621,6 +621,10 @@ impl ParserState {
         self.push_concrete_token(ConcreteLineToken::Keyword { keyword: "when" });
     }
 
+    pub(crate) fn emit_in_keyword(&mut self) {
+        self.push_concrete_token(ConcreteLineToken::Keyword { keyword: "in" });
+    }
+
     pub(crate) fn emit_do_keyword(&mut self) {
         self.push_concrete_token(ConcreteLineToken::DoKeyword);
     }
