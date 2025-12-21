@@ -2090,13 +2090,13 @@ fn format_call_chain_body(
             .filter(|c| c.is_attribute_write())
     {
         // Format `.attr_name = ` directly without call chain indent
-        let call_operator = attr_write.call_operator_loc().map(|loc| loc_to_string(loc));
+        let call_operator = attr_write.call_operator_loc().map(|loc| loc_to_str(loc));
         if let Some(call_operator) = call_operator {
-            match call_operator.as_str() {
+            match call_operator {
                 "." => ps.emit_dot(),
                 "&." => ps.emit_lonely_operator(),
                 "::" => ps.emit_colon_colon(),
-                _ => ps.emit_ident(call_operator),
+                _ => ps.emit_ident(call_operator.to_string()),
             }
         }
 
@@ -2120,9 +2120,9 @@ fn format_call_chain_body(
 
                 // `call_operator_loc` is the `.`/`::`/`&.` etc.
                 // it may be None in the case of arefs, e.g. foo[bar]
-                let call_operator = element.call_operator_loc().map(|loc| loc_to_string(loc));
+                let call_operator = element.call_operator_loc().map(|loc| loc_to_str(loc));
                 if let Some(call_operator) = call_operator {
-                    if call_operator != *"::" && !is_attr_write {
+                    if call_operator != "::" && !is_attr_write {
                         ps.emit_collapsing_newline();
                         ps.emit_soft_indent();
                     }
@@ -2130,11 +2130,11 @@ fn format_call_chain_body(
                     // Emit the proper token type so that call_count is computed correctly
                     // in single_line_string_length (which is used to determine whether to
                     // break the call chain or just the arguments)
-                    match call_operator.as_str() {
+                    match call_operator {
                         "." => ps.emit_dot(),
                         "&." => ps.emit_lonely_operator(),
                         "::" => ps.emit_colon_colon(),
-                        _ => ps.emit_ident(call_operator),
+                        _ => ps.emit_ident(call_operator.to_string()),
                     }
                 }
 
