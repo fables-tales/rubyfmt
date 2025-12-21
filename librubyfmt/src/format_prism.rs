@@ -1,10 +1,9 @@
-use std::borrow::Cow;
+use std::{borrow::Cow, collections::HashSet, sync::LazyLock};
 
 use ruby_prism as prism;
 
 use crate::{
     delimiters::BreakableDelims,
-    format::{GEMFILE_METHODS, OPTIONALLY_PARENTHESIZED_METHODS, RSPEC_METHODS},
     heredoc_string::HeredocKind,
     parser_state::{FormattingContext, HashType, ParserState},
     render_targets::MultilineHandling,
@@ -1500,6 +1499,19 @@ fn format_block_argument_node(ps: &mut ParserState, block_argument_node: prism::
         });
     }
 }
+
+pub static RSPEC_METHODS: LazyLock<HashSet<&'static str>> =
+    LazyLock::new(|| vec!["it", "describe"].into_iter().collect());
+
+pub static GEMFILE_METHODS: LazyLock<HashSet<&'static str>> =
+    LazyLock::new(|| vec!["gem", "source", "ruby", "group"].into_iter().collect());
+
+pub static OPTIONALLY_PARENTHESIZED_METHODS: LazyLock<HashSet<&'static str>> =
+    LazyLock::new(|| {
+        vec!["super", "require", "require_relative"]
+            .into_iter()
+            .collect::<HashSet<_>>()
+    });
 
 fn use_parens_for_call_node(
     ps: &ParserState,
