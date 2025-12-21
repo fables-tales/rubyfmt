@@ -1441,7 +1441,7 @@ pub struct ArgsAddBlock(
 
 #[derive(RipperDeserialize, Debug, Clone)]
 pub enum AABParen {
-    Paren((paren_tag, Box<Expression>)),
+    Paren((paren_tag, Box<Expression>, StartEnd)),
     #[allow(unused)]
     EmptyParen((paren_tag, bool)),
     Expression(Box<Expression>),
@@ -1462,7 +1462,11 @@ impl ArgsAddBlockInner {
                     .into_iter()
                     .filter(|aabp| !matches!(aabp, AABParen::EmptyParen(..)))
                     .map(|aabp| match aabp {
-                        AABParen::Paren(p) => *p.1,
+                        AABParen::Paren(p) => Expression::Paren(ParenExpr(
+                            paren_expr_tag,
+                            ParenExpressionOrExpressions::Expression(Box::new(*p.1)),
+                            p.2,
+                        )),
                         AABParen::Expression(e) => *e,
                         AABParen::EmptyParen(..) => {
                             unreachable!("We should have already filtered these out")

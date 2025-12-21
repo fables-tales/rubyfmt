@@ -14,3 +14,5 @@ other_cool_method (a + b).round(4)
   )
   &.rules)
   .freeze
+
+beekeep (the_bees unless not_the_bees!)
