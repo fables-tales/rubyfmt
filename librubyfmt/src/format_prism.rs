@@ -2028,62 +2028,117 @@ fn as_binary_op<'a>(
 
 fn format_call_chain(ps: &mut ParserState, call_node: ruby_prism::CallNode<'_>) {
     ps.with_start_of_line(false, |ps| {
-        let call_chain_elements = collapse_nodes_to_call_chain(call_node.as_node());
+        let segments = split_node_into_call_chains(call_node.as_node());
 
-        let is_attr_write = call_chain_elements
+        let is_attribute_write = segments
             .last()
+            .and_then(|seg| seg.last())
             .and_then(|n| n.as_call_node())
             .map(|c| c.is_attribute_write())
             .unwrap_or(false);
 
-        if is_attr_write {
-            format_call_chain_body(ps, call_chain_elements, true);
+        if is_attribute_write {
+            if cfg!(debug_assertions) {
+                assert!(
+                    segments.len() == 1,
+                    "attribute_write call chain had multiple segments"
+                );
+            }
+            let chain = segments.into_iter().next().unwrap();
+            format_call_body(ps, chain, true, false);
         } else {
-            let is_user_multilined =
-                call_chain_elements_are_user_multilined(ps, &call_chain_elements);
-
-            ps.breakable_call_chain_of(MultilineHandling::Prism(is_user_multilined), |ps| {
-                format_call_chain_body(ps, call_chain_elements, false);
-            });
+            format_call_chain_segments(ps, segments);
         }
     });
 }
 
-fn format_call_chain_body(
+fn format_call_chain_segments(ps: &mut ParserState, mut segments: Vec<Vec<prism::Node>>) {
+    if let Some(current) = segments.pop() {
+        let has_inner = !segments.is_empty();
+
+        let (chain_elements, trailing_arefs) = extract_trailing_arefs(current);
+
+        let is_user_multilined = call_chain_elements_are_user_multilined(ps, &chain_elements);
+
+        ps.breakable_call_chain_of(MultilineHandling::Prism(is_user_multilined), |ps| {
+            // Recurse and format previous segments inside this breakable
+            format_call_chain_segments(ps, segments);
+
+            format_call_body(ps, chain_elements, false, has_inner);
+        });
+
+        // Trailing arefs are formatted after the breakable
+        for aref in trailing_arefs {
+            let aref = aref.as_call_node().unwrap();
+            format_call_node(ps, aref, true, false);
+        }
+    }
+}
+
+fn extract_trailing_arefs(mut elements: Vec<prism::Node>) -> (Vec<prism::Node>, Vec<prism::Node>) {
+    let mut trailing_arefs = Vec::new();
+    let has_dot_calls = elements.iter().any(|elem| {
+        elem.as_call_node()
+            .map(|c| c.call_operator_loc().is_some())
+            .unwrap_or(false)
+    });
+
+    if has_dot_calls {
+        while let Some(last_node) = elements.pop_if(|last_node| {
+            last_node
+                .as_call_node()
+                .is_some_and(|call_node| call_node.call_operator_loc().is_none())
+        }) {
+            trailing_arefs.insert(0, last_node);
+        }
+    }
+
+    (elements, trailing_arefs)
+}
+
+fn format_call_body(
     ps: &mut ParserState,
     mut call_chain_elements: Vec<prism::Node>,
     is_attr_write: bool,
+    is_continuation: bool,
 ) {
-    // The first node can be *any* expression, whereas following receivers
-    // must be additional calls -- you cannot insert literals into call chains
-    let first_expression = call_chain_elements.remove(0);
-    format_node(ps, first_expression);
-
-    // Arefs like `Array[1, 2]` are represented as a call chain where
-    // the receiver is the constant name `Array` and the aref is a separate call node.
-    // However, we don't want to start the call chain indent until after the aref, since the
-    // aref is "part of" the first expression.
-    // We loop here to handle chained arefs like `matrix[0][1].foo`.
-    while let Some(next) = call_chain_elements.first() {
-        if let Some(call_node) = next.as_call_node()
-            && call_node.call_operator_loc().is_none()
-        {
-            call_chain_elements.remove(0);
-            format_call_node(ps, call_node, true, false);
-            continue;
-        }
-        break;
+    if call_chain_elements.is_empty() {
+        return;
     }
 
-    // Eagerly render heredocs if they're in the first expression.
-    // We want the full heredoc to get rendered _before_ we emit the
-    // BeginCallChainIndent token so that it gets correctly indented
-    // (or in the case of it being the first expression, _not_ indented).
-    ps.render_heredocs(true);
+    if !is_continuation {
+        // The first node can be *any* expression, whereas following receivers
+        // must be additional calls -- you cannot insert literals into call chains
+        let first_expression = call_chain_elements.remove(0);
+        format_node(ps, first_expression);
+
+        // Arefs like `Array[1, 2]` are represented as a call chain where
+        // the receiver is the constant name `Array` and the aref is a separate call node.
+        // However, we don't want to start the call chain indent until after the aref, since the
+        // aref is "part of" the first expression.
+        // We loop here to handle chained arefs like `matrix[0][1].foo`.
+        while let Some(next) = call_chain_elements.first() {
+            if let Some(call_node) = next.as_call_node()
+                && call_node.call_operator_loc().is_none()
+            {
+                call_chain_elements.remove(0);
+                format_call_node(ps, call_node, true, false);
+                continue;
+            }
+            break;
+        }
+
+        // Eagerly render heredocs if they're in the first expression.
+        // We want the full heredoc to get rendered _before_ we emit the
+        // BeginCallChainIndent token so that it gets correctly indented
+        // (or in the case of it being the first expression, _not_ indented).
+        ps.render_heredocs(true);
+    }
 
     // Attribute writes like `self.foo = bar` should have both sides
     // rendered separately so they can break independently
-    if call_chain_elements.len() == 1
+    if !is_continuation
+        && call_chain_elements.len() == 1
         && let Some(attr_write) = call_chain_elements
             .first()
             .and_then(|n| n.as_call_node())
@@ -2105,7 +2160,7 @@ fn format_call_chain_body(
 
         // Format just the attribute name and ` = `, then the value separately
         format_call_node(ps, attr_write, true, true);
-    } else {
+    } else if !call_chain_elements.is_empty() {
         // attr_writes are not wrapped in a breakable, so they
         // cannot emit abstract token types
         if !is_attr_write {
@@ -2792,17 +2847,65 @@ fn format_parentheses_node(ps: &mut ParserState, parentheses_node: prism::Parent
     }
 }
 
-fn collapse_nodes_to_call_chain(node: prism::Node) -> Vec<prism::Node> {
-    let mut call_chain_elements = vec![];
+fn split_node_into_call_chains(node: prism::Node) -> Vec<Vec<prism::Node>> {
+    let mut elements = vec![];
     let mut maybe_receiver = Some(node);
     while let Some(receiver) = maybe_receiver {
         maybe_receiver = receiver
             .as_call_node()
             .and_then(|call_node| call_node.receiver());
-        call_chain_elements.insert(0, receiver);
+        elements.insert(0, receiver);
     }
 
-    call_chain_elements
+    // Precompute which elements have dots anywhere in the chain after them.
+    // Later, when we see an aref, we'll use this to decide whether to cut a new segment
+    let mut has_dot_after: Vec<bool> = vec![false; elements.len()];
+    let mut seen_dot = false;
+    for i in (0..elements.len()).rev() {
+        has_dot_after[i] = seen_dot;
+        if let Some(call_node) = elements[i].as_call_node()
+            && call_node.call_operator_loc().is_some()
+        {
+            seen_dot = true;
+        }
+    }
+
+    let mut split_before: Vec<usize> = vec![];
+    let mut seen_dot_call = false;
+
+    for (i, node) in elements.iter().enumerate() {
+        if let Some(call_node) = node.as_call_node() {
+            let node_is_dot_call = call_node.call_operator_loc().is_some();
+            // Other calls without dots (unary/infix operators) would not be in a chain
+            let is_aref: bool = !node_is_dot_call;
+
+            if is_aref && seen_dot_call && has_dot_after[i] {
+                split_before.push(i);
+                seen_dot_call = false;
+                continue;
+            }
+
+            if node_is_dot_call {
+                seen_dot_call = true;
+            }
+        }
+    }
+
+    if split_before.is_empty() {
+        return vec![elements];
+    }
+
+    // Split the vec at the indices (in reverse order so indices remain valid)
+    let mut segments: Vec<Vec<prism::Node>> = vec![];
+    let mut remaining = elements;
+
+    for split_idx in split_before.into_iter().rev() {
+        let after = remaining.split_off(split_idx);
+        segments.insert(0, after);
+    }
+    segments.insert(0, remaining);
+
+    segments
 }
 
 fn format_rest_parameter_node(
