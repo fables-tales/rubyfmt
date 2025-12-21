@@ -40,7 +40,7 @@ impl CommentBlock {
         for comment in &mut self.comments {
             // Ignore empty strings -- these represent blank lines between
             // groups of comments
-            if !comment.is_empty() {
+            if !comment.is_empty() && !comment.starts_with("=begin") {
                 comment.insert_str(0, &indent);
             }
         }
@@ -51,8 +51,11 @@ impl CommentBlock {
         !self.comments.is_empty()
     }
 
-    pub fn len(&self) -> usize {
-        self.comments.len()
+    pub fn line_count(&self) -> usize {
+        self.comments
+            .iter()
+            .map(|comment| comment.lines().count())
+            .sum()
     }
 
     pub fn is_trailing(&self) -> bool {

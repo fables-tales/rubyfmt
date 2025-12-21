@@ -509,7 +509,7 @@ impl ParserState {
                 && self.comments_to_insert.is_some()
             {
                 let mr = self.comments_to_insert.as_mut().expect("it's not nil");
-                if mr.len() == 0 {
+                if mr.line_count() == 0 {
                     break;
                 }
                 mr.add_line("".to_string());
@@ -798,11 +798,11 @@ impl ParserState {
             .last()
             .expect("comments stack is never empty")
         {
-            let len = comments.len();
+            let line_count = comments.line_count();
             let trailing_comment = comments.is_trailing();
             self.insert_comment_collection(comments);
             if !trailing_comment {
-                self.current_orig_line_number += len as u64;
+                self.current_orig_line_number += line_count as u64;
             }
         }
     }
@@ -901,12 +901,12 @@ impl ParserState {
                 self.on_line(1);
             }
             Some(comments) => {
-                let len = comments.len();
+                let line_count = comments.line_count();
                 let lts = comments.into_line_tokens();
                 for comment in lts.into_iter() {
                     self.push_concrete_token(comment);
                 }
-                self.current_orig_line_number = len as LineNumber;
+                self.current_orig_line_number = line_count as LineNumber;
             }
         }
     }

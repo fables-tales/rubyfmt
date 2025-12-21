@@ -84,13 +84,24 @@ impl FileComments {
                 .insert(comment.location().start_offset());
         }
 
-        // Lookup lines that have any Ruby, which we broadly equate to
-        // a line that isn't empty and that doesn't start with a comment ("#")
+        // Lookup lines that have any Ruby
+        let mut inside_embdoc = false;
         u8_to_string(source)
             .lines()
             .enumerate()
             .filter(|(_lineno, line_contents)| {
                 let contents = line_contents.trim();
+                if contents.starts_with("=begin") {
+                    inside_embdoc = true;
+                    return false;
+                }
+                if contents.starts_with("=end") {
+                    inside_embdoc = false;
+                    return false;
+                }
+                if inside_embdoc {
+                    return false;
+                }
                 !(contents.starts_with("#") || contents.is_empty())
             })
             .for_each(|(lineno, _)| {
@@ -238,7 +249,8 @@ impl FileComments {
                     {
                         comment_block_with_spaces.push(String::new());
                     }
-                    last_line = Some(index);
+                    let line_count = comment_contents.lines().count() as u64;
+                    last_line = Some(index + line_count - 1);
                     comment_block_with_spaces.push(comment_contents);
                 }
 
