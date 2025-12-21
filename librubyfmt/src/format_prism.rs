@@ -3963,17 +3963,29 @@ fn format_match_last_line_node(
 }
 
 fn format_match_predicate_node(
-    _ps: &mut ParserState,
-    _match_predicate_node: prism::MatchPredicateNode,
+    ps: &mut ParserState,
+    match_predicate_node: prism::MatchPredicateNode,
 ) {
-    todo!()
+    ps.with_start_of_line(false, |ps| {
+        format_node(ps, match_predicate_node.value());
+        ps.emit_space();
+        ps.emit_ident(loc_to_string(match_predicate_node.operator_loc()));
+        ps.emit_space();
+        format_node(ps, match_predicate_node.pattern());
+    });
 }
 
 fn format_match_required_node(
-    _ps: &mut ParserState,
-    _match_required_node: prism::MatchRequiredNode,
+    ps: &mut ParserState,
+    match_required_node: prism::MatchRequiredNode,
 ) {
-    todo!()
+    ps.with_start_of_line(false, |ps| {
+        format_node(ps, match_required_node.value());
+        ps.emit_space();
+        ps.emit_ident(loc_to_string(match_required_node.operator_loc()));
+        ps.emit_space();
+        format_node(ps, match_required_node.pattern());
+    });
 }
 
 fn format_match_write_node(ps: &mut ParserState, match_write_node: prism::MatchWriteNode) {
