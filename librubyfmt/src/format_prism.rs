@@ -2039,10 +2039,8 @@ fn format_call_chain(ps: &mut ParserState, call_node: ruby_prism::CallNode<'_>) 
         if is_attr_write {
             format_call_chain_body(ps, call_chain_elements, true);
         } else {
-            let is_user_multilined = call_chain_elements_are_user_multilined(
-                ps,
-                call_chain_elements.iter().clone().collect(),
-            );
+            let is_user_multilined =
+                call_chain_elements_are_user_multilined(ps, &call_chain_elements);
 
             ps.breakable_call_chain_of(MultilineHandling::Prism(is_user_multilined), |ps| {
                 format_call_chain_body(ps, call_chain_elements, false);
@@ -2154,10 +2152,10 @@ fn format_call_chain_body(
 
 fn call_chain_elements_are_user_multilined(
     ps: &ParserState,
-    call_chain_elements: Vec<&prism::Node>,
+    call_chain_elements: &[prism::Node],
 ) -> bool {
     // Making a mutable copy since we may pop some items off later
-    let mut call_chain_elements = call_chain_elements.as_slice();
+    let mut call_chain_elements = call_chain_elements;
 
     if call_chain_elements.len() > 1 {
         // If the first item in the chain is a multiline expression (like a hash or array),
