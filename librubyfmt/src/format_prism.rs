@@ -4,7 +4,7 @@ use ruby_prism as prism;
 
 use crate::{
     delimiters::BreakableDelims,
-    format::{GEMFILE_METHODS, OPTIONALLY_PARENTHESIZED_METHODS, RSPEC_METHODS, SpecialCase},
+    format::{GEMFILE_METHODS, OPTIONALLY_PARENTHESIZED_METHODS, RSPEC_METHODS},
     heredoc_string::HeredocKind,
     parser_state::{FormattingContext, HashType, ParserState},
     render_targets::MultilineHandling,
@@ -362,11 +362,9 @@ pub fn format_node(ps: &mut ParserState, node: prism::Node) {
             format_rescue_modifier_node(ps, node.as_rescue_modifier_node().unwrap())
         }
         Node::RescueNode { .. } => format_rescue_node(ps, node.as_rescue_node().unwrap()),
-        Node::RestParameterNode { .. } => format_rest_parameter_node(
-            ps,
-            node.as_rest_parameter_node().unwrap(),
-            SpecialCase::NoSpecialCase,
-        ),
+        Node::RestParameterNode { .. } => {
+            format_rest_parameter_node(ps, node.as_rest_parameter_node().unwrap())
+        }
         Node::RetryNode { .. } => format_retry_node(ps),
         Node::ReturnNode { .. } => format_return_node(ps, node.as_return_node().unwrap()),
         Node::SelfNode { .. } => format_self_node(ps),
@@ -2805,15 +2803,9 @@ fn collapse_nodes_to_call_chain(node: prism::Node) -> Vec<prism::Node> {
     call_chain_elements
 }
 
-fn format_rest_parameter_node(
-    ps: &mut ParserState,
-    rest_param: prism::RestParameterNode,
-    special_case: SpecialCase,
-) {
+fn format_rest_parameter_node(ps: &mut ParserState, rest_param: prism::RestParameterNode) {
     ps.with_start_of_line(false, |ps| {
-        if special_case != SpecialCase::RestParamOutsideOfParamDef {
-            ps.emit_soft_indent();
-        }
+        ps.emit_soft_indent();
         ps.emit_ident("*".to_string());
         ps.with_start_of_line(false, |ps| {
             if let Some(name) = rest_param.name() {
