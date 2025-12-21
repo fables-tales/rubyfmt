@@ -1,8 +1,7 @@
 use std::borrow::Cow;
-use std::collections::HashSet;
-use std::sync::LazyLock;
 
 use crate::delimiters::BreakableDelims;
+use crate::format_prism::{GEMFILE_METHODS, OPTIONALLY_PARENTHESIZED_METHODS, RSPEC_METHODS};
 use crate::heredoc_string::HeredocKind;
 use crate::parser_state::{FormattingContext, ParserState};
 use crate::render_targets::MultilineHandling;
@@ -618,19 +617,6 @@ pub fn args_has_single_def_expression(args: &ArgsAddStarOrExpressionListOrArgsFo
 
     false
 }
-
-pub static RSPEC_METHODS: LazyLock<HashSet<&'static str>> =
-    LazyLock::new(|| vec!["it", "describe"].into_iter().collect());
-
-pub static GEMFILE_METHODS: LazyLock<HashSet<&'static str>> =
-    LazyLock::new(|| vec!["gem", "source", "ruby", "group"].into_iter().collect());
-
-pub static OPTIONALLY_PARENTHESIZED_METHODS: LazyLock<HashSet<&'static str>> =
-    LazyLock::new(|| {
-        vec!["super", "require", "require_relative"]
-            .into_iter()
-            .collect::<HashSet<_>>()
-    });
 
 pub fn use_parens_for_method_call(
     ps: &ParserState,
