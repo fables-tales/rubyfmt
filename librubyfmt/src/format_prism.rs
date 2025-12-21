@@ -428,10 +428,16 @@ fn format_alias_method_node(ps: &mut ParserState, alias_method_node: prism::Alia
 }
 
 fn format_alternation_pattern_node(
-    _ps: &mut ParserState,
-    _alternation_pattern_node: prism::AlternationPatternNode,
+    ps: &mut ParserState,
+    alternation_pattern_node: prism::AlternationPatternNode,
 ) {
-    todo!()
+    ps.with_start_of_line(false, |ps| {
+        format_node(ps, alternation_pattern_node.left());
+        ps.emit_space();
+        ps.emit_ident("|".to_string());
+        ps.emit_space();
+        format_node(ps, alternation_pattern_node.right());
+    });
 }
 
 fn format_and_node(ps: &mut ParserState, and_node: prism::AndNode) {
@@ -529,14 +535,41 @@ fn format_break_node(ps: &mut ParserState, break_node: prism::BreakNode) {
 }
 
 fn format_capture_pattern_node(
-    _ps: &mut ParserState,
-    _capture_pattern_node: prism::CapturePatternNode,
+    ps: &mut ParserState,
+    capture_pattern_node: prism::CapturePatternNode,
 ) {
-    todo!()
+    ps.with_start_of_line(false, |ps| {
+        format_node(ps, capture_pattern_node.value());
+        ps.emit_space();
+        ps.emit_ident("=>".to_string());
+        ps.emit_space();
+        format_node(ps, capture_pattern_node.target().as_node());
+    });
 }
 
-fn format_case_match_node(_ps: &mut ParserState, _case_match_node: prism::CaseMatchNode) {
-    todo!()
+fn format_case_match_node(ps: &mut ParserState, case_match_node: prism::CaseMatchNode) {
+    ps.emit_case_keyword();
+
+    if let Some(predicate) = case_match_node.predicate() {
+        ps.with_start_of_line(false, |ps| {
+            ps.emit_space();
+            format_node(ps, predicate);
+        });
+    }
+
+    ps.emit_newline();
+    ps.with_start_of_line(true, |ps| {
+        for condition in case_match_node.conditions().iter() {
+            ps.with_start_of_line(false, |ps| format_node(ps, condition));
+        }
+
+        if let Some(else_node) = case_match_node.else_clause() {
+            ps.emit_indent();
+            format_else_node(ps, else_node);
+        }
+
+        ps.emit_end();
+    });
 }
 
 fn format_case_node(ps: &mut ParserState, case_node: prism::CaseNode) {
@@ -1107,8 +1140,39 @@ fn format_false_node(ps: &mut ParserState, false_node: prism::FalseNode) {
     );
 }
 
-fn format_find_pattern_node(_ps: &mut ParserState, _find_pattern_node: prism::FindPatternNode) {
-    todo!()
+fn format_find_pattern_node(ps: &mut ParserState, find_pattern_node: prism::FindPatternNode) {
+    if let Some(constant) = find_pattern_node.constant() {
+        ps.with_start_of_line(false, |ps| {
+            format_node(ps, constant);
+        });
+    }
+
+    ps.with_start_of_line(false, |ps| {
+        ps.new_block(|ps| {
+            ps.breakable_of(BreakableDelims::for_array(), |ps| {
+                ps.emit_soft_indent();
+                ps.with_start_of_line(false, |ps| {
+                    format_node(ps, find_pattern_node.left().as_node());
+                });
+
+                let requireds = find_pattern_node.requireds();
+                let requireds_end_offset = requireds.iter().last().unwrap().location().end_offset();
+                if !requireds.is_empty() {
+                    ps.emit_comma();
+                    ps.emit_soft_newline();
+                    ps.emit_soft_indent();
+                }
+                format_list_like_thing(ps, requireds, requireds_end_offset, false);
+
+                ps.emit_comma();
+                ps.emit_soft_newline();
+                ps.emit_soft_indent();
+                ps.with_start_of_line(false, |ps| {
+                    format_node(ps, find_pattern_node.right());
+                });
+            });
+        });
+    });
 }
 
 fn format_flip_flop_node(ps: &mut ParserState, flip_flop_node: prism::FlipFlopNode) {
@@ -2781,8 +2845,53 @@ fn format_word_array_interpolated_parts(
     }
 }
 
-fn format_array_pattern_node(_ps: &mut ParserState, _array_pattern_node: prism::ArrayPatternNode) {
-    todo!()
+fn format_array_pattern_node(ps: &mut ParserState, array_pattern_node: prism::ArrayPatternNode) {
+    if let Some(constant) = array_pattern_node.constant() {
+        ps.with_start_of_line(false, |ps| {
+            format_node(ps, constant);
+        });
+    }
+
+    let requireds = array_pattern_node.requireds();
+    let rest = array_pattern_node.rest();
+    let posts = array_pattern_node.posts();
+
+    ps.with_start_of_line(false, |ps| {
+        ps.new_block(|ps| {
+            ps.breakable_of(BreakableDelims::for_array(), |ps| {
+                for (i, element) in requireds.iter().enumerate() {
+                    if i > 0 {
+                        ps.emit_comma();
+                        ps.emit_soft_newline();
+                    }
+                    ps.emit_soft_indent();
+                    ps.with_start_of_line(false, |ps| format_node(ps, element));
+                }
+
+                let has_rest = if let Some(rest_node) = rest {
+                    if !requireds.is_empty() {
+                        ps.emit_comma();
+                        ps.emit_soft_newline();
+                    }
+                    ps.emit_soft_indent();
+                    ps.with_start_of_line(false, |ps| format_node(ps, rest_node));
+                    true
+                } else {
+                    false
+                };
+
+                let has_prior = !requireds.is_empty() || has_rest;
+                for (i, element) in posts.iter().enumerate() {
+                    if i > 0 || has_prior {
+                        ps.emit_comma();
+                        ps.emit_soft_newline();
+                    }
+                    ps.emit_soft_indent();
+                    ps.with_start_of_line(false, |ps| format_node(ps, element));
+                }
+            });
+        });
+    });
 }
 
 fn format_parentheses_node(ps: &mut ParserState, parentheses_node: prism::ParenthesesNode) {
@@ -3295,8 +3404,50 @@ fn format_hash_node(ps: &mut ParserState, hash_node: prism::HashNode) {
     });
 }
 
-fn format_hash_pattern_node(_ps: &mut ParserState, _hash_pattern_node: prism::HashPatternNode) {
-    todo!()
+fn format_hash_pattern_node(ps: &mut ParserState, hash_pattern_node: prism::HashPatternNode) {
+    if let Some(constant) = hash_pattern_node.constant() {
+        ps.with_start_of_line(false, |ps| {
+            format_node(ps, constant);
+        });
+    }
+
+    let opener = hash_pattern_node
+        .opening_loc()
+        .map(|loc| loc_to_string(loc));
+    let use_parens = hash_pattern_node.constant().is_some()
+        || opener.as_ref().map(|s| s.starts_with("(")).unwrap_or(false);
+
+    let elements = hash_pattern_node.elements();
+
+    let delims = if use_parens {
+        BreakableDelims::for_method_call()
+    } else {
+        BreakableDelims::for_hash()
+    };
+
+    ps.with_start_of_line(false, |ps| {
+        ps.new_block(|ps| {
+            ps.breakable_of(delims, |ps| {
+                for (i, element) in elements.iter().enumerate() {
+                    if i > 0 {
+                        ps.emit_comma();
+                        ps.emit_soft_newline();
+                    }
+                    ps.emit_soft_indent();
+                    ps.with_start_of_line(false, |ps| format_node(ps, element));
+                }
+
+                if let Some(rest_node) = hash_pattern_node.rest() {
+                    if !elements.is_empty() {
+                        ps.emit_comma();
+                        ps.emit_soft_newline();
+                    }
+                    ps.emit_soft_indent();
+                    ps.with_start_of_line(false, |ps| format_node(ps, rest_node));
+                }
+            });
+        });
+    });
 }
 
 fn format_inline_conditional(
@@ -3569,8 +3720,22 @@ fn format_implicit_rest_node() {
     // Since other machinery actually handles all of this, we don't really need to do anything if we end up here.
 }
 
-fn format_in_node(_ps: &mut ParserState, _in_node: prism::InNode) {
-    todo!()
+fn format_in_node(ps: &mut ParserState, in_node: prism::InNode) {
+    ps.emit_in_keyword();
+
+    ps.with_start_of_line(false, |ps| {
+        ps.emit_space();
+        format_node(ps, in_node.pattern());
+    });
+
+    ps.new_block(|ps| {
+        ps.with_start_of_line(true, |ps| {
+            ps.emit_newline();
+            if let Some(statements) = in_node.statements() {
+                format_node(ps, statements.as_node());
+            }
+        });
+    });
 }
 
 fn format_index_and_write_node(
@@ -4122,17 +4287,25 @@ fn format_or_node(ps: &mut ParserState, or_node: prism::OrNode) {
 }
 
 fn format_pinned_expression_node(
-    _ps: &mut ParserState,
-    _pinned_expression_node: prism::PinnedExpressionNode,
+    ps: &mut ParserState,
+    pinned_expression_node: prism::PinnedExpressionNode,
 ) {
-    todo!()
+    ps.emit_ident("^".to_string());
+    ps.emit_open_paren();
+    ps.with_start_of_line(false, |ps| {
+        format_node(ps, pinned_expression_node.expression());
+    });
+    ps.emit_close_paren();
 }
 
 fn format_pinned_variable_node(
-    _ps: &mut ParserState,
-    _pinned_variable_node: prism::PinnedVariableNode,
+    ps: &mut ParserState,
+    pinned_variable_node: prism::PinnedVariableNode,
 ) {
-    todo!()
+    ps.emit_ident("^".to_string());
+    ps.with_start_of_line(false, |ps| {
+        format_node(ps, pinned_variable_node.variable());
+    });
 }
 
 fn format_post_execution_node(ps: &mut ParserState, post_execution_node: prism::PostExecutionNode) {
