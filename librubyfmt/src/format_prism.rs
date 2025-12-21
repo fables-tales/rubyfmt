@@ -3975,10 +3975,7 @@ fn format_match_predicate_node(
     });
 }
 
-fn format_match_required_node(
-    ps: &mut ParserState,
-    match_required_node: prism::MatchRequiredNode,
-) {
+fn format_match_required_node(ps: &mut ParserState, match_required_node: prism::MatchRequiredNode) {
     ps.with_start_of_line(false, |ps| {
         format_node(ps, match_required_node.value());
         ps.emit_space();
