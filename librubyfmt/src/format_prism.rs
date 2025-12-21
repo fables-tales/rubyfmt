@@ -580,7 +580,7 @@ pub fn format_program(
     ps.shift_comments();
 
     if let Some(data) = data_loc {
-        ps.emit_data(&loc_to_string(data));
+        ps.emit_data(loc_to_str(data));
     }
 }
 
