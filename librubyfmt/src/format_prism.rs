@@ -4065,10 +4065,15 @@ fn format_nil_node(ps: &mut ParserState) {
 }
 
 fn format_no_keywords_parameter_node(
-    _ps: &mut ParserState,
-    _no_keywords_parameter_node: prism::NoKeywordsParameterNode,
+    ps: &mut ParserState,
+    no_keywords_parameter_node: prism::NoKeywordsParameterNode,
 ) {
-    todo!()
+    ps.emit_soft_indent();
+    handle_string_at_offset(
+        ps,
+        "**nil".to_string(),
+        no_keywords_parameter_node.location().start_offset(),
+    );
 }
 
 fn format_numbered_parameters_node() {
