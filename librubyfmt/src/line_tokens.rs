@@ -10,7 +10,9 @@ pub fn cltats_hard_newline() -> ConcreteLineTokenAndTargets {
 }
 
 pub fn clats_direct_part(part: impl Into<Cow<'static, str>>) -> ConcreteLineTokenAndTargets {
-    ConcreteLineTokenAndTargets::ConcreteLineToken(ConcreteLineToken::DirectPart { part: part.into() })
+    ConcreteLineTokenAndTargets::ConcreteLineToken(ConcreteLineToken::DirectPart {
+        part: part.into(),
+    })
 }
 
 pub fn clats_heredoc_close(symbol: String) -> ConcreteLineTokenAndTargets {
