@@ -33,4 +33,12 @@ class Foo < T::Struct
   def has_same_name?(name:)
     name == name()
   end
+
+  def in_a_parameter_list(
+    with_parens = self.with_parens(),
+    nope_parens = self.nope_parens(),
+    kw_with_parens: self.kw_with_parens(),
+    kw_nope_parens: self.kw_nope_parens()
+  )
+  end
 end
