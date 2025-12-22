@@ -9,8 +9,8 @@ pub fn cltats_hard_newline() -> ConcreteLineTokenAndTargets {
     ConcreteLineTokenAndTargets::ConcreteLineToken(ConcreteLineToken::HardNewLine)
 }
 
-pub fn clats_direct_part(part: String) -> ConcreteLineTokenAndTargets {
-    ConcreteLineTokenAndTargets::ConcreteLineToken(ConcreteLineToken::DirectPart { part })
+pub fn clats_direct_part(part: impl Into<Cow<'static, str>>) -> ConcreteLineTokenAndTargets {
+    ConcreteLineTokenAndTargets::ConcreteLineToken(ConcreteLineToken::DirectPart { part: part.into() })
 }
 
 pub fn clats_heredoc_close(symbol: String) -> ConcreteLineTokenAndTargets {
@@ -34,7 +34,7 @@ pub enum ConcreteLineToken {
     DoKeyword,
     ModKeyword { contents: &'static str },
     ConditionalKeyword { contents: &'static str },
-    DirectPart { part: String },
+    DirectPart { part: Cow<'static, str> },
     CommaSpace,
     Comma,
     Space,
@@ -77,7 +77,7 @@ impl ConcreteLineToken {
             Self::ClassKeyword => Cow::Borrowed("class"),
             Self::DefKeyword => Cow::Borrowed("def"),
             Self::ModuleKeyword => Cow::Borrowed("module"),
-            Self::DirectPart { part } => Cow::Owned(part),
+            Self::DirectPart { part } => part,
             Self::CommaSpace => Cow::Borrowed(", "),
             Self::Comma => Cow::Borrowed(","),
             Self::Space => Cow::Borrowed(" "),
@@ -123,9 +123,8 @@ impl ConcreteLineToken {
             Keyword { keyword: contents }
             | ModKeyword { contents }
             | ConditionalKeyword { contents } => contents.len(),
-            Op { op: contents } => contents.len(),
-            DirectPart { part: contents }
-            | LTStringContent { content: contents }
+            Op { op: contents } | DirectPart { part: contents } => contents.len(),
+            LTStringContent { content: contents }
             | Comment { contents }
             | HeredocClose { symbol: contents } => contents.len(),
             HardNewLine | Comma | Space | Dot | OpenSquareBracket | CloseSquareBracket
