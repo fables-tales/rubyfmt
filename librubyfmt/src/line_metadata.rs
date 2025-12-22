@@ -1,10 +1,6 @@
 #[derive(Debug)]
 pub struct LineMetadata {
     gets_indented: bool,
-    conditional: bool,
-    end: bool,
-    def: bool,
-    do_keyword: bool,
     indent_level: Option<u32>,
     require: bool,
 }
@@ -17,10 +13,6 @@ impl LineMetadata {
     pub fn new() -> Self {
         LineMetadata {
             gets_indented: false,
-            conditional: false,
-            end: false,
-            def: false,
-            do_keyword: false,
             indent_level: None,
             require: false,
         }
@@ -44,21 +36,5 @@ impl LineMetadata {
 
     pub fn set_gets_indented(&mut self) {
         self.gets_indented = true;
-    }
-
-    pub fn set_has_conditional(&mut self) {
-        self.conditional = true;
-    }
-
-    pub fn set_has_end(&mut self) {
-        self.end = true;
-    }
-
-    pub fn set_has_def(&mut self) {
-        self.def = true;
-    }
-
-    pub fn set_has_do_keyword(&mut self) {
-        self.do_keyword = true;
     }
 }

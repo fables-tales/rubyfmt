@@ -118,12 +118,6 @@ impl Intermediary {
             ConcreteLineToken::ModuleKeyword | ConcreteLineToken::ClassKeyword => {
                 self.handle_class_or_module();
             }
-            ConcreteLineToken::DoKeyword => {
-                self.handle_do_keyword();
-            }
-            ConcreteLineToken::ConditionalKeyword { contents: _ } => self.handle_conditional(),
-            ConcreteLineToken::End => self.handle_end(),
-            ConcreteLineToken::DefKeyword => self.handle_def(),
             ConcreteLineToken::Indent { depth } => {
                 self.current_line_metadata.observe_indent_level(*depth);
 
@@ -183,28 +177,12 @@ impl Intermediary {
         self.debug_assert_newlines();
     }
 
-    fn handle_end(&mut self) {
-        self.current_line_metadata.set_has_end();
-    }
-
-    fn handle_def(&mut self) {
-        self.current_line_metadata.set_has_def();
-    }
-
-    fn handle_do_keyword(&mut self) {
-        self.current_line_metadata.set_has_do_keyword();
-    }
-
     fn handle_class_or_module(&mut self) {
         if let Some(prev) = &self.previous_line_metadata
             && !prev.gets_indented()
         {
             self.insert_trailing_blankline(BlanklineReason::ClassOrModule);
         }
-    }
-
-    fn handle_conditional(&mut self) {
-        self.current_line_metadata.set_has_conditional();
     }
 
     pub fn clear_breakable_garbage(&mut self) {
