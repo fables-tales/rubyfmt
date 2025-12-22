@@ -1944,13 +1944,25 @@ fn format_call_node(
 }
 
 fn format_unary_operator(ps: &mut ParserState, call_node: prism::CallNode, method_name: String) {
+    // We need to preserve parens for `not`, they can be semantically meaningful
+    let is_not_with_parens = method_name == "!"
+        && call_node
+            .message_loc()
+            .map(|loc| loc_to_string(loc) == "not")
+            .unwrap_or(false)
+        && call_node.opening_loc().is_some();
+
     let operator_symbol = match method_name.as_str() {
         "!" => {
             // `not` and `!` both have a `name` of `!` but different messages
             if let Some(message_loc) = call_node.message_loc() {
                 let message_text = loc_to_string(message_loc);
                 if message_text == "not" {
-                    "not ".to_string()
+                    if is_not_with_parens {
+                        "not".to_string()
+                    } else {
+                        "not ".to_string()
+                    }
                 } else {
                     "!".to_string()
                 }
@@ -1978,12 +1990,17 @@ fn format_unary_operator(ps: &mut ParserState, call_node: prism::CallNode, metho
 
     ps.with_start_of_line(false, |ps| {
         ps.emit_ident(operator_symbol);
-        format_node(
-            ps,
-            call_node
-                .receiver()
-                .expect("Unary operators must have a receiver"),
-        );
+        let receiver = call_node
+            .receiver()
+            .expect("Unary operators must have a receiver");
+        if is_not_with_parens {
+            ps.breakable_of(BreakableDelims::for_method_call(), |ps| {
+                ps.emit_soft_indent();
+                format_node(ps, receiver);
+            });
+        } else {
+            format_node(ps, receiver);
+        }
     });
 }
 
@@ -2947,9 +2964,18 @@ fn split_node_into_call_chains(node: prism::Node) -> Vec<Vec<prism::Node>> {
     let mut elements = vec![];
     let mut maybe_receiver = Some(node);
     while let Some(receiver) = maybe_receiver {
-        maybe_receiver = receiver
-            .as_call_node()
-            .and_then(|call_node| call_node.receiver());
+        maybe_receiver = receiver.as_call_node().and_then(|call_node| {
+            // Don't traverse into unary operators, they should not be treated as part of a call chain.
+            let method_name = const_to_string(call_node.name());
+            let is_unary_operator = call_node.arguments().is_none()
+                && call_node.call_operator_loc().is_none()
+                && matches!(method_name.as_str(), "-@" | "+@" | "!" | "~");
+            if is_unary_operator {
+                return None;
+            }
+
+            call_node.receiver()
+        });
         elements.insert(0, receiver);
     }
 
