@@ -841,10 +841,10 @@ fn format_heredoc(ps: &mut ParserState, heredoc: HeredocNodeType, heredoc_symbol
         loc_to_str(heredoc.closing_loc()).trim().to_string(),
         heredoc_kind,
         ps.get_line_number_for_offset(heredoc.closing_loc().start_offset()),
-        Box::new(|n: &mut ParserState| {
+        |n: &mut ParserState| {
             n.disable_user_newlines();
             format_inner_string(n, heredoc.parts(), heredoc_kind);
-        }),
+        },
     );
     ps.wind_dumping_comments_until_offset(heredoc.closing_loc().start_offset());
 }
