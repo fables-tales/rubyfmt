@@ -3,7 +3,6 @@ use crate::line_tokens::{AbstractLineToken, ConcreteLineToken, ConcreteLineToken
 use crate::parser_state::FormattingContext;
 use crate::ripper_tree_types::CallChainElement;
 use crate::types::LineNumber;
-use std::collections::HashSet;
 
 fn insert_at<T>(idx: usize, target: &mut Vec<T>, input: &mut Vec<T>) {
     let mut tail = target.split_off(idx);
@@ -92,7 +91,7 @@ pub trait AbstractTokenTarget: std::fmt::Debug {
 #[derive(Debug, Clone)]
 pub struct BreakableEntry {
     tokens: Vec<AbstractLineToken>,
-    line_numbers: HashSet<LineNumber>,
+    multiline_tracker: MultilineTracker,
     delims: BreakableDelims,
     in_string_embexpr: bool,
 }
@@ -150,11 +149,11 @@ impl AbstractTokenTarget for BreakableEntry {
     }
 
     fn push_line_number(&mut self, number: LineNumber) {
-        self.line_numbers.insert(number);
+        self.multiline_tracker.on_line(number);
     }
 
     fn is_multiline(&self) -> bool {
-        self.line_numbers.len() > 1
+        self.multiline_tracker.is_multiline()
             || self.any_collapsing_newline_has_heredoc_content()
             || self.contains_hard_newline()
     }
@@ -183,7 +182,7 @@ impl BreakableEntry {
 
         BreakableEntry {
             tokens: Vec::new(),
-            line_numbers: HashSet::new(),
+            multiline_tracker: MultilineTracker::new(),
             delims,
             in_string_embexpr,
         }
@@ -218,7 +217,6 @@ pub enum MultilineHandling {
 #[derive(Debug, Clone)]
 pub struct BreakableCallChainEntry {
     tokens: Vec<AbstractLineToken>,
-    line_numbers: HashSet<LineNumber>,
     multiline_handling: MultilineHandling,
     context: Vec<FormattingContext>,
 }
@@ -356,8 +354,9 @@ impl AbstractTokenTarget for BreakableCallChainEntry {
             .len()
     }
 
-    fn push_line_number(&mut self, number: LineNumber) {
-        self.line_numbers.insert(number);
+    fn push_line_number(&mut self, _number: LineNumber) {
+        // No-op, BreakableCallChainEntry has custom multilining logic
+        // that doesn't depend on the source line numbers
     }
 
     fn is_multiline(&self) -> bool {
@@ -402,12 +401,13 @@ impl AbstractTokenTarget for BreakableCallChainEntry {
                     call_chain_to_check = &call_chain_to_check[1..];
                 }
 
-                call_chain_to_check
+                let mut lines = call_chain_to_check
                     .iter()
-                    .filter_map(|cc_elem| cc_elem.start_line())
-                    .collect::<HashSet<_>>()
-                    .len()
-                    > 1
+                    .filter_map(|cc_elem| cc_elem.start_line());
+                match lines.next() {
+                    Some(first) => lines.any(|line| line != first),
+                    None => false,
+                }
             }
         }
     }
@@ -433,7 +433,6 @@ impl BreakableCallChainEntry {
     pub fn new(context: Vec<FormattingContext>, multiline_handling: MultilineHandling) -> Self {
         BreakableCallChainEntry {
             tokens: Vec::new(),
-            line_numbers: HashSet::new(),
             context,
             multiline_handling,
         }
@@ -466,5 +465,33 @@ impl BreakableCallChainEntry {
                 ConcreteLineToken::HeredocStart { .. }
             ))
         )
+    }
+}
+
+/// Tracks whether tokens span multiple source lines.
+#[derive(Debug, Clone)]
+struct MultilineTracker {
+    first_line: Option<LineNumber>,
+    is_multiline: bool,
+}
+
+impl MultilineTracker {
+    fn new() -> Self {
+        Self {
+            first_line: None,
+            is_multiline: false,
+        }
+    }
+
+    fn on_line(&mut self, line: LineNumber) {
+        match self.first_line {
+            None => self.first_line = Some(line),
+            Some(first) if first != line => self.is_multiline = true,
+            Some(_) => {}
+        }
+    }
+
+    fn is_multiline(&self) -> bool {
+        self.is_multiline
     }
 }
