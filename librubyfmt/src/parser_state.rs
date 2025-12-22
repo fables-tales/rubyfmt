@@ -307,8 +307,7 @@ impl ParserState {
         F: FnOnce(&mut ParserState),
     {
         self.shift_comments();
-        let mut be =
-            BreakableCallChainEntry::new(self.formatting_context.clone(), mulitiline_handling);
+        let mut be = BreakableCallChainEntry::new(&self.formatting_context, mulitiline_handling);
         be.push_line_number(self.current_orig_line_number);
         self.breakable_entry_stack.push(Box::new(be));
 

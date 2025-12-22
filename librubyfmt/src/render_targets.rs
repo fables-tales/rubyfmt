@@ -218,7 +218,7 @@ pub enum MultilineHandling {
 pub struct BreakableCallChainEntry {
     tokens: Vec<AbstractLineToken>,
     multiline_handling: MultilineHandling,
-    context: Vec<FormattingContext>,
+    in_string_embexpr: bool,
 }
 
 impl AbstractTokenTarget for BreakableCallChainEntry {
@@ -430,10 +430,17 @@ impl AbstractTokenTarget for BreakableCallChainEntry {
 }
 
 impl BreakableCallChainEntry {
-    pub fn new(context: Vec<FormattingContext>, multiline_handling: MultilineHandling) -> Self {
+    pub fn new(
+        formatting_context: &[FormattingContext],
+        multiline_handling: MultilineHandling,
+    ) -> Self {
+        let in_string_embexpr = formatting_context
+            .iter()
+            .any(|fc| fc == &FormattingContext::StringEmbexpr);
+
         BreakableCallChainEntry {
             tokens: Vec::new(),
-            context,
+            in_string_embexpr,
             multiline_handling,
         }
     }
@@ -453,9 +460,7 @@ impl BreakableCallChainEntry {
     }
 
     pub fn in_string_embexpr(&self) -> bool {
-        self.context
-            .iter()
-            .any(|fc| fc == &FormattingContext::StringEmbexpr)
+        self.in_string_embexpr
     }
 
     fn begins_with_heredoc(&self) -> bool {
