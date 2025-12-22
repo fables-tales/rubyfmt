@@ -224,14 +224,15 @@ impl RenderQueueWriter {
     }
 
     fn format_breakable_entry(accum: &mut Intermediary, be: BreakableEntry) {
-        let length = be.single_line_string_length(accum.current_line_length());
         // We generally will force expressions embedded in strings to be on a single line,
         // but if that expression has a heredoc nested in it, we should let it render across lines
         // so that the collapsing newlines render properly.
         let force_single_line =
             !be.any_collapsing_newline_has_heredoc_content() && be.in_string_embexpr();
 
-        if !force_single_line && (length > MAX_LINE_LENGTH || be.is_multiline()) {
+        if !force_single_line
+            && (be.is_multiline() || Self::renders_over_max_line_length(accum, &be))
+        {
             Self::render_as(accum, be.into_tokens(ConvertType::MultiLine));
         } else {
             Self::render_as(accum, be.into_tokens(ConvertType::SingleLine));
@@ -247,11 +248,11 @@ impl RenderQueueWriter {
         accum: &mut Intermediary,
         mut bcce: BreakableCallChainEntry,
     ) {
-        let length = bcce.single_line_string_length(accum.current_line_length());
         let must_multiline =
             bcce.any_collapsing_newline_has_heredoc_content() && bcce.in_string_embexpr();
         if must_multiline
-            || ((length > MAX_LINE_LENGTH || bcce.is_multiline()) && !bcce.in_string_embexpr())
+            || ((bcce.is_multiline() || Self::renders_over_max_line_length(accum, &bcce))
+                && !bcce.in_string_embexpr())
         {
             let tokens = bcce.into_tokens(ConvertType::MultiLine);
             Self::render_as(accum, tokens);
@@ -259,6 +260,13 @@ impl RenderQueueWriter {
             bcce.remove_call_chain_magic_tokens();
             Self::render_as(accum, bcce.into_tokens(ConvertType::SingleLine));
         }
+    }
+
+    fn renders_over_max_line_length(
+        accum: &Intermediary,
+        breakable: &dyn AbstractTokenTarget,
+    ) -> bool {
+        breakable.single_line_string_length(accum.current_line_length()) > MAX_LINE_LENGTH
     }
 
     fn write_final_tokens<W: Write>(
