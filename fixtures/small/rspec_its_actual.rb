@@ -17,6 +17,9 @@ end
 
 it("a", flag: true, other: "b", another: false) { 1 }
 
+describe(name, desc, opts, &block)
+describe name, desc, opts, &block
+
 describe "foo" do
   it "foo" do
   end
