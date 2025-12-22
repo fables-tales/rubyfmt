@@ -94,7 +94,7 @@ pub struct BreakableEntry {
     tokens: Vec<AbstractLineToken>,
     line_numbers: HashSet<LineNumber>,
     delims: BreakableDelims,
-    context: Vec<FormattingContext>,
+    in_string_embexpr: bool,
 }
 
 impl AbstractTokenTarget for BreakableEntry {
@@ -176,19 +176,21 @@ impl AbstractTokenTarget for BreakableEntry {
 }
 
 impl BreakableEntry {
-    pub fn new(delims: BreakableDelims, context: Vec<FormattingContext>) -> Self {
+    pub fn new(delims: BreakableDelims, formatting_context: &[FormattingContext]) -> Self {
+        let in_string_embexpr = formatting_context
+            .iter()
+            .any(|fc| fc == &FormattingContext::StringEmbexpr);
+
         BreakableEntry {
             tokens: Vec::new(),
             line_numbers: HashSet::new(),
             delims,
-            context,
+            in_string_embexpr,
         }
     }
 
     pub fn in_string_embexpr(&self) -> bool {
-        self.context
-            .iter()
-            .any(|fc| fc == &FormattingContext::StringEmbexpr)
+        self.in_string_embexpr
     }
 
     fn contains_hard_newline(&self) -> bool {

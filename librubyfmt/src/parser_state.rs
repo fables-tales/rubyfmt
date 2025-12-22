@@ -242,7 +242,7 @@ impl ParserState {
         F: FnOnce(&mut ParserState),
     {
         self.shift_comments();
-        let mut be = BreakableEntry::new(delims, self.formatting_context.clone());
+        let mut be = BreakableEntry::new(delims, &self.formatting_context);
         be.push_line_number(self.current_orig_line_number);
         self.breakable_entry_stack.push(Box::new(be));
 
@@ -278,7 +278,7 @@ impl ParserState {
         F: FnOnce(&mut ParserState),
     {
         self.shift_comments();
-        let mut be = BreakableEntry::new(delims, self.formatting_context.clone());
+        let mut be = BreakableEntry::new(delims, &self.formatting_context);
         be.push_line_number(self.current_orig_line_number);
         self.breakable_entry_stack.push(Box::new(be));
 
