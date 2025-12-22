@@ -4184,20 +4184,13 @@ fn format_match_write_node(ps: &mut ParserState, match_write_node: prism::MatchW
 fn format_multi_target_node(ps: &mut ParserState, multi_target_node: prism::MultiTargetNode) {
     let has_parens = multi_target_node.lparen_loc().is_some();
 
-    if has_parens {
-        ps.emit_open_paren();
-    }
-
     format_multi_targets(
         ps,
         multi_target_node.lefts(),
         multi_target_node.rest(),
         multi_target_node.rights(),
+        has_parens,
     );
-
-    if has_parens {
-        ps.emit_close_paren();
-    }
 }
 
 fn format_multi_targets(
@@ -4205,7 +4198,12 @@ fn format_multi_targets(
     lefts: prism::NodeList,
     rest: Option<prism::Node>,
     rights: prism::NodeList,
+    has_parens: bool,
 ) {
+    if has_parens {
+        ps.emit_open_paren();
+    }
+
     let has_lefts = !lefts.is_empty();
     let has_rest = rest.is_some();
     let has_rights = !rights.is_empty();
@@ -4235,14 +4233,21 @@ fn format_multi_targets(
             format_list_like_thing(ps, rights, rights_offset, true);
         }
     });
+
+    if has_parens {
+        ps.emit_close_paren();
+    }
 }
 
 fn format_multi_write_node(ps: &mut ParserState, multi_write_node: prism::MultiWriteNode) {
+    let has_parens = multi_write_node.lparen_loc().is_some();
+
     format_multi_targets(
         ps,
         multi_write_node.lefts(),
         multi_write_node.rest(),
         multi_write_node.rights(),
+        has_parens,
     );
 
     ps.emit_ident(" = ");
