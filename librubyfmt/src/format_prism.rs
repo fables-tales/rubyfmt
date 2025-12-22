@@ -1661,7 +1661,13 @@ fn use_parens_for_call_node(
         return true;
     }
 
-    if RSPEC_METHODS.contains(method_name) && call_node.receiver().is_none() {
+    if RSPEC_METHODS.contains(method_name)
+        && call_node.receiver().is_none()
+        // Only elide parens for blocks, not block params (`&blk`)
+        && call_node
+            .block()
+            .is_some_and(|blk| blk.as_block_node().is_some())
+    {
         return false;
     }
 
