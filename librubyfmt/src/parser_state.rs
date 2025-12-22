@@ -421,10 +421,10 @@ impl ParserState {
             .has_comments_in_lines(start_line, end_line)
     }
 
-    pub(crate) fn emit_def(&mut self, def_name: String) {
+    pub(crate) fn emit_def(&mut self, def_name: impl Into<Cow<'static, str>>) {
         self.emit_def_keyword();
         self.push_concrete_token(ConcreteLineToken::DirectPart {
-            part: format!(" {}", def_name),
+            part: Cow::Owned(format!(" {}", def_name.into())),
         });
     }
 
@@ -451,8 +451,8 @@ impl ParserState {
         self.push_concrete_token(ConcreteLineToken::LTStringContent { content: s });
     }
 
-    pub(crate) fn emit_ident(&mut self, ident: String) {
-        self.push_concrete_token(ConcreteLineToken::DirectPart { part: ident });
+    pub(crate) fn emit_ident(&mut self, ident: impl Into<Cow<'static, str>>) {
+        self.push_concrete_token(ConcreteLineToken::DirectPart { part: ident.into() });
     }
 
     pub(crate) fn emit_newline(&mut self) {
@@ -658,7 +658,7 @@ impl ParserState {
 
     pub(crate) fn emit_data(&mut self, data: &str) {
         self.push_concrete_token(ConcreteLineToken::DirectPart {
-            part: data.to_string(),
+            part: Cow::Owned(data.to_string()),
         })
     }
 
@@ -726,7 +726,7 @@ impl ParserState {
 
             if !string_contents.is_empty() {
                 self.push_concrete_token(ConcreteLineToken::DirectPart {
-                    part: string_contents,
+                    part: Cow::Owned(string_contents),
                 });
                 self.emit_newline();
             }

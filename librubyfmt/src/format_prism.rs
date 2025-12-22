@@ -407,7 +407,7 @@ fn format_alias_global_variable_node(
     ps: &mut ParserState,
     alias_global_variable_node: prism::AliasGlobalVariableNode,
 ) {
-    ps.emit_ident("alias".to_string());
+    ps.emit_ident("alias");
     ps.emit_space();
 
     ps.with_start_of_line(false, |ps| {
@@ -418,7 +418,7 @@ fn format_alias_global_variable_node(
 }
 
 fn format_alias_method_node(ps: &mut ParserState, alias_method_node: prism::AliasMethodNode) {
-    ps.emit_ident("alias ".to_string());
+    ps.emit_ident("alias ");
 
     ps.with_start_of_line(false, |ps| {
         format_node(ps, alias_method_node.new_name());
@@ -434,7 +434,7 @@ fn format_alternation_pattern_node(
     ps.with_start_of_line(false, |ps| {
         format_node(ps, alternation_pattern_node.left());
         ps.emit_space();
-        ps.emit_ident("|".to_string());
+        ps.emit_ident("|");
         ps.emit_space();
         format_node(ps, alternation_pattern_node.right());
     });
@@ -524,7 +524,7 @@ fn format_begin_node(ps: &mut ParserState, begin_node: prism::BeginNode) {
 }
 
 fn format_break_node(ps: &mut ParserState, break_node: prism::BreakNode) {
-    ps.emit_ident("break".to_string());
+    ps.emit_ident("break");
     if let Some(arguments_node) = break_node.arguments() {
         ps.with_start_of_line(false, |ps| {
             ps.breakable_of(BreakableDelims::for_kw(), |ps| {
@@ -541,7 +541,7 @@ fn format_capture_pattern_node(
     ps.with_start_of_line(false, |ps| {
         format_node(ps, capture_pattern_node.value());
         ps.emit_space();
-        ps.emit_ident("=>".to_string());
+        ps.emit_ident("=>");
         ps.emit_space();
         format_node(ps, capture_pattern_node.target().as_node());
     });
@@ -982,7 +982,7 @@ fn format_interpolated_symbol_node(
     ps: &mut ParserState,
     interpolated_symbol_node: prism::InterpolatedSymbolNode,
 ) {
-    ps.emit_ident(":".to_string());
+    ps.emit_ident(":");
     ps.emit_double_quote();
 
     ps.with_start_of_line(false, |ps| {
@@ -1005,7 +1005,7 @@ fn format_interpolated_x_string_node(
     ps: &mut ParserState,
     interpolated_x_string_node: prism::InterpolatedXStringNode,
 ) {
-    ps.emit_ident("`".to_string());
+    ps.emit_ident("`");
 
     ps.with_start_of_line(false, |ps| {
         for part in interpolated_x_string_node.parts().iter() {
@@ -1018,7 +1018,7 @@ fn format_interpolated_x_string_node(
         }
     });
 
-    ps.emit_ident("`".to_string());
+    ps.emit_ident("`");
 }
 
 fn format_it_local_variable_read_node(
@@ -1193,7 +1193,7 @@ fn format_class_node(ps: &mut ParserState, class_node: prism::ClassNode) {
     ps.with_start_of_line(false, |ps| format_node(ps, class_node.constant_path()));
 
     if let Some(superclass) = class_node.superclass() {
-        ps.emit_ident(" < ".to_string());
+        ps.emit_ident(" < ");
         ps.with_start_of_line(false, |ps| {
             format_node(ps, superclass);
         });
@@ -1403,7 +1403,7 @@ fn format_def_body(ps: &mut ParserState, def_node: prism::DefNode) {
 
 fn format_defined_node(ps: &mut ParserState, defined_node: prism::DefinedNode) {
     ps.with_start_of_line(false, |ps| {
-        ps.emit_ident("defined?(".to_string());
+        ps.emit_ident("defined?(");
         format_node(ps, defined_node.value());
         ps.emit_close_paren();
     });
@@ -1546,7 +1546,7 @@ fn format_parameters_node(ps: &mut ParserState, params: prism::ParametersNode) {
 fn format_block_parameter_node(ps: &mut ParserState, block_arg: prism::BlockParameterNode) {
     ps.with_start_of_line(false, |ps| {
         ps.emit_soft_indent();
-        ps.emit_ident("&".to_string());
+        ps.emit_ident("&");
         if let Some(ident) = block_arg.name() {
             let ident_str = const_to_string(ident);
             ps.bind_variable(ident_str.clone());
@@ -1556,7 +1556,7 @@ fn format_block_parameter_node(ps: &mut ParserState, block_arg: prism::BlockPara
 }
 
 fn format_block_argument_node(ps: &mut ParserState, block_argument_node: prism::BlockArgumentNode) {
-    ps.emit_ident("&".to_string());
+    ps.emit_ident("&");
     if let Some(expression_node) = block_argument_node.expression() {
         ps.with_start_of_line(false, |ps| {
             format_node(ps, expression_node);
@@ -1767,7 +1767,7 @@ fn format_call_node(
                     });
                 });
 
-                ps.emit_ident(" = ".to_string());
+                ps.emit_ident(" = ");
 
                 let last_arg =
                     arguments.arguments().iter().last().expect(
@@ -1775,7 +1775,7 @@ fn format_call_node(
                     );
                 ps.with_start_of_line(false, |ps| format_node(ps, last_arg));
             } else if call_node.is_attribute_write() {
-                ps.emit_ident(" = ".to_string());
+                ps.emit_ident(" = ");
                 let value = arguments
                     .arguments()
                     .iter()
@@ -2462,7 +2462,7 @@ fn format_symbol_node(ps: &mut ParserState, symbol_node: prism::SymbolNode) {
     let is_single_quoted = opener.as_ref().map(|s| s == ":'").unwrap_or(false);
 
     if is_single_quoted {
-        ps.emit_ident(":".to_string());
+        ps.emit_ident(":");
         ps.emit_double_quote();
 
         if let Some(value_loc) = symbol_node.value_loc() {
@@ -2515,15 +2515,15 @@ fn format_assoc_node(ps: &mut ParserState, assoc_node: prism::AssocNode) {
         // Check if we're rendering a symbol key as a rocket,
         // in which case we need to add back the leading colon
         if !as_symbol && assoc_node.operator_loc().is_none() {
-            ps.emit_ident(":".to_string());
+            ps.emit_ident(":");
         }
 
         format_node(ps, assoc_node.key());
         if as_symbol {
-            ps.emit_ident(":".to_string());
+            ps.emit_ident(":");
         } else {
             ps.emit_space();
-            ps.emit_ident("=>".to_string());
+            ps.emit_ident("=>");
         }
         // For assoc nodes, skip the space so it renders as `{ a:, b:, c: }`
         if assoc_node.value().as_implicit_node().is_none() {
@@ -2535,7 +2535,7 @@ fn format_assoc_node(ps: &mut ParserState, assoc_node: prism::AssocNode) {
 
 fn format_assoc_splat_node(ps: &mut ParserState, assoc_splat_node: prism::AssocSplatNode) {
     ps.with_start_of_line(false, |ps| {
-        ps.emit_ident("**".to_string());
+        ps.emit_ident("**");
         if let Some(value) = assoc_splat_node.value() {
             format_node(ps, value);
         }
@@ -2664,7 +2664,7 @@ fn format_block_parameters_names(
         format_parameters_node(ps, parameters);
     }
     if has_locals {
-        ps.emit_ident(";".to_string());
+        ps.emit_ident(";");
         ps.with_start_of_line(false, |ps| {
             format_list_like_thing(ps, locals, end_offset, true);
         });
@@ -3033,7 +3033,7 @@ fn split_node_into_call_chains(node: prism::Node) -> Vec<Vec<prism::Node>> {
 fn format_rest_parameter_node(ps: &mut ParserState, rest_param: prism::RestParameterNode) {
     ps.with_start_of_line(false, |ps| {
         ps.emit_soft_indent();
-        ps.emit_ident("*".to_string());
+        ps.emit_ident("*");
         ps.with_start_of_line(false, |ps| {
             if let Some(name) = rest_param.name() {
                 let name_str = const_to_string(name);
@@ -3085,7 +3085,7 @@ fn format_keyword_rest_parameter_node(
     keyword_rest_parameter_node: prism::KeywordRestParameterNode,
 ) {
     ps.emit_soft_indent();
-    ps.emit_ident("**".to_string());
+    ps.emit_ident("**");
     if let Some(constant_id) = keyword_rest_parameter_node.name() {
         let name = const_to_string(constant_id);
         ps.bind_variable(name.clone());
@@ -3100,7 +3100,7 @@ fn format_required_keyword_parameter_node(
     let name = const_to_string(required_keyword_parameter_node.name());
     ps.bind_variable(name.clone());
     ps.emit_ident(name);
-    ps.emit_ident(":".to_string());
+    ps.emit_ident(":");
 }
 
 fn format_required_parameter_node(
@@ -3188,7 +3188,7 @@ fn format_local_variable_write_node(
 }
 
 fn format_splat_node(ps: &mut ParserState, splat_node: prism::SplatNode) {
-    ps.emit_ident("*".to_string());
+    ps.emit_ident("*");
     if let Some(node) = splat_node.expression() {
         ps.with_start_of_line(false, |ps| {
             format_node(ps, node);
@@ -3279,7 +3279,7 @@ fn format_forwarding_super_node(
     ps: &mut ParserState,
     forwarding_super_node: prism::ForwardingSuperNode,
 ) {
-    ps.emit_ident("super".to_string());
+    ps.emit_ident("super");
     if let Some(block) = forwarding_super_node.block() {
         ps.emit_space();
         format_block_node(ps, block);
@@ -3287,7 +3287,7 @@ fn format_forwarding_super_node(
 }
 
 fn format_super_node(ps: &mut ParserState, super_node: prism::SuperNode) {
-    ps.emit_ident("super".to_string());
+    ps.emit_ident("super");
     // Note that we always emit parens for SuperNodes,
     // since they're distinct from ForwardingSuperNode which never use parens
     ps.with_start_of_line(false, |ps| {
@@ -3398,7 +3398,7 @@ fn format_hash_node(ps: &mut ParserState, hash_node: prism::HashNode) {
                     ps.wind_dumping_comments_until_offset(end_offset);
                 });
             } else {
-                ps.emit_ident("{}".to_string());
+                ps.emit_ident("{}");
                 ps.wind_dumping_comments_until_offset(end_offset);
             }
         } else {
@@ -3699,7 +3699,7 @@ fn format_if_node(ps: &mut ParserState, if_node: prism::IfNode) {
         ps.with_formatting_context(FormattingContext::IfOp, |ps| {
             ps.with_start_of_line(false, |ps| {
                 format_node(ps, if_node.predicate());
-                ps.emit_ident(" ? ".to_string());
+                ps.emit_ident(" ? ");
 
                 format_node(
                     ps,
@@ -4244,13 +4244,13 @@ fn format_multi_write_node(ps: &mut ParserState, multi_write_node: prism::MultiW
         multi_write_node.rights(),
     );
 
-    ps.emit_ident(" = ".to_string());
+    ps.emit_ident(" = ");
 
     ps.with_start_of_line(false, |ps| format_node(ps, multi_write_node.value()));
 }
 
 fn format_next_node(ps: &mut ParserState, next_node: prism::NextNode) {
-    ps.emit_ident("next".to_string());
+    ps.emit_ident("next");
     if let Some(arguments_node) = next_node.arguments() {
         ps.with_start_of_line(false, |ps| {
             ps.breakable_of(BreakableDelims::for_kw(), |ps| {
@@ -4261,7 +4261,7 @@ fn format_next_node(ps: &mut ParserState, next_node: prism::NextNode) {
 }
 
 fn format_nil_node(ps: &mut ParserState) {
-    ps.emit_ident("nil".to_string());
+    ps.emit_ident("nil");
 }
 
 fn format_no_keywords_parameter_node(
@@ -4330,7 +4330,7 @@ fn format_pinned_expression_node(
     ps: &mut ParserState,
     pinned_expression_node: prism::PinnedExpressionNode,
 ) {
-    ps.emit_ident("^".to_string());
+    ps.emit_ident("^");
     ps.emit_open_paren();
     ps.with_start_of_line(false, |ps| {
         format_node(ps, pinned_expression_node.expression());
@@ -4342,7 +4342,7 @@ fn format_pinned_variable_node(
     ps: &mut ParserState,
     pinned_variable_node: prism::PinnedVariableNode,
 ) {
-    ps.emit_ident("^".to_string());
+    ps.emit_ident("^");
     ps.with_start_of_line(false, |ps| {
         format_node(ps, pinned_variable_node.variable());
     });
@@ -4409,7 +4409,7 @@ fn format_rational_node(ps: &mut ParserState, rational_node: prism::RationalNode
 }
 
 fn format_redo_node(ps: &mut ParserState) {
-    ps.emit_ident("redo".to_string());
+    ps.emit_ident("redo");
 }
 
 fn format_regular_expression_node(
@@ -4489,7 +4489,7 @@ fn format_retry_node(ps: &mut ParserState) {
 }
 
 fn format_return_node(ps: &mut ParserState, return_node: prism::ReturnNode) {
-    ps.emit_ident("return".to_string());
+    ps.emit_ident("return");
     ps.with_start_of_line(false, |ps| {
         if let Some(arguments) = return_node.arguments() {
             let arguments_list = arguments.arguments();
@@ -4525,9 +4525,9 @@ fn format_singleton_class_node(
 ) {
     ps.emit_class_keyword();
     ps.emit_space();
-    ps.emit_ident("<<".to_string());
+    ps.emit_ident("<<");
     ps.emit_space();
-    ps.emit_ident("self".to_string());
+    ps.emit_ident("self");
 
     ps.new_block(|ps| {
         ps.with_start_of_line(true, |ps| {
@@ -4571,7 +4571,7 @@ fn format_source_line_node(ps: &mut ParserState, source_line_node: prism::Source
 }
 
 fn format_self_node(ps: &mut ParserState) {
-    ps.emit_ident("self".to_string());
+    ps.emit_ident("self");
 }
 
 fn format_true_node(ps: &mut ParserState, true_node: prism::TrueNode) {
@@ -4587,7 +4587,7 @@ fn format_undef_node(ps: &mut ParserState, undef_node: prism::UndefNode) {
         .location()
         .end_offset();
 
-    ps.emit_ident("undef ".to_string());
+    ps.emit_ident("undef ");
     ps.with_start_of_line(false, |ps| {
         format_list_like_thing(ps, names, end_offset, true);
     });
@@ -4635,13 +4635,13 @@ fn format_while_node(ps: &mut ParserState, while_node: prism::WhileNode) {
 }
 
 fn format_x_string_node(ps: &mut ParserState, x_string_node: prism::XStringNode) {
-    ps.emit_ident("`".to_string());
+    ps.emit_ident("`");
     ps.emit_string_content(loc_to_string(x_string_node.content_loc()));
-    ps.emit_ident("`".to_string());
+    ps.emit_ident("`");
 }
 
 fn format_yield_node(ps: &mut ParserState, yield_node: prism::YieldNode) {
-    ps.emit_ident("yield".to_string());
+    ps.emit_ident("yield");
     if let Some(arguments) = yield_node.arguments() {
         let use_parens = ps.current_formatting_context_requires_parens()
             || yield_node.lparen_loc().is_some()

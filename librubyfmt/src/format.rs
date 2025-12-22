@@ -146,7 +146,7 @@ pub fn format_blockvar(ps: &mut ParserState, bv: BlockVar) {
                 None => {}
                 Some(f_params) => {
                     if !f_params.is_empty() {
-                        ps.emit_ident(";".to_string());
+                        ps.emit_ident(";");
 
                         ps.with_start_of_line(false, |ps| {
                             format_list_like_thing_items(
@@ -193,7 +193,7 @@ pub fn format_kwrest_params(
         KwRestParamOrArgsForward::KwRestParam(kwrest_params) => {
             ps.with_start_of_line(false, |ps| {
                 ps.emit_soft_indent();
-                ps.emit_ident("**".to_string());
+                ps.emit_ident("**");
                 let ident = kwrest_params.1;
                 if let Some(ident) = ident {
                     bind_ident(ps, &ident);
@@ -212,7 +212,7 @@ pub fn format_block_arg(ps: &mut ParserState, block_arg: Option<BlockArgOrTag>) 
         Some(BlockArgOrTag::BlockArg(ba)) => {
             ps.with_start_of_line(false, |ps| {
                 ps.emit_soft_indent();
-                ps.emit_ident("&".to_string());
+                ps.emit_ident("&");
                 if let Some(ident) = ba.1 {
                     bind_ident(ps, &ident);
                     format_ident(ps, ident);
@@ -270,7 +270,7 @@ pub fn format_rest_param(
                 if special_case != SpecialCase::RestParamOutsideOfParamDef {
                     ps.emit_soft_indent();
                 }
-                ps.emit_ident("*".to_string());
+                ps.emit_ident("*");
                 ps.with_start_of_line(false, |ps| {
                     match rp.1 {
                         Some(RestParamAssignable::Ident(i)) => {
@@ -312,7 +312,7 @@ pub fn format_optional_params(
             ps.emit_soft_indent();
             bind_ident(ps, &left);
             format_ident(ps, left);
-            ps.emit_ident(" = ".to_string());
+            ps.emit_ident(" = ");
             format_expression(ps, right);
             emit_params_separator(ps, idx, len);
         }
@@ -479,7 +479,7 @@ pub fn format_rescue_capture(
             if class_present {
                 ps.emit_space();
             }
-            ps.emit_ident("=>".to_string());
+            ps.emit_ident("=>");
             ps.emit_space();
             format_assignable(ps, expr);
         }
@@ -867,7 +867,7 @@ pub fn format_alias(ps: &mut ParserState, alias: Alias) {
         ps.emit_indent();
     }
 
-    ps.emit_ident("alias ".to_string());
+    ps.emit_ident("alias ");
 
     ps.with_start_of_line(false, |ps| {
         format_symbol_literal_or_dyna_symbol(ps, alias.1);
@@ -894,7 +894,7 @@ pub fn format_symbol_literal_or_dyna_symbol(
 
 pub fn format_op(ps: &mut ParserState, op: Op) {
     match op.1 {
-        Operator::Equals(_) => ps.emit_ident("==".to_string()),
+        Operator::Equals(_) => ps.emit_ident("=="),
         Operator::Dot(_) => ps.emit_dot(),
         Operator::LonelyOperator(_) => ps.emit_lonely_operator(),
         Operator::StringOperator(s) => ps.emit_ident(s),
@@ -926,7 +926,7 @@ pub fn format_backtick(ps: &mut ParserState, backtick: Backtick) {
 }
 
 pub fn format_symbol(ps: &mut ParserState, symbol: Symbol) {
-    ps.emit_ident(":".to_string());
+    ps.emit_ident(":");
     match symbol.1 {
         IdentOrConstOrKwOrOpOrIvarOrGvarOrCvarOrBacktick::Ident(i) => format_ident(ps, i),
         IdentOrConstOrKwOrOpOrIvarOrGvarOrCvarOrBacktick::Const(c) => format_const(ps, c),
@@ -1018,13 +1018,13 @@ pub fn format_assoc(ps: &mut ParserState, assoc: AssocNewOrAssocSplat, all_label
                             .to_owned();
                         format_symbol(ps, Symbol::from_string(colonless_label, label.2));
                         ps.emit_space();
-                        ps.emit_ident("=>".to_string());
+                        ps.emit_ident("=>");
                     }
                 }
                 AssocKey::Expression(expression) => {
                     format_expression(ps, expression);
                     ps.emit_space();
-                    ps.emit_ident("=>".to_string());
+                    ps.emit_ident("=>");
                 }
             }
             if let Some(expr) = new.2 {
@@ -1033,7 +1033,7 @@ pub fn format_assoc(ps: &mut ParserState, assoc: AssocNewOrAssocSplat, all_label
             }
         }
         AssocNewOrAssocSplat::AssocSplat(splat) => {
-            ps.emit_ident("**".to_string());
+            ps.emit_ident("**");
             format_expression(ps, splat.1);
         }
     });
@@ -1326,7 +1326,7 @@ pub fn format_list_like_thing(
             emitted_args = true;
 
             ps.with_start_of_line(false, |ps| {
-                ps.emit_ident("*".to_string());
+                ps.emit_ident("*");
                 format_expression(ps, *star);
 
                 for expr in right {
@@ -1509,9 +1509,9 @@ pub fn format_xstring_literal(ps: &mut ParserState, xsl: XStringLiteral) {
         ps.emit_indent();
     }
 
-    ps.emit_ident("`".to_string());
+    ps.emit_ident("`");
     format_inner_string(ps, parts, StringType::Quoted);
-    ps.emit_ident("`".to_string());
+    ps.emit_ident("`");
 
     if ps.at_start_of_line() {
         ps.emit_newline();
@@ -1691,7 +1691,7 @@ pub fn format_massign(ps: &mut ParserState, massign: MAssign) {
             AssignableListOrMLhs::MLhs(mlhs) => format_mlhs(ps, mlhs),
         }
         ps.emit_space();
-        ps.emit_ident("=".to_string());
+        ps.emit_ident("=");
         ps.emit_space();
         match massign.2 {
             MRHSOrArray::MRHS(mrhs) => {
@@ -1773,7 +1773,7 @@ pub fn format_defined(ps: &mut ParserState, defined: Defined) {
     }
 
     ps.with_start_of_line(false, |ps| {
-        ps.emit_ident("defined?".to_string());
+        ps.emit_ident("defined?");
         ps.emit_open_paren();
         format_expression(ps, *defined.1);
         ps.emit_close_paren();
@@ -1826,7 +1826,7 @@ pub fn format_mrhs_add_star(ps: &mut ParserState, mrhs: MRHSAddStar) {
                 ps.emit_comma_space();
             }
         }
-        ps.emit_ident("*".to_string());
+        ps.emit_ident("*");
         ps.with_start_of_line(false, |ps| {
             format_expression(ps, *second);
         });
@@ -1840,7 +1840,7 @@ pub fn format_next(ps: &mut ParserState, next: Next) {
 
     ps.with_start_of_line(false, |ps| {
         ps.on_line((next.2).0);
-        ps.emit_ident("next".to_string());
+        ps.emit_ident("next");
         match next.1 {
             ArgsAddBlockOrExpressionList::ExpressionList(e) => {
                 if !e.is_empty() {
@@ -1879,20 +1879,20 @@ pub fn format_unary(ps: &mut ParserState, unary: Unary) {
     ps.with_start_of_line(false, |ps| {
         match unary.1 {
             UnaryType::Not => {
-                ps.emit_ident("not".to_string());
+                ps.emit_ident("not");
                 ps.emit_space();
             }
             UnaryType::Positive => {
-                ps.emit_ident("+".to_string());
+                ps.emit_ident("+");
             }
             UnaryType::Negative => {
-                ps.emit_ident("-".to_string());
+                ps.emit_ident("-");
             }
             UnaryType::BooleanNot => {
-                ps.emit_ident("!".to_string());
+                ps.emit_ident("!");
             }
             UnaryType::BitwiseNot => {
-                ps.emit_ident("~".to_string());
+                ps.emit_ident("~");
             }
         }
 
@@ -1936,7 +1936,7 @@ pub fn format_dyna_symbol(ps: &mut ParserState, ds: DynaSymbol) {
         ps.emit_indent();
     }
 
-    ps.emit_ident(":".to_string());
+    ps.emit_ident(":");
     ps.with_start_of_line(false, |ps| {
         format_string_literal(ps, ds.to_string_literal());
     });
@@ -1951,7 +1951,7 @@ pub fn format_undef(ps: &mut ParserState, undef: Undef) {
         ps.emit_indent();
     }
 
-    ps.emit_ident("undef ".to_string());
+    ps.emit_ident("undef ");
     let length = undef.1.len();
     for (idx, literal) in undef.1.into_iter().enumerate() {
         ps.with_start_of_line(false, |ps| {
@@ -2069,7 +2069,7 @@ pub fn format_class(ps: &mut ParserState, class: Class) {
         }
 
         if let Some(inherit_expression) = inherit {
-            ps.emit_ident(" < ".to_string());
+            ps.emit_ident(" < ");
             format_expression(ps, *inherit_expression);
         }
     });
@@ -2344,7 +2344,7 @@ pub fn format_hash(ps: &mut ParserState, hash: Hash) {
                     ps.wind_dumping_comments_until_line(end_line);
                 });
             } else {
-                ps.emit_ident("{}".to_string());
+                ps.emit_ident("{}");
                 ps.wind_dumping_comments_until_line(end_line);
             }
         }
@@ -2485,7 +2485,7 @@ fn format_call_chain_elements(
                 next_args_list_must_use_parens = ident.1 == "super" || ident.1 == ".()";
 
                 if ident.1 == ".()" {
-                    ps.emit_ident(".".to_string());
+                    ps.emit_ident(".");
                 } else {
                     format_ident(ps, ident);
                 }
@@ -3013,7 +3013,7 @@ pub fn format_sclass(ps: &mut ParserState, sc: SClass) {
     ps.with_start_of_line(false, |ps| {
         ps.emit_keyword("class");
         ps.emit_space();
-        ps.emit_ident("<<".to_string());
+        ps.emit_ident("<<");
         ps.emit_space();
         format_expression(ps, *expr);
         ps.emit_newline();
@@ -3206,12 +3206,12 @@ pub fn format_opassign(ps: &mut ParserState, opassign: OpAssign) {
     }
 }
 pub fn format_to_proc(ps: &mut ParserState, e: Box<Expression>) {
-    ps.emit_ident("&".to_string());
+    ps.emit_ident("&");
     ps.with_start_of_line(false, |ps| format_expression(ps, *e));
 }
 
 pub fn format_anon_block_arg(ps: &mut ParserState) {
-    ps.emit_ident("&".to_string());
+    ps.emit_ident("&");
 }
 
 pub fn format_zsuper(ps: &mut ParserState, start_end: StartEnd) {
