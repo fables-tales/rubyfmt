@@ -4293,7 +4293,9 @@ fn format_optional_keyword_parameter_node(
     ps: &mut ParserState,
     optional_keyword_parameter_node: prism::OptionalKeywordParameterNode,
 ) {
-    ps.emit_ident(const_to_string(optional_keyword_parameter_node.name()));
+    let name = const_to_string(optional_keyword_parameter_node.name());
+    ps.bind_variable(name.clone());
+    ps.emit_ident(name);
     ps.emit_op(Cow::Borrowed(":"));
     ps.emit_space();
     ps.with_start_of_line(false, |ps| {
