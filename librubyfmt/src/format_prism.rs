@@ -2105,22 +2105,15 @@ fn format_call_chain(ps: &mut ParserState, call_node: ruby_prism::CallNode<'_>) 
             .map(|c| c.is_attribute_write())
             .unwrap_or(false);
 
-        if is_attribute_write {
-            if cfg!(debug_assertions) {
-                assert!(
-                    segments.len() == 1,
-                    "attribute_write call chain had multiple segments"
-                );
-            }
-            let chain = segments.into_iter().next().unwrap();
-            format_call_body(ps, chain, true, false);
-        } else {
-            format_call_chain_segments(ps, segments);
-        }
+        format_call_chain_segments(ps, segments, is_attribute_write);
     });
 }
 
-fn format_call_chain_segments(ps: &mut ParserState, mut segments: Vec<Vec<prism::Node>>) {
+fn format_call_chain_segments(
+    ps: &mut ParserState,
+    mut segments: Vec<Vec<prism::Node>>,
+    is_attr_write: bool,
+) {
     if let Some(current) = segments.pop() {
         let has_inner = !segments.is_empty();
 
@@ -2130,9 +2123,10 @@ fn format_call_chain_segments(ps: &mut ParserState, mut segments: Vec<Vec<prism:
 
         ps.breakable_call_chain_of(MultilineHandling::Prism(is_user_multilined), |ps| {
             // Recurse and format previous segments inside this breakable
-            format_call_chain_segments(ps, segments);
+            // Inner segments are never attribute writes
+            format_call_chain_segments(ps, segments, false);
 
-            format_call_body(ps, chain_elements, false, has_inner);
+            format_call_body(ps, chain_elements, is_attr_write, has_inner);
         });
 
         // Trailing arefs are formatted after the breakable
