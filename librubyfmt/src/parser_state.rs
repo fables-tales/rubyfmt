@@ -57,7 +57,7 @@ impl IndentDepth {
 
 #[derive(Debug)]
 pub struct ParserState {
-    depth_stack: Vec<IndentDepth>,
+    indent_depth: IndentDepth,
     start_of_line: Vec<bool>,
     suppress_comments_stack: Vec<bool>,
     render_queue: BaseQueue,
@@ -210,8 +210,7 @@ impl ParserState {
     }
 
     pub(crate) fn start_indent(&mut self) {
-        let ds_length = self.depth_stack.len();
-        self.depth_stack[ds_length - 1].increment();
+        self.indent_depth.increment();
     }
 
     pub(crate) fn start_indent_for_call_chain(&mut self) {
@@ -223,8 +222,7 @@ impl ParserState {
     }
 
     pub(crate) fn end_indent(&mut self) {
-        let ds_length = self.depth_stack.len();
-        self.depth_stack[ds_length - 1].decrement();
+        self.indent_depth.decrement();
     }
 
     pub(crate) fn with_start_of_line<F>(&mut self, start_of_line: bool, f: F)
@@ -764,7 +762,7 @@ impl ParserState {
 impl ParserState {
     pub(crate) fn new(fc: FileComments) -> Self {
         ParserState {
-            depth_stack: vec![IndentDepth::new()],
+            indent_depth: IndentDepth::new(),
             start_of_line: vec![true],
             suppress_comments_stack: vec![false],
             render_queue: BaseQueue::default(),
@@ -825,11 +823,7 @@ impl ParserState {
     }
 
     pub(crate) fn current_spaces(&self) -> ColNumber {
-        2 * self
-            .depth_stack
-            .last()
-            .expect("depth stack is never empty")
-            .get()
+        2 * self.indent_depth.get()
     }
 
     pub(crate) fn disable_user_newlines(&mut self) {
@@ -852,7 +846,7 @@ impl ParserState {
 
     pub(crate) fn new_with_depth_stack_from(ps: &ParserState) -> Self {
         let mut next_ps = ParserState::new_with_reset_depth_stack(ps);
-        next_ps.depth_stack = ps.depth_stack.clone();
+        next_ps.indent_depth = ps.indent_depth.clone();
         next_ps
     }
 
