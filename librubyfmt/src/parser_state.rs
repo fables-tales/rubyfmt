@@ -814,8 +814,8 @@ impl ParserState {
         let idx = self.index_of_prev_hard_newline();
         let insert_idx = idx.unwrap_or(0);
 
-        if self.breakable_entry_stack.last().is_some() {
-            self.breakable_entry_stack.last_mut().unwrap().insert_at(
+        if let Some(entry) = self.breakable_entry_stack.last_mut() {
+            entry.insert_at(
                 insert_idx,
                 &mut vec![AbstractLineToken::ConcreteLineToken(
                     ConcreteLineToken::HardNewLine,
