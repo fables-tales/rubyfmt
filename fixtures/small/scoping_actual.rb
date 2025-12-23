@@ -28,3 +28,5 @@ class MyTestClass
     File.write(path(), 'One medium-sized bufo, if I may')
   end
 end
+
+foo = self.foo.any?

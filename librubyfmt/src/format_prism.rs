@@ -1608,7 +1608,8 @@ fn use_parens_for_call_node(
     if ps.scope_has_variable(method_name) {
         if call_node.receiver().is_none() {
             return original_used_parens;
-        } else if let Some(receiver) = call_node.receiver()
+        } else if is_terminal_call
+            && let Some(receiver) = call_node.receiver()
             && receiver.as_self_node().is_some()
         {
             return true;
