@@ -204,10 +204,9 @@ impl ParserState {
     where
         F: FnOnce(&mut ParserState),
     {
-        let ds_length = self.depth_stack.len();
-        self.depth_stack[ds_length - 1].decrement();
+        self.end_indent();
         f(self);
-        self.depth_stack[ds_length - 1].increment();
+        self.start_indent();
     }
 
     pub(crate) fn start_indent(&mut self) {
@@ -351,10 +350,9 @@ impl ParserState {
     where
         F: FnOnce(&mut ParserState),
     {
-        let ds_length = self.depth_stack.len();
-        self.depth_stack[ds_length - 1].increment();
+        self.start_indent();
         f(self);
-        self.depth_stack[ds_length - 1].decrement();
+        self.end_indent();
     }
 
     pub(crate) fn with_formatting_context<F>(&mut self, fc: FormattingContext, f: F)
