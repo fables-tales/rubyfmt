@@ -67,7 +67,18 @@ pub fn format_node(ps: &mut ParserState, node: prism::Node) {
         Node::CallNode { .. } => {
             let call_node = node.as_call_node().unwrap();
             let is_last_call_in_chain = call_node.receiver().is_none();
-            format_call_node(ps, call_node, false, is_last_call_in_chain)
+
+            // Wrap standalone calls (no receiver) with blocks in a BreakableCallChainEntry
+            // so that line-length machinery can ignore nested blocks.
+            let has_block = call_node.block().and_then(|b| b.as_block_node()).is_some();
+
+            if is_last_call_in_chain && has_block {
+                ps.breakable_call_chain_of(MultilineHandling::Prism(false), |ps| {
+                    format_call_node(ps, call_node, false, is_last_call_in_chain);
+                });
+            } else {
+                format_call_node(ps, call_node, false, is_last_call_in_chain)
+            }
         }
         Node::CallOperatorWriteNode { .. } => {
             format_call_operator_write_node(ps, node.as_call_operator_write_node().unwrap())
