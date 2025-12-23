@@ -8,7 +8,7 @@ use crate::{
     parser_state::{FormattingContext, HashType, ParserState},
     render_targets::MultilineHandling,
     types::SourceOffset,
-    util::{const_to_str, const_to_string, loc_to_str, loc_to_string},
+    util::{const_to_str, const_to_string, loc_to_str, loc_to_string, u8_to_str},
 };
 
 pub fn format_node(ps: &mut ParserState, node: prism::Node) {
@@ -862,11 +862,11 @@ fn format_heredoc(ps: &mut ParserState, heredoc: HeredocNodeType, heredoc_symbol
 
 fn maybe_render_heredocs_in_string<'a>(
     ps: &mut ParserState,
-    peekable: &mut std::iter::Peekable<impl Iterator<Item = (usize, &'a prism::Node<'a>)>>,
+    peekable: &mut std::iter::Peekable<impl Iterator<Item = &'a prism::Node<'a>>>,
 ) {
     let should_render = peekable
         .peek()
-        .and_then(|(_, node)| {
+        .and_then(|node| {
             node.as_string_node()
                 .map(|sn| loc_to_str(sn.content_loc()).starts_with('\n'))
         })
@@ -877,53 +877,38 @@ fn maybe_render_heredocs_in_string<'a>(
 }
 
 fn format_inner_string(ps: &mut ParserState, parts: Vec<prism::Node>, heredoc_kind: HeredocKind) {
-    // For squiggly heredocs, calculate the common indentation to strip.
-    // We only look at lines that start at the beginning of a StringNode part
-    // (not continuations after an interpolation on the same line).
+    // For squiggly heredocs, determine common_indent by comparing the leading whitespace
+    // in content_loc vs unescaped for any StringNode. Prism's unescaped already has the
+    // common indent stripped, so the difference in leading whitespace tells us how much.
     let common_indent = if heredoc_kind.is_squiggly() {
         parts
             .iter()
-            .enumerate()
-            .filter_map(|(i, part)| {
+            .filter_map(|part| {
                 if let Some(node) = part.as_string_node() {
-                    let content = loc_to_str(node.content_loc());
-                    // Only consider the first line of this part if it follows a newline
-                    // (i.e., if the previous part ended with a newline, or this is the first part)
-                    let prev_ends_with_newline = if i == 0 {
-                        true
-                    } else {
-                        // After interpolation, might not be at line start
-                        let default_value = false;
-                        parts[i - 1]
-                            .as_string_node()
-                            .map(|node| loc_to_str(node.content_loc()).ends_with('\n'))
-                            .unwrap_or(default_value)
-                    };
+                    let raw = loc_to_str(node.content_loc());
+                    let unescaped = u8_to_str(node.unescaped());
 
-                    // Find minimum indent, but skip the first line if it doesn't start
-                    // at a line boundary (i.e., it follows an interpolation)
-                    content
-                        .lines()
-                        .enumerate()
-                        .filter(|(line_idx, line)| {
-                            !line.trim().is_empty() && (*line_idx > 0 || prev_ends_with_newline)
-                        })
-                        .map(|(_, line)| line.len() - line.trim_start().len())
-                        .min()
-                } else {
-                    None
+                    // Count leading whitespace in each
+                    let raw_leading = raw.len() - raw.trim_start().len();
+                    let unescaped_leading = unescaped.len() - unescaped.trim_start().len();
+
+                    // The difference is the common indent (if raw has more leading whitespace)
+                    if raw_leading > unescaped_leading {
+                        return Some(raw_leading - unescaped_leading);
+                    }
                 }
+                None
             })
-            .min()
+            .next()
             .unwrap_or(0)
     } else {
         0
     };
 
-    let mut peekable = parts.iter().enumerate().peekable();
+    let mut peekable = parts.iter().peekable();
     let mut prev_ended_with_newline = true;
 
-    while let Some((idx, part)) = peekable.next() {
+    while let Some(part) = peekable.next() {
         match part {
             prism::Node::StringNode { .. } => {
                 let part = part.as_string_node().unwrap();
@@ -931,20 +916,11 @@ fn format_inner_string(ps: &mut ParserState, parts: Vec<prism::Node>, heredoc_ki
                 let mut contents = {
                     let raw = loc_to_str(part.content_loc());
                     if common_indent > 0 {
-                        // Track whether this part's first line is at a true line boundary
-                        let first_line_is_at_boundary = if idx == 0 {
-                            true
-                        } else {
-                            prev_ended_with_newline
-                        };
-
                         raw.split('\n')
                             .enumerate()
                             .map(|(line_idx, line)| {
-                                // Only strip from lines that:
-                                // 1. Are at a true line boundary
-                                // 2. Have enough characters to strip
-                                let should_strip = (line_idx > 0 || first_line_is_at_boundary)
+                                // Strip from lines at line boundaries
+                                let should_strip = (line_idx > 0 || prev_ended_with_newline)
                                     && !line.is_empty()
                                     && line.len() >= common_indent;
                                 if should_strip {
