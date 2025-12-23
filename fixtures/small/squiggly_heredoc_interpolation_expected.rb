@@ -14,6 +14,16 @@ def foo
   FOO
 end
 
+<<~EOF
+  #{username} added this context to the operation:
+   #{user_context}
+EOF
+
+<<-EOF
+  #{username} added this context to the operation:
+   #{user_context}
+EOF
+
 class Foo
   def to_chunks
     <<~JS
