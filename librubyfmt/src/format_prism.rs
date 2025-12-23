@@ -457,7 +457,7 @@ fn format_and_node(ps: &mut ParserState, and_node: prism::AndNode) {
             format_infix_operator(
                 ps,
                 and_node.left(),
-                loc_to_string(and_node.operator_loc()),
+                loc_to_str(and_node.operator_loc()),
                 and_node.right(),
             );
         });
@@ -1925,7 +1925,7 @@ fn format_call_node(
                     format_infix_operator(
                         ps,
                         call_node.receiver().unwrap(),
-                        method_name,
+                        method_name.as_ref(),
                         // For infix operators, we still get an ArgumentsNode, but it will
                         // always be an argument list of a single node.
                         call_node
@@ -2012,7 +2012,7 @@ fn format_unary_operator(ps: &mut ParserState, call_node: prism::CallNode, metho
 fn format_infix_operator(
     ps: &mut ParserState,
     left: prism::Node,
-    operator: String,
+    operator: &str,
     right: prism::Node,
 ) {
     ps.with_formatting_context(FormattingContext::Binary, |ps| {
@@ -2034,7 +2034,7 @@ fn format_infix_operator(
             let is_comparison = comparison_operators.iter().any(|o| o == &operator);
 
             ps.emit_space();
-            ps.emit_ident(operator);
+            ps.emit_ident(operator.to_string());
 
             if is_comparison {
                 // For comparison operators, we always put the right-hand side
@@ -2059,11 +2059,11 @@ fn format_infix_operator(
 /// and return its components (left, operator, right) if so.
 fn as_binary_op<'a>(
     node: &'a prism::Node<'a>,
-) -> Option<(prism::Node<'a>, String, prism::Node<'a>)> {
+) -> Option<(prism::Node<'a>, &'a str, prism::Node<'a>)> {
     if let Some(and_node) = node.as_and_node() {
         return Some((
             and_node.left(),
-            loc_to_string(and_node.operator_loc()),
+            loc_to_str(and_node.operator_loc()),
             and_node.right(),
         ));
     }
@@ -2071,7 +2071,7 @@ fn as_binary_op<'a>(
     if let Some(or_node) = node.as_or_node() {
         return Some((
             or_node.left(),
-            loc_to_string(or_node.operator_loc()),
+            loc_to_str(or_node.operator_loc()),
             or_node.right(),
         ));
     }
@@ -2090,7 +2090,7 @@ fn as_binary_op<'a>(
     }
 
     let right = arguments.iter().next().unwrap();
-    let method_name = const_to_string(call_node.name());
+    let method_name = const_to_str(call_node.name());
 
     if method_name == "[]" || method_name == "[]=" {
         return None;
@@ -4326,7 +4326,7 @@ fn format_or_node(ps: &mut ParserState, or_node: prism::OrNode) {
             format_infix_operator(
                 ps,
                 or_node.left(),
-                loc_to_string(or_node.operator_loc()),
+                loc_to_str(or_node.operator_loc()),
                 or_node.right(),
             );
         });
