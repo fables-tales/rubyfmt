@@ -178,7 +178,7 @@ impl ParserState {
     where
         F: FnOnce(&mut ParserState),
     {
-        let mut next_ps = ParserState::new_with_depth_stack_from(self);
+        let mut next_ps = ParserState::new_with_indent_from(self);
         // Ignore commments when determining line length
         next_ps.with_suppress_comments(true, f);
         let data = next_ps.render_to_buffer();
@@ -844,15 +844,15 @@ impl ParserState {
         }
     }
 
-    pub(crate) fn new_with_depth_stack_from(ps: &ParserState) -> Self {
-        let mut next_ps = ParserState::new_with_reset_depth_stack(ps);
+    pub(crate) fn new_with_indent_from(ps: &ParserState) -> Self {
+        let mut next_ps = ParserState::new_with_reset_indentation(ps);
         next_ps.indent_depth = ps.indent_depth.clone();
         next_ps
     }
 
-    // Creates a copy of the parser state *with the depth_stack reset*.
+    // Creates a copy of the parser state *with the indent_depth reset*.
     // This is used for heredocs, where we explicitly want to ignore current indentation.
-    pub(crate) fn new_with_reset_depth_stack(ps: &ParserState) -> Self {
+    pub(crate) fn new_with_reset_indentation(ps: &ParserState) -> Self {
         let mut next_ps = ParserState::new(FileComments::default());
         next_ps.comments_hash = ps.comments_hash.clone();
         next_ps.start_of_line = ps.start_of_line.clone();
@@ -956,7 +956,7 @@ impl ParserState {
     where
         F: FnOnce(&mut ParserState),
     {
-        let mut next_ps = ParserState::new_with_reset_depth_stack(ps);
+        let mut next_ps = ParserState::new_with_reset_indentation(ps);
         f(&mut next_ps);
         next_ps
     }
