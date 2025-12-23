@@ -846,7 +846,7 @@ impl ParserState {
 
     pub(crate) fn new_with_indent_from(ps: &ParserState) -> Self {
         let mut next_ps = ParserState::new_with_reset_indentation(ps);
-        next_ps.indent_depth = ps.indent_depth.clone();
+        next_ps.indent_depth = ps.indent_depth;
         next_ps
     }
 
