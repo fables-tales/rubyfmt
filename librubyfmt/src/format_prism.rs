@@ -4258,9 +4258,8 @@ fn format_next_node(ps: &mut ParserState, next_node: prism::NextNode) {
     ps.emit_ident("next");
     if let Some(arguments_node) = next_node.arguments() {
         ps.with_start_of_line(false, |ps| {
-            ps.breakable_of(BreakableDelims::for_kw(), |ps| {
-                format_arguments_node(ps, arguments_node);
-            });
+            ps.emit_space();
+            format_arguments_node(ps, arguments_node);
         });
     }
 }
