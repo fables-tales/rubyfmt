@@ -13,3 +13,8 @@ Foo::Bar
 Foo::Bar()
 Foo.Bar
 Foo.Bar()
+Bar(1, &fun_returning_blk)
+Bar(&fun_returning_blk)
+Bar do
+  other_call
+end
