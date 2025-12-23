@@ -1608,7 +1608,19 @@ fn use_parens_for_call_node(
     // Foo # class reference
     // Foo() # method call
     // ```
+    let has_arguments = call_node
+        .arguments()
+        .map(|args| {
+            !(args.arguments().is_empty()
+                || (args.arguments().len() == 1
+                    && is_empty_parentheses_node(&args.arguments().iter().next().unwrap())))
+        })
+        .unwrap_or(false);
+
     if is_terminal_call && method_name.chars().next().is_some_and(|c| c.is_uppercase()) {
+        if !has_arguments && call_node.block().is_some() {
+            return false;
+        }
         return true;
     }
 
@@ -1648,15 +1660,6 @@ fn use_parens_for_call_node(
     {
         return original_used_parens;
     }
-
-    let has_arguments = call_node
-        .arguments()
-        .map(|args| {
-            !(args.arguments().is_empty()
-                || (args.arguments().len() == 1
-                    && is_empty_parentheses_node(&args.arguments().iter().next().unwrap())))
-        })
-        .unwrap_or(false);
 
     if !has_arguments {
         return false;
