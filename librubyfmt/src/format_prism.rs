@@ -1738,23 +1738,9 @@ fn format_call_node(
             // For callers where the only arg is a def node,
             // we assume that's a `public def` style modifier and don't use parens
             if arguments.arguments().len() == 1
-                && arguments
-                    .arguments()
-                    .iter()
-                    .next()
-                    .unwrap()
-                    .as_def_node()
-                    .is_some()
+                && let Some(def_node) = arguments.arguments().iter().next().unwrap().as_def_node()
             {
                 ps.emit_space();
-
-                let def_node = arguments
-                    .arguments()
-                    .iter()
-                    .next()
-                    .unwrap()
-                    .as_def_node()
-                    .unwrap();
                 format_def_node(ps, def_node);
             } else if is_aref_write {
                 let arg_count = arguments.arguments().len();
