@@ -2550,7 +2550,9 @@ fn format_block_node(ps: &mut ParserState, block_node: prism::BlockNode) {
                 && block_parameters.as_numbered_parameters_node().is_none()
                 && block_parameters.as_it_parameters_node().is_none()
             {
-                format_node(ps, block_parameters);
+                ps.with_start_of_line(false, |ps| {
+                    format_node(ps, block_parameters);
+                });
             }
 
             // Even if there's no body, we still need a newline for
