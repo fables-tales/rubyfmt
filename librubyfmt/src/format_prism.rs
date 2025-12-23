@@ -2670,6 +2670,7 @@ fn format_block_parameters_names(
             format_list_like_thing(ps, locals, end_offset, true);
         });
     }
+    ps.wind_dumping_comments_until_offset(end_offset);
 }
 
 fn format_block_local_variable_node(

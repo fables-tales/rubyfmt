@@ -11,3 +11,13 @@ lambda { |x| x }
 
   # But we're putting comments in it anyways!
 }
+
+-> (
+  foo,
+  bar
+) {
+  {
+    foo: foo,
+    bar: bar
+  }
+}
