@@ -62,22 +62,19 @@ pub trait AbstractTokenTarget: std::fmt::Debug {
     }
 
     fn index_of_prev_newline(&self) -> Option<usize> {
-        let first_idx = self
-            .tokens()
+        self.tokens()
             .iter()
-            .rposition(|v| v.is_newline() || v.is_comment());
-        match first_idx {
-            Some(x) => {
-                if matches!(self.tokens()[x], AbstractLineToken::CollapsingNewLine(_))
-                    || matches!(self.tokens()[x], AbstractLineToken::SoftNewline(_))
+            .rposition(|v| v.is_newline() || v.is_comment())
+            .and_then(|x| {
+                let token = &self.tokens()[x];
+                if matches!(token, AbstractLineToken::CollapsingNewLine(_))
+                    || matches!(token, AbstractLineToken::SoftNewline(_))
                 {
                     Some(x + 1)
                 } else {
                     Some(x)
                 }
-            }
-            None => None,
-        }
+            })
     }
 
     fn last_token_is_a_newline(&self) -> bool {
