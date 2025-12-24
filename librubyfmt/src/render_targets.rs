@@ -65,14 +65,14 @@ pub trait AbstractTokenTarget: std::fmt::Debug {
         self.tokens()
             .iter()
             .rposition(|v| v.is_newline() || v.is_comment())
-            .and_then(|x| {
+            .map(|x| {
                 let token = &self.tokens()[x];
                 if matches!(token, AbstractLineToken::CollapsingNewLine(_))
                     || matches!(token, AbstractLineToken::SoftNewline(_))
                 {
-                    Some(x + 1)
+                    x + 1
                 } else {
-                    Some(x)
+                    x
                 }
             })
     }
