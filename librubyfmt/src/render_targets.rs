@@ -349,9 +349,8 @@ impl AbstractTokenTarget for BreakableCallChainEntry {
         tokens
             .into_iter()
             .flat_map(|t| t.into_single_line())
-            .map(|t| t.into_ruby())
-            .collect::<String>()
-            .len()
+            .map(|t| t.into_ruby().len())
+            .sum()
     }
 
     fn push_line_number(&mut self, _number: LineNumber) {
