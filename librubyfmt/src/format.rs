@@ -2650,7 +2650,9 @@ pub fn format_brace_block(ps: &mut ParserState, brace_block: BraceBlock) {
 
     ps.inline_breakable_of(BreakableDelims::for_brace_block(), |ps| {
         if let Some(bv) = bv {
-            format_blockvar(ps, bv);
+            ps.dedent(|ps| {
+                format_blockvar(ps, bv);
+            });
         }
 
         render_block_contents(ps, brace_block_render_method, body, end_line);
