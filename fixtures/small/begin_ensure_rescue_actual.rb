@@ -1,7 +1,9 @@
 class ForIndents
   def func
+    ants
   rescue Bees => e
     a
+    # too tired to do more
   end
 
   def func2
@@ -12,8 +14,11 @@ class ForIndents
   end
 
   def func3
+    bees
   ensure
+    # TODO
     a
+    # more TODO
   end
 
 
