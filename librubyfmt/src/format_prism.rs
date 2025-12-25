@@ -15,11 +15,23 @@ pub fn format_node(ps: &mut ParserState, node: prism::Node) {
     use prism::Node;
 
     ps.at_offset(node.location().start_offset());
-    // StatementsNode is the only real "wrapper" node, meaning it purely contains
-    // other statements which themselves would be at the start of a line.
-    // We just ignore it here -- the alternative would be callers might need to have
-    // `ps.with_start_of_line(false, ...` for statements, which is semantically confusing
-    if ps.at_start_of_line() && !matches!(node, Node::StatementsNode { .. }) {
+
+    // StatementsNode is a "wrapper" node, meaning it purely contains other statements
+    // which themselves would be at the start of a line.  We just ignore it here -- the
+    // alternative would be callers might need to have `ps.with_start_of_line(false, ...`
+    // for statements, which is semantically confusing.
+    //
+    // BeginNode without a location for `begin` occurs in `def f; ... rescue; ... end` or
+    // similar and also -- at least for its `statements` field -- serves a similar
+    // wrapping function.
+    let needs_handling = ps.at_start_of_line()
+        && !(matches!(node, Node::StatementsNode { .. })
+            || node
+                .as_begin_node()
+                .map(|b| b.begin_keyword_loc().is_none())
+                .unwrap_or(false));
+
+    if needs_handling {
         ps.emit_indent();
     }
 
@@ -409,7 +421,7 @@ pub fn format_node(ps: &mut ParserState, node: prism::Node) {
     }
 
     ps.at_offset(node.location().end_offset());
-    if ps.at_start_of_line() && !matches!(node, Node::StatementsNode { .. }) {
+    if needs_handling {
         ps.emit_newline();
     }
 }
