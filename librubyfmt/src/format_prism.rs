@@ -1132,11 +1132,7 @@ fn format_ensure_node(ps: &mut ParserState, ensure_node: prism::EnsureNode) {
 }
 
 fn format_false_node(ps: &mut ParserState, false_node: prism::FalseNode) {
-    handle_string_at_offset(
-        ps,
-        "false".to_string(),
-        false_node.location().start_offset(),
-    );
+    handle_string_at_offset(ps, "false", false_node.location().start_offset());
 }
 
 fn format_find_pattern_node(ps: &mut ParserState, find_pattern_node: prism::FindPatternNode) {
@@ -3252,7 +3248,7 @@ fn format_forwarding_arguments_node(
 ) {
     handle_string_at_offset(
         ps,
-        "...".to_string(),
+        "...",
         forwarding_arguments_node.location().start_offset(),
     );
 }
@@ -3263,7 +3259,7 @@ fn format_forwarding_parameter_node(
 ) {
     handle_string_at_offset(
         ps,
-        "...".to_string(),
+        "...",
         forwarding_parameter_node.location().start_offset(),
     );
 }
@@ -4268,7 +4264,7 @@ fn format_no_keywords_parameter_node(
     ps.emit_soft_indent();
     handle_string_at_offset(
         ps,
-        "**nil".to_string(),
+        "**nil",
         no_keywords_parameter_node.location().start_offset(),
     );
 }
@@ -4548,25 +4544,17 @@ fn format_source_encoding_node(
 ) {
     handle_string_at_offset(
         ps,
-        "__ENCODING__".to_string(),
+        "__ENCODING__",
         source_encoding_node.location().start_offset(),
     );
 }
 
 fn format_source_file_node(ps: &mut ParserState, source_file_node: prism::SourceFileNode) {
-    handle_string_at_offset(
-        ps,
-        "__FILE__".to_string(),
-        source_file_node.location().start_offset(),
-    );
+    handle_string_at_offset(ps, "__FILE__", source_file_node.location().start_offset());
 }
 
 fn format_source_line_node(ps: &mut ParserState, source_line_node: prism::SourceLineNode) {
-    handle_string_at_offset(
-        ps,
-        "__LINE__".to_string(),
-        source_line_node.location().start_offset(),
-    );
+    handle_string_at_offset(ps, "__LINE__", source_line_node.location().start_offset());
 }
 
 fn format_self_node(ps: &mut ParserState) {
@@ -4574,7 +4562,7 @@ fn format_self_node(ps: &mut ParserState) {
 }
 
 fn format_true_node(ps: &mut ParserState, true_node: prism::TrueNode) {
-    handle_string_at_offset(ps, "true".to_string(), true_node.location().start_offset());
+    handle_string_at_offset(ps, "true", true_node.location().start_offset());
 }
 
 fn format_undef_node(ps: &mut ParserState, undef_node: prism::UndefNode) {
@@ -4671,7 +4659,11 @@ fn format_yield_node(ps: &mut ParserState, yield_node: prism::YieldNode) {
     }
 }
 
-fn handle_string_at_offset(ps: &mut ParserState, ident: String, offset: usize) {
+fn handle_string_at_offset(
+    ps: &mut ParserState,
+    ident: impl Into<Cow<'static, str>>,
+    offset: usize,
+) {
     ps.at_offset(offset);
     ps.emit_ident(ident);
 }
