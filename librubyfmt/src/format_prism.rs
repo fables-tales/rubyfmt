@@ -2672,18 +2672,10 @@ fn format_block_local_variable_node(
 }
 
 fn format_array_node(ps: &mut ParserState, array_node: prism::ArrayNode) {
-    let opening = array_node
-        .opening_loc()
-        .map(|loc| loc_to_string(loc).trim().to_string());
-    let is_word_array = opening
-        .as_ref()
-        .map(|s| s.starts_with("%"))
-        .unwrap_or(false);
+    let opening = array_node.opening_loc().map(|loc| loc_to_str(loc).trim());
+    let is_word_array = opening.map(|s| s.starts_with("%")).unwrap_or(false);
 
-    let orig_delim = opening
-        .as_ref()
-        .and_then(|s| s.chars().nth(2))
-        .unwrap_or('[');
+    let orig_delim = opening.and_then(|s| s.chars().nth(2)).unwrap_or('[');
 
     if is_word_array {
         ps.emit_ident(opening.unwrap().split_at(2).0.to_string());
@@ -3426,11 +3418,9 @@ fn format_hash_pattern_node(ps: &mut ParserState, hash_pattern_node: prism::Hash
         });
     }
 
-    let opener = hash_pattern_node
-        .opening_loc()
-        .map(|loc| loc_to_string(loc));
+    let opener = hash_pattern_node.opening_loc().map(|loc| loc_to_str(loc));
     let use_parens = hash_pattern_node.constant().is_some()
-        || opener.as_ref().map(|s| s.starts_with("(")).unwrap_or(false);
+        || opener.map(|s| s.starts_with("(")).unwrap_or(false);
 
     let elements = hash_pattern_node.elements();
 
