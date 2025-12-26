@@ -2479,7 +2479,12 @@ fn format_call_chain_elements(
         };
 
         match cc_elem {
-            CallChainElement::Paren(p) => format_paren(ps, p),
+            CallChainElement::Paren(p) => {
+                format_paren(ps, p);
+                // Eagerly render heredocs before the BeginCallChainIndent is applied,
+                // same as for CallChainElement::Expression.
+                ps.render_heredocs(true);
+            }
             CallChainElement::IdentOrOpOrKeywordOrConst(i) => {
                 let ident = i.into_ident();
                 next_args_list_must_use_parens = ident.1 == "super" || ident.1 == ".()";
