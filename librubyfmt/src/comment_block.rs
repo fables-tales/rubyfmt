@@ -23,16 +23,13 @@ impl CommentBlock {
         self.comments.push(line);
     }
 
-    pub fn into_line_tokens(self) -> Vec<ConcreteLineToken> {
-        self.comments
-            .into_iter()
-            .flat_map(|c| {
-                vec![
-                    ConcreteLineToken::Comment { contents: c },
-                    ConcreteLineToken::HardNewLine,
-                ]
-            })
-            .collect()
+    pub fn into_line_tokens(self) -> impl Iterator<Item = ConcreteLineToken> {
+        self.comments.into_iter().flat_map(|c| {
+            [
+                ConcreteLineToken::Comment { contents: c },
+                ConcreteLineToken::HardNewLine,
+            ]
+        })
     }
 
     pub fn apply_spaces(mut self, indent_depth: ColNumber) -> Self {

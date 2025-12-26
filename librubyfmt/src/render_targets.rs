@@ -4,8 +4,8 @@ use crate::parser_state::FormattingContext;
 use crate::ripper_tree_types::CallChainElement;
 use crate::types::LineNumber;
 
-fn insert_at<T>(idx: usize, target: &mut Vec<T>, input: &mut Vec<T>) {
-    target.splice(idx..idx, input.drain(..));
+fn insert_at<T>(idx: usize, target: &mut Vec<T>, input: impl IntoIterator<Item = T>) {
+    target.splice(idx..idx, input);
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -24,7 +24,11 @@ impl BaseQueue {
         self.tokens.push(lt)
     }
 
-    pub fn insert_at(&mut self, idx: usize, tokens: &mut Vec<ConcreteLineTokenAndTargets>) {
+    pub fn insert_at(
+        &mut self,
+        idx: usize,
+        tokens: impl IntoIterator<Item = ConcreteLineTokenAndTargets>,
+    ) {
         insert_at(idx, &mut self.tokens, tokens)
     }
 
@@ -45,7 +49,7 @@ impl BaseQueue {
 
 pub trait AbstractTokenTarget: std::fmt::Debug {
     fn push(&mut self, lt: AbstractLineToken);
-    fn insert_at(&mut self, idx: usize, tokens: &mut Vec<AbstractLineToken>);
+    fn insert_at(&mut self, idx: usize, tokens: Box<dyn Iterator<Item = AbstractLineToken> + '_>);
     fn into_tokens(self, ct: ConvertType) -> Vec<ConcreteLineTokenAndTargets>;
     fn is_multiline(&self) -> bool;
     fn push_line_number(&mut self, number: LineNumber);
@@ -104,7 +108,7 @@ impl AbstractTokenTarget for BreakableEntry {
         self.tokens.push(lt);
     }
 
-    fn insert_at(&mut self, idx: usize, tokens: &mut Vec<AbstractLineToken>) {
+    fn insert_at(&mut self, idx: usize, tokens: Box<dyn Iterator<Item = AbstractLineToken> + '_>) {
         insert_at(idx, &mut self.tokens, tokens)
     }
 
@@ -233,7 +237,7 @@ impl AbstractTokenTarget for BreakableCallChainEntry {
         self.tokens.push(lt);
     }
 
-    fn insert_at(&mut self, idx: usize, tokens: &mut Vec<AbstractLineToken>) {
+    fn insert_at(&mut self, idx: usize, tokens: Box<dyn Iterator<Item = AbstractLineToken> + '_>) {
         insert_at(idx, &mut self.tokens, tokens)
     }
 
