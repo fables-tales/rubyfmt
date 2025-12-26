@@ -26,8 +26,16 @@ similar = "2.1.0"
 assert_cmd = "2"
 tempfile = "3.19"
 libtest-mimic = "0.8.1"
+criterion = { version = "0.8", features = ["html_reports"] }
 
 [[test]]
 name = "fixtures_test"
 path = "tests/fixtures_test.rs"
 harness = false
+
+[[bench]]
+name = "formatting"
+harness = false
+
+[profile.release]
+debug = true
