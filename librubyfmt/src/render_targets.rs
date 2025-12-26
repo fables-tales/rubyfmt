@@ -5,9 +5,7 @@ use crate::ripper_tree_types::CallChainElement;
 use crate::types::LineNumber;
 
 fn insert_at<T>(idx: usize, target: &mut Vec<T>, input: &mut Vec<T>) {
-    let mut tail = target.split_off(idx);
-    target.append(input);
-    target.append(&mut tail);
+    target.splice(idx..idx, input.drain(..));
 }
 
 #[derive(Copy, Clone, Debug)]
