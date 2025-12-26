@@ -1,4 +1,5 @@
 use crate::types::ColNumber;
+use crate::util::get_indent;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum HeredocKind {
@@ -53,7 +54,7 @@ impl HeredocString {
             string
                 .split('\n')
                 .map(|l| {
-                    String::from(format!("{}{}", " ".repeat(indent as usize + 2), l).trim_end())
+                    String::from(format!("{}{}", get_indent(indent as usize + 2), l).trim_end())
                 })
                 .collect::<Vec<String>>()
                 .join("\n")

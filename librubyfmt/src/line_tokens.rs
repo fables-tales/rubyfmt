@@ -3,6 +3,7 @@ use crate::render_targets::{
     AbstractTokenTarget, BreakableCallChainEntry, BreakableEntry, ConvertType,
 };
 use crate::types::ColNumber;
+use crate::util::get_indent;
 use std::borrow::Cow;
 
 pub fn cltats_hard_newline() -> ConcreteLineTokenAndTargets {
@@ -71,7 +72,7 @@ impl ConcreteLineToken {
     pub fn into_ruby(self) -> Cow<'static, str> {
         match self {
             Self::HardNewLine => Cow::Borrowed("\n"),
-            Self::Indent { depth } => Cow::Owned((0..depth).map(|_| ' ').collect()),
+            Self::Indent { depth } => get_indent(depth as usize),
             Self::Keyword { keyword } => Cow::Borrowed(keyword),
             Self::ModKeyword { contents } => Cow::Borrowed(contents),
             Self::ConditionalKeyword { contents } => Cow::Borrowed(contents),

@@ -2,6 +2,7 @@ use std::ops::Range;
 
 use crate::line_tokens::ConcreteLineToken;
 use crate::types::{ColNumber, LineNumber};
+use crate::util::get_indent;
 
 #[derive(Clone, Debug)]
 pub struct CommentBlock {
@@ -36,7 +37,7 @@ impl CommentBlock {
     }
 
     pub fn apply_spaces(mut self, indent_depth: ColNumber) -> Self {
-        let indent = str::repeat(" ", indent_depth as _);
+        let indent = get_indent(indent_depth as usize);
         for comment in &mut self.comments {
             // Ignore empty strings -- these represent blank lines between
             // groups of comments
