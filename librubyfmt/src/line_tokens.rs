@@ -1,7 +1,5 @@
 use crate::heredoc_string::{HeredocKind, HeredocString};
-use crate::render_targets::{
-    AbstractTokenTarget, BreakableCallChainEntry, BreakableEntry, ConvertType,
-};
+use crate::render_targets::{BreakableCallChainEntry, BreakableEntry};
 use crate::types::ColNumber;
 use std::borrow::Cow;
 
@@ -236,30 +234,6 @@ impl ConcreteLineTokenAndTargets {
             _ => false,
         }
     }
-
-    pub fn into_ruby(self) -> Cow<'static, str> {
-        match self {
-            Self::BreakableEntry(be) => {
-                Cow::Owned(be.into_tokens(ConvertType::SingleLine).into_iter().fold(
-                    String::new(),
-                    |mut accum, tok| {
-                        accum.push_str(&tok.into_ruby());
-                        accum
-                    },
-                ))
-            }
-            Self::BreakableCallChainEntry(bcce) => {
-                Cow::Owned(bcce.into_tokens(ConvertType::SingleLine).into_iter().fold(
-                    String::new(),
-                    |mut accum, tok| {
-                        accum.push_str(&tok.into_ruby());
-                        accum
-                    },
-                ))
-            }
-            Self::ConcreteLineToken(clt) => clt.into_ruby(),
-        }
-    }
 }
 
 #[derive(Debug, Clone)]
@@ -369,6 +343,35 @@ impl AbstractLineToken {
             Self::SoftNewline(_) => true,
             Self::CollapsingNewLine(_) => true,
             _ => false,
+        }
+    }
+
+    /// Returns the length of this token when rendered as single-line,
+    /// without cloning or allocating intermediate structures. This assumes
+    /// that its caller is purely checking if the line is over MAX_LINE_LENGTH,
+    /// so heredocs are not actually calculated and instead just return `MAX_LINE_LENGTH` + 1
+    pub fn single_line_len(&self) -> usize {
+        use crate::render_queue_writer::MAX_LINE_LENGTH;
+
+        match self {
+            Self::CollapsingNewLine(heredoc_strings) => {
+                if heredoc_strings.is_some() {
+                    MAX_LINE_LENGTH + 1
+                } else {
+                    0
+                }
+            }
+            Self::SoftNewline(heredoc_strings) => {
+                if heredoc_strings.is_some() {
+                    MAX_LINE_LENGTH + 1
+                } else {
+                    1
+                }
+            }
+            Self::SoftIndent { .. } => 0,
+            Self::ConcreteLineToken(clt) => clt.len(),
+            Self::BreakableEntry(be) => be.single_line_len(),
+            Self::BreakableCallChainEntry(bcce) => bcce.single_line_len(),
         }
     }
 }

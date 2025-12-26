@@ -134,13 +134,7 @@ impl AbstractTokenTarget for BreakableEntry {
     }
 
     fn single_line_string_length(&self, current_line_length: usize) -> usize {
-        self.tokens
-            .iter()
-            .flat_map(|tok| tok.clone().into_single_line())
-            .map(|tok| tok.into_ruby().len())
-            .sum::<usize>()
-            + self.delims.single_line_len()
-            + current_line_length
+        self.single_line_len() + current_line_length
     }
 
     fn push_line_number(&mut self, number: LineNumber) {
@@ -194,6 +188,14 @@ impl BreakableEntry {
                 AbstractLineToken::ConcreteLineToken(ConcreteLineToken::HardNewLine)
             )
         })
+    }
+
+    pub fn single_line_len(&self) -> usize {
+        self.tokens
+            .iter()
+            .map(|tok| tok.single_line_len())
+            .sum::<usize>()
+            + self.delims.single_line_len()
     }
 }
 
@@ -343,9 +345,8 @@ impl AbstractTokenTarget for BreakableCallChainEntry {
 
         tokens
             .into_iter()
-            .flat_map(|t| t.into_single_line())
-            .map(|t| t.into_ruby().len())
-            .sum()
+            .map(|t| t.single_line_len())
+            .sum::<usize>()
     }
 
     fn push_line_number(&mut self, _number: LineNumber) {
@@ -464,6 +465,10 @@ impl BreakableCallChainEntry {
                 ConcreteLineToken::HeredocStart { .. }
             ))
         )
+    }
+
+    pub fn single_line_len(&self) -> usize {
+        self.tokens.iter().map(|tok| tok.single_line_len()).sum()
     }
 }
 
