@@ -1,0 +1,38 @@
+#!/bin/bash
+set -euo pipefail
+
+{
+    echo "## Benchmark Results"
+    echo ""
+    echo "| Benchmark | Mean | Std Dev |"
+    echo "|-----------|------|---------|"
+
+    find target/criterion -path "*/new/estimates.json" -type f | sort | while read -r estimate_file; do
+        # Path format: target/criterion/{group}/prism/{name}/new/estimates.json
+        group=$(echo "$estimate_file" | cut -d'/' -f3)
+        name=$(echo "$estimate_file" | cut -d'/' -f5)
+
+        # Parse JSON and format with appropriate unit
+        result=$(ruby -rjson -e "
+            def format_time(ns)
+                if ns >= 1_000_000_000
+                    format('%.2fs', ns / 1_000_000_000.0)
+                elsif ns >= 1_000_000
+                    format('%.2fms', ns / 1_000_000.0)
+                elsif ns >= 1_000
+                    format('%.2fµs', ns / 1_000.0)
+                else
+                    format('%.2fns', ns)
+                end
+            end
+
+            d = JSON.parse(File.read('$estimate_file'))
+            mean = format_time(d['mean']['point_estimate'])
+            std = format_time(d['mean']['standard_error'])
+            puts \"#{mean} #{std}\"
+        " 2>/dev/null) || continue
+
+        read -r mean std <<< "$result"
+        echo "| ${group}/${name} | ${mean} | ±${std} |"
+    done
+} >> "${GITHUB_STEP_SUMMARY:-/dev/stdout}"
