@@ -1,5 +1,4 @@
-use std::collections::{BTreeMap, BTreeSet, HashSet};
-use std::mem;
+use std::collections::{BTreeSet, HashSet};
 
 use crate::comment_block::CommentBlock;
 use crate::parser_state::line_difference_requires_newline;
@@ -63,7 +62,7 @@ impl LineIndex {
 #[derive(Clone, Debug, Default)]
 pub struct FileComments {
     start_of_file_contiguous_comment_lines: Option<CommentBlock>,
-    other_comments: BTreeMap<LineNumber, String>,
+    other_comments: Vec<(LineNumber, String)>,
     lines_with_ruby: BTreeSet<LineNumber>,
     last_lineno: LineNumber,
     line_index: LineIndex,
@@ -156,7 +155,9 @@ impl FileComments {
     }
 
     pub fn has_line(&self, line_number: LineNumber) -> bool {
-        self.other_comments.contains_key(&line_number)
+        self.other_comments
+            .binary_search_by_key(&line_number, |(ln, _)| *ln)
+            .is_ok()
     }
 
     /// Add a new comment. If the beginning of this file is a comment block,
@@ -180,7 +181,7 @@ impl FileComments {
                 sled.add_line(l);
             }
             _ => {
-                self.other_comments.insert(line_number, l);
+                self.other_comments.push((line_number, l));
             }
         }
     }
@@ -196,8 +197,8 @@ impl FileComments {
     pub fn has_comments_in_lines(&self, start_line: LineNumber, end_line: LineNumber) -> bool {
         let line_range = start_line..end_line;
         self.other_comments
-            .keys()
-            .any(|key| line_range.contains(key))
+            .iter()
+            .any(|(ln, _)| line_range.contains(ln))
     }
 
     pub fn has_comment_in_offsets(
@@ -217,53 +218,46 @@ impl FileComments {
         starting_line_number: LineNumber,
         line_number: LineNumber,
     ) -> Option<(CommentBlock, LineNumber)> {
-        self.other_comments
-            .keys()
-            .next()
-            .copied()
-            .map(|lowest_line| {
-                let remaining_comments = self.other_comments.split_off(&(&line_number + 1));
-                let comments = mem::replace(&mut self.other_comments, remaining_comments)
-                    .into_iter()
-                    .collect::<Vec<(_, _)>>();
-                if comments.is_empty() {
-                    return (
-                        CommentBlock::new(lowest_line..line_number + 1, Vec::new()),
-                        starting_line_number,
-                    );
-                }
+        let lowest_line = self.other_comments.first().map(|(ln, _)| *ln)?;
+        let split_point = self
+            .other_comments
+            .partition_point(|(ln, _)| *ln <= line_number);
+        let comments: Vec<_> = self.other_comments.drain(..split_point).collect();
 
-                let mut comment_block_with_spaces: Vec<String> = Vec::new();
-                let mut last_line = None;
+        if comments.is_empty() {
+            return Some((
+                CommentBlock::new(lowest_line..line_number + 1, Vec::new()),
+                starting_line_number,
+            ));
+        }
 
-                if line_difference_requires_newline(
-                    comments.first().unwrap().0,
-                    starting_line_number,
-                ) {
-                    comment_block_with_spaces.push(String::new());
-                }
+        let mut comment_block_with_spaces: Vec<String> = Vec::new();
+        let mut last_line = None;
 
-                for (index, comment_contents) in comments {
-                    if last_line.is_some()
-                        && line_difference_requires_newline(index, last_line.unwrap())
-                    {
-                        comment_block_with_spaces.push(String::new());
-                    }
-                    let line_count = comment_contents.lines().count() as u64;
-                    last_line = Some(index + line_count - 1);
-                    comment_block_with_spaces.push(comment_contents);
-                }
+        if line_difference_requires_newline(comments.first().unwrap().0, starting_line_number) {
+            comment_block_with_spaces.push(String::new());
+        }
 
-                if line_number > last_line.unwrap() + 1 {
-                    last_line = Some(line_number);
-                    comment_block_with_spaces.push(String::new());
-                }
+        for (index, comment_contents) in comments {
+            if let Some(last_line) = last_line
+                && line_difference_requires_newline(index, last_line)
+            {
+                comment_block_with_spaces.push(String::new());
+            }
+            let line_count = comment_contents.lines().count() as u64;
+            last_line = Some(index + line_count - 1);
+            comment_block_with_spaces.push(comment_contents);
+        }
 
-                (
-                    CommentBlock::new(lowest_line..line_number + 1, comment_block_with_spaces),
-                    last_line.unwrap(),
-                )
-            })
+        if line_number > last_line.unwrap() + 1 {
+            last_line = Some(line_number);
+            comment_block_with_spaces.push(String::new());
+        }
+
+        Some((
+            CommentBlock::new(lowest_line..line_number + 1, comment_block_with_spaces),
+            last_line.unwrap(),
+        ))
     }
 
     // Note: this is currently only used for Prism support, see the details
