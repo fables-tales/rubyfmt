@@ -103,9 +103,8 @@ impl ParserState {
     {
         let mut next_ps = ParserState::render_with_blank_state(self, formatting_func);
 
-        for hs in next_ps.heredoc_strings.drain(0..) {
-            self.heredoc_strings.push(hs);
-        }
+        self.heredoc_strings
+            .extend(next_ps.heredoc_strings.drain(0..));
 
         // Update line number and clear out any comments we might have rendered in e.g. an embexpr
         //
