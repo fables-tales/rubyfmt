@@ -138,13 +138,7 @@ impl AbstractTokenTarget for BreakableEntry {
     }
 
     fn single_line_string_length(&self, current_line_length: usize) -> usize {
-        self.tokens
-            .iter()
-            .flat_map(|tok| tok.clone().into_single_line())
-            .map(|tok| tok.into_ruby().len())
-            .sum::<usize>()
-            + self.delims.single_line_len()
-            + current_line_length
+        self.single_line_len() + current_line_length
     }
 
     fn push_line_number(&mut self, number: LineNumber) {
@@ -198,6 +192,25 @@ impl BreakableEntry {
                 AbstractLineToken::ConcreteLineToken(ConcreteLineToken::HardNewLine)
             )
         })
+    }
+
+    pub fn single_line_len(&self) -> usize {
+        self.tokens
+            .iter()
+            .map(|tok| tok.single_line_len())
+            .sum::<usize>()
+            + self.delims.single_line_len()
+    }
+
+    /// Returns the single-line length of just the block params (if any),
+    /// excluding the body. Used by call chain line length calculation.
+    pub fn single_line_len_params_only(&self) -> usize {
+        if let Some(AbstractLineToken::BreakableEntry(params)) = self.tokens.first()
+            && params.delims == BreakableDelims::for_block_params()
+        {
+            return params.single_line_len() + self.delims.single_line_len();
+        }
+        0
     }
 }
 
@@ -261,10 +274,12 @@ impl AbstractTokenTarget for BreakableCallChainEntry {
         // have multiline blocks (which will often be quite long vertically, even if
         // they're under 120 characters horizontally). In this case, look for the longest
         // individual line and get _that_ max length.
-        let mut tokens = self.tokens.clone();
+        let mut tokens = self.tokens.as_slice();
+        let mut brace_block_params_only_index = None;
+
         if tokens.len() > 2 {
             let index = tokens.len() - 2;
-            let token = tokens.get_mut(index).unwrap();
+            let token = &tokens[index];
             if matches!(
                 token,
                 AbstractLineToken::ConcreteLineToken(ConcreteLineToken::End)
@@ -272,44 +287,34 @@ impl AbstractTokenTarget for BreakableCallChainEntry {
                 // Pop off all tokens that make up the block (but not the block params!),
                 // since we assume that the block contents will handle their own line
                 // length appropriately.
-                while let Some(token) = tokens.last() {
+                while let Some((token, rest)) = tokens.split_last() {
                     if matches!(
                         token,
                         AbstractLineToken::BreakableEntry(BreakableEntry { delims, .. }) if *delims == BreakableDelims::for_block_params()
                     ) {
                         break;
                     }
-                    tokens.pop();
+                    tokens = rest;
                 }
-            } else if let AbstractLineToken::BreakableEntry(BreakableEntry {
-                delims, tokens, ..
-            }) = token
-                && *delims == BreakableDelims::for_brace_block()
+            } else if let AbstractLineToken::BreakableEntry(be) = token
+                && be.delims == BreakableDelims::for_brace_block()
             {
-                if let Some(AbstractLineToken::BreakableEntry(BreakableEntry { delims, .. })) =
-                    tokens.first()
-                {
-                    if *delims == BreakableDelims::for_block_params() {
-                        // Wipe away the body of the block and leave only the params
-                        *tokens = vec![tokens.first().unwrap().clone()];
-                    } else {
-                        // No params, so wipe away the whole thing
-                        *tokens = Vec::new();
-                    }
-                } else {
-                    // No params, so wipe away the whole thing
-                    *tokens = Vec::new();
-                }
+                brace_block_params_only_index = Some(index);
             }
         }
 
-        if let Some(AbstractLineToken::BreakableEntry(_)) = tokens.first() {
-            tokens.remove(0);
+        if let Some((AbstractLineToken::BreakableEntry(_), rest)) = tokens.split_first() {
+            if let Some(idx) = brace_block_params_only_index {
+                brace_block_params_only_index = Some(idx - 1);
+            }
+            tokens = rest;
         }
-        if let Some(AbstractLineToken::ConcreteLineToken(ConcreteLineToken::EndCallChainIndent)) =
-            tokens.last()
+        if let Some((
+            AbstractLineToken::ConcreteLineToken(ConcreteLineToken::EndCallChainIndent),
+            rest,
+        )) = tokens.split_last()
         {
-            tokens.pop();
+            tokens = rest;
         }
         let call_count = tokens
             .iter()
@@ -327,29 +332,33 @@ impl AbstractTokenTarget for BreakableCallChainEntry {
         //
         // However, if there's only one item in the chain, try our best to leave that in place.
         // `foo\n.bar` is always a little awkward.
-        if let Some(AbstractLineToken::BreakableEntry(be)) = tokens.last()
+        if let Some((AbstractLineToken::BreakableEntry(be), rest)) = tokens.split_last()
             && (call_count == 1 || be.is_multiline())
             && be.delims != BreakableDelims::for_brace_block()
             && be.delims != BreakableDelims::for_block_params()
         {
-            tokens.pop();
+            if let Some(params_index) = brace_block_params_only_index
+                && params_index == tokens.len() - 1
+            {
+                brace_block_params_only_index = None;
+            }
+            tokens = rest;
         }
-        tokens.insert(
-            0,
-            AbstractLineToken::ConcreteLineToken(
-                // Push the starting indentation for the first line -- other
-                // lines will already have the appropriate indentation
-                ConcreteLineToken::Indent {
-                    depth: current_line_length as u32,
-                },
-            ),
-        );
 
         tokens
-            .into_iter()
-            .flat_map(|t| t.into_single_line())
-            .map(|t| t.into_ruby().len())
-            .sum()
+            .iter()
+            .enumerate()
+            .map(|(i, t)| {
+                if let Some(params_only_idx) = brace_block_params_only_index
+                    && params_only_idx == i
+                    && let AbstractLineToken::BreakableEntry(be) = t
+                {
+                    return be.single_line_len_params_only();
+                }
+                t.single_line_len()
+            })
+            .sum::<usize>()
+            + current_line_length
     }
 
     fn push_line_number(&mut self, _number: LineNumber) {
@@ -468,6 +477,10 @@ impl BreakableCallChainEntry {
                 ConcreteLineToken::HeredocStart { .. }
             ))
         )
+    }
+
+    pub fn single_line_len(&self) -> usize {
+        self.tokens.iter().map(|tok| tok.single_line_len()).sum()
     }
 }
 
