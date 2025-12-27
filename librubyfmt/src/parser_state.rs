@@ -813,12 +813,15 @@ impl ParserState {
         if let Some(entry) = self.breakable_entry_stack.last_mut() {
             entry.insert_at(
                 insert_idx,
-                &mut vec![AbstractLineToken::ConcreteLineToken(
+                Box::new(std::iter::once(AbstractLineToken::ConcreteLineToken(
                     ConcreteLineToken::HardNewLine,
-                )],
+                ))),
             );
         } else {
-            self.insert_concrete_tokens(insert_idx, vec![ConcreteLineToken::HardNewLine]);
+            self.insert_concrete_tokens(
+                insert_idx,
+                std::iter::once(ConcreteLineToken::HardNewLine),
+            );
         }
     }
 
@@ -897,9 +900,8 @@ impl ParserState {
             }
             Some(comments) => {
                 let line_count = comments.line_count();
-                let lts = comments.into_line_tokens();
-                for comment in lts.into_iter() {
-                    self.push_concrete_token(comment);
+                for token in comments.into_line_tokens() {
+                    self.push_concrete_token(token);
                 }
                 self.current_orig_line_number = line_count as LineNumber;
             }
@@ -909,22 +911,17 @@ impl ParserState {
     pub(crate) fn insert_concrete_tokens(
         &mut self,
         insert_idx: usize,
-        clts: Vec<ConcreteLineToken>,
+        clts: impl IntoIterator<Item = ConcreteLineToken>,
     ) {
         match self.breakable_entry_stack.last_mut() {
             Some(be) => be.insert_at(
                 insert_idx,
-                &mut clts
-                    .into_iter()
-                    .map(AbstractLineToken::ConcreteLineToken)
-                    .collect(),
+                Box::new(clts.into_iter().map(AbstractLineToken::ConcreteLineToken)),
             ),
             None => self.render_queue.insert_at(
                 insert_idx,
-                &mut clts
-                    .into_iter()
-                    .map(ConcreteLineTokenAndTargets::ConcreteLineToken)
-                    .collect(),
+                clts.into_iter()
+                    .map(ConcreteLineTokenAndTargets::ConcreteLineToken),
             ),
         }
     }
