@@ -201,10 +201,10 @@ impl BreakableEntry {
     /// Returns the single-line length of just the block params (if any),
     /// excluding the body. Used by call chain line length calculation.
     pub fn single_line_len_params_only(&self) -> usize {
-        if let Some(AbstractLineToken::BreakableEntry(params)) = self.tokens.first() {
-            if params.delims == BreakableDelims::for_block_params() {
-                return params.single_line_len() + self.delims.single_line_len();
-            }
+        if let Some(AbstractLineToken::BreakableEntry(params)) = self.tokens.first()
+            && params.delims == BreakableDelims::for_block_params()
+        {
+            return params.single_line_len() + self.delims.single_line_len();
         }
         0
     }
