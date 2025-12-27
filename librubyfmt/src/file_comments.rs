@@ -62,6 +62,7 @@ impl LineIndex {
 #[derive(Clone, Debug, Default)]
 pub struct FileComments {
     start_of_file_contiguous_comment_lines: Option<CommentBlock>,
+    /// A list of comments, sorted in order by `LineNumber`
     other_comments: Vec<(LineNumber, String)>,
     lines_with_ruby: BTreeSet<LineNumber>,
     last_lineno: LineNumber,
@@ -181,6 +182,14 @@ impl FileComments {
                 sled.add_line(l);
             }
             _ => {
+                debug_assert!(
+                    self.other_comments
+                        .last()
+                        .map(|(last_line_number, _)| *last_line_number < line_number)
+                        .unwrap_or(true),
+                    "Expected comments to be inserted in order"
+                );
+
                 self.other_comments.push((line_number, l));
             }
         }
