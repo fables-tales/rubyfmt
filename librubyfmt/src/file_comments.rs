@@ -4,7 +4,7 @@ use crate::comment_block::CommentBlock;
 use crate::parser_state::line_difference_requires_newline;
 use crate::ruby::*;
 use crate::types::{LineNumber, SourceOffset};
-use crate::util::u8_to_string;
+use crate::util::{u8_to_str, u8_to_string};
 
 /// A vector of offsets in the source code where lines start, which
 /// we use to detect what line a given offset is one.
@@ -86,7 +86,7 @@ impl FileComments {
 
         // Lookup lines that have any Ruby
         let mut inside_embdoc = false;
-        u8_to_string(source)
+        u8_to_str(source)
             .lines()
             .enumerate()
             .filter(|(_lineno, line_contents)| {
