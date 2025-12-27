@@ -283,14 +283,14 @@ impl AbstractTokenTarget for BreakableCallChainEntry {
                 // Pop off all tokens that make up the block (but not the block params!),
                 // since we assume that the block contents will handle their own line
                 // length appropriately.
-                while let Some(token) = tokens.last() {
+                while let Some((token, rest)) = tokens.split_last() {
                     if matches!(
                         token,
                         AbstractLineToken::BreakableEntry(BreakableEntry { delims, .. }) if *delims == BreakableDelims::for_block_params()
                     ) {
                         break;
                     }
-                    tokens = &tokens[..(tokens.len() - 1)];
+                    tokens = rest;
                 }
             } else if let AbstractLineToken::BreakableEntry(be) = token
                 && be.delims == BreakableDelims::for_brace_block()
@@ -299,16 +299,18 @@ impl AbstractTokenTarget for BreakableCallChainEntry {
             }
         }
 
-        if let Some(AbstractLineToken::BreakableEntry(_)) = tokens.first() {
+        if let Some((AbstractLineToken::BreakableEntry(_), rest)) = tokens.split_first() {
             if let Some(idx) = brace_block_params_only_index {
                 brace_block_params_only_index = Some(idx - 1);
             }
-            tokens = &tokens[1..];
+            tokens = rest;
         }
-        if let Some(AbstractLineToken::ConcreteLineToken(ConcreteLineToken::EndCallChainIndent)) =
-            tokens.last()
+        if let Some((
+            AbstractLineToken::ConcreteLineToken(ConcreteLineToken::EndCallChainIndent),
+            rest,
+        )) = tokens.split_last()
         {
-            tokens = &tokens[..(tokens.len() - 1)];
+            tokens = rest;
         }
         let call_count = tokens
             .iter()
@@ -326,7 +328,7 @@ impl AbstractTokenTarget for BreakableCallChainEntry {
         //
         // However, if there's only one item in the chain, try our best to leave that in place.
         // `foo\n.bar` is always a little awkward.
-        if let Some(AbstractLineToken::BreakableEntry(be)) = tokens.last()
+        if let Some((AbstractLineToken::BreakableEntry(be), rest)) = tokens.split_last()
             && (call_count == 1 || be.is_multiline())
             && be.delims != BreakableDelims::for_brace_block()
             && be.delims != BreakableDelims::for_block_params()
@@ -336,7 +338,7 @@ impl AbstractTokenTarget for BreakableCallChainEntry {
             {
                 brace_block_params_only_index = None;
             }
-            tokens = &tokens[..(tokens.len() - 1)];
+            tokens = rest;
         }
 
         tokens
