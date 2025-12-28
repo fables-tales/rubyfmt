@@ -2893,7 +2893,20 @@ fn format_array_pattern_node(ps: &mut ParserState, array_pattern_node: prism::Ar
 }
 
 fn format_parentheses_node(ps: &mut ParserState, parentheses_node: prism::ParenthesesNode) {
-    ps.emit_open_paren();
+    let mut have_single_unconditional_statement = false;
+    if let Some(body) = parentheses_node.body() {
+        if let Some(statements_node) = body.as_statements_node() {
+            if statements_node.body().len() == 1 {
+                let the_node = statements_node.body().iter().next().unwrap();
+                if !(the_node.as_unless_node().is_some() || the_node.as_if_node().is_some()) {
+                    have_single_unconditional_statement = true;
+                }
+            }
+        }
+    }
+    if !have_single_unconditional_statement {
+        ps.emit_open_paren();
+    }
 
     let is_multiline = if let Some(body) = parentheses_node.body() {
         if let Some(statements_node) = body.as_statements_node() {
@@ -2935,8 +2948,9 @@ fn format_parentheses_node(ps: &mut ParserState, parentheses_node: prism::Parent
 
     if is_multiline {
         ps.emit_indent();
-        ps.emit_close_paren();
-    } else {
+    }
+
+    if !have_single_unconditional_statement {
         ps.emit_close_paren();
     }
 }
