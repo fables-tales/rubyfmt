@@ -2947,10 +2947,10 @@ fn split_node_into_call_chains(node: prism::Node) -> Vec<Vec<prism::Node>> {
     while let Some(receiver) = maybe_receiver {
         maybe_receiver = receiver.as_call_node().and_then(|call_node| {
             // Don't traverse into unary operators, they should not be treated as part of a call chain.
-            let method_name = const_to_string(call_node.name());
+            let method_name = const_to_str(call_node.name());
             let is_unary_operator = call_node.arguments().is_none()
                 && call_node.call_operator_loc().is_none()
-                && matches!(method_name.as_str(), "-@" | "+@" | "!" | "~");
+                && matches!(method_name, "-@" | "+@" | "!" | "~");
             if is_unary_operator {
                 return None;
             }
