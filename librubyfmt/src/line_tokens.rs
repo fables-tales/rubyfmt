@@ -159,7 +159,7 @@ impl ConcreteLineToken {
 
     pub fn is_single_line_breakable_garbage(&self) -> bool {
         match self {
-            Self::DirectPart { part } => part == &"".to_string(),
+            Self::DirectPart { part } => part.is_empty(),
             Self::Space => true,
             _ => false,
         }
