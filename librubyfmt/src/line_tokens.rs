@@ -4,28 +4,30 @@ use crate::types::ColNumber;
 use crate::util::get_indent;
 use std::borrow::Cow;
 
-pub fn cltats_hard_newline() -> ConcreteLineTokenAndTargets {
+pub fn cltats_hard_newline<'src>() -> ConcreteLineTokenAndTargets<'src> {
     ConcreteLineTokenAndTargets::ConcreteLineToken(ConcreteLineToken::HardNewLine)
 }
 
-pub fn clats_direct_part(part: impl Into<Cow<'static, str>>) -> ConcreteLineTokenAndTargets {
+pub fn clats_direct_part<'src>(
+    part: impl Into<Cow<'src, str>>,
+) -> ConcreteLineTokenAndTargets<'src> {
     ConcreteLineTokenAndTargets::ConcreteLineToken(ConcreteLineToken::DirectPart {
         part: part.into(),
     })
 }
 
-pub fn clats_heredoc_close(symbol: String) -> ConcreteLineTokenAndTargets {
+pub fn clats_heredoc_close<'src>(symbol: String) -> ConcreteLineTokenAndTargets<'src> {
     ConcreteLineTokenAndTargets::ConcreteLineToken(ConcreteLineToken::HeredocClose { symbol })
 }
 
-pub fn clats_indent(depth: ColNumber) -> ConcreteLineTokenAndTargets {
+pub fn clats_indent<'src>(depth: ColNumber) -> ConcreteLineTokenAndTargets<'src> {
     ConcreteLineTokenAndTargets::ConcreteLineToken(ConcreteLineToken::Indent { depth })
 }
 
 // represents something that will actually end up as a ruby token, as opposed to
 // something that has to be transformed to become a ruby token
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum ConcreteLineToken {
+pub enum ConcreteLineToken<'src> {
     HardNewLine,
     Indent { depth: u32 },
     Keyword { keyword: &'static str },
@@ -35,7 +37,7 @@ pub enum ConcreteLineToken {
     DoKeyword,
     ModKeyword { contents: &'static str },
     ConditionalKeyword { contents: &'static str },
-    DirectPart { part: Cow<'static, str> },
+    DirectPart { part: Cow<'src, str> },
     CommaSpace,
     Comma,
     Space,
@@ -66,8 +68,8 @@ pub enum ConcreteLineToken {
     HeredocStart { kind: HeredocKind, symbol: String },
 }
 
-impl ConcreteLineToken {
-    pub fn into_ruby(self) -> Cow<'static, str> {
+impl<'src> ConcreteLineToken<'src> {
+    pub fn into_ruby(self) -> Cow<'src, str> {
         match self {
             Self::HardNewLine => Cow::Borrowed("\n"),
             Self::Indent { depth } => get_indent(depth as usize),
@@ -192,14 +194,14 @@ impl ConcreteLineToken {
     }
 }
 
-impl From<ConcreteLineToken> for ConcreteLineTokenAndTargets {
-    fn from(clt: ConcreteLineToken) -> ConcreteLineTokenAndTargets {
+impl<'src> From<ConcreteLineToken<'src>> for ConcreteLineTokenAndTargets<'src> {
+    fn from(clt: ConcreteLineToken<'src>) -> ConcreteLineTokenAndTargets<'src> {
         ConcreteLineTokenAndTargets::ConcreteLineToken(clt)
     }
 }
 
-impl From<ConcreteLineTokenAndTargets> for AbstractLineToken {
-    fn from(cltat: ConcreteLineTokenAndTargets) -> AbstractLineToken {
+impl<'src> From<ConcreteLineTokenAndTargets<'src>> for AbstractLineToken<'src> {
+    fn from(cltat: ConcreteLineTokenAndTargets<'src>) -> AbstractLineToken<'src> {
         match cltat {
             ConcreteLineTokenAndTargets::BreakableEntry(be) => {
                 AbstractLineToken::BreakableEntry(be)
@@ -215,13 +217,13 @@ impl From<ConcreteLineTokenAndTargets> for AbstractLineToken {
 }
 
 #[derive(Debug, Clone)]
-pub enum ConcreteLineTokenAndTargets {
-    ConcreteLineToken(ConcreteLineToken),
-    BreakableEntry(BreakableEntry),
-    BreakableCallChainEntry(BreakableCallChainEntry),
+pub enum ConcreteLineTokenAndTargets<'src> {
+    ConcreteLineToken(ConcreteLineToken<'src>),
+    BreakableEntry(BreakableEntry<'src>),
+    BreakableCallChainEntry(BreakableCallChainEntry<'src>),
 }
 
-impl ConcreteLineTokenAndTargets {
+impl<'src> ConcreteLineTokenAndTargets<'src> {
     pub fn is_newline(&self) -> bool {
         match self {
             Self::ConcreteLineToken(clt) => clt.is_newline(),
@@ -238,18 +240,18 @@ impl ConcreteLineTokenAndTargets {
 }
 
 #[derive(Debug, Clone)]
-pub enum AbstractLineToken {
+pub enum AbstractLineToken<'src> {
     // this is all bodil's fault
-    ConcreteLineToken(ConcreteLineToken),
+    ConcreteLineToken(ConcreteLineToken<'src>),
     CollapsingNewLine(Option<Vec<HeredocString>>),
     SoftNewline(Option<Vec<HeredocString>>),
     SoftIndent { depth: u32 },
-    BreakableEntry(BreakableEntry),
-    BreakableCallChainEntry(BreakableCallChainEntry),
+    BreakableEntry(BreakableEntry<'src>),
+    BreakableCallChainEntry(BreakableCallChainEntry<'src>),
 }
 
-impl AbstractLineToken {
-    pub fn into_single_line(self) -> Vec<ConcreteLineTokenAndTargets> {
+impl<'src> AbstractLineToken<'src> {
+    pub fn into_single_line(self) -> Vec<ConcreteLineTokenAndTargets<'src>> {
         match self {
             Self::CollapsingNewLine(heredoc_strings) => {
                 let mut res = Vec::new();
@@ -277,7 +279,7 @@ impl AbstractLineToken {
         }
     }
 
-    pub fn into_multi_line(self) -> Vec<ConcreteLineTokenAndTargets> {
+    pub fn into_multi_line(self) -> Vec<ConcreteLineTokenAndTargets<'src>> {
         match self {
             Self::CollapsingNewLine(heredoc_strings) => {
                 let mut res = vec![cltats_hard_newline()];
@@ -306,7 +308,7 @@ impl AbstractLineToken {
 
     fn shimmy_and_shake_heredocs(
         heredoc_strings: Option<Vec<HeredocString>>,
-    ) -> Vec<ConcreteLineTokenAndTargets> {
+    ) -> Vec<ConcreteLineTokenAndTargets<'src>> {
         let mut res = vec![];
         if let Some(values) = heredoc_strings {
             for hds in values {

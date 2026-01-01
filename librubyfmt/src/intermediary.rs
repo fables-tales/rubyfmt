@@ -11,15 +11,15 @@ pub enum BlanklineReason {
     EndOfRequireBlock,
 }
 
-pub struct Intermediary {
-    tokens: Vec<ConcreteLineToken>,
+pub struct Intermediary<'src> {
+    tokens: Vec<ConcreteLineToken<'src>>,
     index_of_last_hard_newline: usize,
     current_line_metadata: LineMetadata,
     previous_line_metadata: Option<LineMetadata>,
     pub additional_indent: u32,
 }
 
-impl Intermediary {
+impl<'src> Intermediary<'src> {
     pub fn new() -> Self {
         Intermediary {
             tokens: vec![],
@@ -65,11 +65,11 @@ impl Intermediary {
         self.index_of_last_hard_newline = self.tokens.len() - 1;
     }
 
-    pub fn last<const N: usize>(&self) -> Option<&[ConcreteLineToken; N]> {
+    pub fn last<const N: usize>(&self) -> Option<&[ConcreteLineToken<'src>; N]> {
         self.tokens.last_chunk::<N>()
     }
 
-    pub fn into_tokens(self) -> Vec<ConcreteLineToken> {
+    pub fn into_tokens(self) -> Vec<ConcreteLineToken<'src>> {
         self.tokens
     }
 
@@ -84,7 +84,7 @@ impl Intermediary {
         tokens_on_current_line.iter().map(|t| t.len()).sum()
     }
 
-    pub fn push(&mut self, lt: ConcreteLineToken) {
+    pub fn push(&mut self, lt: ConcreteLineToken<'src>) {
         self.debug_assert_newlines();
         let mut do_push = true;
 

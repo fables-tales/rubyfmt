@@ -24,7 +24,7 @@ impl CommentBlock {
         self.comments.push(line);
     }
 
-    pub fn into_line_tokens(self) -> impl Iterator<Item = ConcreteLineToken> {
+    pub fn into_line_tokens<'src>(self) -> impl Iterator<Item = ConcreteLineToken<'src>> {
         self.comments.into_iter().flat_map(|c| {
             [
                 ConcreteLineToken::Comment { contents: c },

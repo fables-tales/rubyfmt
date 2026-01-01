@@ -4243,7 +4243,7 @@ fn format_next_node(ps: &mut ParserState, next_node: prism::NextNode) {
     }
 }
 
-fn format_nil_node(ps: &mut ParserState) {
+fn format_nil_node(ps: &mut ParserState<'_>) {
     ps.emit_ident("nil");
 }
 
@@ -4393,7 +4393,7 @@ fn format_rational_node(ps: &mut ParserState, rational_node: prism::RationalNode
     );
 }
 
-fn format_redo_node(ps: &mut ParserState) {
+fn format_redo_node(ps: &mut ParserState<'_>) {
     ps.emit_ident("redo");
 }
 
@@ -4469,7 +4469,7 @@ fn format_rescue_node(ps: &mut ParserState, rescue_node: prism::RescueNode) {
     ps.at_offset(rescue_node.location().end_offset());
 }
 
-fn format_retry_node(ps: &mut ParserState) {
+fn format_retry_node(ps: &mut ParserState<'_>) {
     ps.emit_keyword("retry");
 }
 
@@ -4547,7 +4547,7 @@ fn format_source_line_node(ps: &mut ParserState, source_line_node: prism::Source
     handle_string_at_offset(ps, "__LINE__", source_line_node.location().start_offset());
 }
 
-fn format_self_node(ps: &mut ParserState) {
+fn format_self_node(ps: &mut ParserState<'_>) {
     ps.emit_ident("self");
 }
 
@@ -4649,9 +4649,9 @@ fn format_yield_node(ps: &mut ParserState, yield_node: prism::YieldNode) {
     }
 }
 
-fn handle_string_at_offset(
-    ps: &mut ParserState,
-    ident: impl Into<Cow<'static, str>>,
+fn handle_string_at_offset<'src>(
+    ps: &mut ParserState<'src>,
+    ident: impl Into<Cow<'src, str>>,
     offset: usize,
 ) {
     ps.at_offset(offset);
