@@ -70,7 +70,7 @@ pub struct ParserState<'src> {
     absorbing_indents: i32,
     insert_user_newlines: bool,
     spaces_after_last_newline: ColNumber,
-    scopes: Vec<Vec<String>>,
+    scopes: Vec<Vec<Cow<'src, str>>>,
 }
 
 impl<'src> ParserState<'src> {
@@ -89,8 +89,11 @@ impl<'src> ParserState<'src> {
         f(self);
         self.scopes.pop();
     }
-    pub(crate) fn bind_variable(&mut self, s: String) {
-        self.scopes.last_mut().expect("it's never empty").push(s);
+    pub(crate) fn bind_variable(&mut self, s: impl Into<Cow<'src, str>>) {
+        self.scopes
+            .last_mut()
+            .expect("it's never empty")
+            .push(s.into());
     }
     pub(crate) fn push_heredoc_content<F>(
         &mut self,
@@ -430,8 +433,8 @@ impl<'src> ParserState<'src> {
             .merge(comments.apply_spaces(self.spaces_after_last_newline));
     }
 
-    pub(crate) fn emit_op(&mut self, op: Cow<'static, str>) {
-        self.push_concrete_token(ConcreteLineToken::Op { op });
+    pub(crate) fn emit_op(&mut self, op: impl Into<Cow<'src, str>>) {
+        self.push_concrete_token(ConcreteLineToken::Op { op: op.into() });
     }
 
     pub(crate) fn emit_double_quote(&mut self) {

@@ -25,10 +25,6 @@ pub fn u8_to_string(arr: &[u8]) -> String {
     u8_to_str(arr).to_string()
 }
 
-pub fn const_to_string(constant_id: ConstantId) -> String {
-    u8_to_string(constant_id.as_slice())
-}
-
 pub fn const_to_str(constant_id: ConstantId<'_>) -> &str {
     u8_to_str(constant_id.as_slice())
 }

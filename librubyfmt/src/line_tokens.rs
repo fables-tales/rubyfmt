@@ -51,7 +51,7 @@ pub enum ConcreteLineToken<'src> {
     CloseCurlyBracket,
     OpenParen,
     CloseParen,
-    Op { op: Cow<'static, str> },
+    Op { op: Cow<'src, str> },
     DoubleQuote,
     LTStringContent { content: String },
     SingleSlash,

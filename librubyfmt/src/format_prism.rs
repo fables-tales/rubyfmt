@@ -8,7 +8,7 @@ use crate::{
     parser_state::{FormattingContext, HashType, ParserState},
     render_targets::MultilineHandling,
     types::SourceOffset,
-    util::{const_to_str, const_to_string, loc_to_str, loc_to_string, u8_to_str},
+    util::{const_to_str, loc_to_str, loc_to_string, u8_to_str},
 };
 
 pub fn format_node<'src>(ps: &mut ParserState<'src>, node: prism::Node<'src>) {
@@ -486,7 +486,7 @@ fn format_back_reference_read_node<'src>(
     let back_reference_loc = back_reference_read_node.location();
     let end_offset = back_reference_loc.end_offset();
 
-    handle_string_at_offset(ps, loc_to_string(back_reference_loc), end_offset);
+    handle_string_at_offset(ps, loc_to_str(back_reference_loc), end_offset);
 }
 
 fn format_begin_node<'src>(ps: &mut ParserState<'src>, begin_node: prism::BeginNode<'src>) {
@@ -1044,12 +1044,12 @@ fn format_it_local_variable_read_node<'src>(
 ) {
     handle_string_at_offset(
         ps,
-        loc_to_string(it_local_variable_read_node.location()),
+        loc_to_str(it_local_variable_read_node.location()),
         it_local_variable_read_node.location().start_offset(),
     );
 }
 
-fn format_it_parameters_node<'src>() {
+fn format_it_parameters_node() {
     // No-op. This node represents the implicit 'it' parameter,
     // and the actual parameter references are rendered separately.
 }
@@ -1058,9 +1058,7 @@ fn format_interpolated_last_line_node<'src>(
     ps: &mut ParserState<'src>,
     interpolated_match_last_line_node: prism::InterpolatedMatchLastLineNode<'src>,
 ) {
-    ps.emit_ident(loc_to_string(
-        interpolated_match_last_line_node.opening_loc(),
-    ));
+    ps.emit_ident(loc_to_str(interpolated_match_last_line_node.opening_loc()));
 
     ps.with_start_of_line(false, |ps| {
         for part in interpolated_match_last_line_node.parts().iter() {
@@ -1073,16 +1071,14 @@ fn format_interpolated_last_line_node<'src>(
         }
     });
 
-    ps.emit_ident(loc_to_string(
-        interpolated_match_last_line_node.closing_loc(),
-    ));
+    ps.emit_ident(loc_to_str(interpolated_match_last_line_node.closing_loc()));
 }
 
 fn format_interpolated_regular_expression_node<'src>(
     ps: &mut ParserState<'src>,
     interpolated_regular_expression_node: prism::InterpolatedRegularExpressionNode<'src>,
 ) {
-    ps.emit_ident(loc_to_string(
+    ps.emit_ident(loc_to_str(
         interpolated_regular_expression_node.opening_loc(),
     ));
 
@@ -1097,7 +1093,7 @@ fn format_interpolated_regular_expression_node<'src>(
         }
     });
 
-    ps.emit_ident(loc_to_string(
+    ps.emit_ident(loc_to_str(
         interpolated_regular_expression_node.closing_loc(),
     ));
 }
@@ -1199,7 +1195,7 @@ fn format_flip_flop_node<'src>(
         if let Some(left) = flip_flop_node.left() {
             format_node(ps, left);
         }
-        ps.emit_op(Cow::Owned(loc_to_string(flip_flop_node.operator_loc())));
+        ps.emit_op(loc_to_str(flip_flop_node.operator_loc()));
         if let Some(right) = flip_flop_node.right() {
             format_node(ps, right);
         }
@@ -1238,8 +1234,8 @@ fn format_class_variable_and_write_node<'src>(
 ) {
     format_write_node(
         ps,
-        const_to_string(class_variable_and_write_node.name()),
-        Cow::Borrowed("&&="),
+        const_to_str(class_variable_and_write_node.name()),
+        "&&=",
         class_variable_and_write_node.value(),
     );
 }
@@ -1250,10 +1246,8 @@ fn format_class_variable_operator_write_node<'src>(
 ) {
     format_write_node(
         ps,
-        const_to_string(class_variable_operator_write_node.name()),
-        Cow::Owned(loc_to_string(
-            class_variable_operator_write_node.binary_operator_loc(),
-        )),
+        const_to_str(class_variable_operator_write_node.name()),
+        loc_to_str(class_variable_operator_write_node.binary_operator_loc()),
         class_variable_operator_write_node.value(),
     );
 }
@@ -1264,8 +1258,8 @@ fn format_class_variable_or_write_node<'src>(
 ) {
     format_write_node(
         ps,
-        const_to_string(class_variable_or_write_node.name()),
-        Cow::Borrowed("||="),
+        const_to_str(class_variable_or_write_node.name()),
+        "||=",
         class_variable_or_write_node.value(),
     );
 }
@@ -1274,14 +1268,14 @@ fn format_class_variable_read_node<'src>(
     ps: &mut ParserState<'src>,
     class_variable_read_node: prism::ClassVariableReadNode<'src>,
 ) {
-    ps.emit_ident(const_to_string(class_variable_read_node.name()));
+    ps.emit_ident(const_to_str(class_variable_read_node.name()));
 }
 
 fn format_class_variable_target_node<'src>(
     ps: &mut ParserState<'src>,
     class_variable_target_node: prism::ClassVariableTargetNode<'src>,
 ) {
-    ps.emit_ident(const_to_string(class_variable_target_node.name()));
+    ps.emit_ident(const_to_str(class_variable_target_node.name()));
 }
 
 fn format_class_variable_write_node<'src>(
@@ -1291,8 +1285,8 @@ fn format_class_variable_write_node<'src>(
     ps.at_offset(class_variable_write_node.location().start_offset());
     format_write_node(
         ps,
-        const_to_string(class_variable_write_node.name()),
-        Cow::Borrowed("="),
+        const_to_str(class_variable_write_node.name()),
+        "=",
         class_variable_write_node.value(),
     );
 }
@@ -1330,7 +1324,7 @@ fn format_def_node<'src>(ps: &mut ParserState<'src>, def_node: prism::DefNode<'s
 
         handle_string_at_offset(
             ps,
-            const_to_string(def_node.name()),
+            const_to_str(def_node.name()),
             def_node.name_loc().end_offset(),
         );
     });
@@ -1570,8 +1564,8 @@ fn format_block_parameter_node<'src>(
         ps.emit_soft_indent();
         ps.emit_ident("&");
         if let Some(ident) = block_arg.name() {
-            let ident_str = const_to_string(ident);
-            ps.bind_variable(ident_str.clone());
+            let ident_str = const_to_str(ident);
+            ps.bind_variable(ident_str);
             format_ident(ps, ident_str, block_arg.name_loc().unwrap().end_offset());
         }
     });
@@ -1724,27 +1718,27 @@ fn format_call_node<'src>(
     skip_receiver: bool,
     is_final_call_in_chain: bool,
 ) {
-    let method_name = const_to_string(call_node.name());
+    let method_name = const_to_str(call_node.name());
     let end_offset = call_node.location().end_offset();
-    let is_dot_call = &method_name == "call" && call_node.message_loc().is_none(); // e.g. `a.()`
+    let is_dot_call = method_name == "call" && call_node.message_loc().is_none(); // e.g. `a.()`
 
     // Only treat [] and []= as aref syntax when there's no explicit call operator.
     let has_call_operator = call_node.call_operator_loc().is_some();
-    let is_aref = &method_name == "[]" && !has_call_operator;
-    let is_aref_write = &method_name == "[]=" && !has_call_operator;
+    let is_aref = method_name == "[]" && !has_call_operator;
+    let is_aref_write = method_name == "[]=" && !has_call_operator;
 
     if skip_receiver || call_node.receiver().is_none() {
         if !is_aref && !is_aref_write {
             let method_ident = if call_node.is_attribute_write() {
-                loc_to_string(
+                loc_to_str(
                     call_node
                         .message_loc()
                         .expect("Attribute writes must have a message"),
                 )
             } else if is_dot_call {
-                String::new()
+                ""
             } else {
-                method_name.clone()
+                method_name
             };
             handle_string_at_offset(
                 ps,
@@ -1808,7 +1802,7 @@ fn format_call_node<'src>(
                 let should_use_parens = use_parens_for_call_node(
                     ps,
                     &call_node,
-                    &method_name,
+                    method_name,
                     is_final_call_in_chain,
                     ps.current_formatting_context(),
                 );
@@ -1877,7 +1871,7 @@ fn format_call_node<'src>(
             let should_use_parens = use_parens_for_call_node(
                 ps,
                 &call_node,
-                &method_name,
+                method_name,
                 is_final_call_in_chain,
                 ps.current_formatting_context(),
             );
@@ -1892,7 +1886,7 @@ fn format_call_node<'src>(
                 || use_parens_for_call_node(
                     ps,
                     &call_node,
-                    &method_name,
+                    method_name,
                     is_final_call_in_chain,
                     ps.current_formatting_context(),
                 );
@@ -1927,7 +1921,7 @@ fn format_call_node<'src>(
     } else {
         let is_unary_operator = call_node.arguments().is_none()
             && call_node.call_operator_loc().is_none()
-            && matches!(method_name.as_str(), "-@" | "+@" | "!" | "~");
+            && matches!(method_name, "-@" | "+@" | "!" | "~");
 
         if is_unary_operator {
             format_unary_operator(ps, call_node, method_name);
@@ -1942,7 +1936,7 @@ fn format_call_node<'src>(
                     format_infix_operator(
                         ps,
                         call_node.receiver().unwrap(),
-                        method_name.as_ref(),
+                        method_name,
                         // For infix operators, we still get an ArgumentsNode, but it will
                         // always be an argument list of a single node.
                         call_node
@@ -1968,37 +1962,33 @@ fn format_call_node<'src>(
 fn format_unary_operator<'src>(
     ps: &mut ParserState<'src>,
     call_node: prism::CallNode<'src>,
-    method_name: String,
+    method_name: &'src str,
 ) {
     // We need to preserve parens for `not`, they can be semantically meaningful
     let is_not_with_parens = method_name == "!"
         && call_node
             .message_loc()
-            .map(|loc| loc_to_string(loc) == "not")
+            .map(|loc| loc_to_str(loc) == "not")
             .unwrap_or(false)
         && call_node.opening_loc().is_some();
 
-    let operator_symbol = match method_name.as_str() {
+    let operator_symbol = match method_name {
         "!" => {
             // `not` and `!` both have a `name` of `!` but different messages
             if let Some(message_loc) = call_node.message_loc() {
-                let message_text = loc_to_string(message_loc);
+                let message_text = loc_to_str(message_loc);
                 if message_text == "not" {
-                    if is_not_with_parens {
-                        "not".to_string()
-                    } else {
-                        "not ".to_string()
-                    }
+                    if is_not_with_parens { "not" } else { "not " }
                 } else {
-                    "!".to_string()
+                    "!"
                 }
             } else {
-                "!".to_string()
+                "!"
             }
         }
-        "-@" => "-".to_string(),
-        "+@" => "+".to_string(),
-        "~" => "~".to_string(),
+        "-@" => "-",
+        "+@" => "+",
+        "~" => "~",
         _ => {
             if cfg!(debug_assertions) {
                 unreachable!("Received unexpected unary operator: {}", method_name);
@@ -2006,7 +1996,7 @@ fn format_unary_operator<'src>(
 
             // Try to render the message loc as a fallback in unexpected cases, but
             // panic if we don't find one, otherwise we're rendering a total guess.
-            loc_to_string(
+            loc_to_str(
                 call_node
                     .message_loc()
                     .expect("Expected unary operator to have a message loc"),
@@ -2411,11 +2401,11 @@ fn format_call_and_write_node<'src>(
     }
 
     if let Some(call_operator_loc) = call_and_write_node.call_operator_loc() {
-        ps.emit_ident(loc_to_string(call_operator_loc));
+        ps.emit_ident(loc_to_str(call_operator_loc));
     }
 
     if let Some(message_loc) = call_and_write_node.message_loc() {
-        ps.emit_ident(loc_to_string(message_loc));
+        ps.emit_ident(loc_to_str(message_loc));
     }
 
     ps.emit_space();
@@ -2434,17 +2424,15 @@ fn format_call_operator_write_node<'src>(
     }
 
     if let Some(call_operator_loc) = call_operator_write_node.call_operator_loc() {
-        ps.emit_ident(loc_to_string(call_operator_loc));
+        ps.emit_ident(loc_to_str(call_operator_loc));
     }
 
     if let Some(message_loc) = call_operator_write_node.message_loc() {
-        ps.emit_ident(loc_to_string(message_loc));
+        ps.emit_ident(loc_to_str(message_loc));
     }
 
     ps.emit_space();
-    ps.emit_op(Cow::Owned(loc_to_string(
-        call_operator_write_node.binary_operator_loc(),
-    )));
+    ps.emit_op(loc_to_str(call_operator_write_node.binary_operator_loc()));
     ps.emit_space();
 
     ps.with_start_of_line(false, |ps| {
@@ -2461,11 +2449,11 @@ fn format_call_or_write_node<'src>(
     }
 
     if let Some(call_operator_loc) = call_or_write_node.call_operator_loc() {
-        ps.emit_ident(loc_to_string(call_operator_loc));
+        ps.emit_ident(loc_to_str(call_operator_loc));
     }
 
     if let Some(message_loc) = call_or_write_node.message_loc() {
-        ps.emit_ident(loc_to_string(message_loc));
+        ps.emit_ident(loc_to_str(message_loc));
     }
 
     ps.emit_space();
@@ -2480,17 +2468,17 @@ fn format_call_target_node<'src>(
     call_target_node: prism::CallTargetNode<'src>,
 ) {
     ps.with_start_of_line(false, |ps| format_node(ps, call_target_node.receiver()));
-    ps.emit_ident(loc_to_string(call_target_node.call_operator_loc()));
-    ps.emit_ident(loc_to_string(call_target_node.message_loc()));
+    ps.emit_ident(loc_to_str(call_target_node.call_operator_loc()));
+    ps.emit_ident(loc_to_str(call_target_node.message_loc()));
 }
 
 fn format_symbol_node<'src>(ps: &mut ParserState<'src>, symbol_node: prism::SymbolNode<'src>) {
-    let opener = symbol_node.opening_loc().map(|s| loc_to_string(s));
-    let closer = symbol_node.closing_loc().map(|s| loc_to_string(s));
+    let opener = symbol_node.opening_loc().map(|s| loc_to_str(s));
+    let closer = symbol_node.closing_loc().map(|s| loc_to_str(s));
 
     // Check if this is a quoted symbol that needs normalization to double quotes
     // Symbols like :'"foo"' (single-quoted) should become :"\"foo\""
-    let is_single_quoted = opener.as_ref().map(|s| s == ":'").unwrap_or(false);
+    let is_single_quoted = opener.as_ref().map(|s| *s == ":'").unwrap_or(false);
 
     if is_single_quoted {
         ps.emit_ident(":");
@@ -2500,12 +2488,8 @@ fn format_symbol_node<'src>(ps: &mut ParserState<'src>, symbol_node: prism::Symb
             let content = loc_to_str(value_loc);
             let escaped = crate::string_escape::single_to_double_quoted(
                 content,
-                opener
-                    .expect("We must have an opener to know we're single-quoted")
-                    .as_str(),
-                closer
-                    .expect("We must have a closer when wrapped in single quotes")
-                    .as_str(),
+                opener.expect("We must have an opener to know we're single-quoted"),
+                closer.expect("We must have a closer when wrapped in single quotes"),
             );
             ps.emit_string_content(escaped);
         }
@@ -2513,11 +2497,11 @@ fn format_symbol_node<'src>(ps: &mut ParserState<'src>, symbol_node: prism::Symb
         ps.emit_double_quote();
     } else {
         // For other symbols, emit as-is
-        if let Some(ref opening) = opener {
-            ps.emit_ident(opening.clone());
+        if let Some(opening) = opener {
+            ps.emit_ident(opening);
         }
         if let Some(value_loc) = symbol_node.value_loc() {
-            ps.emit_ident(loc_to_string(value_loc));
+            ps.emit_ident(loc_to_str(value_loc));
         }
         if let Some(closing_str) = closer {
             let mut closing_str = closing_str;
@@ -2525,7 +2509,7 @@ fn format_symbol_node<'src>(ps: &mut ParserState<'src>, symbol_node: prism::Symb
             // a closing_str of `"\":"`, so we have to trim instead of
             // dropping the entire closing item.
             if closing_str.ends_with(":") {
-                closing_str.pop();
+                closing_str = &closing_str[..(closing_str.len() - 1)];
             }
             if !closing_str.is_empty() {
                 ps.emit_ident(closing_str);
@@ -2714,7 +2698,7 @@ fn format_block_local_variable_node<'src>(
 ) {
     handle_string_at_offset(
         ps,
-        const_to_string(block_local_variable_node.name()),
+        const_to_str(block_local_variable_node.name()),
         block_local_variable_node.location().start_offset(),
     );
 }
@@ -3074,8 +3058,8 @@ fn format_rest_parameter_node<'src>(
         ps.emit_ident("*");
         ps.with_start_of_line(false, |ps| {
             if let Some(name) = rest_param.name() {
-                let name_str = const_to_string(name);
-                ps.bind_variable(name_str.clone());
+                let name_str = const_to_str(name);
+                ps.bind_variable(name_str);
                 format_ident(ps, name_str, rest_param.name_loc().unwrap().end_offset());
             }
         });
@@ -3131,8 +3115,8 @@ fn format_keyword_rest_parameter_node<'src>(
     ps.emit_soft_indent();
     ps.emit_ident("**");
     if let Some(constant_id) = keyword_rest_parameter_node.name() {
-        let name = const_to_string(constant_id);
-        ps.bind_variable(name.clone());
+        let name = const_to_str(constant_id);
+        ps.bind_variable(name);
         ps.emit_ident(name);
     }
 }
@@ -3141,8 +3125,8 @@ fn format_required_keyword_parameter_node<'src>(
     ps: &mut ParserState<'src>,
     required_keyword_parameter_node: prism::RequiredKeywordParameterNode<'src>,
 ) {
-    let name = const_to_string(required_keyword_parameter_node.name());
-    ps.bind_variable(name.clone());
+    let name = const_to_str(required_keyword_parameter_node.name());
+    ps.bind_variable(name);
     ps.emit_ident(name);
     ps.emit_ident(":");
 }
@@ -3151,8 +3135,8 @@ fn format_required_parameter_node<'src>(
     ps: &mut ParserState<'src>,
     required_parameter_node: prism::RequiredParameterNode<'src>,
 ) {
-    let name = const_to_string(required_parameter_node.name());
-    ps.bind_variable(name.clone());
+    let name = const_to_str(required_parameter_node.name());
+    ps.bind_variable(name);
     ps.emit_ident(name);
 }
 
@@ -3160,12 +3144,12 @@ fn format_local_variable_and_write_node<'src>(
     ps: &mut ParserState<'src>,
     local_variable_and_write_node: prism::LocalVariableAndWriteNode<'src>,
 ) {
-    let variable_name = const_to_string(local_variable_and_write_node.name());
-    ps.bind_variable(variable_name.clone());
+    let variable_name = const_to_str(local_variable_and_write_node.name());
+    ps.bind_variable(variable_name);
     format_write_node(
         ps,
         variable_name,
-        Cow::Borrowed("&&="),
+        "&&=",
         local_variable_and_write_node.value(),
     );
 }
@@ -3174,14 +3158,12 @@ fn format_local_variable_operator_write_node<'src>(
     ps: &mut ParserState<'src>,
     local_variable_operator_write_node: prism::LocalVariableOperatorWriteNode<'src>,
 ) {
-    let variable_name = const_to_string(local_variable_operator_write_node.name());
-    ps.bind_variable(variable_name.clone());
+    let variable_name = const_to_str(local_variable_operator_write_node.name());
+    ps.bind_variable(variable_name);
     format_write_node(
         ps,
         variable_name,
-        Cow::Owned(loc_to_string(
-            local_variable_operator_write_node.binary_operator_loc(),
-        )),
+        loc_to_str(local_variable_operator_write_node.binary_operator_loc()),
         local_variable_operator_write_node.value(),
     );
 }
@@ -3190,12 +3172,12 @@ fn format_local_variable_or_write_node<'src>(
     ps: &mut ParserState<'src>,
     local_variable_or_write_node: prism::LocalVariableOrWriteNode<'src>,
 ) {
-    let variable_name = const_to_string(local_variable_or_write_node.name());
-    ps.bind_variable(variable_name.clone());
+    let variable_name = const_to_str(local_variable_or_write_node.name());
+    ps.bind_variable(variable_name);
     format_write_node(
         ps,
         variable_name,
-        Cow::Borrowed("||="),
+        "||=",
         local_variable_or_write_node.value(),
     );
 }
@@ -3204,8 +3186,8 @@ fn format_local_variable_target_node<'src>(
     ps: &mut ParserState<'src>,
     local_variable_target_node: prism::LocalVariableTargetNode<'src>,
 ) {
-    let variable_name = const_to_string(local_variable_target_node.name());
-    ps.bind_variable(variable_name.clone());
+    let variable_name = const_to_str(local_variable_target_node.name());
+    ps.bind_variable(variable_name);
     ps.emit_ident(variable_name);
 }
 
@@ -3213,7 +3195,7 @@ fn format_local_variable_read_node<'src>(
     ps: &mut ParserState<'src>,
     local_variable_read_node: prism::LocalVariableReadNode<'src>,
 ) {
-    let name = const_to_string(local_variable_read_node.name());
+    let name = const_to_str(local_variable_read_node.name());
     ps.emit_ident(name);
 }
 
@@ -3221,14 +3203,9 @@ fn format_local_variable_write_node<'src>(
     ps: &mut ParserState<'src>,
     local_variable_write_node: prism::LocalVariableWriteNode<'src>,
 ) {
-    let name = const_to_string(local_variable_write_node.name());
-    ps.bind_variable(name.clone());
-    format_write_node(
-        ps,
-        name,
-        Cow::Borrowed("="),
-        local_variable_write_node.value(),
-    );
+    let name = const_to_str(local_variable_write_node.name());
+    ps.bind_variable(name);
+    format_write_node(ps, name, "=", local_variable_write_node.value());
 }
 
 fn format_splat_node<'src>(ps: &mut ParserState<'src>, splat_node: prism::SplatNode<'src>) {
@@ -3240,7 +3217,7 @@ fn format_splat_node<'src>(ps: &mut ParserState<'src>, splat_node: prism::SplatN
     }
 }
 
-fn format_ident<'src>(ps: &mut ParserState<'src>, ident: String, offset: usize) {
+fn format_ident<'src>(ps: &mut ParserState<'src>, ident: impl Into<Cow<'src, str>>, offset: usize) {
     handle_string_at_offset(ps, ident, offset);
 }
 
@@ -3251,8 +3228,8 @@ fn format_instance_variable_write_node<'src>(
     ps.at_offset(instance_variable_write_node.location().start_offset());
     format_write_node(
         ps,
-        const_to_string(instance_variable_write_node.name()),
-        Cow::Borrowed("="),
+        const_to_str(instance_variable_write_node.name()),
+        "=",
         instance_variable_write_node.value(),
     );
 }
@@ -3260,7 +3237,7 @@ fn format_instance_variable_write_node<'src>(
 fn format_integer_node<'src>(ps: &mut ParserState<'src>, integer_node: prism::IntegerNode<'src>) {
     handle_string_at_offset(
         ps,
-        loc_to_string(integer_node.location()),
+        loc_to_str(integer_node.location()),
         integer_node.location().start_offset(),
     );
 }
@@ -3268,7 +3245,7 @@ fn format_integer_node<'src>(ps: &mut ParserState<'src>, integer_node: prism::In
 fn format_float_node<'src>(ps: &mut ParserState<'src>, float_node: prism::FloatNode<'src>) {
     handle_string_at_offset(
         ps,
-        loc_to_string(float_node.location()),
+        loc_to_str(float_node.location()),
         float_node.location().start_offset(),
     );
 }
@@ -3365,8 +3342,8 @@ fn format_global_variable_and_write_node<'src>(
 ) {
     format_write_node(
         ps,
-        const_to_string(global_variable_and_write_node.name()),
-        Cow::Borrowed("&&="),
+        const_to_str(global_variable_and_write_node.name()),
+        "&&=",
         global_variable_and_write_node.value(),
     );
 }
@@ -3377,10 +3354,8 @@ fn format_global_variable_operator_write_node<'src>(
 ) {
     format_write_node(
         ps,
-        const_to_string(global_variable_operator_write_node.name()),
-        Cow::Owned(loc_to_string(
-            global_variable_operator_write_node.binary_operator_loc(),
-        )),
+        const_to_str(global_variable_operator_write_node.name()),
+        loc_to_str(global_variable_operator_write_node.binary_operator_loc()),
         global_variable_operator_write_node.value(),
     );
 }
@@ -3391,8 +3366,8 @@ fn format_global_variable_or_write_node<'src>(
 ) {
     format_write_node(
         ps,
-        const_to_string(global_variable_or_write_node.name()),
-        Cow::Borrowed("||="),
+        const_to_str(global_variable_or_write_node.name()),
+        "||=",
         global_variable_or_write_node.value(),
     );
 }
@@ -3401,14 +3376,14 @@ fn format_global_variable_read_node<'src>(
     ps: &mut ParserState<'src>,
     global_variable_read_node: prism::GlobalVariableReadNode<'src>,
 ) {
-    ps.emit_ident(loc_to_string(global_variable_read_node.location()));
+    ps.emit_ident(loc_to_str(global_variable_read_node.location()));
 }
 
 fn format_global_variable_target_node<'src>(
     ps: &mut ParserState<'src>,
     global_variable_target_node: prism::GlobalVariableTargetNode<'src>,
 ) {
-    ps.emit_ident(const_to_string(global_variable_target_node.name()));
+    ps.emit_ident(const_to_str(global_variable_target_node.name()));
 }
 
 fn format_global_variable_write_node<'src>(
@@ -3417,8 +3392,8 @@ fn format_global_variable_write_node<'src>(
 ) {
     format_write_node(
         ps,
-        const_to_string(global_variable_write_node.name()),
-        Cow::Borrowed("="),
+        const_to_str(global_variable_write_node.name()),
+        "=",
         global_variable_write_node.value(),
     );
 }
@@ -3773,18 +3748,18 @@ fn format_imaginary_node<'src>(
 ) {
     handle_string_at_offset(
         ps,
-        loc_to_string(imaginary_node.location()),
+        loc_to_str(imaginary_node.location()),
         imaginary_node.location().start_offset(),
     );
 }
 
-fn format_implicit_node<'src>() {
+fn format_implicit_node() {
     // Do nothing!
     // This implicit node represents an implicit value in hash shorthands,
     // e.g. `{ a: }`, so we don't actually need to do anything to format it
 }
 
-fn format_implicit_rest_node<'src>() {
+fn format_implicit_rest_node() {
     // Intentionally do nothing.
     //
     // prism::ImplicitRestNode is essentially a placeholder for some variable declaration like
@@ -3848,9 +3823,7 @@ fn format_index_operator_write_node<'src>(
     }
 
     ps.emit_space();
-    ps.emit_op(Cow::Owned(loc_to_string(
-        index_operator_write_node.binary_operator_loc(),
-    )));
+    ps.emit_op(loc_to_str(index_operator_write_node.binary_operator_loc()));
     ps.emit_space();
 
     ps.with_start_of_line(false, |ps| {
@@ -3898,8 +3871,8 @@ fn format_instance_variable_and_write_node<'src>(
 ) {
     format_write_node(
         ps,
-        const_to_string(instance_variable_and_write_node.name()),
-        Cow::Borrowed("&&="),
+        const_to_str(instance_variable_and_write_node.name()),
+        "&&=",
         instance_variable_and_write_node.value(),
     );
 }
@@ -3910,10 +3883,8 @@ fn format_instance_variable_operator_write_node<'src>(
 ) {
     format_write_node(
         ps,
-        const_to_string(instance_variable_operator_write_node.name()),
-        Cow::Owned(loc_to_string(
-            instance_variable_operator_write_node.binary_operator_loc(),
-        )),
+        const_to_str(instance_variable_operator_write_node.name()),
+        loc_to_str(instance_variable_operator_write_node.binary_operator_loc()),
         instance_variable_operator_write_node.value(),
     );
 }
@@ -3924,8 +3895,8 @@ fn format_instance_variable_or_write_node<'src>(
 ) {
     format_write_node(
         ps,
-        const_to_string(instance_variable_or_write_node.name()),
-        Cow::Borrowed("||="),
+        const_to_str(instance_variable_or_write_node.name()),
+        "||=",
         instance_variable_or_write_node.value(),
     );
 }
@@ -3934,14 +3905,14 @@ fn format_instance_variable_read_node<'src>(
     ps: &mut ParserState<'src>,
     instance_variable_read_node: prism::InstanceVariableReadNode<'src>,
 ) {
-    ps.emit_ident(const_to_string(instance_variable_read_node.name()));
+    ps.emit_ident(const_to_str(instance_variable_read_node.name()));
 }
 
 fn format_instance_variable_target_node<'src>(
     ps: &mut ParserState<'src>,
     instance_variable_target_node: prism::InstanceVariableTargetNode<'src>,
 ) {
-    ps.emit_ident(const_to_string(instance_variable_target_node.name()));
+    ps.emit_ident(const_to_str(instance_variable_target_node.name()));
 }
 
 fn format_constant_read_node<'src>(
@@ -3950,7 +3921,7 @@ fn format_constant_read_node<'src>(
 ) {
     handle_string_at_offset(
         ps,
-        const_to_string(constant_read_node.name()),
+        const_to_str(constant_read_node.name()),
         constant_read_node.location().start_offset(),
     );
 }
@@ -3969,7 +3940,7 @@ fn format_constant_path_node<'src>(
 
         handle_string_at_offset(
             ps,
-            const_to_string(constant_path_node.name().unwrap()),
+            const_to_str(constant_path_node.name().unwrap()),
             constant_path_node.name_loc().start_offset(),
         );
     });
@@ -3981,8 +3952,8 @@ fn format_constant_and_write_node<'src>(
 ) {
     format_write_node(
         ps,
-        const_to_string(constant_and_write_node.name()),
-        Cow::Borrowed("&&="),
+        const_to_str(constant_and_write_node.name()),
+        "&&=",
         constant_and_write_node.value(),
     );
 }
@@ -3993,10 +3964,8 @@ fn format_constant_operator_write_node<'src>(
 ) {
     format_write_node(
         ps,
-        const_to_string(constant_operator_write_node.name()),
-        Cow::Owned(loc_to_string(
-            constant_operator_write_node.binary_operator_loc(),
-        )),
+        const_to_str(constant_operator_write_node.name()),
+        loc_to_str(constant_operator_write_node.binary_operator_loc()),
         constant_operator_write_node.value(),
     );
 }
@@ -4007,8 +3976,8 @@ fn format_constant_or_write_node<'src>(
 ) {
     format_write_node(
         ps,
-        const_to_string(constant_or_write_node.name()),
-        Cow::Borrowed("||="),
+        const_to_str(constant_or_write_node.name()),
+        "||=",
         constant_or_write_node.value(),
     );
 }
@@ -4032,7 +4001,7 @@ fn format_constant_path_operator_write_node<'src>(
     format_constant_path_write(
         ps,
         constant_path_operator_write_node.target(),
-        Cow::Owned(loc_to_string(
+        Cow::Borrowed(loc_to_str(
             constant_path_operator_write_node.binary_operator_loc(),
         )),
         constant_path_operator_write_node.value(),
@@ -4065,7 +4034,7 @@ fn format_constant_path_target_node<'src>(
 
         handle_string_at_offset(
             ps,
-            const_to_string(constant_path_target_node.name().unwrap()),
+            const_to_str(constant_path_target_node.name().unwrap()),
             constant_path_target_node.name_loc().start_offset(),
         );
     });
@@ -4089,7 +4058,7 @@ fn format_constant_target_node<'src>(
 ) {
     handle_string_at_offset(
         ps,
-        const_to_string(constant_target_node.name()),
+        const_to_str(constant_target_node.name()),
         constant_target_node.location().start_offset(),
     );
 }
@@ -4097,7 +4066,7 @@ fn format_constant_target_node<'src>(
 fn format_constant_path_write<'src>(
     ps: &mut ParserState<'src>,
     target: prism::ConstantPathNode<'src>,
-    op: Cow<'static, str>,
+    op: Cow<'src, str>,
     value: prism::Node<'src>,
 ) {
     format_constant_path_node(ps, target);
@@ -4113,20 +4082,20 @@ fn format_constant_write_node<'src>(
 ) {
     format_write_node(
         ps,
-        const_to_string(constant_write_node.name()),
-        Cow::Borrowed("="),
+        const_to_str(constant_write_node.name()),
+        "=",
         constant_write_node.value(),
     );
 }
 
 fn format_lambda_node<'src>(ps: &mut ParserState<'src>, lambda_node: prism::LambdaNode<'src>) {
-    let operator = loc_to_string(lambda_node.operator_loc());
+    let operator = loc_to_str(lambda_node.operator_loc());
 
     ps.with_start_of_line(false, |ps| {
-        ps.emit_ident(operator.clone());
+        ps.emit_ident(operator);
 
         if let Some(parameters_node) = lambda_node.parameters() {
-            if &operator == "->"
+            if operator == "->"
                 && let Some(block_parameters) = parameters_node.as_block_parameters_node()
             {
                 if block_parameters.parameters().is_some() || !block_parameters.locals().is_empty()
@@ -4211,9 +4180,9 @@ fn format_match_last_line_node<'src>(
     ps: &mut ParserState<'src>,
     match_last_line_node: prism::MatchLastLineNode<'src>,
 ) {
-    ps.emit_ident(loc_to_string(match_last_line_node.opening_loc()));
+    ps.emit_ident(loc_to_str(match_last_line_node.opening_loc()));
     ps.emit_string_content(loc_to_string(match_last_line_node.content_loc()));
-    ps.emit_ident(loc_to_string(match_last_line_node.closing_loc()));
+    ps.emit_ident(loc_to_str(match_last_line_node.closing_loc()));
 }
 
 fn format_match_predicate_node<'src>(
@@ -4223,7 +4192,7 @@ fn format_match_predicate_node<'src>(
     ps.with_start_of_line(false, |ps| {
         format_node(ps, match_predicate_node.value());
         ps.emit_space();
-        ps.emit_ident(loc_to_string(match_predicate_node.operator_loc()));
+        ps.emit_ident(loc_to_str(match_predicate_node.operator_loc()));
         ps.emit_space();
         format_node(ps, match_predicate_node.pattern());
     });
@@ -4236,7 +4205,7 @@ fn format_match_required_node<'src>(
     ps.with_start_of_line(false, |ps| {
         format_node(ps, match_required_node.value());
         ps.emit_space();
-        ps.emit_ident(loc_to_string(match_required_node.operator_loc()));
+        ps.emit_ident(loc_to_str(match_required_node.operator_loc()));
         ps.emit_space();
         format_node(ps, match_required_node.pattern());
     });
@@ -4355,7 +4324,7 @@ fn format_no_keywords_parameter_node<'src>(
     );
 }
 
-fn format_numbered_parameters_node<'src>() {
+fn format_numbered_parameters_node() {
     // No-op. This node represents the implicit set of numbered parameters,
     // and the actual parameter references are rendered separately.
 }
@@ -4364,15 +4333,15 @@ fn format_numbered_reference_read_node<'src>(
     ps: &mut ParserState<'src>,
     numbered_reference_read_node: prism::NumberedReferenceReadNode<'src>,
 ) {
-    ps.emit_ident(loc_to_string(numbered_reference_read_node.location()));
+    ps.emit_ident(loc_to_str(numbered_reference_read_node.location()));
 }
 
 fn format_optional_keyword_parameter_node<'src>(
     ps: &mut ParserState<'src>,
     optional_keyword_parameter_node: prism::OptionalKeywordParameterNode<'src>,
 ) {
-    let name = const_to_string(optional_keyword_parameter_node.name());
-    ps.bind_variable(name.clone());
+    let name = const_to_str(optional_keyword_parameter_node.name());
+    ps.bind_variable(name);
     ps.emit_ident(name);
     ps.emit_op(Cow::Borrowed(":"));
     ps.emit_space();
@@ -4385,8 +4354,8 @@ fn format_optional_parameter_node<'src>(
     ps: &mut ParserState<'src>,
     optional_parameter_node: prism::OptionalParameterNode<'src>,
 ) {
-    let name = const_to_string(optional_parameter_node.name());
-    ps.bind_variable(name.clone());
+    let name = const_to_str(optional_parameter_node.name());
+    ps.bind_variable(name);
     ps.emit_ident(name);
     ps.emit_space();
     ps.emit_op(Cow::Borrowed("="));
@@ -4480,7 +4449,7 @@ fn format_range_node<'src>(ps: &mut ParserState<'src>, range_node: prism::RangeN
         if let Some(left) = range_node.left() {
             format_node(ps, left);
         }
-        ps.emit_op(Cow::Owned(loc_to_string(range_node.operator_loc())));
+        ps.emit_op(loc_to_str(range_node.operator_loc()));
         if let Some(right) = range_node.right() {
             format_node(ps, right);
         }
@@ -4493,7 +4462,7 @@ fn format_rational_node<'src>(
 ) {
     handle_string_at_offset(
         ps,
-        loc_to_string(rational_node.location()),
+        loc_to_str(rational_node.location()),
         rational_node.location().start_offset(),
     );
 }
@@ -4506,9 +4475,9 @@ fn format_regular_expression_node<'src>(
     ps: &mut ParserState<'src>,
     regular_expression_node: prism::RegularExpressionNode<'src>,
 ) {
-    ps.emit_ident(loc_to_string(regular_expression_node.opening_loc()));
+    ps.emit_ident(loc_to_str(regular_expression_node.opening_loc()));
     ps.emit_string_content(loc_to_string(regular_expression_node.content_loc()));
-    ps.emit_ident(loc_to_string(regular_expression_node.closing_loc()));
+    ps.emit_ident(loc_to_str(regular_expression_node.closing_loc()));
 }
 
 fn format_rescue_modifier_node<'src>(
@@ -4852,8 +4821,8 @@ fn format_list_like_thing<'src>(
 
 fn format_write_node<'src>(
     ps: &mut ParserState<'src>,
-    name: String,
-    op: Cow<'static, str>,
+    name: &'src str,
+    op: &'src str,
     value: prism::Node<'src>,
 ) {
     ps.emit_ident(name);
