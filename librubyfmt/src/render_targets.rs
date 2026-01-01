@@ -15,24 +15,24 @@ pub enum ConvertType {
 }
 
 #[derive(Debug, Default, Clone)]
-pub struct BaseQueue {
-    tokens: Vec<ConcreteLineTokenAndTargets>,
+pub struct BaseQueue<'src> {
+    tokens: Vec<ConcreteLineTokenAndTargets<'src>>,
 }
 
-impl BaseQueue {
-    pub fn push(&mut self, lt: ConcreteLineTokenAndTargets) {
+impl<'src> BaseQueue<'src> {
+    pub fn push(&mut self, lt: ConcreteLineTokenAndTargets<'src>) {
         self.tokens.push(lt)
     }
 
     pub fn insert_at(
         &mut self,
         idx: usize,
-        tokens: impl IntoIterator<Item = ConcreteLineTokenAndTargets>,
+        tokens: impl IntoIterator<Item = ConcreteLineTokenAndTargets<'src>>,
     ) {
         insert_at(idx, &mut self.tokens, tokens)
     }
 
-    pub fn into_tokens(self) -> Vec<ConcreteLineTokenAndTargets> {
+    pub fn into_tokens(self) -> Vec<ConcreteLineTokenAndTargets<'src>> {
         self.tokens
     }
 
@@ -47,12 +47,12 @@ impl BaseQueue {
     }
 }
 
-pub trait AbstractTokenTarget: std::fmt::Debug {
-    fn push(&mut self, lt: AbstractLineToken);
-    fn into_tokens(self, ct: ConvertType) -> Vec<ConcreteLineTokenAndTargets>;
+pub trait AbstractTokenTarget<'src>: std::fmt::Debug {
+    fn push(&mut self, lt: AbstractLineToken<'src>);
+    fn into_tokens(self, ct: ConvertType) -> Vec<ConcreteLineTokenAndTargets<'src>>;
     fn is_multiline(&self) -> bool;
     fn single_line_string_length(&self, current_line_length: usize) -> usize;
-    fn tokens(&self) -> &Vec<AbstractLineToken>;
+    fn tokens(&self) -> &Vec<AbstractLineToken<'src>>;
     fn any_collapsing_newline_has_heredoc_content(&self) -> bool;
 
     fn len(&self) -> usize {
@@ -84,19 +84,19 @@ pub trait AbstractTokenTarget: std::fmt::Debug {
 }
 
 #[derive(Debug, Clone)]
-pub struct BreakableEntry {
-    tokens: Vec<AbstractLineToken>,
+pub struct BreakableEntry<'src> {
+    tokens: Vec<AbstractLineToken<'src>>,
     multiline_tracker: MultilineTracker,
-    delims: BreakableDelims,
+    pub delims: BreakableDelims,
     in_string_embexpr: bool,
 }
 
-impl AbstractTokenTarget for BreakableEntry {
-    fn push(&mut self, lt: AbstractLineToken) {
+impl<'src> AbstractTokenTarget<'src> for BreakableEntry<'src> {
+    fn push(&mut self, lt: AbstractLineToken<'src>) {
         self.tokens.push(lt);
     }
 
-    fn into_tokens(self, ct: ConvertType) -> Vec<ConcreteLineTokenAndTargets> {
+    fn into_tokens(self, ct: ConvertType) -> Vec<ConcreteLineTokenAndTargets<'src>> {
         match ct {
             ConvertType::MultiLine => {
                 let mut new_tokens: Vec<_> = self
@@ -131,7 +131,7 @@ impl AbstractTokenTarget for BreakableEntry {
             || self.contains_hard_newline()
     }
 
-    fn tokens(&self) -> &Vec<AbstractLineToken> {
+    fn tokens(&self) -> &Vec<AbstractLineToken<'src>> {
         &self.tokens
     }
 
@@ -147,7 +147,7 @@ impl AbstractTokenTarget for BreakableEntry {
     }
 }
 
-impl BreakableEntry {
+impl<'src> BreakableEntry<'src> {
     pub fn new(delims: BreakableDelims, formatting_context: &[FormattingContext]) -> Self {
         let in_string_embexpr = formatting_context
             .iter()
@@ -161,7 +161,11 @@ impl BreakableEntry {
         }
     }
 
-    pub fn insert_at(&mut self, idx: usize, tokens: impl IntoIterator<Item = AbstractLineToken>) {
+    pub fn insert_at(
+        &mut self,
+        idx: usize,
+        tokens: impl IntoIterator<Item = AbstractLineToken<'src>>,
+    ) {
         insert_at(idx, &mut self.tokens, tokens)
     }
 
@@ -215,22 +219,22 @@ pub enum MultilineHandling {
 }
 
 #[derive(Debug, Clone)]
-pub struct BreakableCallChainEntry {
-    tokens: Vec<AbstractLineToken>,
+pub struct BreakableCallChainEntry<'src> {
+    tokens: Vec<AbstractLineToken<'src>>,
     multiline_handling: MultilineHandling,
     in_string_embexpr: bool,
 }
 
-impl AbstractTokenTarget for BreakableCallChainEntry {
-    fn tokens(&self) -> &Vec<AbstractLineToken> {
+impl<'src> AbstractTokenTarget<'src> for BreakableCallChainEntry<'src> {
+    fn tokens(&self) -> &Vec<AbstractLineToken<'src>> {
         &self.tokens
     }
 
-    fn push(&mut self, lt: AbstractLineToken) {
+    fn push(&mut self, lt: AbstractLineToken<'src>) {
         self.tokens.push(lt);
     }
 
-    fn into_tokens(self, ct: ConvertType) -> Vec<ConcreteLineTokenAndTargets> {
+    fn into_tokens(self, ct: ConvertType) -> Vec<ConcreteLineTokenAndTargets<'src>> {
         match ct {
             ConvertType::MultiLine => self
                 .tokens
@@ -407,7 +411,7 @@ impl AbstractTokenTarget for BreakableCallChainEntry {
     }
 }
 
-impl BreakableCallChainEntry {
+impl<'src> BreakableCallChainEntry<'src> {
     pub fn new(
         formatting_context: &[FormattingContext],
         multiline_handling: MultilineHandling,
@@ -425,7 +429,7 @@ impl BreakableCallChainEntry {
 
     pub fn insert_at<I>(&mut self, idx: usize, tokens: I)
     where
-        I: IntoIterator<Item = AbstractLineToken>,
+        I: IntoIterator<Item = AbstractLineToken<'src>>,
     {
         insert_at(idx, &mut self.tokens, tokens)
     }
@@ -468,13 +472,13 @@ impl BreakableCallChainEntry {
 }
 
 #[derive(Debug)]
-pub enum Breakable {
-    DelimiterExpr(BreakableEntry),
-    CallChain(BreakableCallChainEntry),
+pub enum Breakable<'src> {
+    DelimiterExpr(BreakableEntry<'src>),
+    CallChain(BreakableCallChainEntry<'src>),
 }
 
-impl Breakable {
-    pub fn push(&mut self, lt: AbstractLineToken) {
+impl<'src> Breakable<'src> {
+    pub fn push(&mut self, lt: AbstractLineToken<'src>) {
         match self {
             Breakable::DelimiterExpr(be) => be.push(lt),
             Breakable::CallChain(bcce) => bcce.push(lt),
@@ -483,7 +487,7 @@ impl Breakable {
 
     pub fn insert_at<I>(&mut self, idx: usize, tokens: I)
     where
-        I: IntoIterator<Item = AbstractLineToken>,
+        I: IntoIterator<Item = AbstractLineToken<'src>>,
     {
         match self {
             Breakable::DelimiterExpr(be) => be.insert_at(idx, tokens),
@@ -519,14 +523,14 @@ impl Breakable {
         }
     }
 
-    pub fn into_breakable_entry(self) -> Option<BreakableEntry> {
+    pub fn into_breakable_entry(self) -> Option<BreakableEntry<'src>> {
         match self {
             Breakable::DelimiterExpr(be) => Some(be),
             Breakable::CallChain(_) => None,
         }
     }
 
-    pub fn into_breakable_call_chain(self) -> Option<BreakableCallChainEntry> {
+    pub fn into_breakable_call_chain(self) -> Option<BreakableCallChainEntry<'src>> {
         match self {
             Breakable::DelimiterExpr(_) => None,
             Breakable::CallChain(bcce) => Some(bcce),

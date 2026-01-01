@@ -56,24 +56,24 @@ impl IndentDepth {
 }
 
 #[derive(Debug)]
-pub struct ParserState {
+pub struct ParserState<'src> {
     indent_depth: IndentDepth,
     start_of_line: Vec<bool>,
     suppress_comments_stack: Vec<bool>,
-    render_queue: BaseQueue,
+    render_queue: BaseQueue<'src>,
     current_orig_line_number: LineNumber,
     comments_hash: FileComments,
     heredoc_strings: Vec<HeredocString>,
     comments_to_insert: Option<CommentBlock>,
-    breakable_entry_stack: Vec<Breakable>,
+    breakable_entry_stack: Vec<Breakable<'src>>,
     formatting_context: Vec<FormattingContext>,
     absorbing_indents: i32,
     insert_user_newlines: bool,
     spaces_after_last_newline: ColNumber,
-    scopes: Vec<Vec<String>>,
+    scopes: Vec<Vec<Cow<'src, str>>>,
 }
 
-impl ParserState {
+impl<'src> ParserState<'src> {
     pub(crate) fn scope_has_variable(&self, s: &str) -> bool {
         self.scopes
             .last()
@@ -83,14 +83,17 @@ impl ParserState {
     }
     pub(crate) fn new_scope<F>(&mut self, f: F)
     where
-        F: FnOnce(&mut ParserState),
+        F: FnOnce(&mut ParserState<'src>),
     {
         self.scopes.push(vec![]);
         f(self);
         self.scopes.pop();
     }
-    pub(crate) fn bind_variable(&mut self, s: String) {
-        self.scopes.last_mut().expect("it's never empty").push(s);
+    pub(crate) fn bind_variable(&mut self, s: impl Into<Cow<'src, str>>) {
+        self.scopes
+            .last_mut()
+            .expect("it's never empty")
+            .push(s.into());
     }
     pub(crate) fn push_heredoc_content<F>(
         &mut self,
@@ -99,7 +102,7 @@ impl ParserState {
         end_line: LineNumber,
         formatting_func: F,
     ) where
-        F: FnOnce(&mut ParserState),
+        F: FnOnce(&mut ParserState<'src>),
     {
         let mut next_ps = ParserState::render_with_blank_state(self, formatting_func);
 
@@ -136,7 +139,7 @@ impl ParserState {
         end_line: Option<LineNumber>,
         f: F,
     ) where
-        F: FnOnce(&mut ParserState),
+        F: FnOnce(&mut ParserState<'src>),
     {
         let current_line_number = self.current_orig_line_number;
         self.new_block(|ps| {
@@ -175,7 +178,7 @@ impl ParserState {
 
     pub(crate) fn will_render_as_multiline<F>(&mut self, f: F) -> bool
     where
-        F: FnOnce(&mut ParserState),
+        F: FnOnce(&mut ParserState<'src>),
     {
         let mut next_ps = ParserState::new_with_indent_from(self);
         // Ignore commments when determining line length
@@ -201,7 +204,7 @@ impl ParserState {
 
     pub(crate) fn dedent<F>(&mut self, f: F)
     where
-        F: FnOnce(&mut ParserState),
+        F: FnOnce(&mut ParserState<'src>),
     {
         self.end_indent();
         f(self);
@@ -226,7 +229,7 @@ impl ParserState {
 
     pub(crate) fn with_start_of_line<F>(&mut self, start_of_line: bool, f: F)
     where
-        F: FnOnce(&mut ParserState),
+        F: FnOnce(&mut ParserState<'src>),
     {
         self.start_of_line.push(start_of_line);
         f(self);
@@ -235,7 +238,7 @@ impl ParserState {
 
     pub(crate) fn breakable_of<F>(&mut self, delims: BreakableDelims, f: F)
     where
-        F: FnOnce(&mut ParserState),
+        F: FnOnce(&mut ParserState<'src>),
     {
         self.shift_comments();
         let mut be = BreakableEntry::new(delims, &self.formatting_context);
@@ -272,7 +275,7 @@ impl ParserState {
     /// At the moment, this is only for conditions in a `when` clause
     pub(crate) fn inline_breakable_of<F>(&mut self, delims: BreakableDelims, f: F)
     where
-        F: FnOnce(&mut ParserState),
+        F: FnOnce(&mut ParserState<'src>),
     {
         self.shift_comments();
         let mut be = BreakableEntry::new(delims, &self.formatting_context);
@@ -302,7 +305,7 @@ impl ParserState {
         mulitiline_handling: MultilineHandling,
         f: F,
     ) where
-        F: FnOnce(&mut ParserState),
+        F: FnOnce(&mut ParserState<'src>),
     {
         self.shift_comments();
         let mut be = BreakableCallChainEntry::new(&self.formatting_context, mulitiline_handling);
@@ -324,7 +327,7 @@ impl ParserState {
 
     pub(crate) fn with_suppress_comments<F>(&mut self, suppress: bool, f: F)
     where
-        F: FnOnce(&mut ParserState),
+        F: FnOnce(&mut ParserState<'src>),
     {
         self.suppress_comments_stack.push(suppress);
         f(self);
@@ -333,7 +336,7 @@ impl ParserState {
 
     pub(crate) fn with_absorbing_indent_block<F>(&mut self, f: F)
     where
-        F: FnOnce(&mut ParserState),
+        F: FnOnce(&mut ParserState<'src>),
     {
         let was_absorbing = self.absorbing_indents != 0;
         self.absorbing_indents += 1;
@@ -347,7 +350,7 @@ impl ParserState {
 
     pub(crate) fn new_block<F>(&mut self, f: F)
     where
-        F: FnOnce(&mut ParserState),
+        F: FnOnce(&mut ParserState<'src>),
     {
         self.start_indent();
         f(self);
@@ -356,7 +359,7 @@ impl ParserState {
 
     pub(crate) fn with_formatting_context<F>(&mut self, fc: FormattingContext, f: F)
     where
-        F: FnOnce(&mut ParserState),
+        F: FnOnce(&mut ParserState<'src>),
     {
         self.formatting_context.push(fc);
         f(self);
@@ -430,8 +433,8 @@ impl ParserState {
             .merge(comments.apply_spaces(self.spaces_after_last_newline));
     }
 
-    pub(crate) fn emit_op(&mut self, op: Cow<'static, str>) {
-        self.push_concrete_token(ConcreteLineToken::Op { op });
+    pub(crate) fn emit_op(&mut self, op: impl Into<Cow<'src, str>>) {
+        self.push_concrete_token(ConcreteLineToken::Op { op: op.into() });
     }
 
     pub(crate) fn emit_double_quote(&mut self) {
@@ -448,7 +451,7 @@ impl ParserState {
         self.push_concrete_token(ConcreteLineToken::LTStringContent { content: s });
     }
 
-    pub(crate) fn emit_ident(&mut self, ident: impl Into<Cow<'static, str>>) {
+    pub(crate) fn emit_ident(&mut self, ident: impl Into<Cow<'src, str>>) {
         self.push_concrete_token(ConcreteLineToken::DirectPart { part: ident.into() });
     }
 
@@ -760,7 +763,7 @@ impl ParserState {
     }
 }
 
-impl ParserState {
+impl<'src> ParserState<'src> {
     pub(crate) fn new(fc: FileComments) -> Self {
         ParserState {
             indent_depth: IndentDepth::new(),
@@ -780,7 +783,7 @@ impl ParserState {
         }
     }
 
-    pub(crate) fn consume_to_render_queue(self) -> Vec<ConcreteLineTokenAndTargets> {
+    pub(crate) fn consume_to_render_queue(self) -> Vec<ConcreteLineTokenAndTargets<'src>> {
         self.render_queue.into_tokens()
     }
 
@@ -848,7 +851,7 @@ impl ParserState {
         }
     }
 
-    pub(crate) fn new_with_indent_from(ps: &ParserState) -> Self {
+    pub(crate) fn new_with_indent_from(ps: &ParserState<'src>) -> Self {
         let mut next_ps = ParserState::new_with_reset_indentation(ps);
         next_ps.indent_depth = ps.indent_depth;
         next_ps
@@ -856,7 +859,7 @@ impl ParserState {
 
     // Creates a copy of the parser state *with the indent_depth reset*.
     // This is used for heredocs, where we explicitly want to ignore current indentation.
-    pub(crate) fn new_with_reset_indentation(ps: &ParserState) -> Self {
+    pub(crate) fn new_with_reset_indentation(ps: &ParserState<'src>) -> Self {
         let mut next_ps = ParserState::new(FileComments::default());
         next_ps.comments_hash = ps.comments_hash.clone();
         next_ps.start_of_line = ps.start_of_line.clone();
@@ -876,7 +879,9 @@ impl ParserState {
         rqw.write(writer)
     }
 
-    pub(crate) fn dangerously_convert(t: AbstractLineToken) -> ConcreteLineTokenAndTargets {
+    pub(crate) fn dangerously_convert(
+        t: AbstractLineToken<'src>,
+    ) -> ConcreteLineTokenAndTargets<'src> {
         match t {
             AbstractLineToken::ConcreteLineToken(clt) => {
                 ConcreteLineTokenAndTargets::ConcreteLineToken(clt)
@@ -912,7 +917,7 @@ impl ParserState {
     pub(crate) fn insert_concrete_tokens(
         &mut self,
         insert_idx: usize,
-        clts: impl IntoIterator<Item = ConcreteLineToken>,
+        clts: impl IntoIterator<Item = ConcreteLineToken<'src>>,
     ) {
         match self.breakable_entry_stack.last_mut() {
             Some(be) => be.insert_at(
@@ -927,7 +932,7 @@ impl ParserState {
         }
     }
 
-    pub(crate) fn push_concrete_token(&mut self, t: ConcreteLineToken) {
+    pub(crate) fn push_concrete_token(&mut self, t: ConcreteLineToken<'src>) {
         match self.breakable_entry_stack.last_mut() {
             Some(be) => be.push(AbstractLineToken::ConcreteLineToken(t)),
             None => self
@@ -936,23 +941,23 @@ impl ParserState {
         }
     }
 
-    pub(crate) fn push_target(&mut self, t: ConcreteLineTokenAndTargets) {
+    pub(crate) fn push_target(&mut self, t: ConcreteLineTokenAndTargets<'src>) {
         match self.breakable_entry_stack.last_mut() {
             Some(be) => be.push(t.into()),
             None => self.render_queue.push(t),
         }
     }
 
-    pub(crate) fn push_abstract_token(&mut self, t: AbstractLineToken) {
+    pub(crate) fn push_abstract_token(&mut self, t: AbstractLineToken<'src>) {
         match self.breakable_entry_stack.last_mut() {
             Some(be) => be.push(t),
             None => self.render_queue.push(Self::dangerously_convert(t)),
         }
     }
 
-    pub(crate) fn render_with_blank_state<F>(ps: &mut ParserState, f: F) -> ParserState
+    pub(crate) fn render_with_blank_state<F>(ps: &mut ParserState<'src>, f: F) -> ParserState<'src>
     where
-        F: FnOnce(&mut ParserState),
+        F: FnOnce(&mut ParserState<'src>),
     {
         let mut next_ps = ParserState::new_with_reset_indentation(ps);
         f(&mut next_ps);

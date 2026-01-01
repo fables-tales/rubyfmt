@@ -10,12 +10,12 @@ use std::io::{self, Write};
 
 pub const MAX_LINE_LENGTH: usize = 120;
 
-pub struct RenderQueueWriter {
-    tokens: Vec<ConcreteLineTokenAndTargets>,
+pub struct RenderQueueWriter<'src> {
+    tokens: Vec<ConcreteLineTokenAndTargets<'src>>,
 }
 
-impl RenderQueueWriter {
-    pub fn new(tokens: Vec<ConcreteLineTokenAndTargets>) -> Self {
+impl<'src> RenderQueueWriter<'src> {
+    pub fn new(tokens: Vec<ConcreteLineTokenAndTargets<'src>>) -> Self {
         RenderQueueWriter { tokens }
     }
 
@@ -29,7 +29,7 @@ impl RenderQueueWriter {
         Self::write_final_tokens(writer, accum.into_tokens())
     }
 
-    fn render_as(accum: &mut Intermediary, tokens: Vec<ConcreteLineTokenAndTargets>) {
+    fn render_as(accum: &mut Intermediary<'src>, tokens: Vec<ConcreteLineTokenAndTargets<'src>>) {
         use ConcreteLineToken::*;
         let token_len = tokens.len();
         let mut peekable = tokens.into_iter().enumerate().peekable();
@@ -223,7 +223,7 @@ impl RenderQueueWriter {
         }
     }
 
-    fn format_breakable_entry(accum: &mut Intermediary, be: BreakableEntry) {
+    fn format_breakable_entry(accum: &mut Intermediary<'src>, be: BreakableEntry<'src>) {
         // We generally will force expressions embedded in strings to be on a single line,
         // but if that expression has a heredoc nested in it, we should let it render across lines
         // so that the collapsing newlines render properly.
@@ -245,8 +245,8 @@ impl RenderQueueWriter {
     }
 
     fn format_breakable_call_chain_entry(
-        accum: &mut Intermediary,
-        mut bcce: BreakableCallChainEntry,
+        accum: &mut Intermediary<'src>,
+        mut bcce: BreakableCallChainEntry<'src>,
     ) {
         let must_multiline =
             bcce.any_collapsing_newline_has_heredoc_content() && bcce.in_string_embexpr();
@@ -263,15 +263,15 @@ impl RenderQueueWriter {
     }
 
     fn renders_over_max_line_length(
-        accum: &Intermediary,
-        breakable: &dyn AbstractTokenTarget,
+        accum: &Intermediary<'src>,
+        breakable: &dyn AbstractTokenTarget<'src>,
     ) -> bool {
         breakable.single_line_string_length(accum.current_line_length()) > MAX_LINE_LENGTH
     }
 
     fn write_final_tokens<W: Write>(
         writer: &mut W,
-        mut tokens: Vec<ConcreteLineToken>,
+        mut tokens: Vec<ConcreteLineToken<'src>>,
     ) -> io::Result<()> {
         #[cfg(debug_assertions)]
         {

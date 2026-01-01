@@ -82,25 +82,25 @@ impl BreakableDelims {
         }
     }
 
-    pub fn single_line_open(&self) -> ConcreteLineToken {
+    pub fn single_line_open<'src>(&self) -> ConcreteLineToken<'src> {
         ConcreteLineToken::Delim {
             contents: self.single_line.open,
         }
     }
 
-    pub fn single_line_close(&self) -> ConcreteLineToken {
+    pub fn single_line_close<'src>(&self) -> ConcreteLineToken<'src> {
         ConcreteLineToken::Delim {
             contents: self.single_line.close,
         }
     }
 
-    pub fn multi_line_open(&self) -> ConcreteLineToken {
+    pub fn multi_line_open<'src>(&self) -> ConcreteLineToken<'src> {
         ConcreteLineToken::Delim {
             contents: self.multi_line.open,
         }
     }
 
-    pub fn multi_line_close(&self) -> ConcreteLineToken {
+    pub fn multi_line_close<'src>(&self) -> ConcreteLineToken<'src> {
         ConcreteLineToken::Delim {
             contents: self.multi_line.close,
         }
