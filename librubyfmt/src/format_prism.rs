@@ -659,12 +659,8 @@ fn format_string_node<'src>(ps: &mut ParserState<'src>, string_node: prism::Stri
 
     // `opening_loc()` is only `None` in the case of the inner parts of multiline strings
     // (e.g. the inner contents of a heredoc)
-    let opener = string_node
-        .opening_loc()
-        .map(|s| loc_to_str(s).trim().to_string());
-    let closer = string_node
-        .closing_loc()
-        .map(|s| loc_to_str(s).trim().to_string());
+    let opener = string_node.opening_loc().map(|s| loc_to_str(s).trim());
+    let closer = string_node.closing_loc().map(|s| loc_to_str(s).trim());
     let is_heredoc = opener.as_ref().map(|s| s.starts_with("<")).unwrap_or(false);
 
     if is_heredoc {
@@ -695,7 +691,7 @@ fn format_string_node<'src>(ps: &mut ParserState<'src>, string_node: prism::Stri
             // a closing loc. In that case, fall back to a double quote, since
             // we render character literals as double-quoted string literals
             let end_delim = if let Some(ref closer) = closer {
-                closer.as_str()
+                closer
             } else {
                 "\""
             };
@@ -724,10 +720,10 @@ fn format_interpolated_string_node<'src>(
 ) {
     let opener = interpolated_string_node
         .opening_loc()
-        .map(|s| loc_to_str(s).trim().to_string());
+        .map(|s| loc_to_str(s).trim());
     let closer = interpolated_string_node
         .closing_loc()
-        .map(|s| loc_to_str(s).trim().to_string());
+        .map(|s| loc_to_str(s).trim());
     let is_heredoc = opener.as_ref().map(|s| s.starts_with("<")).unwrap_or(false);
     let needs_escape = opener
         .as_ref()
@@ -777,7 +773,7 @@ fn format_interpolated_string_node<'src>(
         if needs_escape {
             ps.emit_double_quote();
         } else {
-            ps.emit_string_content(s.clone());
+            ps.emit_string_content(s.to_string());
         }
     }
 
@@ -801,7 +797,7 @@ fn format_interpolated_string_node<'src>(
                 let escaped = crate::string_escape::single_to_double_quoted(
                     content,
                     opener.as_ref().unwrap(),
-                    closer.as_deref().unwrap_or("\""),
+                    closer.unwrap_or("\""),
                 );
                 ps.emit_string_content(escaped);
             } else {
@@ -815,7 +811,7 @@ fn format_interpolated_string_node<'src>(
                     if needs_escape {
                         ps.emit_double_quote();
                     } else {
-                        ps.emit_string_content(s.clone());
+                        ps.emit_string_content(s.to_string());
                     }
                 }
                 ps.emit_space();
@@ -833,7 +829,7 @@ fn format_interpolated_string_node<'src>(
         if needs_escape {
             ps.emit_double_quote();
         } else {
-            ps.emit_string_content(closer.clone());
+            ps.emit_string_content(closer.to_string());
         }
     }
 }
@@ -2023,7 +2019,7 @@ fn format_unary_operator<'src>(
 fn format_infix_operator<'src>(
     ps: &mut ParserState<'src>,
     left: prism::Node<'src>,
-    operator: &str,
+    operator: &'src str,
     right: prism::Node<'src>,
 ) {
     ps.with_formatting_context(FormattingContext::Binary, |ps| {
@@ -2045,7 +2041,7 @@ fn format_infix_operator<'src>(
             let is_comparison = comparison_operators.iter().any(|o| o == &operator);
 
             ps.emit_space();
-            ps.emit_ident(operator.to_string());
+            ps.emit_ident(operator);
 
             if is_comparison {
                 // For comparison operators, we always put the right-hand side
@@ -2231,7 +2227,7 @@ fn format_call_body<'src>(
                 "." => ps.emit_dot(),
                 "&." => ps.emit_lonely_operator(),
                 "::" => ps.emit_colon_colon(),
-                _ => ps.emit_ident(call_operator.to_string()),
+                _ => ps.emit_ident(call_operator),
             }
         }
 
@@ -2269,7 +2265,7 @@ fn format_call_body<'src>(
                         "." => ps.emit_dot(),
                         "&." => ps.emit_lonely_operator(),
                         "::" => ps.emit_colon_colon(),
-                        _ => ps.emit_ident(call_operator.to_string()),
+                        _ => ps.emit_ident(call_operator),
                     }
                 }
 
@@ -3217,7 +3213,7 @@ fn format_splat_node<'src>(ps: &mut ParserState<'src>, splat_node: prism::SplatN
     }
 }
 
-fn format_ident<'src>(ps: &mut ParserState<'src>, ident: impl Into<Cow<'src, str>>, offset: usize) {
+fn format_ident<'src>(ps: &mut ParserState<'src>, ident: &'src str, offset: usize) {
     handle_string_at_offset(ps, ident, offset);
 }
 
@@ -3989,7 +3985,7 @@ fn format_constant_path_and_write_node<'src>(
     format_constant_path_write(
         ps,
         constant_path_and_write_node.target(),
-        Cow::Borrowed("&&="),
+        "&&=",
         constant_path_and_write_node.value(),
     );
 }
@@ -4001,9 +3997,7 @@ fn format_constant_path_operator_write_node<'src>(
     format_constant_path_write(
         ps,
         constant_path_operator_write_node.target(),
-        Cow::Borrowed(loc_to_str(
-            constant_path_operator_write_node.binary_operator_loc(),
-        )),
+        loc_to_str(constant_path_operator_write_node.binary_operator_loc()),
         constant_path_operator_write_node.value(),
     );
 }
@@ -4015,7 +4009,7 @@ fn format_constant_path_or_write_node<'src>(
     format_constant_path_write(
         ps,
         constant_path_or_write_node.target(),
-        Cow::Borrowed("||="),
+        "||=",
         constant_path_or_write_node.value(),
     );
 }
@@ -4047,7 +4041,7 @@ fn format_constant_path_write_node<'src>(
     format_constant_path_write(
         ps,
         constant_path_write_node.target(),
-        Cow::Borrowed("="),
+        "=",
         constant_path_write_node.value(),
     );
 }
@@ -4066,7 +4060,7 @@ fn format_constant_target_node<'src>(
 fn format_constant_path_write<'src>(
     ps: &mut ParserState<'src>,
     target: prism::ConstantPathNode<'src>,
-    op: Cow<'src, str>,
+    op: &'src str,
     value: prism::Node<'src>,
 ) {
     format_constant_path_node(ps, target);
@@ -4729,11 +4723,7 @@ fn format_yield_node<'src>(ps: &mut ParserState<'src>, yield_node: prism::YieldN
     }
 }
 
-fn handle_string_at_offset<'src>(
-    ps: &mut ParserState<'src>,
-    ident: impl Into<Cow<'src, str>>,
-    offset: usize,
-) {
+fn handle_string_at_offset<'src>(ps: &mut ParserState<'src>, ident: &'src str, offset: usize) {
     ps.at_offset(offset);
     ps.emit_ident(ident);
 }
