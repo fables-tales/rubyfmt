@@ -1264,8 +1264,8 @@ def_tag!(args_forward_tag, "args_forward");
 pub struct ArgsForward(pub args_forward_tag, pub StartEnd);
 
 impl Params {
-    pub fn non_null_positions(&self) -> Vec<bool> {
-        vec![
+    pub fn non_null_positions(&self) -> [bool; 7] {
+        [
             (self.1).is_some(),
             (self.2).is_some(),
             (self.3).is_some(),
