@@ -161,7 +161,11 @@ impl<'src> BreakableEntry<'src> {
         }
     }
 
-    pub fn insert_at(&mut self, idx: usize, tokens: impl IntoIterator<Item = AbstractLineToken<'src>>) {
+    pub fn insert_at(
+        &mut self,
+        idx: usize,
+        tokens: impl IntoIterator<Item = AbstractLineToken<'src>>,
+    ) {
         insert_at(idx, &mut self.tokens, tokens)
     }
 
