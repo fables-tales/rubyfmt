@@ -4738,8 +4738,8 @@ fn handle_string_at_offset<'src>(
     ps.emit_ident(ident);
 }
 
-fn non_null_positions<'src>(params: &prism::ParametersNode<'src>) -> Vec<bool> {
-    vec![
+fn non_null_positions<'src>(params: &prism::ParametersNode<'src>) -> [bool; 7] {
+    [
         !params.requireds().is_empty(),
         !params.optionals().is_empty(),
         params.rest().is_some(),
