@@ -8,7 +8,7 @@ use std::str;
 
 #[cfg(all(feature = "use_jemalloc", not(target_env = "msvc")))]
 #[global_allocator]
-static ALLOC: jemallocator::Jemalloc = jemallocator::Jemalloc;
+static ALLOC: tikv_jemallocator::Jemalloc = tikv_jemallocator::Jemalloc;
 
 pub type RawStatus = i64;
 
