@@ -17,7 +17,7 @@ simplelog = "0.12"
 ruby-prism="1.7.0"
 
 [target.'cfg(not(target_env = "msvc"))'.dependencies]
-jemallocator = { version = "0.3.0", features = ["disable_initial_exec_tls"], optional=true }
+tikv-jemallocator = { version = "0.6.1", features = ["disable_initial_exec_tls"], optional=true }
 
 [target.'cfg(windows)'.dependencies]
 winapi = { version = "0.3", features = ["everything"] }
@@ -32,4 +32,4 @@ crate-type = ["staticlib", "rlib"]
 
 [features]
 default = ["use_jemalloc"]
-use_jemalloc = ["jemallocator"]
+use_jemalloc = ["tikv-jemallocator"]
