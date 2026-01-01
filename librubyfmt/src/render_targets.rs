@@ -99,22 +99,16 @@ impl<'src> AbstractTokenTarget<'src> for BreakableEntry<'src> {
     fn into_tokens(self, ct: ConvertType) -> Vec<ConcreteLineTokenAndTargets<'src>> {
         match ct {
             ConvertType::MultiLine => {
-                let mut new_tokens: Vec<_> = self
-                    .tokens
-                    .into_iter()
-                    .flat_map(|t| t.into_multi_line())
-                    .collect();
-                new_tokens.insert(0, self.delims.multi_line_open().into());
+                let mut new_tokens: Vec<_> = Vec::with_capacity(self.tokens.len() + 2);
+                new_tokens.push(self.delims.multi_line_open().into());
+                new_tokens.extend(self.tokens.into_iter().flat_map(|t| t.into_multi_line()));
                 new_tokens.push(self.delims.multi_line_close().into());
                 new_tokens
             }
             ConvertType::SingleLine => {
-                let mut new_tokens: Vec<_> = self
-                    .tokens
-                    .into_iter()
-                    .flat_map(|t| t.into_single_line())
-                    .collect();
-                new_tokens.insert(0, self.delims.single_line_open().into());
+                let mut new_tokens: Vec<_> = Vec::with_capacity(self.tokens.len() + 2);
+                new_tokens.push(self.delims.single_line_open().into());
+                new_tokens.extend(self.tokens.into_iter().flat_map(|t| t.into_single_line()));
                 new_tokens.push(self.delims.single_line_close().into());
                 new_tokens
             }
