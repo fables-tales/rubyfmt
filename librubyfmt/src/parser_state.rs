@@ -5,7 +5,7 @@ use crate::heredoc_string::{HeredocKind, HeredocString};
 use crate::line_tokens::*;
 use crate::render_queue_writer::{MAX_LINE_LENGTH, RenderQueueWriter};
 use crate::render_targets::{
-    AbstractTokenTarget, BaseQueue, BreakableCallChainEntry, BreakableEntry, MultilineHandling,
+    BaseQueue, Breakable, BreakableCallChainEntry, BreakableEntry, MultilineHandling,
 };
 use crate::types::{ColNumber, LineNumber, SourceOffset};
 use log::debug;
@@ -65,7 +65,7 @@ pub struct ParserState {
     comments_hash: FileComments,
     heredoc_strings: Vec<HeredocString>,
     comments_to_insert: Option<CommentBlock>,
-    breakable_entry_stack: Vec<Box<dyn AbstractTokenTarget>>,
+    breakable_entry_stack: Vec<Breakable>,
     formatting_context: Vec<FormattingContext>,
     absorbing_indents: i32,
     insert_user_newlines: bool,
@@ -240,7 +240,8 @@ impl ParserState {
         self.shift_comments();
         let mut be = BreakableEntry::new(delims, &self.formatting_context);
         be.push_line_number(self.current_orig_line_number);
-        self.breakable_entry_stack.push(Box::new(be));
+        self.breakable_entry_stack
+            .push(Breakable::DelimiterExpr(be));
 
         self.new_block(|ps| {
             ps.emit_collapsing_newline();
@@ -262,7 +263,7 @@ impl ParserState {
             .breakable_entry_stack
             .pop()
             .expect("cannot have empty here because we just pushed")
-            .to_breakable_entry()
+            .into_breakable_entry()
             .expect("This should be the BreakableEntry we just pushed");
         self.push_target(ConcreteLineTokenAndTargets::BreakableEntry(insert_be));
     }
@@ -276,7 +277,8 @@ impl ParserState {
         self.shift_comments();
         let mut be = BreakableEntry::new(delims, &self.formatting_context);
         be.push_line_number(self.current_orig_line_number);
-        self.breakable_entry_stack.push(Box::new(be));
+        self.breakable_entry_stack
+            .push(Breakable::DelimiterExpr(be));
 
         self.new_block(|ps| f(ps));
 
@@ -290,7 +292,7 @@ impl ParserState {
             .breakable_entry_stack
             .pop()
             .expect("cannot have empty here because we just pushed")
-            .to_breakable_entry()
+            .into_breakable_entry()
             .expect("This should be the BreakableEntry we just pushed");
         self.push_target(ConcreteLineTokenAndTargets::BreakableEntry(insert_be));
     }
@@ -305,7 +307,7 @@ impl ParserState {
         self.shift_comments();
         let mut be = BreakableCallChainEntry::new(&self.formatting_context, mulitiline_handling);
         be.push_line_number(self.current_orig_line_number);
-        self.breakable_entry_stack.push(Box::new(be));
+        self.breakable_entry_stack.push(Breakable::CallChain(be));
 
         f(self);
 
@@ -313,7 +315,7 @@ impl ParserState {
             .breakable_entry_stack
             .pop()
             .expect("cannot have empty here because we just pushed")
-            .to_breakable_call_chain()
+            .into_breakable_call_chain()
             .expect("This should be the BreakableCallChainEntry we just pushed");
         self.push_target(ConcreteLineTokenAndTargets::BreakableCallChainEntry(
             insert_bcce,
@@ -812,9 +814,9 @@ impl ParserState {
         if let Some(entry) = self.breakable_entry_stack.last_mut() {
             entry.insert_at(
                 insert_idx,
-                Box::new(std::iter::once(AbstractLineToken::ConcreteLineToken(
+                std::iter::once(AbstractLineToken::ConcreteLineToken(
                     ConcreteLineToken::HardNewLine,
-                ))),
+                )),
             );
         } else {
             self.insert_concrete_tokens(
@@ -915,7 +917,7 @@ impl ParserState {
         match self.breakable_entry_stack.last_mut() {
             Some(be) => be.insert_at(
                 insert_idx,
-                Box::new(clts.into_iter().map(AbstractLineToken::ConcreteLineToken)),
+                clts.into_iter().map(AbstractLineToken::ConcreteLineToken),
             ),
             None => self.render_queue.insert_at(
                 insert_idx,
