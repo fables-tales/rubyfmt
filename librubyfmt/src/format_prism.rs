@@ -2608,8 +2608,8 @@ fn format_block_node<'src>(ps: &mut ParserState<'src>, block_node: prism::BlockN
                     ps.with_start_of_line(false, |ps| {
                         let statements = body.as_statements_node().unwrap().body();
                         let mut peekable = statements.iter().peekable();
-                        while peekable.peek().is_some() {
-                            format_node(ps, peekable.next().unwrap());
+                        while let Some(node) = peekable.next() {
+                            format_node(ps, node);
                             ps.emit_soft_newline();
                             if peekable.peek().is_some() {
                                 ps.emit_soft_indent();
