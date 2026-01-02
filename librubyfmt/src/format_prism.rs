@@ -4295,7 +4295,14 @@ fn format_next_node<'src>(ps: &mut ParserState<'src>, next_node: prism::NextNode
     if let Some(arguments_node) = next_node.arguments() {
         ps.with_start_of_line(false, |ps| {
             ps.emit_space();
-            format_arguments_node(ps, arguments_node);
+            ps.with_start_of_line(false, |ps| {
+                format_list_like_thing(
+                    ps,
+                    arguments_node.arguments(),
+                    arguments_node.location().end_offset(),
+                    true,
+                );
+            });
         });
     }
 }
