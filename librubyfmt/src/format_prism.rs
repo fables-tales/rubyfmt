@@ -661,7 +661,7 @@ fn format_string_node<'src>(ps: &mut ParserState<'src>, string_node: prism::Stri
     // (e.g. the inner contents of a heredoc)
     let opener = string_node.opening_loc().map(|s| loc_to_str(s).trim());
     let closer = string_node.closing_loc().map(|s| loc_to_str(s).trim());
-    let is_heredoc = opener.as_ref().map(|s| s.starts_with("<")).unwrap_or(false);
+    let is_heredoc = opener.map(|s| s.starts_with("<")).unwrap_or(false);
 
     if is_heredoc {
         format_heredoc(
@@ -682,8 +682,7 @@ fn format_string_node<'src>(ps: &mut ParserState<'src>, string_node: prism::Stri
 
         // If opener is nil, we must be in some kind of interpolated string context, which
         // means the contents must already be appropriately escaped -- hence we default to `true` here
-        let in_escaped_context =
-            is_heredoc || opener.as_ref().map(|s| s.starts_with("\"")).unwrap_or(true);
+        let in_escaped_context = is_heredoc || opener.map(|s| s.starts_with("\"")).unwrap_or(true);
         let string_content = if in_escaped_context {
             loc_to_string(string_node.content_loc())
         } else {
@@ -698,7 +697,7 @@ fn format_string_node<'src>(ps: &mut ParserState<'src>, string_node: prism::Stri
 
             crate::string_escape::single_to_double_quoted(
                 loc_to_str(string_node.content_loc()),
-                opener.as_ref().unwrap(),
+                opener.unwrap(),
                 end_delim,
             )
         };
@@ -724,9 +723,8 @@ fn format_interpolated_string_node<'src>(
     let closer = interpolated_string_node
         .closing_loc()
         .map(|s| loc_to_str(s).trim());
-    let is_heredoc = opener.as_ref().map(|s| s.starts_with("<")).unwrap_or(false);
+    let is_heredoc = opener.map(|s| s.starts_with("<")).unwrap_or(false);
     let needs_escape = opener
-        .as_ref()
         .map(|s| !s.starts_with("\"") && !is_heredoc)
         .unwrap_or(false);
 
@@ -796,7 +794,7 @@ fn format_interpolated_string_node<'src>(
                 let content = loc_to_str(string_node.content_loc());
                 let escaped = crate::string_escape::single_to_double_quoted(
                     content,
-                    opener.as_ref().unwrap(),
+                    opener.unwrap(),
                     closer.unwrap_or("\""),
                 );
                 ps.emit_string_content(escaped);
@@ -2474,7 +2472,7 @@ fn format_symbol_node<'src>(ps: &mut ParserState<'src>, symbol_node: prism::Symb
 
     // Check if this is a quoted symbol that needs normalization to double quotes
     // Symbols like :'"foo"' (single-quoted) should become :"\"foo\""
-    let is_single_quoted = opener.as_ref().map(|s| *s == ":'").unwrap_or(false);
+    let is_single_quoted = opener.map(|s| s == ":'").unwrap_or(false);
 
     if is_single_quoted {
         ps.emit_ident(":");
