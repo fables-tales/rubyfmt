@@ -4669,7 +4669,13 @@ fn format_when_node<'src>(ps: &mut ParserState<'src>, when_node: prism::WhenNode
                 format_list_like_thing(
                     ps,
                     when_node.conditions(),
-                    when_node.location().end_offset(),
+                    when_node
+                        .conditions()
+                        .iter()
+                        .last()
+                        .unwrap()
+                        .location()
+                        .end_offset(),
                     false,
                 );
             });
