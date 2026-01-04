@@ -299,6 +299,32 @@ impl Expression {
             Expression::AnonBlockArg(AnonBlockArg(.., line_start)) => Some(*line_start),
         }
     }
+
+    pub fn into_call_chain(self) -> Vec<CallChainElement> {
+        match self {
+            Expression::MethodCall(MethodCall(_, mut chain, method, _, args, start_end)) => {
+                chain.extend([
+                    CallChainElement::IdentOrOpOrKeywordOrConst(method),
+                    CallChainElement::ArgsAddStarOrExpressionListOrArgsForward(args, start_end),
+                ]);
+                chain
+            }
+            Expression::Call(c) => CallLeft::Call(c).into_call_chain(),
+            Expression::MethodAddArg(m) => CallLeft::MethodAddArg(m).into_call_chain(),
+            Expression::MethodAddBlock(m) => CallLeft::MethodAddBlock(m).into_call_chain(),
+            Expression::VarRef(v) => CallLeft::VarRef(v).into_call_chain(),
+            Expression::VCall(v) => CallLeft::VCall(v).into_call_chain(),
+            Expression::Paren(p) => CallLeft::Paren(p).into_call_chain(),
+            Expression::Command(c) => CallLeft::Command(c).into_call_chain(),
+            Expression::CommandCall(c) => CallLeft::CommandCall(c).into_call_chain(),
+            Expression::Super(s) => CallLeft::Super(s).into_call_chain(),
+            Expression::ZSuper(z) => CallLeft::ZSuper(z).into_call_chain(),
+            Expression::Next(n) => CallLeft::Next(n).into_call_chain(),
+            Expression::Yield(y) => CallLeft::Yield(y).into_call_chain(),
+            Expression::Yield0(y) => CallLeft::Yield0(y).into_call_chain(),
+            other => vec![CallChainElement::Expression(Box::new(other))],
+        }
+    }
 }
 
 def_tag!(mlhs_tag, "mlhs");
