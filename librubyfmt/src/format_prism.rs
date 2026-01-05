@@ -86,10 +86,10 @@ pub fn format_node<'src>(ps: &mut ParserState<'src>, node: prism::Node<'src>) {
 
             if is_last_call_in_chain && has_block {
                 ps.breakable_call_chain_of(MultilineHandling::Prism(false), |ps| {
-                    format_call_node(ps, call_node, false, is_last_call_in_chain);
+                    format_call_node(ps, call_node, false, is_last_call_in_chain, false);
                 });
             } else {
-                format_call_node(ps, call_node, false, is_last_call_in_chain)
+                format_call_node(ps, call_node, false, is_last_call_in_chain, false)
             }
         }
         Node::CallOperatorWriteNode { .. } => {
@@ -1711,6 +1711,7 @@ fn format_call_node<'src>(
     call_node: prism::CallNode<'src>,
     skip_receiver: bool,
     is_final_call_in_chain: bool,
+    skip_attr_write_value: bool,
 ) {
     let method_name = const_to_str(call_node.name());
     let end_offset = call_node.location().end_offset();
@@ -1785,13 +1786,15 @@ fn format_call_node<'src>(
                     );
                 ps.with_start_of_line(false, |ps| format_node(ps, last_arg));
             } else if call_node.is_attribute_write() {
-                ps.emit_ident(" = ");
-                let value = arguments
-                    .arguments()
-                    .iter()
-                    .next()
-                    .expect("Attribute writes must have a value");
-                ps.with_start_of_line(false, |ps| format_node(ps, value));
+                if !skip_attr_write_value {
+                    ps.emit_ident(" = ");
+                    let value = arguments
+                        .arguments()
+                        .iter()
+                        .next()
+                        .expect("Attribute writes must have a value");
+                    ps.with_start_of_line(false, |ps| format_node(ps, value));
+                }
             } else {
                 let should_use_parens = use_parens_for_call_node(
                     ps,
@@ -2108,41 +2111,66 @@ fn format_call_chain<'src>(ps: &mut ParserState<'src>, call_node: ruby_prism::Ca
     ps.with_start_of_line(false, |ps| {
         let segments = split_node_into_call_chains(call_node.as_node());
 
-        let is_attribute_write = segments
-            .last()
-            .and_then(|seg| seg.last())
-            .and_then(|n| n.as_call_node())
-            .map(|c| c.is_attribute_write())
-            .unwrap_or(false);
-
-        format_call_chain_segments(ps, segments, is_attribute_write);
+        format_call_chain_segments(ps, segments);
     });
 }
 
 fn format_call_chain_segments<'src>(
     ps: &mut ParserState<'src>,
     mut segments: Vec<Vec<prism::Node<'src>>>,
-    is_attr_write: bool,
 ) {
     if let Some(current) = segments.pop() {
         let has_inner = !segments.is_empty();
 
         let (chain_elements, trailing_arefs) = extract_trailing_arefs(current);
 
+        // Render the right-hand side of the write in its own breakable, so that each side can
+        // break independently of each other
+        let trailing_attr_write_value = chain_elements.last().and_then(|last| {
+            last.as_call_node().and_then(|call| {
+                let method_name = const_to_str(call.name());
+                // arefs are handled in format_call_node
+                if call.is_attribute_write() && method_name != "[]=" {
+                    call.arguments().and_then(|args| {
+                        debug_assert!(
+                            args.arguments().len() == 1,
+                            "Expected attr_write to have exactly one argument"
+                        );
+
+                        args.arguments().iter().next()
+                    })
+                } else {
+                    None
+                }
+            })
+        });
+
         let is_user_multilined = call_chain_elements_are_user_multilined(ps, &chain_elements);
 
         ps.breakable_call_chain_of(MultilineHandling::Prism(is_user_multilined), |ps| {
             // Recurse and format previous segments inside this breakable
-            // Inner segments are never attribute writes
-            format_call_chain_segments(ps, segments, false);
+            format_call_chain_segments(ps, segments);
 
-            format_call_body(ps, chain_elements, is_attr_write, has_inner);
+            format_call_body(
+                ps,
+                chain_elements,
+                has_inner,
+                trailing_attr_write_value.is_some(),
+            );
         });
+
+        // Attr_write values are formatted after the breakable so they break independently
+        if let Some(value) = trailing_attr_write_value {
+            ps.emit_space();
+            ps.emit_op("=".to_string());
+            ps.emit_space();
+            ps.with_start_of_line(false, |ps| format_node(ps, value));
+        }
 
         // Trailing arefs are formatted after the breakable
         for aref in trailing_arefs {
             let aref = aref.as_call_node().unwrap();
-            format_call_node(ps, aref, true, false);
+            format_call_node(ps, aref, true, false, false);
         }
     }
 }
@@ -2173,8 +2201,8 @@ fn extract_trailing_arefs<'src>(
 fn format_call_body<'src>(
     ps: &mut ParserState<'src>,
     mut call_chain_elements: Vec<prism::Node<'src>>,
-    is_attr_write: bool,
     is_continuation: bool,
+    skip_final_attr_write_value: bool,
 ) {
     if call_chain_elements.is_empty() {
         return;
@@ -2196,7 +2224,7 @@ fn format_call_body<'src>(
                 && call_node.call_operator_loc().is_none()
             {
                 call_chain_elements.remove(0);
-                format_call_node(ps, call_node, true, false);
+                format_call_node(ps, call_node, true, false, false);
                 continue;
             }
             break;
@@ -2209,8 +2237,8 @@ fn format_call_body<'src>(
         ps.render_heredocs(true);
     }
 
-    // Attribute writes like `self.foo = bar` should have both sides
-    // rendered separately so they can break independently
+    // Attribute writes like `self.foo = bar` format the LHS without call chain indent
+    // since there's only one element.
     if !is_continuation
         && call_chain_elements.len() == 1
         && let Some(attr_write) = call_chain_elements
@@ -2218,7 +2246,6 @@ fn format_call_body<'src>(
             .and_then(|n| n.as_call_node())
             .filter(|c| c.is_attribute_write())
     {
-        // Format `.attr_name = ` directly without call chain indent
         let call_operator = attr_write.call_operator_loc().map(|loc| loc_to_str(loc));
         if let Some(call_operator) = call_operator {
             match call_operator {
@@ -2232,14 +2259,9 @@ fn format_call_body<'src>(
         ps.at_offset(start_loc_for_call_node_in_chain(&attr_write));
         ps.shift_comments();
 
-        // Format just the attribute name and ` = `, then the value separately
-        format_call_node(ps, attr_write, true, true);
+        format_call_node(ps, attr_write, true, true, skip_final_attr_write_value);
     } else if !call_chain_elements.is_empty() {
-        // attr_writes are not wrapped in a breakable, so they
-        // cannot emit abstract token types
-        if !is_attr_write {
-            ps.start_indent_for_call_chain();
-        }
+        ps.start_indent_for_call_chain();
 
         ps.with_start_of_line(false, |ps| {
             let call_chain_element_count = call_chain_elements.len();
@@ -2251,7 +2273,7 @@ fn format_call_body<'src>(
                 // it may be None in the case of arefs, e.g. foo[bar]
                 let call_operator = element.call_operator_loc().map(|loc| loc_to_str(loc));
                 if let Some(call_operator) = call_operator {
-                    if call_operator != "::" && !is_attr_write {
+                    if call_operator != "::" {
                         ps.emit_collapsing_newline();
                         ps.emit_soft_indent();
                     }
@@ -2270,12 +2292,12 @@ fn format_call_body<'src>(
                 ps.at_offset(start_loc_for_call_node_in_chain(&element));
                 ps.shift_comments();
 
-                format_call_node(ps, element, true, is_final_call);
+                let skip_value =
+                    is_final_call && skip_final_attr_write_value && element.is_attribute_write();
+                format_call_node(ps, element, true, is_final_call, skip_value);
             }
         });
-        if !is_attr_write {
-            ps.end_indent_for_call_chain();
-        }
+        ps.end_indent_for_call_chain();
     }
 }
 
@@ -4207,7 +4229,7 @@ fn format_match_write_node<'src>(
     ps: &mut ParserState<'src>,
     match_write_node: prism::MatchWriteNode<'src>,
 ) {
-    format_call_node(ps, match_write_node.call(), false, true);
+    format_call_node(ps, match_write_node.call(), false, true, false);
 }
 
 fn format_multi_target_node<'src>(

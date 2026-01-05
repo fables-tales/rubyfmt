@@ -1590,13 +1590,17 @@ pub fn format_field(ps: &mut ParserState, f: Field) {
         ps.emit_indent();
     }
 
+    let Field(_, expr, dot, ident_or_const) = f;
+
+    // Format as a call chain for proper multiline handling
+    let mut chain = (*expr).into_call_chain();
+    chain.push(CallChainElement::DotTypeOrOp(dot));
+    chain.push(CallChainElement::IdentOrOpOrKeywordOrConst(
+        ident_or_const.into_ident_or_op_or_keyword_or_const(),
+    ));
+
     ps.with_start_of_line(false, |ps| {
-        format_expression(ps, *f.1);
-        format_dot(ps, f.2);
-        match f.3 {
-            IdentOrConst::Const(c) => format_const(ps, c),
-            IdentOrConst::Ident(i) => format_ident(ps, i),
-        }
+        format_call_chain(ps, chain, None);
     });
 
     if ps.at_start_of_line() {
