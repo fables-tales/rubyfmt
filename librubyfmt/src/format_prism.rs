@@ -2164,7 +2164,7 @@ fn format_call_chain_segments<'src>(
         // Attr_write values are formatted after the breakable so they break independently
         if let Some(value) = trailing_attr_write_value {
             ps.emit_space();
-            ps.emit_op("=".to_string());
+            ps.emit_op("=");
             ps.emit_space();
             ps.with_start_of_line(false, |ps| format_node(ps, value));
         }
@@ -2728,7 +2728,7 @@ fn format_array_node<'src>(ps: &mut ParserState<'src>, array_node: prism::ArrayN
     let orig_delim = opening.and_then(|s| s.chars().nth(2)).unwrap_or('[');
 
     if is_word_array {
-        ps.emit_ident(opening.unwrap().split_at(2).0.to_string());
+        ps.emit_ident(opening.unwrap().split_at(2).0);
     }
 
     if array_node.elements().is_empty() {

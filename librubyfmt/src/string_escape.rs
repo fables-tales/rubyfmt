@@ -27,7 +27,7 @@ pub fn single_to_double_quoted(content: &str, start_delim: &str, end_delim: &str
             .replace_all(content, |captures: &fancy_regex::Captures| {
                 // first capture is the entire match
                 let val = captures.get(0).unwrap();
-                let val_str = val.as_str().to_string();
+                let val_str = val.as_str();
                 if val_str.ends_with("\"") {
                     // Ends with a quote, which we transform to `\"`
                     format!("{}\\\"", &val_str[0..(val_str.len() - 1)])

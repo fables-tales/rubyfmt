@@ -1172,16 +1172,16 @@ pub fn format_paren(ps: &mut ParserState, paren: ParenExpr) {
 }
 
 pub fn format_dot2(ps: &mut ParserState, dot2: Dot2) {
-    format_dot2_or_3(ps, "..".to_string(), dot2.1, dot2.2);
+    format_dot2_or_3(ps, "..", dot2.1, dot2.2);
 }
 
 pub fn format_dot3(ps: &mut ParserState, dot3: Dot3) {
-    format_dot2_or_3(ps, "...".to_string(), dot3.1, dot3.2);
+    format_dot2_or_3(ps, "...", dot3.1, dot3.2);
 }
 
 pub fn format_dot2_or_3(
     ps: &mut ParserState,
-    dots: String,
+    dots: &'static str,
     left: Option<Box<Expression>>,
     right: Option<Box<Expression>>,
 ) {
@@ -1206,12 +1206,12 @@ pub fn format_dot2_or_3(
     }
 }
 
-pub fn percent_symbol_for(tag: String) -> String {
+pub fn percent_symbol_for(tag: String) -> &'static str {
     match tag.as_ref() {
-        "qsymbols" => "%i".to_string(),
-        "qwords" => "%w".to_string(),
-        "symbols" => "%I".to_string(),
-        "words" => "%W".to_string(),
+        "qsymbols" => "%i",
+        "qwords" => "%w",
+        "symbols" => "%I",
+        "words" => "%W",
         _ => panic!("got invalid percent symbol"),
     }
 }
