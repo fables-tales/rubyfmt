@@ -49,7 +49,7 @@ impl<'src> BaseQueue<'src> {
 
 pub trait AbstractTokenTarget<'src>: std::fmt::Debug {
     fn push(&mut self, lt: AbstractLineToken<'src>);
-    fn into_tokens(self, ct: ConvertType) -> Vec<ConcreteLineTokenAndTargets<'src>>;
+    fn write_tokens(self, ct: ConvertType, out: &mut Vec<ConcreteLineTokenAndTargets<'src>>);
     fn is_multiline(&self) -> bool;
     fn single_line_string_length(&self, current_line_length: usize) -> usize;
     fn tokens(&self) -> &Vec<AbstractLineToken<'src>>;
@@ -96,21 +96,21 @@ impl<'src> AbstractTokenTarget<'src> for BreakableEntry<'src> {
         self.tokens.push(lt);
     }
 
-    fn into_tokens(self, ct: ConvertType) -> Vec<ConcreteLineTokenAndTargets<'src>> {
+    fn write_tokens(self, ct: ConvertType, out: &mut Vec<ConcreteLineTokenAndTargets<'src>>) {
         match ct {
             ConvertType::MultiLine => {
-                let mut new_tokens: Vec<_> = Vec::with_capacity(self.tokens.len() + 2);
-                new_tokens.push(self.delims.multi_line_open().into());
-                new_tokens.extend(self.tokens.into_iter().flat_map(|t| t.into_multi_line()));
-                new_tokens.push(self.delims.multi_line_close().into());
-                new_tokens
+                out.push(self.delims.multi_line_open().into());
+                for t in self.tokens {
+                    t.write_multi_line(out);
+                }
+                out.push(self.delims.multi_line_close().into());
             }
             ConvertType::SingleLine => {
-                let mut new_tokens: Vec<_> = Vec::with_capacity(self.tokens.len() + 2);
-                new_tokens.push(self.delims.single_line_open().into());
-                new_tokens.extend(self.tokens.into_iter().flat_map(|t| t.into_single_line()));
-                new_tokens.push(self.delims.single_line_close().into());
-                new_tokens
+                out.push(self.delims.single_line_open().into());
+                for t in self.tokens {
+                    t.write_single_line(out);
+                }
+                out.push(self.delims.single_line_close().into());
             }
         }
     }
@@ -228,18 +228,18 @@ impl<'src> AbstractTokenTarget<'src> for BreakableCallChainEntry<'src> {
         self.tokens.push(lt);
     }
 
-    fn into_tokens(self, ct: ConvertType) -> Vec<ConcreteLineTokenAndTargets<'src>> {
+    fn write_tokens(self, ct: ConvertType, out: &mut Vec<ConcreteLineTokenAndTargets<'src>>) {
         match ct {
-            ConvertType::MultiLine => self
-                .tokens
-                .into_iter()
-                .flat_map(|t| t.into_multi_line())
-                .collect(),
-            ConvertType::SingleLine => self
-                .tokens
-                .into_iter()
-                .flat_map(|t| t.into_single_line())
-                .collect(),
+            ConvertType::MultiLine => {
+                for t in self.tokens {
+                    t.write_multi_line(out);
+                }
+            }
+            ConvertType::SingleLine => {
+                for t in self.tokens {
+                    t.write_single_line(out);
+                }
+            }
         }
     }
 
