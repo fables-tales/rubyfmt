@@ -8,7 +8,7 @@ use crate::{
     parser_state::{FormattingContext, HashType, ParserState},
     render_targets::MultilineHandling,
     types::SourceOffset,
-    util::{const_to_str, loc_to_str, loc_to_string, u8_to_str},
+    util::{const_to_str, loc_to_str, loc_to_string},
 };
 
 pub fn format_node<'src>(ps: &mut ParserState<'src>, node: prism::Node<'src>) {
@@ -909,12 +909,14 @@ fn format_inner_string<'src>(
             .iter()
             .filter_map(|part| {
                 if let Some(node) = part.as_string_node() {
-                    let raw = loc_to_str(node.content_loc());
-                    let unescaped = u8_to_str(node.unescaped());
+                    let raw = node.content_loc().as_slice();
+                    let unescaped = node.unescaped();
 
-                    // Count leading whitespace in each
-                    let raw_leading = raw.len() - raw.trim_start().len();
-                    let unescaped_leading = unescaped.len() - unescaped.trim_start().len();
+                    let raw_leading = raw.iter().take_while(|&&b| b == b' ' || b == b'\t').count();
+                    let unescaped_leading = unescaped
+                        .iter()
+                        .take_while(|&&b| b == b' ' || b == b'\t')
+                        .count();
 
                     // The difference is the common indent (if raw has more leading whitespace)
                     if raw_leading > unescaped_leading {
