@@ -230,12 +230,15 @@ impl<'src> RenderQueueWriter<'src> {
         let force_single_line =
             !be.any_collapsing_newline_has_heredoc_content() && be.in_string_embexpr();
 
+        let mut tokens = Vec::new();
         if !force_single_line
             && (be.is_multiline() || Self::renders_over_max_line_length(accum, &be))
         {
-            Self::render_as(accum, be.into_tokens(ConvertType::MultiLine));
+            be.write_tokens(ConvertType::MultiLine, &mut tokens);
+            Self::render_as(accum, tokens);
         } else {
-            Self::render_as(accum, be.into_tokens(ConvertType::SingleLine));
+            be.write_tokens(ConvertType::SingleLine, &mut tokens);
+            Self::render_as(accum, tokens);
             // after running accum looks like this (or some variant):
             // [.., Comma, Space, DirectPart {part: ""}, <close_delimiter>]
             // so we remove items at positions length-2 until there is nothing
@@ -250,15 +253,17 @@ impl<'src> RenderQueueWriter<'src> {
     ) {
         let must_multiline =
             bcce.any_collapsing_newline_has_heredoc_content() && bcce.in_string_embexpr();
+        let mut tokens = Vec::new();
         if must_multiline
             || ((bcce.is_multiline() || Self::renders_over_max_line_length(accum, &bcce))
                 && !bcce.in_string_embexpr())
         {
-            let tokens = bcce.into_tokens(ConvertType::MultiLine);
+            bcce.write_tokens(ConvertType::MultiLine, &mut tokens);
             Self::render_as(accum, tokens);
         } else {
             bcce.remove_call_chain_magic_tokens();
-            Self::render_as(accum, bcce.into_tokens(ConvertType::SingleLine));
+            bcce.write_tokens(ConvertType::SingleLine, &mut tokens);
+            Self::render_as(accum, tokens);
         }
     }
 

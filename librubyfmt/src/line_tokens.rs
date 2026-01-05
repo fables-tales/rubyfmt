@@ -251,65 +251,64 @@ pub enum AbstractLineToken<'src> {
 }
 
 impl<'src> AbstractLineToken<'src> {
-    pub fn into_single_line(self) -> Vec<ConcreteLineTokenAndTargets<'src>> {
+    pub fn write_single_line(self, out: &mut Vec<ConcreteLineTokenAndTargets<'src>>) {
         match self {
             Self::CollapsingNewLine(heredoc_strings) => {
-                let mut res = Vec::new();
                 if heredoc_strings.is_some() {
-                    res.push(cltats_hard_newline());
+                    out.push(cltats_hard_newline());
                 }
-                res.extend(Self::shimmy_and_shake_heredocs(heredoc_strings));
-                res
+                Self::write_heredocs(heredoc_strings, out);
             }
             Self::SoftNewline(heredoc_strings) => {
-                let mut res = vec![ConcreteLineTokenAndTargets::ConcreteLineToken(
+                out.push(ConcreteLineTokenAndTargets::ConcreteLineToken(
                     ConcreteLineToken::Space,
-                )];
-                res.extend(Self::shimmy_and_shake_heredocs(heredoc_strings));
-                res
+                ));
+                Self::write_heredocs(heredoc_strings, out);
             }
-            Self::SoftIndent { .. } => Vec::new(),
+            Self::SoftIndent { .. } => {}
             Self::ConcreteLineToken(clt) => {
-                vec![ConcreteLineTokenAndTargets::ConcreteLineToken(clt)]
+                out.push(ConcreteLineTokenAndTargets::ConcreteLineToken(clt));
             }
-            Self::BreakableEntry(be) => vec![ConcreteLineTokenAndTargets::BreakableEntry(be)],
+            Self::BreakableEntry(be) => {
+                out.push(ConcreteLineTokenAndTargets::BreakableEntry(be));
+            }
             Self::BreakableCallChainEntry(bcce) => {
-                vec![ConcreteLineTokenAndTargets::BreakableCallChainEntry(bcce)]
+                out.push(ConcreteLineTokenAndTargets::BreakableCallChainEntry(bcce));
             }
         }
     }
 
-    pub fn into_multi_line(self) -> Vec<ConcreteLineTokenAndTargets<'src>> {
+    pub fn write_multi_line(self, out: &mut Vec<ConcreteLineTokenAndTargets<'src>>) {
         match self {
             Self::CollapsingNewLine(heredoc_strings) => {
-                let mut res = vec![cltats_hard_newline()];
-                res.extend(Self::shimmy_and_shake_heredocs(heredoc_strings));
-                res
+                out.push(cltats_hard_newline());
+                Self::write_heredocs(heredoc_strings, out);
             }
             Self::SoftNewline(heredoc_strings) => {
-                let mut res = vec![cltats_hard_newline()];
-                res.extend(Self::shimmy_and_shake_heredocs(heredoc_strings));
-                res
+                out.push(cltats_hard_newline());
+                Self::write_heredocs(heredoc_strings, out);
             }
             Self::SoftIndent { depth } => {
-                vec![ConcreteLineTokenAndTargets::ConcreteLineToken(
+                out.push(ConcreteLineTokenAndTargets::ConcreteLineToken(
                     ConcreteLineToken::Indent { depth },
-                )]
+                ));
             }
             Self::ConcreteLineToken(clt) => {
-                vec![ConcreteLineTokenAndTargets::ConcreteLineToken(clt)]
+                out.push(ConcreteLineTokenAndTargets::ConcreteLineToken(clt));
             }
-            Self::BreakableEntry(be) => vec![ConcreteLineTokenAndTargets::BreakableEntry(be)],
+            Self::BreakableEntry(be) => {
+                out.push(ConcreteLineTokenAndTargets::BreakableEntry(be));
+            }
             Self::BreakableCallChainEntry(bcce) => {
-                vec![ConcreteLineTokenAndTargets::BreakableCallChainEntry(bcce)]
+                out.push(ConcreteLineTokenAndTargets::BreakableCallChainEntry(bcce));
             }
         }
     }
 
-    fn shimmy_and_shake_heredocs(
+    fn write_heredocs(
         heredoc_strings: Option<Vec<HeredocString>>,
-    ) -> Vec<ConcreteLineTokenAndTargets<'src>> {
-        let mut res = vec![];
+        out: &mut Vec<ConcreteLineTokenAndTargets<'src>>,
+    ) {
         if let Some(values) = heredoc_strings {
             for hds in values {
                 let indent = hds.indent;
@@ -318,19 +317,18 @@ impl<'src> AbstractLineToken<'src> {
 
                 let s = hds.render_as_string();
                 if !s.is_empty() {
-                    res.push(clats_direct_part(s));
-                    res.push(cltats_hard_newline());
+                    out.push(clats_direct_part(s));
+                    out.push(cltats_hard_newline());
                 }
                 if !kind.is_bare() {
-                    res.push(clats_indent(indent));
+                    out.push(clats_indent(indent));
                 }
-                res.push(clats_heredoc_close(symbol));
-                res.push(cltats_hard_newline());
+                out.push(clats_heredoc_close(symbol));
+                out.push(cltats_hard_newline());
                 let indent_depth = if indent != 0 { indent - 2 } else { indent };
-                res.push(clats_indent(indent_depth));
+                out.push(clats_indent(indent_depth));
             }
         }
-        res
     }
 
     pub fn is_comment(&self) -> bool {
