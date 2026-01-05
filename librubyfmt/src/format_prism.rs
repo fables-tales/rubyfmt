@@ -3037,7 +3037,18 @@ fn split_node_into_call_chains<'src>(node: prism::Node<'src>) -> Vec<Vec<prism::
             let is_aref: bool = !node_is_dot_call;
 
             if is_aref && seen_dot_call && has_dot_after[i] {
-                split_before.push(i);
+                let mut split_idx = i;
+                while split_idx < elements.len() {
+                    if let Some(call_node) = elements[split_idx].as_call_node()
+                        && call_node.call_operator_loc().is_none()
+                    {
+                        // Still an aref, advance past it
+                        split_idx += 1;
+                        continue;
+                    }
+                    break;
+                }
+                split_before.push(split_idx);
                 seen_dot_call = false;
                 continue;
             }
