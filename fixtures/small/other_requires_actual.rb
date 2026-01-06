@@ -3,6 +3,7 @@ ThingToCall.call(
   other: "value"
 )
 
+require = bees!
 foo(require: bar)
 
 {
