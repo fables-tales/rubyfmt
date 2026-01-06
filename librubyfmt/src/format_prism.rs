@@ -2340,7 +2340,7 @@ fn call_chain_elements_are_user_multilined<'src>(
         // placement, the user probably intended to break this onto multiple lines anyways.
         let has_comment = ps.has_comment_in_offset_span(
             call_chain_elements[0].location().end_offset(),
-            start_loc_for_call_node_in_chain(&call_chain_elements[1].as_call_node().unwrap()),
+            call_chain_elements.last().unwrap().location().end_offset(),
         );
         if is_literal_expression && !has_comment {
             call_chain_elements = &call_chain_elements[1..];
