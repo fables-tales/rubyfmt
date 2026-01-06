@@ -38,6 +38,7 @@ pub enum ConcreteLineToken<'src> {
     ModKeyword { contents: &'static str },
     ConditionalKeyword { contents: &'static str },
     DirectPart { part: Cow<'src, str> },
+    MethodName { name: Cow<'src, str> },
     CommaSpace,
     Comma,
     Space,
@@ -81,6 +82,7 @@ impl<'src> ConcreteLineToken<'src> {
             Self::DefKeyword => Cow::Borrowed("def"),
             Self::ModuleKeyword => Cow::Borrowed("module"),
             Self::DirectPart { part } => part,
+            Self::MethodName { name } => name,
             Self::CommaSpace => Cow::Borrowed(", "),
             Self::Comma => Cow::Borrowed(","),
             Self::Space => Cow::Borrowed(" "),
@@ -126,7 +128,9 @@ impl<'src> ConcreteLineToken<'src> {
             Keyword { keyword: contents }
             | ModKeyword { contents }
             | ConditionalKeyword { contents } => contents.len(),
-            Op { op: contents } | DirectPart { part: contents } => contents.len(),
+            Op { op: contents } | DirectPart { part: contents } | MethodName { name: contents } => {
+                contents.len()
+            }
             LTStringContent { content: contents }
             | Comment { contents }
             | HeredocClose { symbol: contents } => contents.len(),

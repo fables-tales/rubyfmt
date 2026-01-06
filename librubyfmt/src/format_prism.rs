@@ -1747,11 +1747,8 @@ fn format_call_node<'src>(
             } else {
                 method_name
             };
-            handle_string_at_offset(
-                ps,
-                method_ident,
-                start_loc_for_call_node_in_chain(&call_node),
-            );
+            ps.at_offset(start_loc_for_call_node_in_chain(&call_node));
+            ps.emit_method_name(method_ident);
         }
 
         // Calls with only empty parens (`foo ()`) are treated as calls without args

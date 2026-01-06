@@ -455,6 +455,10 @@ impl<'src> ParserState<'src> {
         self.push_concrete_token(ConcreteLineToken::DirectPart { part: ident.into() });
     }
 
+    pub(crate) fn emit_method_name(&mut self, name: impl Into<Cow<'src, str>>) {
+        self.push_concrete_token(ConcreteLineToken::MethodName { name: name.into() });
+    }
+
     pub(crate) fn emit_newline(&mut self) {
         self.shift_comments();
         self.push_concrete_token(ConcreteLineToken::HardNewLine);
