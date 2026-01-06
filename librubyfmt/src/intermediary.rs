@@ -130,8 +130,8 @@ impl<'src> Intermediary<'src> {
                     prev.set_gets_indented()
                 }
             }
-            ConcreteLineToken::DirectPart { part } => {
-                if part == "require" && self.tokens.last().map(|t| t.is_indent()).unwrap_or(false) {
+            ConcreteLineToken::MethodName { name } => {
+                if name == "require" && self.tokens.last().map(|t| t.is_indent()).unwrap_or(false) {
                     self.current_line_metadata.set_has_require();
                 }
             }

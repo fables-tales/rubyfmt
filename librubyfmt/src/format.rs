@@ -834,6 +834,19 @@ pub fn format_ident(ps: &mut ParserState, ident: Ident) {
     }
 }
 
+pub fn format_method_ident(ps: &mut ParserState, ident: Ident) {
+    if ps.at_start_of_line() {
+        ps.emit_indent();
+    }
+
+    ps.on_line(ident.2.0);
+    ps.emit_method_name(ident.1);
+
+    if ps.at_start_of_line() {
+        ps.emit_newline();
+    }
+}
+
 pub fn format_const(ps: &mut ParserState, c: Const) {
     if ps.at_start_of_line() {
         ps.emit_indent();
@@ -2496,7 +2509,7 @@ fn format_call_chain_elements(
                 if ident.1 == ".()" {
                     ps.emit_ident(".");
                 } else {
-                    format_ident(ps, ident);
+                    format_method_ident(ps, ident);
                 }
                 ps.shift_comments();
             }
