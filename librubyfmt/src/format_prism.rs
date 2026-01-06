@@ -1716,7 +1716,17 @@ fn format_call_node<'src>(
     skip_attr_write_value: bool,
 ) {
     let method_name = const_to_str(call_node.name());
-    let end_offset = call_node.location().end_offset();
+    // When we skip the attr_write value (because it will be formatted separately),
+    // we should only wind to the end of the method name, not the full call.
+    // Otherwise we'd extract comments from inside the value prematurely.
+    let end_offset = if skip_attr_write_value {
+        call_node
+            .message_loc()
+            .expect("Attribute writes must have a message")
+            .end_offset()
+    } else {
+        call_node.location().end_offset()
+    };
     let is_dot_call = method_name == "call" && call_node.message_loc().is_none(); // e.g. `a.()`
 
     // Only treat [] and []= as aref syntax when there's no explicit call operator.
