@@ -199,7 +199,8 @@ impl<'src> RenderQueueWriter<'src> {
                     ConcreteLineToken::Indent { .. },
                     ConcreteLineToken::Delim { .. }
                     | ConcreteLineToken::Dot
-                    | ConcreteLineToken::DirectPart { .. },
+                    | ConcreteLineToken::DirectPart { .. }
+                    | ConcreteLineToken::MethodName { .. },
                 ],
             ) = accum.last::<5>()
             {
