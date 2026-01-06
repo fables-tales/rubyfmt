@@ -3030,7 +3030,10 @@ pub fn format_sclass(ps: &mut ParserState, sc: SClass) {
         ps.emit_newline();
         ps.new_block(|ps| {
             ps.with_start_of_line(true, |ps| {
-                format_bodystmt(ps, body, end_line);
+                ps.with_formatting_context(FormattingContext::ClassOrModule, |ps| {
+                    ps.emit_collapsing_newline();
+                    format_bodystmt(ps, body, end_line);
+                });
             });
         });
     });
