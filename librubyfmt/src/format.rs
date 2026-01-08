@@ -1419,7 +1419,7 @@ fn format_inner_string(ps: &mut ParserState, parts: Vec<StringContentPart>, tipe
             },
             StringContentPart::StringEmbexpr(e) => {
                 ps.with_formatting_context(FormattingContext::StringEmbexpr, |ps| {
-                    ps.emit_string_content("#{".to_string());
+                    ps.emit_string_content("#{");
                     // Embexpr must have at least one expression.
                     // If they have multiple, render them with an expression per line
                     // just like they are outside of embexprs.
@@ -1437,7 +1437,7 @@ fn format_inner_string(ps: &mut ParserState, parts: Vec<StringContentPart>, tipe
                             });
                         });
                     }
-                    ps.emit_string_content("}".to_string());
+                    ps.emit_string_content("}");
 
                     let on_line_skip = tipe == StringType::Heredoc
                         && match peekable.peek() {
@@ -1452,12 +1452,12 @@ fn format_inner_string(ps: &mut ParserState, parts: Vec<StringContentPart>, tipe
                 })
             }
             StringContentPart::StringDVar(dv) => {
-                ps.emit_string_content("#{".to_string());
+                ps.emit_string_content("#{");
                 ps.with_start_of_line(false, |ps| {
                     let expr = *(dv.1);
                     format_expression(ps, expr);
                 });
-                ps.emit_string_content("}".to_string());
+                ps.emit_string_content("}");
             }
         }
     }

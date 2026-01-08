@@ -771,7 +771,7 @@ fn format_interpolated_string_node<'src>(
         if needs_escape {
             ps.emit_double_quote();
         } else {
-            ps.emit_string_content(s.to_string());
+            ps.emit_string_content(*s);
         }
     }
 
@@ -809,7 +809,7 @@ fn format_interpolated_string_node<'src>(
                     if needs_escape {
                         ps.emit_double_quote();
                     } else {
-                        ps.emit_string_content(s.to_string());
+                        ps.emit_string_content(*s);
                     }
                 }
                 ps.emit_space();
@@ -827,7 +827,7 @@ fn format_interpolated_string_node<'src>(
         if needs_escape {
             ps.emit_double_quote();
         } else {
-            ps.emit_string_content(closer.to_string());
+            ps.emit_string_content(*closer);
         }
     }
 }
@@ -1098,7 +1098,7 @@ fn format_embedded_statements_node<'src>(
     ps: &mut ParserState<'src>,
     embedded_statements_node: prism::EmbeddedStatementsNode<'src>,
 ) {
-    ps.emit_string_content("#{".to_string());
+    ps.emit_string_content("#{");
     if let Some(statements) = embedded_statements_node.statements() {
         ps.with_formatting_context(FormattingContext::StringEmbexpr, |ps| {
             let has_multiple_statements = statements.body().len() > 1;
@@ -1113,16 +1113,16 @@ fn format_embedded_statements_node<'src>(
             });
         });
     }
-    ps.emit_string_content("}".to_string());
+    ps.emit_string_content("}");
 }
 
 fn format_embedded_variable_node<'src>(
     ps: &mut ParserState<'src>,
     embedded_variable_node: prism::EmbeddedVariableNode<'src>,
 ) {
-    ps.emit_string_content("#{".to_string());
+    ps.emit_string_content("#{");
     format_node(ps, embedded_variable_node.variable());
-    ps.emit_string_content("}".to_string());
+    ps.emit_string_content("}");
 }
 
 fn format_ensure_node<'src>(ps: &mut ParserState<'src>, ensure_node: prism::EnsureNode<'src>) {

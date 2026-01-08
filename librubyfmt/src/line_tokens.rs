@@ -54,7 +54,7 @@ pub enum ConcreteLineToken<'src> {
     CloseParen,
     Op { op: Cow<'src, str> },
     DoubleQuote,
-    LTStringContent { content: String },
+    LTStringContent { content: Cow<'src, str> },
     SingleSlash,
     Comment { contents: String },
     Delim { contents: &'static str },
@@ -98,7 +98,7 @@ impl<'src> ConcreteLineToken<'src> {
             Self::CloseParen => Cow::Borrowed(")"),
             Self::Op { op } => op,
             Self::DoubleQuote => Cow::Borrowed("\""),
-            Self::LTStringContent { content } => Cow::Owned(content),
+            Self::LTStringContent { content } => content,
             Self::SingleSlash => Cow::Borrowed("\\"),
             Self::Comment { contents } => Cow::Owned(contents),
             Self::Delim { contents } => Cow::Borrowed(contents),
@@ -128,12 +128,11 @@ impl<'src> ConcreteLineToken<'src> {
             Keyword { keyword: contents }
             | ModKeyword { contents }
             | ConditionalKeyword { contents } => contents.len(),
-            Op { op: contents } | DirectPart { part: contents } | MethodName { name: contents } => {
-                contents.len()
-            }
-            LTStringContent { content: contents }
-            | Comment { contents }
-            | HeredocClose { symbol: contents } => contents.len(),
+            Op { op: contents }
+            | DirectPart { part: contents }
+            | MethodName { name: contents }
+            | LTStringContent { content: contents } => contents.len(),
+            Comment { contents } | HeredocClose { symbol: contents } => contents.len(),
             HardNewLine | Comma | Space | Dot | OpenSquareBracket | CloseSquareBracket
             | OpenCurlyBracket | CloseCurlyBracket | OpenParen | CloseParen | SingleSlash
             | DoubleQuote => 1,

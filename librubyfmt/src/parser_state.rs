@@ -441,14 +441,15 @@ impl<'src> ParserState<'src> {
         self.push_concrete_token(ConcreteLineToken::DoubleQuote);
     }
 
-    pub(crate) fn emit_string_content(&mut self, s: String) {
-        let newline_count = s.matches('\n').count() as u64;
+    pub(crate) fn emit_string_content(&mut self, s: impl Into<Cow<'src, str>>) {
+        let content = s.into();
+        let newline_count = content.matches('\n').count() as u64;
         self.current_orig_line_number += newline_count;
         for be in self.breakable_entry_stack.iter_mut().rev() {
             be.push_line_number(self.current_orig_line_number);
         }
 
-        self.push_concrete_token(ConcreteLineToken::LTStringContent { content: s });
+        self.push_concrete_token(ConcreteLineToken::LTStringContent { content });
     }
 
     pub(crate) fn emit_ident(&mut self, ident: impl Into<Cow<'src, str>>) {
