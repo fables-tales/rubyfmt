@@ -913,10 +913,31 @@ fn format_inner_string<'src>(
                     let unescaped = node.unescaped();
 
                     let raw_leading = raw.iter().take_while(|&&b| b == b' ' || b == b'\t').count();
+
+                    // Count consecutive escape sequences after leading whitespace that produce
+                    // whitespace chars (like \t -> tab, \s -> space). These shouldn't count toward
+                    // unescaped_leading since they're content, not indentation.
+                    let escaped_ws_count = {
+                        let after_ws = &raw[raw_leading..];
+                        let mut count = 0;
+                        let mut i = 0;
+                        while i + 1 < after_ws.len() && after_ws[i] == b'\\' {
+                            match after_ws[i + 1] {
+                                b't' | b's' => {
+                                    count += 1;
+                                    i += 2;
+                                }
+                                _ => break,
+                            }
+                        }
+                        count
+                    };
+
                     let unescaped_leading = unescaped
                         .iter()
                         .take_while(|&&b| b == b' ' || b == b'\t')
-                        .count();
+                        .count()
+                        - escaped_ws_count;
 
                     // The difference is the common indent (if raw has more leading whitespace)
                     if raw_leading > unescaped_leading {
