@@ -616,13 +616,8 @@ impl<'src> ConditionalLayoutEntry<'src> {
     }
 
     fn is_multiline(&self) -> bool {
-        self.statement_tokens
-            .iter()
-            .any(|t| Self::token_is_multiline(t))
-            || self
-                .predicate_tokens
-                .iter()
-                .any(|t| Self::token_is_multiline(t))
+        self.statement_tokens.iter().any(Self::token_is_multiline)
+            || self.predicate_tokens.iter().any(Self::token_is_multiline)
     }
 
     fn token_is_multiline(token: &AbstractLineToken<'src>) -> bool {
