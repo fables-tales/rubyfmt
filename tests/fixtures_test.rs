@@ -15,6 +15,7 @@ const DISABLED_RIPPER_TESTS: &[&'static str] = &[
     // https://github.com/fables-tales/rubyfmt/issues/474
     "small_args_forwarding_additional_args",
     "small_alias_global_var",
+    "small_multi_variable_binding",
 ];
 
 fn main() -> io::Result<()> {
