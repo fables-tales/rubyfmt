@@ -63,7 +63,7 @@ pub struct ParserState<'src> {
     render_queue: BaseQueue<'src>,
     current_orig_line_number: LineNumber,
     comments_hash: FileComments,
-    heredoc_strings: Vec<HeredocString>,
+    heredoc_strings: Vec<HeredocString<'src>>,
     comments_to_insert: Option<CommentBlock>,
     breakable_entry_stack: Vec<Breakable<'src>>,
     formatting_context: Vec<FormattingContext>,
@@ -97,7 +97,7 @@ impl<'src> ParserState<'src> {
     }
     pub(crate) fn push_heredoc_content<F>(
         &mut self,
-        symbol: String,
+        symbol: impl Into<Cow<'src, str>>,
         kind: HeredocKind,
         end_line: LineNumber,
         formatting_func: F,
@@ -119,15 +119,22 @@ impl<'src> ParserState<'src> {
 
         let data = next_ps.render_to_buffer();
         self.heredoc_strings.push(HeredocString::new(
-            symbol,
+            symbol.into(),
             kind,
             data,
             self.current_spaces(),
         ));
     }
 
-    pub(crate) fn emit_heredoc_start(&mut self, symbol: String, kind: HeredocKind) {
-        self.push_concrete_token(ConcreteLineToken::HeredocStart { kind, symbol });
+    pub(crate) fn emit_heredoc_start(
+        &mut self,
+        symbol: impl Into<Cow<'src, str>>,
+        kind: HeredocKind,
+    ) {
+        self.push_concrete_token(ConcreteLineToken::HeredocStart {
+            kind,
+            symbol: symbol.into(),
+        });
     }
 
     pub(crate) fn emit_heredoc_close(&mut self, symbol: String) {
@@ -792,7 +799,7 @@ impl<'src> ParserState<'src> {
         self.render_queue.into_tokens()
     }
 
-    pub(crate) fn gather_heredocs(&mut self) -> Option<Vec<HeredocString>> {
+    pub(crate) fn gather_heredocs(&mut self) -> Option<Vec<HeredocString<'src>>> {
         if self.heredoc_strings.is_empty() {
             None
         } else {

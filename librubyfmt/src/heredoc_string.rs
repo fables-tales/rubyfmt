@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 use crate::types::ColNumber;
 use crate::util::get_indent;
 
@@ -29,15 +31,15 @@ impl HeredocKind {
 }
 
 #[derive(Debug, Clone)]
-pub struct HeredocString {
-    symbol: String,
+pub struct HeredocString<'src> {
+    symbol: Cow<'src, str>,
     pub kind: HeredocKind,
     pub buf: Vec<u8>,
     pub indent: ColNumber,
 }
 
-impl HeredocString {
-    pub fn new(symbol: String, kind: HeredocKind, buf: Vec<u8>, indent: ColNumber) -> Self {
+impl<'src> HeredocString<'src> {
+    pub fn new(symbol: Cow<'src, str>, kind: HeredocKind, buf: Vec<u8>, indent: ColNumber) -> Self {
         HeredocString {
             symbol,
             kind,

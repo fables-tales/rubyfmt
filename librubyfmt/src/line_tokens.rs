@@ -29,16 +29,28 @@ pub fn clats_indent<'src>(depth: ColNumber) -> ConcreteLineTokenAndTargets<'src>
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ConcreteLineToken<'src> {
     HardNewLine,
-    Indent { depth: u32 },
-    Keyword { keyword: &'static str },
+    Indent {
+        depth: u32,
+    },
+    Keyword {
+        keyword: &'static str,
+    },
     DefKeyword,
     ClassKeyword,
     ModuleKeyword,
     DoKeyword,
-    ModKeyword { contents: &'static str },
-    ConditionalKeyword { contents: &'static str },
-    DirectPart { part: Cow<'src, str> },
-    MethodName { name: Cow<'src, str> },
+    ModKeyword {
+        contents: &'static str,
+    },
+    ConditionalKeyword {
+        contents: &'static str,
+    },
+    DirectPart {
+        part: Cow<'src, str>,
+    },
+    MethodName {
+        name: Cow<'src, str>,
+    },
     CommaSpace,
     Comma,
     Space,
@@ -52,21 +64,34 @@ pub enum ConcreteLineToken<'src> {
     CloseCurlyBracket,
     OpenParen,
     CloseParen,
-    Op { op: Cow<'src, str> },
+    Op {
+        op: Cow<'src, str>,
+    },
     DoubleQuote,
-    LTStringContent { content: Cow<'src, str> },
+    LTStringContent {
+        content: Cow<'src, str>,
+    },
     SingleSlash,
-    Comment { contents: String },
-    Delim { contents: &'static str },
+    Comment {
+        contents: String,
+    },
+    Delim {
+        contents: &'static str,
+    },
     End,
-    HeredocClose { symbol: String },
+    HeredocClose {
+        symbol: String,
+    },
     DataEnd,
     // These are "magic" tokens. They have no concrete representation,
     // but they're meaningful inside of the render queue
     AfterCallChain,
     BeginCallChainIndent,
     EndCallChainIndent,
-    HeredocStart { kind: HeredocKind, symbol: String },
+    HeredocStart {
+        kind: HeredocKind,
+        symbol: Cow<'src, str>,
+    },
 }
 
 impl<'src> ConcreteLineToken<'src> {
@@ -105,7 +130,7 @@ impl<'src> ConcreteLineToken<'src> {
             Self::End => Cow::Borrowed("end"),
             Self::HeredocClose { symbol } => Cow::Owned(symbol),
             Self::DataEnd => Cow::Borrowed("__END__"),
-            Self::HeredocStart { symbol, .. } => Cow::Owned(symbol),
+            Self::HeredocStart { symbol, .. } => symbol,
             // no-op, this is purely semantic information
             // for the render queue
             Self::AfterCallChain | Self::BeginCallChainIndent | Self::EndCallChainIndent => {
@@ -246,8 +271,8 @@ impl<'src> ConcreteLineTokenAndTargets<'src> {
 pub enum AbstractLineToken<'src> {
     // this is all bodil's fault
     ConcreteLineToken(ConcreteLineToken<'src>),
-    CollapsingNewLine(Option<Vec<HeredocString>>),
-    SoftNewline(Option<Vec<HeredocString>>),
+    CollapsingNewLine(Option<Vec<HeredocString<'src>>>),
+    SoftNewline(Option<Vec<HeredocString<'src>>>),
     SoftIndent { depth: u32 },
     BreakableEntry(BreakableEntry<'src>),
     BreakableCallChainEntry(BreakableCallChainEntry<'src>),
