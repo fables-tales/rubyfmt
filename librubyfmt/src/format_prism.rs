@@ -860,7 +860,7 @@ fn format_heredoc<'src>(
     heredoc: HeredocNodeType<'src>,
     heredoc_symbol: &'src str,
 ) {
-    let heredoc_kind = HeredocKind::from_string(&heredoc_symbol);
+    let heredoc_kind = HeredocKind::from_string(heredoc_symbol);
     ps.emit_heredoc_start(heredoc_symbol, heredoc_kind);
 
     let parts = heredoc.parts();
