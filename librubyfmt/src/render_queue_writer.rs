@@ -249,7 +249,10 @@ impl<'src> RenderQueueWriter<'src> {
         }
     }
 
-    fn format_conditional_layout_entry(accum: &mut Intermediary<'src>, cle: ConditionalLayoutEntry<'src>) {
+    fn format_conditional_layout_entry(
+        accum: &mut Intermediary<'src>,
+        cle: ConditionalLayoutEntry<'src>,
+    ) {
         if cle.should_use_block_form(accum.current_line_length()) {
             Self::render_as(accum, cle.into_block_tokens());
         } else {
