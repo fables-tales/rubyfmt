@@ -32,7 +32,3 @@ pub fn const_to_str(constant_id: ConstantId<'_>) -> &str {
 pub fn loc_to_str(loc: Location<'_>) -> &str {
     u8_to_str(loc.as_slice())
 }
-
-pub fn loc_to_string(loc: Location) -> String {
-    u8_to_string(loc.as_slice())
-}

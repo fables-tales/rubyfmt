@@ -1,12 +1,19 @@
+use std::borrow::Cow;
+
 use fancy_regex::Regex;
 
-pub fn single_to_double_quoted(content: &str, start_delim: &str, end_delim: &str) -> String {
+pub fn single_to_double_quoted<'src>(
+    content: &'src str,
+    start_delim: &'src str,
+    end_delim: &'src str,
+) -> Cow<'src, str> {
     if start_delim == "'" || start_delim.starts_with("%q") {
         escape_string(
             content,
             start_delim.chars().last().unwrap(),
             end_delim.chars().last().unwrap(),
         )
+        .into()
     } else {
         // For percent literals, we only care about the delimiter
         // e.g. for `%<` we're looking for the `<`
@@ -23,24 +30,22 @@ pub fn single_to_double_quoted(content: &str, start_delim: &str, end_delim: &str
         ))
         .unwrap();
 
-        regexp
-            .replace_all(content, |captures: &fancy_regex::Captures| {
-                // first capture is the entire match
-                let val = captures.get(0).unwrap();
-                let val_str = val.as_str();
-                if val_str.ends_with("\"") {
-                    // Ends with a quote, which we transform to `\"`
-                    format!("{}\\\"", &val_str[0..(val_str.len() - 1)])
-                } else {
-                    // drop unnecessary escape
-                    format!(
-                        "{}{}",
-                        &val_str[0..(val_str.len() - 2)],
-                        val_str.chars().last().unwrap()
-                    )
-                }
-            })
-            .to_string()
+        regexp.replace_all(content, |captures: &fancy_regex::Captures| {
+            // first capture is the entire match
+            let val = captures.get(0).unwrap();
+            let val_str = val.as_str();
+            if val_str.ends_with("\"") {
+                // Ends with a quote, which we transform to `\"`
+                format!("{}\\\"", &val_str[0..(val_str.len() - 1)])
+            } else {
+                // drop unnecessary escape
+                format!(
+                    "{}{}",
+                    &val_str[0..(val_str.len() - 2)],
+                    val_str.chars().last().unwrap()
+                )
+            }
+        })
     }
 }
 
