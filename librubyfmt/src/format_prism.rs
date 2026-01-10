@@ -667,9 +667,7 @@ fn format_string_node<'src>(ps: &mut ParserState<'src>, string_node: prism::Stri
         format_heredoc(
             ps,
             HeredocNodeType::Plain(string_node),
-            opener
-                .expect("Heredocs must have an opening loc for the opening tag (<<FOO etc.)")
-                .to_string(),
+            opener.expect("Heredocs must have an opening loc for the opening tag (<<FOO etc.)"),
         );
         return;
     }
@@ -758,9 +756,7 @@ fn format_interpolated_string_node<'src>(
         format_heredoc(
             ps,
             HeredocNodeType::Interpolated(interpolated_string_node),
-            opener
-                .expect("Heredocs must have an opening loc for the opening tag (<<FOO etc.)")
-                .to_string(),
+            opener.expect("Heredocs must have an opening loc for the opening tag (<<FOO etc.)"),
         );
         // The rest of this machinery is handled in format_inner_string
         // From here on out, assume we're not in a heredoc
@@ -862,14 +858,14 @@ impl<'src> HeredocNodeType<'src> {
 fn format_heredoc<'src>(
     ps: &mut ParserState<'src>,
     heredoc: HeredocNodeType<'src>,
-    heredoc_symbol: String,
+    heredoc_symbol: &'src str,
 ) {
-    let heredoc_kind = HeredocKind::from_string(&heredoc_symbol);
+    let heredoc_kind = HeredocKind::from_string(heredoc_symbol);
     ps.emit_heredoc_start(heredoc_symbol, heredoc_kind);
 
     let parts = heredoc.parts();
     ps.push_heredoc_content(
-        loc_to_str(heredoc.closing_loc()).trim().to_string(),
+        loc_to_str(heredoc.closing_loc()).trim(),
         heredoc_kind,
         ps.get_line_number_for_offset(heredoc.closing_loc().start_offset()),
         |n: &mut ParserState<'src>| {
