@@ -8,7 +8,7 @@ use crate::{
     parser_state::{FormattingContext, HashType, ParserState},
     render_targets::MultilineHandling,
     types::SourceOffset,
-    util::{const_to_str, loc_to_str, loc_to_string},
+    util::{const_to_str, loc_to_str},
 };
 
 pub fn format_node<'src>(ps: &mut ParserState<'src>, node: prism::Node<'src>) {
@@ -684,7 +684,7 @@ fn format_string_node<'src>(ps: &mut ParserState<'src>, string_node: prism::Stri
         // means the contents must already be appropriately escaped -- hence we default to `true` here
         let in_escaped_context = is_heredoc || opener.map(|s| s.starts_with("\"")).unwrap_or(true);
         let string_content = if in_escaped_context {
-            loc_to_string(string_node.content_loc())
+            Cow::Borrowed(loc_to_str(string_node.content_loc()))
         } else {
             // For character literals (`?a`), there can be an opening loc without
             // a closing loc. In that case, fall back to a double quote, since
@@ -4236,7 +4236,7 @@ fn format_match_last_line_node<'src>(
     match_last_line_node: prism::MatchLastLineNode<'src>,
 ) {
     ps.emit_ident(loc_to_str(match_last_line_node.opening_loc()));
-    ps.emit_string_content(loc_to_string(match_last_line_node.content_loc()));
+    ps.emit_string_content(loc_to_str(match_last_line_node.content_loc()));
     ps.emit_ident(loc_to_str(match_last_line_node.closing_loc()));
 }
 
@@ -4538,7 +4538,7 @@ fn format_regular_expression_node<'src>(
     regular_expression_node: prism::RegularExpressionNode<'src>,
 ) {
     ps.emit_ident(loc_to_str(regular_expression_node.opening_loc()));
-    ps.emit_string_content(loc_to_string(regular_expression_node.content_loc()));
+    ps.emit_string_content(loc_to_str(regular_expression_node.content_loc()));
     ps.emit_ident(loc_to_str(regular_expression_node.closing_loc()));
 }
 
@@ -4761,7 +4761,7 @@ fn format_while_node<'src>(ps: &mut ParserState<'src>, while_node: prism::WhileN
 
 fn format_x_string_node<'src>(ps: &mut ParserState<'src>, x_string_node: prism::XStringNode<'src>) {
     ps.emit_ident("`");
-    ps.emit_string_content(loc_to_string(x_string_node.content_loc()));
+    ps.emit_string_content(loc_to_str(x_string_node.content_loc()));
     ps.emit_ident("`");
 }
 
