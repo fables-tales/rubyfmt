@@ -2,7 +2,8 @@ use crate::heredoc_string::HeredocKind;
 use crate::intermediary::{BlanklineReason, Intermediary};
 use crate::line_tokens::*;
 use crate::render_targets::{
-    AbstractTokenTarget, BreakableCallChainEntry, BreakableEntry, ConvertType,
+    AbstractTokenTarget, BreakableCallChainEntry, BreakableEntry, ConditionalLayoutEntry,
+    ConvertType,
 };
 use crate::util::get_indent;
 #[cfg(debug_assertions)]
@@ -126,6 +127,9 @@ impl<'src> RenderQueueWriter<'src> {
                 ConcreteLineTokenAndTargets::BreakableCallChainEntry(bcce) => {
                     Self::format_breakable_call_chain_entry(accum, bcce)
                 }
+                ConcreteLineTokenAndTargets::ConditionalLayoutEntry(cle) => {
+                    Self::format_conditional_layout_entry(accum, cle)
+                }
                 ConcreteLineTokenAndTargets::ConcreteLineToken(x) => match x {
                     BeginCallChainIndent => accum.additional_indent += 1,
                     EndCallChainIndent => accum.additional_indent -= 1,
@@ -242,6 +246,14 @@ impl<'src> RenderQueueWriter<'src> {
             bcce.remove_call_chain_magic_tokens();
             bcce.write_tokens(ConvertType::SingleLine, &mut tokens);
             Self::render_as(accum, tokens);
+        }
+    }
+
+    fn format_conditional_layout_entry(accum: &mut Intermediary<'src>, cle: ConditionalLayoutEntry<'src>) {
+        if cle.should_use_block_form(accum.current_line_length()) {
+            Self::render_as(accum, cle.into_block_tokens());
+        } else {
+            Self::render_as(accum, cle.into_inline_tokens());
         }
     }
 

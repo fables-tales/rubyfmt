@@ -4,11 +4,13 @@ use crate::file_comments::FileComments;
 use crate::heredoc_string::{HeredocKind, HeredocSegment, HeredocString};
 use crate::line_tokens::*;
 use crate::render_queue_writer::{MAX_LINE_LENGTH, RenderQueueWriter};
-use crate::render_targets::{BaseQueue, Breakable, BreakableCallChainEntry, BreakableEntry};
+use crate::render_targets::{
+    BaseQueue, Breakable, BreakableCallChainEntry, BreakableEntry, ConditionalLayoutEntry,
+};
 use crate::types::{ColNumber, LineNumber, SourceOffset};
 use log::debug;
 use std::borrow::Cow;
-use std::io::{self, Cursor, Write};
+use std::io::{self, Write};
 use std::str;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -828,12 +830,6 @@ impl<'src> ParserState<'src> {
         }
     }
 
-    pub(crate) fn new_with_indent_from(ps: &ParserState<'src>) -> Self {
-        let mut next_ps = ParserState::new_with_reset_indentation(ps);
-        next_ps.indent_depth = ps.indent_depth;
-        next_ps
-    }
-
     // Creates a copy of the parser state *with the indent_depth reset*.
     // This is used for heredocs, where we explicitly want to ignore current indentation.
     pub(crate) fn new_with_reset_indentation(ps: &ParserState<'src>) -> Self {
@@ -842,13 +838,6 @@ impl<'src> ParserState<'src> {
         next_ps.start_of_line = ps.start_of_line.clone();
         next_ps.current_orig_line_number = ps.current_orig_line_number;
         next_ps
-    }
-
-    pub(crate) fn render_to_buffer(self) -> Vec<u8> {
-        let mut bufio = Cursor::new(Vec::new());
-        self.write(&mut bufio).expect("in memory io cannot fail");
-        bufio.set_position(0);
-        bufio.into_inner()
     }
 
     /// Convert the render queue to heredoc segments. This separates content into
@@ -967,6 +956,60 @@ impl<'src> ParserState<'src> {
             Some(be) => be.push(t),
             None => self.render_queue.push(Self::dangerously_convert(t)),
         }
+    }
+
+    pub(crate) fn render_with_blank_state<F>(ps: &mut ParserState<'src>, f: F) -> ParserState<'src>
+    where
+        F: FnOnce(&mut ParserState<'src>),
+    {
+        let mut next_ps = ParserState::new_with_reset_indentation(ps);
+        f(&mut next_ps);
+        next_ps
+    }
+
+    /// Format a conditional modifier expression (e.g., `x if y` or `x unless y`).
+    pub(crate) fn conditional_layout_of<FP, FS>(
+        &mut self,
+        keyword: &'static str,
+        format_predicate: FP,
+        format_statement: FS,
+    ) where
+        FP: FnOnce(&mut ParserState<'src>),
+        FS: FnOnce(&mut ParserState<'src>),
+    {
+        // Save and clear any pending comments to prevent them from being
+        // inserted into the conditional layout
+        let saved_comments = self.comments_to_insert.take();
+
+        let entry = ConditionalLayoutEntry::new(keyword, self.current_spaces());
+        self.breakable_entry_stack
+            .push(Breakable::InlineConditional(entry));
+
+        self.with_start_of_line(false, |ps| {
+            ps.new_block(format_predicate);
+        });
+
+        self.breakable_entry_stack
+            .last_mut()
+            .expect("just pushed InlineConditional")
+            .as_conditional_layout_mut()
+            .expect("just pushed InlineConditional")
+            .switch_to_statement();
+
+        self.with_start_of_line(false, |ps| {
+            ps.new_block(format_statement);
+        });
+
+        let cle = self
+            .breakable_entry_stack
+            .pop()
+            .expect("just pushed InlineConditional")
+            .into_conditional_layout()
+            .expect("InlineConditional always returns Some from into_conditional_layout");
+
+        self.comments_to_insert = saved_comments;
+
+        self.push_target(ConcreteLineTokenAndTargets::ConditionalLayoutEntry(cle));
     }
 }
 
