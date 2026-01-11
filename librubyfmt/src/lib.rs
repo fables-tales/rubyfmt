@@ -105,6 +105,13 @@ pub fn format_buffer(buf: &str, use_prism: bool) -> Result<String, RichFormatErr
             buf.as_bytes(),
             end_data,
         )?;
+        #[cfg(not(debug_assertions))]
+        {
+            // Prism implements Drop by recursing through the AST, which is quite slow.
+            // For our purposes, we're about to exit anyways, so we leave it to the OS to
+            // reclaim this memory on process termination
+            std::mem::forget(parse_result);
+        }
     } else {
         let (tree, file_comments, end_data) = run_parser_on(buf)?;
         toplevel_format_program(&mut output, tree, file_comments, end_data)?;
