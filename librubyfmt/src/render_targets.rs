@@ -43,7 +43,7 @@ impl<'src> BaseQueue<'src> {
     pub fn index_of_prev_newline(&self) -> Option<usize> {
         self.tokens
             .iter()
-            .rposition(|v| v.is_newline() || v.is_comment())
+            .rposition(|v| v.is_newline() || v.is_indent())
     }
 }
 
@@ -62,7 +62,7 @@ pub trait AbstractTokenTarget<'src>: std::fmt::Debug {
     fn index_of_prev_newline(&self) -> Option<usize> {
         self.tokens()
             .iter()
-            .rposition(|v| v.is_newline() || v.is_comment())
+            .rposition(|v| v.is_newline() || v.is_indent())
             .map(|x| {
                 let token = &self.tokens()[x];
                 if matches!(token, AbstractLineToken::CollapsingNewLine(_))
