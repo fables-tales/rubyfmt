@@ -213,10 +213,6 @@ impl<'src> ConcreteLineToken<'src> {
         matches!(self, ConcreteLineToken::Indent { .. })
     }
 
-    pub fn is_comment(&self) -> bool {
-        matches!(self, Self::Indent { .. })
-    }
-
     pub fn is_in_need_of_a_trailing_blankline(&self) -> bool {
         self.is_conditional_spaced_token() && !self.is_block_closing_token()
     }
@@ -259,9 +255,9 @@ impl<'src> ConcreteLineTokenAndTargets<'src> {
         }
     }
 
-    pub fn is_comment(&self) -> bool {
+    pub fn is_indent(&self) -> bool {
         match self {
-            Self::ConcreteLineToken(clt) => clt.is_comment(),
+            Self::ConcreteLineToken(clt) => clt.is_indent(),
             _ => false,
         }
     }
@@ -359,9 +355,9 @@ impl<'src> AbstractLineToken<'src> {
         }
     }
 
-    pub fn is_comment(&self) -> bool {
+    pub fn is_indent(&self) -> bool {
         match self {
-            Self::ConcreteLineToken(clt) => clt.is_comment(),
+            Self::ConcreteLineToken(clt) => clt.is_indent(),
             _ => false,
         }
     }
