@@ -1124,7 +1124,7 @@ fn format_embedded_statements_node<'src>(
                     ps.emit_newline();
                     ps.new_block(|ps| format_node(ps, statements.as_node()));
                     ps.emit_indent();
-                } else if let Some(statement) = statements.body().iter().next() {
+                } else if let Some(statement) = statements.body().first() {
                     format_node(ps, statement);
                 }
             });
@@ -1181,7 +1181,7 @@ fn format_find_pattern_node<'src>(
                 });
 
                 let requireds = find_pattern_node.requireds();
-                let requireds_end_offset = requireds.iter().last().unwrap().location().end_offset();
+                let requireds_end_offset = requireds.last().unwrap().location().end_offset();
                 if !requireds.is_empty() {
                     ps.emit_comma();
                     ps.emit_soft_newline();
@@ -1522,7 +1522,7 @@ fn format_parameters_node<'src>(ps: &mut ParserState<'src>, params: prism::Param
         if requireds.is_empty() {
             return;
         }
-        let end_offset = requireds.iter().last().unwrap().location().end_offset();
+        let end_offset = requireds.last().unwrap().location().end_offset();
         format_list_like_thing(ps, requireds, end_offset, false);
     }
     fn fmt_optionals<'a>(ps: &mut ParserState<'a>, params: prism::ParametersNode<'a>) {
@@ -1530,7 +1530,7 @@ fn format_parameters_node<'src>(ps: &mut ParserState<'src>, params: prism::Param
         if optionals.is_empty() {
             return;
         }
-        let end_offset = optionals.iter().last().unwrap().location().end_offset();
+        let end_offset = optionals.last().unwrap().location().end_offset();
         format_list_like_thing(ps, optionals, end_offset, false);
     }
     fn fmt_rest<'a>(ps: &mut ParserState<'a>, params: prism::ParametersNode<'a>) {
@@ -1544,7 +1544,7 @@ fn format_parameters_node<'src>(ps: &mut ParserState<'src>, params: prism::Param
         if posts.is_empty() {
             return;
         }
-        let end_offset = posts.iter().last().unwrap().location().end_offset();
+        let end_offset = posts.last().unwrap().location().end_offset();
         format_list_like_thing(ps, posts, end_offset, false);
     }
     fn fmt_keywords<'a>(ps: &mut ParserState<'a>, params: prism::ParametersNode<'a>) {
@@ -1552,7 +1552,7 @@ fn format_parameters_node<'src>(ps: &mut ParserState<'src>, params: prism::Param
         if keywords.is_empty() {
             return;
         }
-        let end_offset = keywords.iter().last().unwrap().location().end_offset();
+        let end_offset = keywords.last().unwrap().location().end_offset();
         format_list_like_thing(ps, keywords, end_offset, false);
     }
     fn fmt_keyword_rest<'a>(ps: &mut ParserState<'a>, params: prism::ParametersNode<'a>) {
@@ -1634,7 +1634,7 @@ fn use_parens_for_call_node<'src>(
         .map(|args| {
             !(args.arguments().is_empty()
                 || (args.arguments().len() == 1
-                    && is_empty_parentheses_node(&args.arguments().iter().next().unwrap())))
+                    && is_empty_parentheses_node(&args.arguments().first().unwrap())))
         })
         .unwrap_or(false);
 
@@ -1773,7 +1773,7 @@ fn format_call_node<'src>(
             && !is_aref_write
             && call_node.arguments().is_some_and(|args| {
                 args.arguments().len() == 1
-                    && is_empty_parentheses_node(&args.arguments().iter().next().unwrap())
+                    && is_empty_parentheses_node(&args.arguments().first().unwrap())
             });
 
         if let Some(arguments) = call_node.arguments()
@@ -1782,7 +1782,7 @@ fn format_call_node<'src>(
             // For callers where the only arg is a def node,
             // we assume that's a `public def` style modifier and don't use parens
             if arguments.arguments().len() == 1
-                && let Some(def_node) = arguments.arguments().iter().next().unwrap().as_def_node()
+                && let Some(def_node) = arguments.arguments().first().unwrap().as_def_node()
             {
                 ps.emit_space();
                 format_def_node(ps, def_node);
@@ -1806,10 +1806,10 @@ fn format_call_node<'src>(
 
                 ps.emit_ident(" = ");
 
-                let last_arg =
-                    arguments.arguments().iter().last().expect(
-                        "The last argument is the value being assigned and must be present",
-                    );
+                let last_arg = arguments
+                    .arguments()
+                    .last()
+                    .expect("The last argument is the value being assigned and must be present");
                 ps.with_start_of_line(false, |ps| format_node(ps, last_arg));
             } else if call_node.is_attribute_write() {
                 if !skip_attr_write_value {
@@ -2123,7 +2123,7 @@ fn as_binary_op<'src>(
         return None;
     }
 
-    let right = arguments.iter().next().unwrap();
+    let right = arguments.first().unwrap();
     let method_name = const_to_str(call_node.name());
 
     if method_name == "[]" || method_name == "[]=" {
@@ -2163,7 +2163,7 @@ fn format_call_chain_segments<'src>(
                             "Expected attr_write to have exactly one argument"
                         );
 
-                        args.arguments().iter().next()
+                        args.arguments().first()
                     })
                 } else {
                     None
@@ -2667,8 +2667,7 @@ fn format_block_node<'src>(ps: &mut ParserState<'src>, block_node: prism::BlockN
                     });
                 } else {
                     ps.with_start_of_line(false, |ps| {
-                        if let Some(node) = body.as_statements_node().unwrap().body().iter().next()
-                        {
+                        if let Some(node) = body.as_statements_node().unwrap().body().first() {
                             ps.emit_soft_newline();
                             ps.emit_soft_indent();
                             format_node(ps, node);
@@ -2990,7 +2989,7 @@ fn format_parentheses_node<'src>(
             if let Some(statements_node) = body.as_statements_node() {
                 if statements_node.body().len() == 1 {
                     ps.with_start_of_line(false, |ps| {
-                        format_node(ps, statements_node.body().iter().next().unwrap())
+                        format_node(ps, statements_node.body().first().unwrap())
                     });
                 } else {
                     ps.emit_newline();
@@ -3558,7 +3557,7 @@ fn format_inline_conditional<'src>(
     if let Some(statements) = statements {
         // There can only be a single statement in modifier form.
         // Format it directly to skip the StatementsNode machinery
-        if let Some(first_statement) = statements.body().iter().next() {
+        if let Some(first_statement) = statements.body().first() {
             ps.with_start_of_line(false, |ps| format_node(ps, first_statement));
         }
         ps.emit_space();
@@ -4202,9 +4201,7 @@ fn format_lambda_node<'src>(ps: &mut ParserState<'src>, lambda_node: prism::Lamb
                         });
                     } else {
                         ps.with_start_of_line(false, |ps| {
-                            if let Some(node) =
-                                body.as_statements_node().unwrap().body().iter().next()
-                            {
+                            if let Some(node) = body.as_statements_node().unwrap().body().first() {
                                 ps.emit_soft_newline();
                                 ps.emit_soft_indent();
                                 format_node(ps, node);
@@ -4301,7 +4298,7 @@ fn format_multi_targets<'src>(
 
     ps.with_start_of_line(false, |ps| {
         if has_lefts {
-            let lefts_offset = lefts.iter().last().unwrap().location().end_offset();
+            let lefts_offset = lefts.last().unwrap().location().end_offset();
             format_list_like_thing(ps, lefts, lefts_offset, true);
         }
 
@@ -4320,7 +4317,7 @@ fn format_multi_targets<'src>(
             if has_lefts || has_rest {
                 ps.emit_comma_space();
             }
-            let rights_offset = rights.iter().last().unwrap().location().end_offset();
+            let rights_offset = rights.last().unwrap().location().end_offset();
             format_list_like_thing(ps, rights, rights_offset, true);
         }
     });
@@ -4612,7 +4609,7 @@ fn format_return_node<'src>(ps: &mut ParserState<'src>, return_node: prism::Retu
             let arguments_list = arguments.arguments();
             if arguments_list.len() == 1 {
                 ps.emit_space();
-                format_node(ps, arguments_list.iter().last().unwrap());
+                format_node(ps, arguments_list.last().unwrap());
             } else {
                 ps.breakable_of(BreakableDelims::for_return_kw(), |ps| {
                     ps.with_start_of_line(false, |ps| {
