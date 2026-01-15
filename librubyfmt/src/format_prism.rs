@@ -2351,23 +2351,34 @@ fn call_chain_elements_are_user_multilined<'src>(
                 | prism::Node::ParenthesesNode { .. }
         );
 
-        // _However_, don't ignore this if there are comments in the call chain though; this check may
-        // cause it to single-lined, which breaks comment rendering. Specifically, we're checking
-        // for comments in between the receiver expression and the following message, e.g.
-        // ```ruby
-        // [stuff]
-        //   # spooky comment
-        //   .freeze
-        // ```
-        // For cases without the comment, we'd usually put this all on one line, but if we force
-        // it all on one line, this will break the comment insertion logic, and given the comment's
-        // placement, the user probably intended to break this onto multiple lines anyways.
-        let has_comment = ps.has_comment_in_offset_span(
-            call_chain_elements[0].location().end_offset(),
-            start_loc_for_call_node_in_chain(&call_chain_elements[1].as_call_node().unwrap()),
-        );
-        if is_literal_expression && !has_comment {
-            call_chain_elements = &call_chain_elements[1..];
+        if is_literal_expression {
+            // _However_, don't ignore this if there are comments in the call chain though; this check may
+            // cause it to single-lined, which breaks comment rendering. Specifically, we're checking
+            // for comments in between the receiver expression and the following message, e.g.
+            // ```ruby
+            // [stuff]
+            //   # spooky comment
+            //   .freeze
+            // ```
+            // For cases without the comment, we'd usually put this all on one line, but if we force
+            // it all on one line, this will break the comment insertion logic, and given the comment's
+            // placement, the user probably intended to break this onto multiple lines anyways.
+            let first_call_start_line = ps.get_line_number_for_offset(
+                start_loc_for_call_node_in_chain(&call_chain_elements[1].as_call_node().unwrap()),
+            );
+            let leading_expr_end_line =
+                ps.get_line_number_for_offset(call_chain_elements[0].location().end_offset());
+
+            // Note: We check from `leading_expr_end_line + 1` because comments on the same line as
+            // the closing brace will be rendered into the breakable during formatting, so they don't
+            // affect whether we should multiline the call chain. We check `first_call_start_line + 1`
+            // because the range checked by `has_comments_in_line` is non-inclusive.
+            let has_comment_between_expression_and_call =
+                ps.has_comments_in_line(leading_expr_end_line + 1, first_call_start_line + 1);
+
+            if !has_comment_between_expression_and_call {
+                call_chain_elements = &call_chain_elements[1..];
+            }
         }
     }
 
