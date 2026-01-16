@@ -1,7 +1,6 @@
 use crate::delimiters::BreakableDelims;
 use crate::line_tokens::{AbstractLineToken, ConcreteLineToken, ConcreteLineTokenAndTargets};
 use crate::parser_state::FormattingContext;
-use crate::ripper_tree_types::CallChainElement;
 use crate::types::LineNumber;
 
 fn insert_at<T>(idx: usize, target: &mut Vec<T>, input: impl IntoIterator<Item = T>) {
@@ -208,7 +207,6 @@ impl<'src> BreakableEntry<'src> {
 /// Once Prism is fully featured, we should delete this Ripper handling entirely.
 #[derive(Debug, Clone)]
 pub enum MultilineHandling {
-    Ripper(Vec<CallChainElement>),
     Prism(bool),
 }
 
@@ -342,49 +340,6 @@ impl<'src> AbstractTokenTarget<'src> for BreakableCallChainEntry<'src> {
 
         match &self.multiline_handling {
             MultilineHandling::Prism(is_user_multilined) => *is_user_multilined,
-            MultilineHandling::Ripper(call_chain_elements) => {
-                let mut call_chain_to_check = call_chain_elements.as_slice();
-                // We don't always want to multiline blocks if their only usage
-                // is at the end of a chain, since it's common to have chains
-                // that end with long blocks, but those blocks don't mean we should
-                // multiline the rest of the chain.
-                //
-                // example:
-                // ```
-                // items.get_all.each do
-                // end
-                // ```
-                if let Some(CallChainElement::Block(..)) = call_chain_to_check.last() {
-                    call_chain_to_check = &call_chain_to_check[..call_chain_to_check.len() - 1];
-                }
-
-                let has_leading_expression = match call_chain_to_check.first() {
-                    Some(CallChainElement::Expression(expr)) => !expr.is_constant_reference(),
-                    _ => false,
-                };
-                let has_comments = self.tokens.iter().any(|t| {
-                    matches!(
-                        t,
-                        AbstractLineToken::ConcreteLineToken(ConcreteLineToken::Comment { .. })
-                    )
-                });
-
-                // If the first item in the chain is a multiline expression (like a hash or array),
-                // ignore it when checking line length.
-                // Don't ignore this if there are comments in the call chain though; this check may
-                // cause it to single-lined, which breaks comment rendering.
-                if has_leading_expression && !has_comments {
-                    call_chain_to_check = &call_chain_to_check[1..];
-                }
-
-                let mut lines = call_chain_to_check
-                    .iter()
-                    .filter_map(|cc_elem| cc_elem.start_line());
-                match lines.next() {
-                    Some(first) => lines.any(|line| line != first),
-                    None => false,
-                }
-            }
         }
     }
 

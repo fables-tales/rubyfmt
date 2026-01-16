@@ -16,11 +16,9 @@ use std::str;
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum FormattingContext {
     Main,
-    Assign,
     Binary,
     ClassOrModule,
     Def,
-    ArgsList,
     IfOp,
     StringEmbexpr,
     HashType(HashType),
@@ -67,7 +65,6 @@ pub struct ParserState<'src> {
     comments_to_insert: Option<CommentBlock>,
     breakable_entry_stack: Vec<Breakable<'src>>,
     formatting_context: Vec<FormattingContext>,
-    absorbing_indents: i32,
     insert_user_newlines: bool,
     spaces_after_last_newline: ColNumber,
     scopes: Vec<Vec<Cow<'src, str>>>,
@@ -341,20 +338,6 @@ impl<'src> ParserState<'src> {
         self.suppress_comments_stack.pop();
     }
 
-    pub(crate) fn with_absorbing_indent_block<F>(&mut self, f: F)
-    where
-        F: FnOnce(&mut ParserState<'src>),
-    {
-        let was_absorbing = self.absorbing_indents != 0;
-        self.absorbing_indents += 1;
-        if was_absorbing {
-            f(self);
-        } else {
-            self.new_block(f);
-        }
-        self.absorbing_indents -= 1;
-    }
-
     pub(crate) fn new_block<F>(&mut self, f: F)
     where
         F: FnOnce(&mut ParserState<'src>),
@@ -426,13 +409,6 @@ impl<'src> ParserState<'src> {
     ) -> bool {
         self.comments_hash
             .has_comments_in_lines(start_line, end_line)
-    }
-
-    pub(crate) fn emit_def(&mut self, def_name: impl Into<Cow<'static, str>>) {
-        self.emit_def_keyword();
-        self.push_concrete_token(ConcreteLineToken::DirectPart {
-            part: Cow::Owned(format!(" {}", def_name.into())),
-        });
     }
 
     pub(crate) fn insert_comment_collection(&mut self, comments: CommentBlock) {
@@ -587,11 +563,6 @@ impl<'src> ParserState<'src> {
         self.push_concrete_token(ConcreteLineToken::OpenParen);
     }
 
-    pub(crate) fn emit_single_line_delims(&mut self, delims: BreakableDelims) {
-        self.push_concrete_token(delims.single_line_open());
-        self.push_concrete_token(delims.single_line_close());
-    }
-
     pub(crate) fn emit_comma_space(&mut self) {
         self.push_concrete_token(ConcreteLineToken::CommaSpace)
     }
@@ -648,34 +619,14 @@ impl<'src> ParserState<'src> {
         self.push_concrete_token(ConcreteLineToken::ModuleKeyword);
     }
 
-    pub(crate) fn emit_ensure(&mut self) {
-        self.push_concrete_token(ConcreteLineToken::Keyword { keyword: "ensure" });
-    }
-
-    pub(crate) fn emit_begin(&mut self) {
-        self.push_concrete_token(ConcreteLineToken::Keyword { keyword: "begin" });
-    }
-
-    pub(crate) fn emit_begin_block(&mut self) {
-        self.push_concrete_token(ConcreteLineToken::Keyword { keyword: "BEGIN" });
-    }
-
     pub(crate) fn emit_else(&mut self) {
         self.emit_conditional_keyword("else");
-    }
-
-    pub(crate) fn emit_data_end(&mut self) {
-        self.push_concrete_token(ConcreteLineToken::DataEnd);
     }
 
     pub(crate) fn emit_data(&mut self, data: &str) {
         self.push_concrete_token(ConcreteLineToken::DirectPart {
             part: Cow::Owned(data.to_string()),
         })
-    }
-
-    pub(crate) fn wind_line_forward(&mut self) {
-        self.on_line(self.current_orig_line_number + 1);
     }
 
     pub(crate) fn current_formatting_context_requires_parens(&self) -> bool {
@@ -697,10 +648,6 @@ impl<'src> ParserState<'src> {
         self.push_concrete_token(ConcreteLineToken::Dot);
     }
 
-    pub(crate) fn emit_ellipsis(&mut self) {
-        self.push_concrete_token(ConcreteLineToken::Ellipsis)
-    }
-
     pub(crate) fn emit_lonely_operator(&mut self) {
         self.push_concrete_token(ConcreteLineToken::LonelyOperator);
     }
@@ -718,10 +665,6 @@ impl<'src> ParserState<'src> {
 
     pub(crate) fn get_line_number_for_offset(&self, source_offset: SourceOffset) -> LineNumber {
         self.comments_hash.get_line_number_for_offset(source_offset)
-    }
-
-    pub(crate) fn emit_end_block(&mut self) {
-        self.push_concrete_token(ConcreteLineToken::Keyword { keyword: "END" });
     }
 
     pub(crate) fn render_heredocs(&mut self, skip: bool) {
@@ -754,20 +697,12 @@ impl<'src> ParserState<'src> {
         }
     }
 
-    pub(crate) fn is_absorbing_indents(&self) -> bool {
-        self.absorbing_indents >= 1
-    }
-
     pub(crate) fn emit_def_keyword(&mut self) {
         self.push_concrete_token(ConcreteLineToken::DefKeyword);
     }
 
     pub(crate) fn emit_keyword(&mut self, keyword: &'static str) {
         self.push_concrete_token(ConcreteLineToken::Keyword { keyword });
-    }
-
-    pub(crate) fn emit_mod_keyword(&mut self, contents: &'static str) {
-        self.push_concrete_token(ConcreteLineToken::ModKeyword { contents });
     }
 
     pub(crate) fn emit_conditional_keyword(&mut self, contents: &'static str) {
@@ -788,7 +723,6 @@ impl<'src> ParserState<'src> {
             comments_to_insert: None,
             breakable_entry_stack: vec![],
             formatting_context: vec![FormattingContext::Main],
-            absorbing_indents: 0,
             insert_user_newlines: true,
             spaces_after_last_newline: 0,
             scopes: vec![vec![]],

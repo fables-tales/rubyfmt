@@ -39,9 +39,6 @@ pub enum ConcreteLineToken<'src> {
     ClassKeyword,
     ModuleKeyword,
     DoKeyword,
-    ModKeyword {
-        contents: &'static str,
-    },
     ConditionalKeyword {
         contents: &'static str,
     },
@@ -55,7 +52,6 @@ pub enum ConcreteLineToken<'src> {
     Comma,
     Space,
     Dot,
-    Ellipsis,
     ColonColon,
     LonelyOperator,
     OpenSquareBracket,
@@ -82,7 +78,6 @@ pub enum ConcreteLineToken<'src> {
     HeredocClose {
         symbol: String,
     },
-    DataEnd,
     // These are "magic" tokens. They have no concrete representation,
     // but they're meaningful inside of the render queue
     AfterCallChain,
@@ -100,7 +95,6 @@ impl<'src> ConcreteLineToken<'src> {
             Self::HardNewLine => Cow::Borrowed("\n"),
             Self::Indent { depth } => get_indent(depth as usize),
             Self::Keyword { keyword } => Cow::Borrowed(keyword),
-            Self::ModKeyword { contents } => Cow::Borrowed(contents),
             Self::ConditionalKeyword { contents } => Cow::Borrowed(contents),
             Self::DoKeyword => Cow::Borrowed("do"),
             Self::ClassKeyword => Cow::Borrowed("class"),
@@ -112,7 +106,6 @@ impl<'src> ConcreteLineToken<'src> {
             Self::Comma => Cow::Borrowed(","),
             Self::Space => Cow::Borrowed(" "),
             Self::Dot => Cow::Borrowed("."),
-            Self::Ellipsis => Cow::Borrowed("..."),
             Self::ColonColon => Cow::Borrowed("::"),
             Self::LonelyOperator => Cow::Borrowed("&."),
             Self::OpenSquareBracket => Cow::Borrowed("["),
@@ -129,7 +122,6 @@ impl<'src> ConcreteLineToken<'src> {
             Self::Delim { contents } => Cow::Borrowed(contents),
             Self::End => Cow::Borrowed("end"),
             Self::HeredocClose { symbol } => Cow::Owned(symbol),
-            Self::DataEnd => Cow::Borrowed("__END__"),
             Self::HeredocStart { symbol, .. } => symbol,
             // no-op, this is purely semantic information
             // for the render queue
@@ -150,9 +142,7 @@ impl<'src> ConcreteLineToken<'src> {
             HeredocStart { symbol, .. } => symbol.len(),
             Delim { contents } => contents.len(),
             Indent { depth } => *depth as usize,
-            Keyword { keyword: contents }
-            | ModKeyword { contents }
-            | ConditionalKeyword { contents } => contents.len(),
+            Keyword { keyword: contents } | ConditionalKeyword { contents } => contents.len(),
             Op { op: contents }
             | DirectPart { part: contents }
             | MethodName { name: contents }
@@ -162,10 +152,9 @@ impl<'src> ConcreteLineToken<'src> {
             | OpenCurlyBracket | CloseCurlyBracket | OpenParen | CloseParen | SingleSlash
             | DoubleQuote => 1,
             DoKeyword | CommaSpace | LonelyOperator | ColonColon => 2,
-            DefKeyword | Ellipsis | End => 3, // "def"/"..."/"end"
-            ClassKeyword => 5,                // "class"
-            ModuleKeyword => 6,               // "module"
-            DataEnd => 7,                     // "__END__"
+            DefKeyword | End => 3, // "def"/"..."/"end"
+            ClassKeyword => 5,     // "class"
+            ModuleKeyword => 6,    // "module"
         }
     }
 
