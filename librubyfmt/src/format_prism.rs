@@ -4974,10 +4974,10 @@ fn unwrap_single_arg_paren<'src>(node: &prism::Node<'src>) -> Option<prism::Node
     }
 
     // Recursively unwrap nested parentheses
-    if inner.as_parentheses_node().is_some() {
-        if let Some(deeper) = unwrap_single_arg_paren(&inner) {
-            return Some(deeper);
-        }
+    if inner.as_parentheses_node().is_some()
+        && let Some(deeper) = unwrap_single_arg_paren(&inner)
+    {
+        return Some(deeper);
     }
 
     Some(inner)
