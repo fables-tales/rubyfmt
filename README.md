@@ -8,14 +8,6 @@
 * Folks who have commit bits are free to merge anything they'd like as long as it passes CI
 * I review important patches for my day job at request of a co-worker
 
-## Upcoming development
-
-The blessed strategy is:
-
-**we are actively working on moving Rubyfmt to prism**
-
-We intend to do this via replacing `ripper_tree_types` with a `prism_tree_types`. This implies modifying all our formatters. We hope to keep tokens and the render queue the same.
-
 ## How do I use it
 
 
