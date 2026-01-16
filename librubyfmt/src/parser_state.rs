@@ -123,15 +123,8 @@ impl<'src> ParserState<'src> {
         ));
     }
 
-    pub(crate) fn emit_heredoc_start(
-        &mut self,
-        symbol: impl Into<Cow<'src, str>>,
-        kind: HeredocKind,
-    ) {
-        self.push_concrete_token(ConcreteLineToken::HeredocStart {
-            kind,
-            symbol: symbol.into(),
-        });
+    pub(crate) fn emit_heredoc_start(&mut self, symbol: &'src str, kind: HeredocKind) {
+        self.push_concrete_token(ConcreteLineToken::HeredocStart { kind, symbol });
     }
 
     pub(crate) fn emit_heredoc_close(&mut self, symbol: String) {
@@ -416,8 +409,8 @@ impl<'src> ParserState<'src> {
             .merge(comments.apply_spaces(self.spaces_after_last_newline));
     }
 
-    pub(crate) fn emit_op(&mut self, op: impl Into<Cow<'src, str>>) {
-        self.push_concrete_token(ConcreteLineToken::Op { op: op.into() });
+    pub(crate) fn emit_op(&mut self, op: &'src str) {
+        self.push_concrete_token(ConcreteLineToken::Op { op });
     }
 
     pub(crate) fn emit_double_quote(&mut self) {
@@ -435,12 +428,12 @@ impl<'src> ParserState<'src> {
         self.push_concrete_token(ConcreteLineToken::LTStringContent { content });
     }
 
-    pub(crate) fn emit_ident(&mut self, ident: impl Into<Cow<'src, str>>) {
+    pub(crate) fn emit_ident(&mut self, ident: &'src str) {
         self.push_concrete_token(ConcreteLineToken::DirectPart { part: ident.into() });
     }
 
-    pub(crate) fn emit_method_name(&mut self, name: impl Into<Cow<'src, str>>) {
-        self.push_concrete_token(ConcreteLineToken::MethodName { name: name.into() });
+    pub(crate) fn emit_method_name(&mut self, name: &'src str) {
+        self.push_concrete_token(ConcreteLineToken::MethodName { name });
     }
 
     pub(crate) fn emit_newline(&mut self) {
@@ -627,9 +620,9 @@ impl<'src> ParserState<'src> {
         self.emit_conditional_keyword("else");
     }
 
-    pub(crate) fn emit_data(&mut self, data: &str) {
+    pub(crate) fn emit_data(&mut self, data: &'src str) {
         self.push_concrete_token(ConcreteLineToken::DirectPart {
-            part: Cow::Owned(data.to_string()),
+            part: Cow::Borrowed(data),
         })
     }
 
