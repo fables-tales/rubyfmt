@@ -791,14 +791,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2b15c43186be67a4fd63bee50d0303afffcef381492ebe2c5d87f324e1b8815c"
 
 [[package]]
-name = "ripper_deserialize"
-version = "0.1.0"
-dependencies = [
- "quote",
- "syn",
-]
-
-[[package]]
 name = "ruby-prism"
 version = "1.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -823,17 +815,11 @@ dependencies = [
 name = "rubyfmt"
 version = "0.11.0-pre"
 dependencies = [
- "cc",
  "fancy-regex",
- "libc",
  "log",
- "regex",
- "ripper_deserialize",
  "ruby-prism",
- "serde",
  "simplelog",
  "tikv-jemallocator",
- "winapi",
 ]
 
 [[package]]
@@ -845,11 +831,9 @@ dependencies = [
  "criterion",
  "ctrlc",
  "ignore",
- "libc",
  "libtest-mimic",
  "regex",
  "rubyfmt",
- "serde",
  "similar",
  "tempfile",
 ]
