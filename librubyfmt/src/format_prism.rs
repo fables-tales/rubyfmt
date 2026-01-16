@@ -6,7 +6,6 @@ use crate::{
     delimiters::BreakableDelims,
     heredoc_string::HeredocKind,
     parser_state::{FormattingContext, HashType, ParserState},
-    render_targets::MultilineHandling,
     types::SourceOffset,
     util::{const_to_str, loc_to_str},
 };
@@ -85,7 +84,7 @@ pub fn format_node<'src>(ps: &mut ParserState<'src>, node: prism::Node<'src>) {
             let has_block = call_node.block().and_then(|b| b.as_block_node()).is_some();
 
             if is_last_call_in_chain && has_block {
-                ps.breakable_call_chain_of(MultilineHandling::Prism(false), |ps| {
+                ps.breakable_call_chain_of(false, |ps| {
                     format_call_node(ps, call_node, false, is_last_call_in_chain, false);
                 });
             } else {
@@ -2173,7 +2172,7 @@ fn format_call_chain_segments<'src>(
 
         let is_user_multilined = call_chain_elements_are_user_multilined(ps, &chain_elements);
 
-        ps.breakable_call_chain_of(MultilineHandling::Prism(is_user_multilined), |ps| {
+        ps.breakable_call_chain_of(is_user_multilined, |ps| {
             // Recurse and format previous segments inside this breakable
             format_call_chain_segments(ps, segments);
 

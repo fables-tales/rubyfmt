@@ -4,9 +4,7 @@ use crate::file_comments::FileComments;
 use crate::heredoc_string::{HeredocKind, HeredocString};
 use crate::line_tokens::*;
 use crate::render_queue_writer::{MAX_LINE_LENGTH, RenderQueueWriter};
-use crate::render_targets::{
-    BaseQueue, Breakable, BreakableCallChainEntry, BreakableEntry, MultilineHandling,
-};
+use crate::render_targets::{BaseQueue, Breakable, BreakableCallChainEntry, BreakableEntry};
 use crate::types::{ColNumber, LineNumber, SourceOffset};
 use log::debug;
 use std::borrow::Cow;
@@ -304,15 +302,12 @@ impl<'src> ParserState<'src> {
         self.push_target(ConcreteLineTokenAndTargets::BreakableEntry(insert_be));
     }
 
-    pub(crate) fn breakable_call_chain_of<F>(
-        &mut self,
-        mulitiline_handling: MultilineHandling,
-        f: F,
-    ) where
+    pub(crate) fn breakable_call_chain_of<F>(&mut self, is_user_multilined: bool, f: F)
+    where
         F: FnOnce(&mut ParserState<'src>),
     {
         self.shift_comments();
-        let mut be = BreakableCallChainEntry::new(&self.formatting_context, mulitiline_handling);
+        let mut be = BreakableCallChainEntry::new(&self.formatting_context, is_user_multilined);
         be.push_line_number(self.current_orig_line_number);
         self.breakable_entry_stack.push(Breakable::CallChain(be));
 
