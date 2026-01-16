@@ -199,21 +199,10 @@ impl<'src> BreakableEntry<'src> {
     }
 }
 
-/// This struct is a bit of a hack to support both
-/// the Ripper tree and the Prism tree at the same time.
-/// The Prism tree has more accurate offset handling that obviates
-/// the hacks put in to support Ripper, but for now we need to support
-/// and I didn't want to have to fork the implementation of BreakableCallChainEntry.
-/// Once Prism is fully featured, we should delete this Ripper handling entirely.
-#[derive(Debug, Clone)]
-pub enum MultilineHandling {
-    Prism(bool),
-}
-
 #[derive(Debug, Clone)]
 pub struct BreakableCallChainEntry<'src> {
     tokens: Vec<AbstractLineToken<'src>>,
-    multiline_handling: MultilineHandling,
+    is_user_multilined: bool,
     in_string_embexpr: bool,
 }
 
@@ -338,9 +327,7 @@ impl<'src> AbstractTokenTarget<'src> for BreakableCallChainEntry<'src> {
             return true;
         }
 
-        match &self.multiline_handling {
-            MultilineHandling::Prism(is_user_multilined) => *is_user_multilined,
-        }
+        self.is_user_multilined
     }
 
     fn any_collapsing_newline_has_heredoc_content(&self) -> bool {
@@ -361,10 +348,7 @@ impl<'src> AbstractTokenTarget<'src> for BreakableCallChainEntry<'src> {
 }
 
 impl<'src> BreakableCallChainEntry<'src> {
-    pub fn new(
-        formatting_context: &[FormattingContext],
-        multiline_handling: MultilineHandling,
-    ) -> Self {
+    pub fn new(formatting_context: &[FormattingContext], is_user_multilined: bool) -> Self {
         let in_string_embexpr = formatting_context
             .iter()
             .any(|fc| fc == &FormattingContext::StringEmbexpr);
@@ -372,7 +356,7 @@ impl<'src> BreakableCallChainEntry<'src> {
         BreakableCallChainEntry {
             tokens: Vec::new(),
             in_string_embexpr,
-            multiline_handling,
+            is_user_multilined,
         }
     }
 
