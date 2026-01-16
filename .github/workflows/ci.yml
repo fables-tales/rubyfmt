@@ -75,11 +75,6 @@ jobs:
           ~/.cargo/registry
           ~/.cargo/git
         key: ${{ runner.os }}-cargo-2-${{ hashFiles('**/Cargo.lock') }}
-    - if: runner.os == 'macOS'
-      run: |
-        brew install automake bison
-        brew link bison --force
-        echo "/usr/local/opt/bison/bin:$PATH" >> $GITHUB_PATH
     - run: cargo test --release
     - uses: actions/upload-artifact@v6
       with:

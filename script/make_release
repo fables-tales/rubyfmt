@@ -1,12 +1,6 @@
 #!/bin/bash
 set -euxo pipefail
 
-# if darwin, add PATH="/usr/local/opt/bison/bin:$PATH"
-if [[ $OSTYPE == "darwin"* ]]; then
-  export PATH="/opt/homebrew/opt/bison/bin:$PATH"
-fi
-bison --version
-
 TAG=$(git describe --tags --exact-match HEAD)
 RELEASE_DIR=${RELEASE_DIR:-"tmp/releases/${TAG}-$(uname -s)/"}
 
