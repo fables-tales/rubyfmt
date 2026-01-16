@@ -3,7 +3,7 @@ use std::fs;
 use std::path::Path;
 
 fn format_with_prism(source: &str) {
-    rubyfmt::format_buffer(source, true).expect("formatting failed");
+    rubyfmt::format_buffer(source).expect("formatting failed");
 }
 
 fn collect_fixtures(dir: &Path) -> Vec<(String, String)> {

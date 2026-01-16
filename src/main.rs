@@ -70,9 +70,6 @@ struct CommandlineOpts {
     /// rubyfmt will use these as input.{n}
     #[clap(name = "include-paths")]
     include_paths: Vec<String>,
-
-    #[clap(long)]
-    prism: bool,
 }
 
 /******************************************************/
@@ -110,28 +107,10 @@ fn handle_rubyfmt_error(err: rubyfmt::RichFormatError, source: &str, error_exit:
             print_error(msg, Some(source));
             e();
         }
-        rubyfmt::RichFormatError::RipperParseFailure(_) => {
-            let bug_report = "
-!!! Ruby Tree Deserialization Error !!!
-
-Rubyfmt failed to correctly deserialize a tree from ripper. This is a bug that needs to be reported.
-File a bug report at https://github.com/penelopezone/rubyfmt/issues/new.
-Ideally you would include the full source code of the program you ran rubyfmt with.
-If you can't do that for some reason, the best thing you can do is rerun rubyfmt on this program 
-with the debug binary with `2>log_file` on the end and then send us the log file that gets generated.
-";
-            print_error(bug_report, Some(source));
-            e();
-        }
         IOError(ioe) => {
             let msg = format!("Rubyfmt experienced an IO error: {}", ioe);
             print_error(&msg, Some(source));
             e();
-        }
-        rubyfmt::RichFormatError::OtherRubyError(s) => {
-            let msg = format!("Rubyfmt experienced an unexpected ruby error: {}", s);
-            print_error(&msg, Some(source));
-            exit(exit_code);
         }
     }
 }
@@ -171,7 +150,6 @@ fn rubyfmt_string(
         ..
     }: &CommandlineOpts,
     buffer: &str,
-    use_prism: bool,
 ) -> Result<Option<String>, rubyfmt::RichFormatError> {
     if header_opt_in || header_opt_out {
         // Only look at the first 500 bytes for the magic header.
@@ -205,17 +183,7 @@ fn rubyfmt_string(
         }
     }
 
-    rubyfmt::format_buffer(buffer, use_prism).map(Some)
-}
-
-fn initialize_rubyfmt() {
-    let res = rubyfmt::rubyfmt_init();
-    if res != rubyfmt::InitStatus::OK as libc::c_int {
-        panic!(
-            "bad init status: {}",
-            rubyfmt::ruby::current_exception_as_rust_string()
-        );
-    }
+    rubyfmt::format_buffer(buffer).map(Some)
 }
 
 /******************************************************/
@@ -349,10 +317,9 @@ fn iterate_input_files(opts: &CommandlineOpts, f: &dyn Fn((&Path, &String))) {
 type FormattingFunc<'a> = &'a dyn Fn((&Path, &String, Option<String>));
 
 fn iterate_formatted(opts: &CommandlineOpts, f: FormattingFunc) {
-    let use_prism = should_use_prism(opts);
     iterate_input_files(
         opts,
-        &|(file_path, before)| match rubyfmt_string(opts, before, use_prism) {
+        &|(file_path, before)| match rubyfmt_string(opts, before) {
             Ok(r) => f((file_path, before, r)),
             Err(e) => handle_execution_error(
                 opts,
@@ -367,10 +334,6 @@ fn puts_stdout(input: &String) {
     io::stdout().flush().expect("flush works");
 }
 
-fn should_use_prism(opts: &CommandlineOpts) -> bool {
-    opts.prism || std::env::var("RUBYFMT_PRISM").is_ok()
-}
-
 fn main() {
     ctrlc::set_handler(move || {
         eprintln!("`rubyfmt` process was terminated. Exiting...");
@@ -379,11 +342,7 @@ fn main() {
     .expect("Error setting Ctrl-C handler");
 
     let opts = get_command_line_options();
-    if should_use_prism(&opts) {
-        init_logger();
-    } else {
-        initialize_rubyfmt();
-    }
+    init_logger();
 
     match opts {
         CommandlineOpts { check: true, .. } => {

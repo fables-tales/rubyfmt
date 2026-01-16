@@ -745,18 +745,3 @@ fn test_formats_non_rb_files() {
         .success();
     assert_eq!("a(1, 2, 3)\n", read_to_string(file.path()).unwrap());
 }
-
-#[test]
-fn test_formats_with_prism() {
-    let mut file = NamedTempFile::new().unwrap();
-    writeln!(file, "1\n\n2.34").unwrap();
-
-    Command::cargo_bin("rubyfmt-main")
-        .unwrap()
-        .arg(file.path())
-        .arg("--prism")
-        .assert()
-        .stdout("1\n\n2.34\n")
-        .code(0)
-        .success();
-}

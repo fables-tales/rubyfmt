@@ -2,7 +2,6 @@ use std::collections::{BTreeSet, HashSet};
 
 use crate::comment_block::CommentBlock;
 use crate::parser_state::line_difference_requires_newline;
-use crate::ruby::*;
 use crate::types::{LineNumber, SourceOffset};
 use crate::util::{u8_to_str, u8_to_string};
 
@@ -115,40 +114,6 @@ impl FileComments {
         file_comments.last_lineno = line_index.line_starts.len() as u64;
         file_comments.line_index = line_index;
         file_comments
-    }
-
-    pub fn from_ruby_hash(h: VALUE, rl: VALUE, last_lineno: VALUE) -> Self {
-        let mut fc = FileComments::default();
-        let keys;
-        let values;
-        let lines;
-        unsafe {
-            keys = ruby_array_to_slice(rb_funcall(h, intern!("keys"), 0));
-            values = ruby_array_to_slice(rb_funcall(h, intern!("values"), 0));
-            lines = ruby_array_to_slice(rb_funcall(rl, intern!("keys"), 0));
-            fc.last_lineno = rubyfmt_rb_num2ll(last_lineno) as LineNumber;
-        }
-        if keys.len() != values.len() {
-            raise("expected keys and values to have same length, indicates error");
-        }
-        for (ruby_lineno, ruby_comment) in keys.iter().zip(values) {
-            let lineno = unsafe { rubyfmt_rb_num2ll(*ruby_lineno) };
-            if lineno < 0 {
-                raise("line number negative");
-            }
-            let comment = unsafe { ruby_string_to_str(*ruby_comment) }
-                .trim()
-                .to_owned();
-            fc.push_comment(lineno as _, comment);
-        }
-        for ruby_lineno in lines.iter() {
-            let lineno = unsafe { rubyfmt_rb_num2ll(*ruby_lineno) };
-            if lineno < 0 {
-                raise("line number negative");
-            }
-            fc.lines_with_ruby.insert(lineno as LineNumber);
-        }
-        fc
     }
 
     pub fn still_in_file(&self, line_number: LineNumber) -> bool {

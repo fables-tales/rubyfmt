@@ -1,3 +1,0 @@
-[submodule "librubyfmt/ruby_checkout"]
-	path = librubyfmt/ruby_checkout
-	url = https://github.com/ruby/ruby
