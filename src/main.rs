@@ -35,7 +35,7 @@ enum ExecutionError {
 
 /// Rubyfmt CLI
 #[derive(Debug, Parser)]
-#[clap(author, version, about, long_about = None)]
+#[clap(bin_name = "rubyfmt", author, version, about, long_about = None)]
 struct CommandlineOpts {
     /// Turn on check mode. This outputs diffs of inputs to STDOUT. Will exit non-zero when differences are detected.
     #[clap(short, long)]
