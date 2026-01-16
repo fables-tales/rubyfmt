@@ -46,7 +46,7 @@ pub enum ConcreteLineToken<'src> {
         part: Cow<'src, str>,
     },
     MethodName {
-        name: Cow<'src, str>,
+        name: &'src str,
     },
     CommaSpace,
     Comma,
@@ -62,7 +62,7 @@ pub enum ConcreteLineToken<'src> {
     CloseParen,
     ParenExprClose,
     Op {
-        op: Cow<'src, str>,
+        op: &'src str,
     },
     DoubleQuote,
     LTStringContent {
@@ -86,7 +86,7 @@ pub enum ConcreteLineToken<'src> {
     EndCallChainIndent,
     HeredocStart {
         kind: HeredocKind,
-        symbol: Cow<'src, str>,
+        symbol: &'src str,
     },
 }
 
@@ -102,7 +102,7 @@ impl<'src> ConcreteLineToken<'src> {
             Self::DefKeyword => Cow::Borrowed("def"),
             Self::ModuleKeyword => Cow::Borrowed("module"),
             Self::DirectPart { part } => part,
-            Self::MethodName { name } => name,
+            Self::MethodName { name } => Cow::Borrowed(name),
             Self::CommaSpace => Cow::Borrowed(", "),
             Self::Comma => Cow::Borrowed(","),
             Self::Space => Cow::Borrowed(" "),
@@ -115,7 +115,7 @@ impl<'src> ConcreteLineToken<'src> {
             Self::CloseCurlyBracket => Cow::Borrowed("}"),
             Self::OpenParen => Cow::Borrowed("("),
             Self::CloseParen | Self::ParenExprClose => Cow::Borrowed(")"),
-            Self::Op { op } => op,
+            Self::Op { op } => Cow::Borrowed(op),
             Self::DoubleQuote => Cow::Borrowed("\""),
             Self::LTStringContent { content } => content,
             Self::SingleSlash => Cow::Borrowed("\\"),
@@ -123,7 +123,7 @@ impl<'src> ConcreteLineToken<'src> {
             Self::Delim { contents } => Cow::Borrowed(contents),
             Self::End => Cow::Borrowed("end"),
             Self::HeredocClose { symbol } => Cow::Owned(symbol),
-            Self::HeredocStart { symbol, .. } => symbol,
+            Self::HeredocStart { symbol, .. } => Cow::Borrowed(symbol),
             // no-op, this is purely semantic information
             // for the render queue
             Self::AfterCallChain | Self::BeginCallChainIndent | Self::EndCallChainIndent => {
@@ -144,10 +144,8 @@ impl<'src> ConcreteLineToken<'src> {
             Delim { contents } => contents.len(),
             Indent { depth } => *depth as usize,
             Keyword { keyword: contents } | ConditionalKeyword { contents } => contents.len(),
-            Op { op: contents }
-            | DirectPart { part: contents }
-            | MethodName { name: contents }
-            | LTStringContent { content: contents } => contents.len(),
+            Op { op } | MethodName { name: op } => op.len(),
+            DirectPart { part: contents } | LTStringContent { content: contents } => contents.len(),
             Comment { contents } | HeredocClose { symbol: contents } => contents.len(),
             HardNewLine | Comma | Space | Dot | OpenSquareBracket | CloseSquareBracket
             | OpenCurlyBracket | CloseCurlyBracket | OpenParen | CloseParen | ParenExprClose
@@ -162,7 +160,7 @@ impl<'src> ConcreteLineToken<'src> {
     fn is_block_closing_token(&self) -> bool {
         match self {
             Self::End | Self::ParenExprClose => true,
-            Self::DirectPart { part } => part == "}" || part == "]" || part == ")",
+            Self::DirectPart { part } => *part == "}" || *part == "]" || *part == ")",
             Self::Delim { contents } => *contents == "}" || *contents == "]" || *contents == ")",
             _ => false,
         }
@@ -172,7 +170,7 @@ impl<'src> ConcreteLineToken<'src> {
         match self {
             Self::ConditionalKeyword { contents } => !(*contents == "else" || *contents == "elsif"),
             Self::Dot | Self::LonelyOperator => false,
-            Self::DirectPart { part } => part != "&.",
+            Self::DirectPart { part } => *part != "&.",
             _ => true,
         }
     }
@@ -189,7 +187,7 @@ impl<'src> ConcreteLineToken<'src> {
         match self {
             Self::HardNewLine => true,
             Self::DirectPart { part } => {
-                if part == "\n" {
+                if *part == "\n" {
                     panic!("shouldn't ever have a single newline direct part");
                 } else {
                     false

@@ -628,7 +628,7 @@ fn format_case_node<'src>(ps: &mut ParserState<'src>, case_node: prism::CaseNode
 pub fn format_program<'src>(
     ps: &mut ParserState<'src>,
     program_node: prism::ProgramNode<'src>,
-    data_loc: Option<prism::Location>,
+    data_loc: Option<prism::Location<'src>>,
 ) {
     ps.with_start_of_line(true, |ps| {
         format_statements(ps, program_node.statements());
@@ -1394,7 +1394,7 @@ fn format_def_body<'src>(ps: &mut ParserState<'src>, def_node: prism::DefNode<'s
                     });
                 } else {
                     ps.emit_space();
-                    ps.emit_op(Cow::Borrowed("="));
+                    ps.emit_op("=");
                     ps.emit_space();
 
                     ps.with_start_of_line(
@@ -2484,7 +2484,7 @@ fn format_call_and_write_node<'src>(
     }
 
     ps.emit_space();
-    ps.emit_op(Cow::Borrowed("&&="));
+    ps.emit_op("&&=");
     ps.emit_space();
 
     ps.with_start_of_line(false, |ps| format_node(ps, call_and_write_node.value()));
@@ -2532,7 +2532,7 @@ fn format_call_or_write_node<'src>(
     }
 
     ps.emit_space();
-    ps.emit_op(Cow::Borrowed("||="));
+    ps.emit_op("||=");
     ps.emit_space();
 
     ps.with_start_of_line(false, |ps| format_node(ps, call_or_write_node.value()));
@@ -3931,7 +3931,7 @@ fn format_index_and_write_node<'src>(
     }
 
     ps.emit_space();
-    ps.emit_op(Cow::Borrowed("&&="));
+    ps.emit_op("&&=");
     ps.emit_space();
 
     ps.with_start_of_line(false, |ps| format_node(ps, index_and_write_node.value()));
@@ -3975,7 +3975,7 @@ fn format_index_or_write_node<'src>(
     }
 
     ps.emit_space();
-    ps.emit_op(Cow::Borrowed("||="));
+    ps.emit_op("||=");
     ps.emit_space();
 
     ps.with_start_of_line(false, |ps| format_node(ps, index_or_write_node.value()));
@@ -4475,7 +4475,7 @@ fn format_optional_keyword_parameter_node<'src>(
     let name = const_to_str(optional_keyword_parameter_node.name());
     ps.bind_variable(name);
     ps.emit_ident(name);
-    ps.emit_op(Cow::Borrowed(":"));
+    ps.emit_op(":");
     ps.emit_space();
     ps.with_start_of_line(false, |ps| {
         format_node(ps, optional_keyword_parameter_node.value());
@@ -4490,7 +4490,7 @@ fn format_optional_parameter_node<'src>(
     ps.bind_variable(name);
     ps.emit_ident(name);
     ps.emit_space();
-    ps.emit_op(Cow::Borrowed("="));
+    ps.emit_op("=");
     ps.emit_space();
     format_node(ps, optional_parameter_node.value());
 }
@@ -4652,7 +4652,7 @@ fn format_rescue_node<'src>(ps: &mut ParserState<'src>, rescue_node: prism::Resc
 
     if let Some(reference) = rescue_node.reference() {
         ps.emit_space();
-        ps.emit_op(Cow::Borrowed("=>"));
+        ps.emit_op("=>");
         ps.emit_space();
         ps.with_start_of_line(false, |ps| {
             format_node(ps, reference);
