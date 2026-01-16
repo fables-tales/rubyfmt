@@ -1838,6 +1838,22 @@ fn format_call_node<'src>(
                     BreakableDelims::for_kw()
                 };
 
+                // Check if we can unwrap a single parenthesized argument when we're adding
+                // method call parens. This handles cases like `a (1)` -> `a(1)` where the
+                // parens around `1` were just for argument grouping, not expression grouping.
+                let maybe_unwrapped_single_arg = if should_use_parens
+                    && arguments.arguments().len() == 1
+                    && call_node
+                        .block()
+                        .and_then(|b| b.as_block_argument_node())
+                        .is_none()
+                {
+                    let first_arg = arguments.arguments().iter().next().unwrap();
+                    unwrap_single_arg_paren(&first_arg)
+                } else {
+                    None
+                };
+
                 let maybe_closing_line = call_node
                     .closing_loc()
                     .map(|closing_loc| ps.get_line_number_for_offset(closing_loc.start_offset()));
@@ -1846,7 +1862,14 @@ fn format_call_node<'src>(
                     ps.breakable_of(delims, |ps| {
                         let has_arguments = !arguments.arguments().is_empty();
 
-                        format_arguments_node(ps, arguments);
+                        if let Some(unwrapped_arg) = maybe_unwrapped_single_arg {
+                            ps.emit_collapsing_newline();
+                            ps.emit_soft_indent();
+                            format_node(ps, unwrapped_arg);
+                            ps.shift_comments();
+                        } else {
+                            format_arguments_node(ps, arguments);
+                        }
 
                         // Somewhat confusingly, the block argument node (&blk) is
                         // separate from the rest of the arguments node. If it's present,
@@ -2979,6 +3002,40 @@ fn format_array_pattern_node<'src>(
     });
 }
 
+/// Returns true if a node is inherently multiline (like case, begin, def, class, etc.)
+/// Note: Modifier forms (if/unless/while/until without `end`) are NOT multiline.
+fn is_multiline_node(node: &prism::Node) -> bool {
+    use prism::Node;
+    match node {
+        // Case and begin are always multiline
+        Node::CaseNode { .. } | Node::CaseMatchNode { .. } | Node::BeginNode { .. } => true,
+        // If/unless are multiline only if they have an `end` keyword (not modifier form)
+        Node::IfNode { .. } => {
+            let if_node = node.as_if_node().unwrap();
+            if_node.end_keyword_loc().is_some()
+        }
+        Node::UnlessNode { .. } => {
+            let unless_node = node.as_unless_node().unwrap();
+            unless_node.end_keyword_loc().is_some()
+        }
+        // While/until are multiline only if they have an `end` keyword (not modifier form)
+        Node::WhileNode { .. } => {
+            let while_node = node.as_while_node().unwrap();
+            while_node.closing_loc().is_some()
+        }
+        Node::UntilNode { .. } => {
+            let until_node = node.as_until_node().unwrap();
+            until_node.closing_loc().is_some()
+        }
+        // These are always multiline
+        Node::ForNode { .. }
+        | Node::DefNode { .. }
+        | Node::ClassNode { .. }
+        | Node::ModuleNode { .. } => true,
+        _ => false,
+    }
+}
+
 fn format_parentheses_node<'src>(
     ps: &mut ParserState<'src>,
     parentheses_node: prism::ParenthesesNode<'src>,
@@ -2987,7 +3044,12 @@ fn format_parentheses_node<'src>(
 
     let is_multiline = if let Some(body) = parentheses_node.body() {
         if let Some(statements_node) = body.as_statements_node() {
+            // Multiline if multiple statements OR if single statement is inherently multiline
             statements_node.body().len() > 1
+                || statements_node
+                    .body()
+                    .first()
+                    .is_some_and(|node| is_multiline_node(&node))
         } else {
             true
         }
@@ -2998,7 +3060,12 @@ fn format_parentheses_node<'src>(
     if let Some(body) = parentheses_node.body() {
         ps.with_start_of_line(false, |ps| {
             if let Some(statements_node) = body.as_statements_node() {
-                if statements_node.body().len() == 1 {
+                let single_inline = statements_node.body().len() == 1
+                    && !statements_node
+                        .body()
+                        .first()
+                        .is_some_and(|node| is_multiline_node(&node));
+                if single_inline {
                     ps.with_start_of_line(false, |ps| {
                         format_node(ps, statements_node.body().first().unwrap())
                     });
@@ -3025,7 +3092,7 @@ fn format_parentheses_node<'src>(
 
     if is_multiline {
         ps.emit_indent();
-        ps.emit_close_paren();
+        ps.emit_paren_expr_close();
     } else {
         ps.emit_close_paren();
     }
@@ -4835,6 +4902,85 @@ fn is_empty_parentheses_node<'src>(node: &prism::Node<'src>) -> bool {
     } else {
         false
     }
+}
+
+/// Returns true if this node represents a Ruby keyword expression that would cause
+/// a syntax error if used directly inside method call parentheses.
+///
+/// For example: `foo(a if b)` is a syntax error, so `foo (a if b)` must become
+/// `foo((a if b))` (double parens) to preserve semantics.
+///
+/// Note: `&&` and `||` operators are fine inside method call parens, but the
+/// `and` and `or` keywords are not. We distinguish by checking the operator string.
+fn is_keyword_expression(node: &prism::Node) -> bool {
+    use prism::Node;
+
+    match node {
+        // Modifier if: `x if y` (but NOT ternary `a ? b : c` which has no keyword)
+        Node::IfNode { .. } => {
+            let if_node = node.as_if_node().unwrap();
+            // Ternary has no if_keyword_loc, so only flag if keyword is present
+            if_node.if_keyword_loc().is_some()
+        }
+        // Modifier unless: `x unless y`
+        Node::UnlessNode { .. } => true,
+        // Modifier loops: `x while y`, `x until y`
+        Node::WhileNode { .. } | Node::UntilNode { .. } => true,
+        // Inline rescue: `x rescue y`
+        Node::RescueModifierNode { .. } => true,
+        // `and` keyword (but NOT `&&` operator)
+        Node::AndNode { .. } => {
+            let and_node = node.as_and_node().unwrap();
+            loc_to_str(and_node.operator_loc()) == "and"
+        }
+        // `or` keyword (but NOT `||` operator)
+        Node::OrNode { .. } => {
+            let or_node = node.as_or_node().unwrap();
+            loc_to_str(or_node.operator_loc()) == "or"
+        }
+        // Case expressions
+        Node::CaseNode { .. } | Node::CaseMatchNode { .. } => true,
+        // Begin/end blocks (may contain rescue)
+        Node::BeginNode { .. } => true,
+        // For completeness: other control flow that shouldn't be unwrapped
+        Node::ForNode { .. } => true,
+        _ => false,
+    }
+}
+
+/// Returns Some(inner_node) if this is a ParenthesesNode containing a single expression that
+/// can be unwrapped when used as a method argument.
+///
+/// Returns None if:
+/// - The node is not a ParenthesesNode
+/// - The parentheses contain multiple statements
+/// - The inner expression contains Ruby keywords (if, unless, and, or, rescue, etc.)
+///   that would change semantics if the parentheses were removed
+fn unwrap_single_arg_paren<'src>(node: &prism::Node<'src>) -> Option<prism::Node<'src>> {
+    let paren_node = node.as_parentheses_node()?;
+    let body = paren_node.body()?;
+    let statements = body.as_statements_node()?;
+
+    // Only unwrap if there's exactly one statement
+    if statements.body().len() != 1 {
+        return None;
+    }
+
+    let inner = statements.body().iter().next()?;
+
+    // Don't unwrap if the inner expression contains keywords that would change semantics
+    if is_keyword_expression(&inner) {
+        return None;
+    }
+
+    // Recursively unwrap nested parentheses
+    if inner.as_parentheses_node().is_some()
+        && let Some(deeper) = unwrap_single_arg_paren(&inner)
+    {
+        return Some(deeper);
+    }
+
+    Some(inner)
 }
 
 fn format_list_like_thing<'src>(
