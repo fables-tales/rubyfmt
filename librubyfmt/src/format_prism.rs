@@ -2979,6 +2979,40 @@ fn format_array_pattern_node<'src>(
     });
 }
 
+/// Returns true if a node is inherently multiline (like case, begin, def, class, etc.)
+/// Note: Modifier forms (if/unless/while/until without `end`) are NOT multiline.
+fn is_multiline_node(node: &prism::Node) -> bool {
+    use prism::Node;
+    match node {
+        // Case and begin are always multiline
+        Node::CaseNode { .. } | Node::CaseMatchNode { .. } | Node::BeginNode { .. } => true,
+        // If/unless are multiline only if they have an `end` keyword (not modifier form)
+        Node::IfNode { .. } => {
+            let if_node = node.as_if_node().unwrap();
+            if_node.end_keyword_loc().is_some()
+        }
+        Node::UnlessNode { .. } => {
+            let unless_node = node.as_unless_node().unwrap();
+            unless_node.end_keyword_loc().is_some()
+        }
+        // While/until are multiline only if they have an `end` keyword (not modifier form)
+        Node::WhileNode { .. } => {
+            let while_node = node.as_while_node().unwrap();
+            while_node.closing_loc().is_some()
+        }
+        Node::UntilNode { .. } => {
+            let until_node = node.as_until_node().unwrap();
+            until_node.closing_loc().is_some()
+        }
+        // These are always multiline
+        Node::ForNode { .. }
+        | Node::DefNode { .. }
+        | Node::ClassNode { .. }
+        | Node::ModuleNode { .. } => true,
+        _ => false,
+    }
+}
+
 fn format_parentheses_node<'src>(
     ps: &mut ParserState<'src>,
     parentheses_node: prism::ParenthesesNode<'src>,
@@ -2987,7 +3021,12 @@ fn format_parentheses_node<'src>(
 
     let is_multiline = if let Some(body) = parentheses_node.body() {
         if let Some(statements_node) = body.as_statements_node() {
+            // Multiline if multiple statements OR if single statement is inherently multiline
             statements_node.body().len() > 1
+                || statements_node
+                    .body()
+                    .first()
+                    .is_some_and(|node| is_multiline_node(&node))
         } else {
             true
         }
@@ -2998,7 +3037,12 @@ fn format_parentheses_node<'src>(
     if let Some(body) = parentheses_node.body() {
         ps.with_start_of_line(false, |ps| {
             if let Some(statements_node) = body.as_statements_node() {
-                if statements_node.body().len() == 1 {
+                let single_inline = statements_node.body().len() == 1
+                    && !statements_node
+                        .body()
+                        .first()
+                        .is_some_and(|node| is_multiline_node(&node));
+                if single_inline {
                     ps.with_start_of_line(false, |ps| {
                         format_node(ps, statements_node.body().first().unwrap())
                     });
