@@ -1838,6 +1838,22 @@ fn format_call_node<'src>(
                     BreakableDelims::for_kw()
                 };
 
+                // Check if we can unwrap a single parenthesized argument when we're adding
+                // method call parens. This handles cases like `a (1)` -> `a(1)` where the
+                // parens around `1` were just for argument grouping, not expression grouping.
+                let maybe_unwrapped_single_arg = if should_use_parens
+                    && arguments.arguments().len() == 1
+                    && call_node
+                        .block()
+                        .and_then(|b| b.as_block_argument_node())
+                        .is_none()
+                {
+                    let first_arg = arguments.arguments().iter().next().unwrap();
+                    unwrap_single_arg_paren(&first_arg)
+                } else {
+                    None
+                };
+
                 let maybe_closing_line = call_node
                     .closing_loc()
                     .map(|closing_loc| ps.get_line_number_for_offset(closing_loc.start_offset()));
@@ -1846,7 +1862,14 @@ fn format_call_node<'src>(
                     ps.breakable_of(delims, |ps| {
                         let has_arguments = !arguments.arguments().is_empty();
 
-                        format_arguments_node(ps, arguments);
+                        if let Some(unwrapped_arg) = maybe_unwrapped_single_arg {
+                            ps.emit_collapsing_newline();
+                            ps.emit_soft_indent();
+                            format_node(ps, unwrapped_arg);
+                            ps.shift_comments();
+                        } else {
+                            format_arguments_node(ps, arguments);
+                        }
 
                         // Somewhat confusingly, the block argument node (&blk) is
                         // separate from the rest of the arguments node. If it's present,
