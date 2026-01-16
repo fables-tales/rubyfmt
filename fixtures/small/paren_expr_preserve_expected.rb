@@ -38,7 +38,6 @@ foo(
     else
       :other
     end
-
   )
 )
 
@@ -50,6 +49,5 @@ foo(
     rescue
       fallback
     end
-
   )
 )

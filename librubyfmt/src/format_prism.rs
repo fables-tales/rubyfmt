@@ -3092,7 +3092,7 @@ fn format_parentheses_node<'src>(
 
     if is_multiline {
         ps.emit_indent();
-        ps.emit_close_paren();
+        ps.emit_paren_expr_close();
     } else {
         ps.emit_close_paren();
     }
