@@ -1,7 +1,6 @@
 [workspace]
 members = [
   "librubyfmt",
-  "librubyfmt/ripper_deserialize"
 ]
 
 [package]
