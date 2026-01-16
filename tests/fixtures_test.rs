@@ -25,8 +25,7 @@ fn main() -> io::Result<()> {
 
     let fixtures = collect_fixtures("fixtures".into())?;
 
-    // TODO: Ripper tests are disabled for now
-    // tests.extend(fixtures.iter().filter_map(|f| f.to_trial(Flavor::Ripper)));
+    tests.extend(fixtures.iter().filter_map(|f| f.to_trial(Flavor::Ripper)));
     tests.extend(fixtures.iter().filter_map(|f| f.to_trial(Flavor::Prism)));
 
     libtest_mimic::run(&args, tests).exit();
