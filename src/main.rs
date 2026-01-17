@@ -347,16 +347,23 @@ fn main() {
     match opts {
         CommandlineOpts { check: true, .. } => {
             let text_diffs: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(Vec::new()));
+            let errors_count: Arc<Mutex<usize>> = Arc::new(Mutex::new(0));
 
-            iterate_formatted(&opts, &|(file_path, before, after)| match after {
-                None => {}
-                Some(fmtted) => {
-                    let diff = TextDiff::from_lines(before, &fmtted);
-                    let path_string = file_path.to_str().unwrap();
-                    text_diffs.lock().unwrap().push(format!(
-                        "{}",
-                        diff.unified_diff().header(path_string, path_string)
-                    ));
+            iterate_input_files(&opts, &|(file_path, before)| {
+                match rubyfmt_string(&opts, before) {
+                    Ok(None) => {}
+                    Ok(Some(fmtted)) => {
+                        let diff = TextDiff::from_lines(before, &fmtted);
+                        let path_string = file_path.to_str().unwrap();
+                        text_diffs.lock().unwrap().push(format!(
+                            "{}",
+                            diff.unified_diff().header(path_string, path_string)
+                        ));
+                    }
+                    Err(e) => {
+                        handle_rubyfmt_error(e, &file_path.display().to_string(), ErrorExit::NoExit);
+                        *errors_count.lock().unwrap() += 1;
+                    }
                 }
             });
 
@@ -370,7 +377,10 @@ fn main() {
                     diffs_reported += 1
                 }
             }
-            if diffs_reported > 0 {
+            let errors = *errors_count.lock().unwrap();
+            if errors > 0 {
+                exit(rubyfmt::FormatError::SyntaxError as i32);
+            } else if diffs_reported > 0 {
                 exit(rubyfmt::FormatError::DiffDetected as i32);
             } else {
                 exit(0)
