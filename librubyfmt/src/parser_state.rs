@@ -484,15 +484,10 @@ impl<'src> ParserState<'src> {
                 && self
                     .comments_hash
                     .is_empty_line(self.current_orig_line_number + 1)
-                && self
-                    .comments_to_insert
-                    .as_ref()
-                    .is_some_and(|c| c.line_count() > 0)
+                && let Some(comments) = self.comments_to_insert.as_mut()
+                && comments.line_count() > 0
             {
-                self.comments_to_insert
-                    .as_mut()
-                    .expect("checked above")
-                    .add_line("".to_string());
+                comments.add_line("".to_string());
             }
             self.on_line(self.current_orig_line_number + 1);
         }
