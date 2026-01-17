@@ -331,7 +331,7 @@ fn iterate_formatted(opts: &CommandlineOpts, f: FormattingFunc) {
 
 fn puts_stdout(input: &String) {
     io::stdout()
-        .write(input.as_bytes())
+        .write_all(input.as_bytes())
         .expect("Could not write to stdout");
     io::stdout().flush().expect("flush works");
 }
@@ -388,7 +388,7 @@ fn main() {
                             .write(true)
                             .truncate(true)
                             .open(file_path)
-                            .and_then(|mut file| file.write(fmtted.as_bytes()));
+                            .and_then(|mut file| file.write_all(fmtted.as_bytes()));
 
                         match file_write {
                             Ok(_) => {}
