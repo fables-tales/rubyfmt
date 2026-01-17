@@ -500,6 +500,46 @@ fn format_input_file_without_changes() {
 }
 
 #[test]
+fn test_check_flag_with_syntax_error() {
+    let mut file = NamedTempFile::new().unwrap();
+    // Use actually invalid Ruby syntax (incomplete def statement)
+    writeln!(file, "def (").unwrap();
+
+    let output = Command::cargo_bin("rubyfmt-main")
+        .unwrap()
+        .arg(file.path())
+        .arg("--check")
+        .assert()
+        .code(1)
+        .failure();
+
+    let stderr = String::from_utf8_lossy(&output.get_output().stderr);
+    assert!(
+        stderr.contains("syntax error"),
+        "Expected stderr to contain 'syntax error', got: {}",
+        stderr
+    );
+}
+
+#[test]
+fn test_check_flag_stdin_with_syntax_error() {
+    let output = Command::cargo_bin("rubyfmt-main")
+        .unwrap()
+        .arg("--check")
+        .write_stdin("def (")
+        .assert()
+        .code(1)
+        .failure();
+
+    let stderr = String::from_utf8_lossy(&output.get_output().stderr);
+    assert!(
+        stderr.contains("syntax error"),
+        "Expected stderr to contain 'syntax error', got: {}",
+        stderr
+    );
+}
+
+#[test]
 fn test_format_respects_opt_in_header() {
     let mut file_one = NamedTempFile::new().unwrap();
     writeln!(file_one, "# rubyfmt: true\na 1, 2, 3").unwrap();
