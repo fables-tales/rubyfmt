@@ -218,13 +218,7 @@ fn get_command_line_options() -> CommandlineOpts {
             match File::open(file_name) {
                 Ok(file) => {
                     let buf = BufReader::new(file);
-                    let lines: Vec<String> = buf
-                        .lines()
-                        .map(|l| l.expect("Could not parse line"))
-                        .collect();
-                    for line in lines {
-                        expanded_paths.push(line);
-                    }
+                    expanded_paths.extend(buf.lines().map(|l| l.expect("Could not parse line")));
                 }
                 Err(e) => handle_io_error(e, &path, ErrorExit::Exit),
             }
