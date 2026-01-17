@@ -4632,30 +4632,41 @@ fn format_rescue_node<'src>(ps: &mut ParserState<'src>, rescue_node: prism::Resc
 
     ps.emit_keyword("rescue");
     let exceptions = rescue_node.exceptions();
+    let reference = rescue_node.reference();
     if !exceptions.is_empty() {
         ps.with_start_of_line(false, |ps| {
-            ps.emit_space();
-            format_list_like_thing(
-                ps,
-                exceptions,
-                rescue_node
-                    .exceptions()
-                    .iter()
-                    .last()
-                    .unwrap()
-                    .location()
-                    .end_offset(),
-                true,
-            );
-        });
-    }
+            ps.inline_breakable_of(BreakableDelims::for_binary_op(), |ps| {
+                let exceptions_count = exceptions.len();
+                for (idx, exception) in exceptions.iter().enumerate() {
+                    if idx == 0 {
+                        // First exception: just a space after 'rescue', no indent
+                        ps.emit_space();
+                        format_node(ps, exception);
+                    } else {
+                        // Subsequent exceptions: indent on new line
+                        ps.emit_soft_indent();
+                        format_node(ps, exception);
+                    }
 
-    if let Some(reference) = rescue_node.reference() {
+                    if idx != exceptions_count - 1 {
+                        ps.emit_comma();
+                        ps.emit_soft_newline();
+                    }
+                }
+                if let Some(ref_node) = reference {
+                    ps.emit_space();
+                    ps.emit_op("=>");
+                    ps.emit_space();
+                    format_node(ps, ref_node);
+                }
+            });
+        });
+    } else if let Some(ref_node) = reference {
         ps.emit_space();
         ps.emit_op("=>");
         ps.emit_space();
         ps.with_start_of_line(false, |ps| {
-            format_node(ps, reference);
+            format_node(ps, ref_node);
         });
     }
 
