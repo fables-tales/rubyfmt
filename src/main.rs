@@ -349,8 +349,9 @@ fn main() {
             let text_diffs: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(Vec::new()));
             let errors_count: Arc<Mutex<usize>> = Arc::new(Mutex::new(0));
 
-            iterate_input_files(&opts, &|(file_path, before)| {
-                match rubyfmt_string(&opts, before) {
+            iterate_input_files(
+                &opts,
+                &|(file_path, before)| match rubyfmt_string(&opts, before) {
                     Ok(None) => {}
                     Ok(Some(fmtted)) => {
                         let diff = TextDiff::from_lines(before, &fmtted);
@@ -361,11 +362,15 @@ fn main() {
                         ));
                     }
                     Err(e) => {
-                        handle_rubyfmt_error(e, &file_path.display().to_string(), ErrorExit::NoExit);
+                        handle_rubyfmt_error(
+                            e,
+                            &file_path.display().to_string(),
+                            ErrorExit::NoExit,
+                        );
                         *errors_count.lock().unwrap() += 1;
                     }
-                }
-            });
+                },
+            );
 
             let all_diffs = text_diffs.lock().unwrap();
 
