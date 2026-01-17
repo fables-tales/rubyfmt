@@ -3,7 +3,7 @@ use crate::delimiters::BreakableDelims;
 use crate::file_comments::FileComments;
 use crate::heredoc_string::{HeredocKind, HeredocSegment, HeredocString};
 use crate::line_tokens::*;
-use crate::render_queue_writer::{MAX_LINE_LENGTH, RenderQueueWriter};
+use crate::render_queue_writer::RenderQueueWriter;
 use crate::render_targets::{
     BaseQueue, Breakable, BreakableCallChainEntry, BreakableEntry, ConditionalLayoutEntry,
 };
@@ -178,19 +178,6 @@ impl<'src> ParserState<'src> {
         }
     }
 
-    pub(crate) fn will_render_as_multiline<F>(&mut self, f: F) -> bool
-    where
-        F: FnOnce(&mut ParserState<'src>),
-    {
-        let mut next_ps = ParserState::new_with_indent_from(self);
-        // Ignore commments when determining line length
-        next_ps.with_suppress_comments(true, f);
-        let data = next_ps.render_to_buffer();
-
-        let s = str::from_utf8(&data).expect("string is utf8");
-        s.trim().contains('\n') || s.len() > MAX_LINE_LENGTH
-    }
-
     pub(crate) fn has_comment_in_offset_span(
         &self,
         start_offset: SourceOffset,
@@ -322,15 +309,6 @@ impl<'src> ParserState<'src> {
         self.push_target(ConcreteLineTokenAndTargets::BreakableCallChainEntry(
             insert_bcce,
         ));
-    }
-
-    pub(crate) fn with_suppress_comments<F>(&mut self, suppress: bool, f: F)
-    where
-        F: FnOnce(&mut ParserState<'src>),
-    {
-        self.suppress_comments_stack.push(suppress);
-        f(self);
-        self.suppress_comments_stack.pop();
     }
 
     pub(crate) fn new_block<F>(&mut self, f: F)
