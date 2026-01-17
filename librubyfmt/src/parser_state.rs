@@ -475,19 +475,24 @@ impl<'src> ParserState<'src> {
                     .unwrap_or(true)
         };
         while should_iter(self, self.current_orig_line_number) {
+            // If the next line is empty (no comment, no Ruby code), and we have
+            // actual comment content accumulated, add a blank line to preserve
+            // the visual gap between comment groups.
             if !self
                 .comments_hash
                 .has_line(self.current_orig_line_number + 1)
                 && self
                     .comments_hash
                     .is_empty_line(self.current_orig_line_number + 1)
-                && self.comments_to_insert.is_some()
+                && self
+                    .comments_to_insert
+                    .as_ref()
+                    .is_some_and(|c| c.line_count() > 0)
             {
-                let mr = self.comments_to_insert.as_mut().expect("it's not nil");
-                if mr.line_count() == 0 {
-                    break;
-                }
-                mr.add_line("".to_string());
+                self.comments_to_insert
+                    .as_mut()
+                    .expect("checked above")
+                    .add_line("".to_string());
             }
             self.on_line(self.current_orig_line_number + 1);
         }
