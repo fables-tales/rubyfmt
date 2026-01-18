@@ -1,4 +1,4 @@
-use std::collections::{BTreeSet, HashSet};
+use std::collections::BTreeSet;
 
 use crate::comment_block::CommentBlock;
 use crate::parser_state::line_difference_requires_newline;
@@ -66,7 +66,8 @@ pub struct FileComments {
     lines_with_ruby: BTreeSet<LineNumber>,
     last_lineno: LineNumber,
     line_index: LineIndex,
-    comment_start_offsets: HashSet<usize>,
+    /// Sorted list of byte offsets where comments start
+    comment_start_offsets: Vec<usize>,
 }
 
 impl FileComments {
@@ -80,7 +81,7 @@ impl FileComments {
             );
             file_comments
                 .comment_start_offsets
-                .insert(comment.location().start_offset());
+                .push(comment.location().start_offset());
         }
 
         // Lookup lines that have any Ruby
@@ -180,11 +181,13 @@ impl FileComments {
         start_offset: SourceOffset,
         end_offset: SourceOffset,
     ) -> bool {
-        let range = start_offset..end_offset;
+        let idx = self
+            .comment_start_offsets
+            .partition_point(|&offset| offset < start_offset);
 
         self.comment_start_offsets
-            .iter()
-            .any(|offset| range.contains(offset))
+            .get(idx)
+            .is_some_and(|&offset| offset < end_offset)
     }
 
     pub fn extract_comments_to_line(
