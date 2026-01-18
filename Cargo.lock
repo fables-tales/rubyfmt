@@ -817,6 +817,7 @@ version = "0.12.0"
 dependencies = [
  "fancy-regex",
  "log",
+ "memchr",
  "ruby-prism",
  "simplelog",
  "tikv-jemallocator",
