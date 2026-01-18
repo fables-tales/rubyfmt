@@ -24,3 +24,11 @@ end
 begin
 rescue StandardError
 end
+
+begin
+rescue OpenSSL::SSL::SSLError,
+  OpenSSL::SSL::SSLError,
+  OpenSSL::SSL::SSLError,
+  OpenSSL::SSL::SSLError,
+  OpenSSL::SSL::SSLError => exception
+end
