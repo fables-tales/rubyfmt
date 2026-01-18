@@ -1,4 +1,5 @@
 use memchr::memchr_iter;
+use std::cmp::Ordering;
 
 use crate::comment_block::CommentBlock;
 use crate::parser_state::line_difference_requires_newline;
@@ -186,10 +187,20 @@ impl FileComments {
     }
 
     pub fn has_comments_in_lines(&self, start_line: LineNumber, end_line: LineNumber) -> bool {
-        let line_range = start_line..end_line;
+        // We are essentially inlining `Range::contains` here, but with extra logic for the
+        // case where the line falls outside the range.  Note that since `contains` is
+        // non-inclusive, the greater-than case should be >=, not >.
         self.other_comments
-            .iter()
-            .any(|(ln, _)| line_range.contains(ln))
+            .binary_search_by(|(ln, _)| {
+                if *ln < start_line {
+                    Ordering::Less
+                } else if *ln >= end_line {
+                    Ordering::Greater
+                } else {
+                    Ordering::Equal
+                }
+            })
+            .is_ok()
     }
 
     pub fn has_comment_in_offsets(
