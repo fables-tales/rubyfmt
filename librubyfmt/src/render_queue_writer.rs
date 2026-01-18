@@ -4,8 +4,10 @@ use crate::line_tokens::*;
 use crate::render_targets::{
     AbstractTokenTarget, BreakableCallChainEntry, BreakableEntry, ConvertType,
 };
+use crate::util::get_indent;
 #[cfg(debug_assertions)]
 use log::debug;
+use std::borrow::Cow;
 use std::io::{self, Write};
 
 pub const MAX_LINE_LENGTH: usize = 120;
@@ -55,9 +57,11 @@ impl<'src> RenderQueueWriter<'src> {
                     contents,
                 }) => {
                     if !contents.is_empty() {
-                        let mut new_contents: String =
-                            (0..(accum.additional_indent * 2)).map(|_| ' ').collect();
-                        new_contents.push_str(contents.as_str());
+                        let new_contents = format!(
+                            "{}{}",
+                            get_indent(accum.additional_indent as usize * 2),
+                            contents
+                        );
                         next_token = ConcreteLineTokenAndTargets::ConcreteLineToken(
                             ConcreteLineToken::Comment {
                                 contents: new_contents,
@@ -72,19 +76,16 @@ impl<'src> RenderQueueWriter<'src> {
                         .map(|k| k.is_squiggly())
                         .unwrap_or(false)
                     {
-                        let indent: String =
-                            (0..(accum.additional_indent * 2)).map(|_| ' ').collect();
+                        let indent = get_indent(accum.additional_indent as usize * 2);
                         let new_contents = part
                             .split('\n')
                             .map(|p| {
                                 if p.is_empty() {
-                                    return p.to_string();
+                                    return p.into();
                                 }
-                                let mut line = indent.clone();
-                                line.push_str(p);
-                                line
+                                format!("{}{}", indent, p).into()
                             })
-                            .collect::<Vec<String>>()
+                            .collect::<Vec<Cow<'_, str>>>()
                             .join("\n");
                         next_token = clats_direct_part(new_contents)
                     }
@@ -98,9 +99,11 @@ impl<'src> RenderQueueWriter<'src> {
                     // Bare heredocs (e.g. <<FOO) must have the closing ident completely unindented, so
                     // ignore them in this case
                     if current_heredoc_kind.map(|k| !k.is_bare()).unwrap_or(false) {
-                        let mut new_contents: String =
-                            (0..(accum.additional_indent * 2)).map(|_| ' ').collect();
-                        new_contents.push_str(symbol.as_str());
+                        let new_contents: String = format!(
+                            "{}{}",
+                            get_indent(accum.additional_indent as usize * 2),
+                            symbol
+                        );
                         next_token = clats_heredoc_close(new_contents);
                     }
                     current_heredoc_kind = None;
