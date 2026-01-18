@@ -1,9 +1,9 @@
-use std::collections::BTreeSet;
+use memchr::memchr_iter;
 
 use crate::comment_block::CommentBlock;
 use crate::parser_state::line_difference_requires_newline;
 use crate::types::{LineNumber, SourceOffset};
-use crate::util::{u8_to_str, u8_to_string};
+use crate::util::u8_to_string;
 
 /// A vector of offsets in the source code where lines start, which
 /// we use to detect what line a given offset is one.
@@ -18,18 +18,7 @@ pub struct LineIndex {
 }
 
 impl LineIndex {
-    pub fn new(file_contents: &[u8]) -> Self {
-        let mut line_starts = Vec::new();
-
-        // First line always starts at position 0
-        line_starts.push(0);
-
-        for (i, &byte) in file_contents.iter().enumerate() {
-            if byte == b'\n' {
-                line_starts.push(i + 1);
-            }
-        }
-
+    fn from_vec(line_starts: Vec<usize>) -> Self {
         LineIndex { line_starts }
     }
 
@@ -63,7 +52,8 @@ pub struct FileComments {
     start_of_file_contiguous_comment_lines: Option<CommentBlock>,
     /// A list of comments, sorted in order by `LineNumber`
     other_comments: Vec<(LineNumber, String)>,
-    lines_with_ruby: BTreeSet<LineNumber>,
+    /// Sorted list of line numbers that contain Ruby code (not comments/blank)
+    lines_with_ruby: Vec<LineNumber>,
     last_lineno: LineNumber,
     line_index: LineIndex,
     /// Sorted list of byte offsets where comments start
@@ -72,7 +62,36 @@ pub struct FileComments {
 
 impl FileComments {
     pub fn from_prism_comments(comments: ruby_prism::Comments, source: &[u8]) -> FileComments {
-        let line_index = LineIndex::new(source);
+        let mut line_starts = Vec::new();
+        let mut lines_with_ruby = Vec::new();
+
+        line_starts.push(0); // First line always starts at position 0
+
+        let mut line_start = 0;
+        let mut lineno = 1;
+        let mut inside_embdoc = false;
+
+        for i in memchr_iter(b'\n', source) {
+            line_starts.push(i + 1);
+
+            if Self::line_has_ruby(&source[line_start..i], &mut inside_embdoc) {
+                lines_with_ruby.push(lineno);
+            }
+
+            line_start = i + 1;
+            lineno += 1;
+        }
+
+        // Handle last line if no trailing newline
+        if line_start < source.len() {
+            let line = &source[line_start..];
+            if Self::line_has_ruby(line, &mut inside_embdoc) {
+                lines_with_ruby.push(lineno);
+            }
+        }
+
+        let line_index = LineIndex::from_vec(line_starts);
+
         let mut file_comments = FileComments::default();
         for comment in comments {
             file_comments.push_comment(
@@ -84,37 +103,34 @@ impl FileComments {
                 .push(comment.location().start_offset());
         }
 
-        // Lookup lines that have any Ruby
-        let mut inside_embdoc = false;
-        u8_to_str(source)
-            .lines()
-            .enumerate()
-            .filter(|(_lineno, line_contents)| {
-                let contents = line_contents.trim();
-                if contents.starts_with("=begin") {
-                    inside_embdoc = true;
-                    return false;
-                }
-                if contents.starts_with("=end") {
-                    inside_embdoc = false;
-                    return false;
-                }
-                if inside_embdoc {
-                    return false;
-                }
-                !(contents.starts_with("#") || contents.is_empty())
-            })
-            .for_each(|(lineno, _)| {
-                file_comments
-                    .lines_with_ruby
-                    // Insert as one-offset to work with Ripper.
-                    // This (and elsewhere) can be zero-offset once Ripper is removed
-                    .insert((lineno + 1) as u64);
-            });
-
+        file_comments.lines_with_ruby = lines_with_ruby;
         file_comments.last_lineno = line_index.line_starts.len() as u64;
         file_comments.line_index = line_index;
         file_comments
+    }
+
+    fn line_has_ruby(line: &[u8], inside_embdoc: &mut bool) -> bool {
+        let first_non_ws = line.iter().position(|b| !u8::is_ascii_whitespace(b));
+        let Some(idx) = first_non_ws else {
+            return false;
+        };
+
+        let trimmed = &line[idx..];
+
+        if trimmed.starts_with(b"=begin") {
+            *inside_embdoc = true;
+            return false;
+        }
+        if trimmed.starts_with(b"=end") {
+            *inside_embdoc = false;
+            return false;
+        }
+        if *inside_embdoc {
+            return false;
+        }
+
+        // Check if it's a comment
+        trimmed[0] != b'#'
     }
 
     pub fn still_in_file(&self, line_number: LineNumber) -> bool {
@@ -162,7 +178,7 @@ impl FileComments {
     }
 
     pub fn is_empty_line(&self, line_number: LineNumber) -> bool {
-        !self.lines_with_ruby.contains(&line_number)
+        self.lines_with_ruby.binary_search(&line_number).is_err()
     }
 
     pub fn take_start_of_file_contiguous_comment_lines(&mut self) -> Option<CommentBlock> {
