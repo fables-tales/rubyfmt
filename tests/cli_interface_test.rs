@@ -766,6 +766,75 @@ fn test_respects_gitignore() {
     assert_eq!("a 4, 5, 6\n", read_to_string(file_two.path()).unwrap());
 }
 
+// Reproduces https://github.com/BurntSushi/ripgrep/issues/829 for .gitignore
+#[test]
+fn test_respects_gitignore_with_subdirectory_argument() {
+    let dir = tempdir().unwrap();
+    // Fake a git repo
+    create_dir(dir.path().join(".git")).unwrap();
+
+    create_dir(dir.path().join("a")).unwrap();
+    create_dir(dir.path().join("a").join("b")).unwrap();
+
+    // Create a file in a/ (should be formatted)
+    let file_one_path = dir.path().join("a").join("test.rb");
+    fs::write(&file_one_path, "a 1, 2, 3\n").unwrap();
+
+    // Create a file in a/b/ (should be ignored)
+    let file_two_path = dir.path().join("a").join("b").join("test.rb");
+    fs::write(&file_two_path, "a 4, 5, 6\n").unwrap();
+
+    fs::write(dir.path().join(".gitignore"), "/a/b/\n").unwrap();
+
+    Command::cargo_bin("rubyfmt-main")
+        .unwrap()
+        .current_dir(dir.path())
+        .arg("-i")
+        .arg("a")
+        .assert()
+        .stdout("")
+        .code(0)
+        .success();
+
+    // a/test.rb should be formatted
+    assert_eq!("a(1, 2, 3)\n", read_to_string(&file_one_path).unwrap());
+    // a/b/test.rb is gitignored
+    assert_eq!("a 4, 5, 6\n", read_to_string(&file_two_path).unwrap());
+}
+
+// Reproduces https://github.com/BurntSushi/ripgrep/issues/829 for .rubyfmtignore
+#[test]
+fn test_respects_rubyfmtignore_with_subdirectory_argument() {
+    let dir = tempdir().unwrap();
+
+    // Create nested directory structure: a/b/
+    create_dir(dir.path().join("a")).unwrap();
+    create_dir(dir.path().join("a").join("b")).unwrap();
+
+    // Create a file in a/ (should be formatted)
+    let file_one_path = dir.path().join("a").join("test.rb");
+    fs::write(&file_one_path, "a 1, 2, 3\n").unwrap();
+
+    // Create a file in a/b/ (should be ignored)
+    let file_two_path = dir.path().join("a").join("b").join("test.rb");
+    fs::write(&file_two_path, "a 4, 5, 6\n").unwrap();
+
+    fs::write(dir.path().join(".rubyfmtignore"), "/a/b/\n").unwrap();
+
+    Command::cargo_bin("rubyfmt-main")
+        .unwrap()
+        .current_dir(dir.path())
+        .arg("-i")
+        .arg("a")
+        .assert()
+        .stdout("")
+        .code(0)
+        .success();
+
+    assert_eq!("a(1, 2, 3)\n", read_to_string(&file_one_path).unwrap());
+    assert_eq!("a 4, 5, 6\n", read_to_string(&file_two_path).unwrap());
+}
+
 #[test]
 fn test_formats_non_rb_files() {
     let mut file = tempfile::Builder::new()
