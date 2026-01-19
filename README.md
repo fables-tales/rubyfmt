@@ -4,6 +4,8 @@ A fast, opinionated Ruby formatter written in Rust.
 
 - Try it online → [rubyfmt.run](https://rubyfmt.run)
 
+Pronunciation: (en) "Ruby Format", (jp) ルビーフォーマット
+
 ## Quick Start
 
 ```bash
@@ -158,10 +160,3 @@ Please check out our [contributing guide](./CONTRIBUTING.md).
 
 The original author (fables-tales) is no longer working on open source in their spare time.
 Other contributors work regularly on `rubyfmt`, and contributors with commit access are welcome to merge changes that pass CI.
-
-## FAQ
-
-**How do I pronounce rubyfmt?**
-
-- en: Ruby format
-- jp: ルビーフォーマット
