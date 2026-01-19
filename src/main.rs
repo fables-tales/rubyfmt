@@ -2,6 +2,7 @@
 
 use clap::Parser;
 use ignore::WalkBuilder;
+use ignore::gitignore::GitignoreBuilder;
 use regex::Regex;
 use rubyfmt::init_logger;
 use similar::TextDiff;
@@ -60,6 +61,11 @@ struct CommandlineOpts {
     /// Write files back in place, do not write output to STDOUT.
     #[clap(short, long, name = "in-place")]
     in_place: bool,
+
+    /// When reading from stdin, treat the input as if it were at this path.
+    /// This allows .rubyfmtignore and .gitignore patterns to be applied to stdin input.
+    #[clap(long, name = "stdin-filepath", conflicts_with_all = ["include-paths", "in-place"])]
+    stdin_filepath: Option<String>,
 
     /// Paths for rubyfmt to analyze. By default the output will be printed to STDOUT. See `--in-place` to write files back in-place.
     /// Acceptable paths are:{n}
@@ -190,6 +196,27 @@ fn rubyfmt_string(
 /* Helpers                                            */
 /******************************************************/
 
+/// Check if a path should be ignored based on .gitignore and .rubyfmtignore patterns.
+/// The path should be relative to the current working directory.
+fn is_path_ignored(path: &Path, include_gitignored: bool) -> bool {
+    let cwd = std::env::current_dir().unwrap();
+    let mut builder = GitignoreBuilder::new(&cwd);
+
+    if !include_gitignored {
+        builder.add(".gitignore");
+    }
+    builder.add(".rubyfmtignore");
+
+    if let Ok(gitignore) = builder.build() {
+        let is_dir = path.is_dir();
+        gitignore
+            .matched_path_or_any_parents(path, is_dir)
+            .is_ignore()
+    } else {
+        false
+    }
+}
+
 fn file_walker_builder(include_paths: Vec<&String>, include_gitignored: bool) -> WalkBuilder {
     // WalkBuilder does not have an API for adding multiple inputs.
     // Must pass the first input to the constructor, and the tail afterwards.
@@ -249,7 +276,22 @@ fn iterate_input_files(opts: &CommandlineOpts, f: &dyn Fn((&Path, &String))) {
         io::stdin()
             .read_to_string(&mut buffer)
             .expect("reading from stdin to not fail");
-        f((Path::new("stdin"), &buffer))
+
+        let path = if let Some(stdin_filepath) = &opts.stdin_filepath {
+            let path = Path::new(stdin_filepath);
+            if is_path_ignored(path, opts.include_gitignored) {
+                // Print unchanged output for ignored files unless we're in check mode
+                if !opts.check {
+                    puts_stdout(&buffer);
+                }
+                return;
+            }
+            path
+        } else {
+            Path::new("stdin")
+        };
+
+        f((path, &buffer))
     } else {
         let mut file_paths = Vec::new();
         let mut dir_paths = Vec::new();

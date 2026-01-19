@@ -911,3 +911,246 @@ fn test_error_uses_rubyfmt_name() {
         "Error output should not contain 'rubyfmt-main', got: {stderr}"
     );
 }
+
+#[test]
+fn test_stdin_filepath_respects_rubyfmtignore() {
+    let dir = tempdir().unwrap();
+    fs::write(dir.path().join(".rubyfmtignore"), "ignored.rb").unwrap();
+
+    // File matching .rubyfmtignore pattern should not be formatted, but output unchanged
+    Command::cargo_bin("rubyfmt-main")
+        .unwrap()
+        .current_dir(dir.path())
+        .arg("--stdin-filepath")
+        .arg("ignored.rb")
+        .write_stdin("a 1,2,3")
+        .assert()
+        .stdout("a 1,2,3")
+        .code(0)
+        .success();
+
+    // File not matching .rubyfmtignore pattern should be formatted
+    Command::cargo_bin("rubyfmt-main")
+        .unwrap()
+        .current_dir(dir.path())
+        .arg("--stdin-filepath")
+        .arg("not_ignored.rb")
+        .write_stdin("a 1,2,3")
+        .assert()
+        .stdout("a(1, 2, 3)\n")
+        .code(0)
+        .success();
+}
+
+#[test]
+fn test_stdin_filepath_respects_gitignore() {
+    let dir = tempdir().unwrap();
+    // Fake a git repo
+    create_dir(dir.path().join(".git")).unwrap();
+    fs::write(dir.path().join(".gitignore"), "ignored.rb").unwrap();
+
+    // File matching .gitignore pattern should not be formatted, but output unchanged
+    Command::cargo_bin("rubyfmt-main")
+        .unwrap()
+        .current_dir(dir.path())
+        .arg("--stdin-filepath")
+        .arg("ignored.rb")
+        .write_stdin("a 1,2,3")
+        .assert()
+        .stdout("a 1,2,3")
+        .code(0)
+        .success();
+
+    // File matching .gitignore but with --include-gitignored should be formatted
+    Command::cargo_bin("rubyfmt-main")
+        .unwrap()
+        .current_dir(dir.path())
+        .arg("--stdin-filepath")
+        .arg("ignored.rb")
+        .arg("--include-gitignored")
+        .write_stdin("a 1,2,3")
+        .assert()
+        .stdout("a(1, 2, 3)\n")
+        .code(0)
+        .success();
+}
+
+#[test]
+fn test_stdin_filepath_uses_path_in_check_output() {
+    let dir = tempdir().unwrap();
+
+    Command::cargo_bin("rubyfmt-main")
+        .unwrap()
+        .current_dir(dir.path())
+        .arg("--check")
+        .arg("--stdin-filepath")
+        .arg("lib/foo.rb")
+        .write_stdin("a 1,2,3\n")
+        .assert()
+        .stdout(
+            "--- lib/foo.rb
++++ lib/foo.rb
+@@ -1 +1 @@
+-a 1,2,3
++a(1, 2, 3)
+",
+        )
+        .code(5)
+        .failure();
+}
+
+#[test]
+fn test_stdin_filepath_respects_rubyfmtignore_directory_pattern() {
+    let dir = tempdir().unwrap();
+    fs::write(dir.path().join(".rubyfmtignore"), "ignored/").unwrap();
+
+    // File in ignored directory should not be formatted, but output unchanged
+    Command::cargo_bin("rubyfmt-main")
+        .unwrap()
+        .current_dir(dir.path())
+        .arg("--stdin-filepath")
+        .arg("ignored/foo.rb")
+        .write_stdin("a 1,2,3")
+        .assert()
+        .stdout("a 1,2,3")
+        .code(0)
+        .success();
+
+    // File not in ignored directory should be formatted
+    Command::cargo_bin("rubyfmt-main")
+        .unwrap()
+        .current_dir(dir.path())
+        .arg("--stdin-filepath")
+        .arg("not_ignored/foo.rb")
+        .write_stdin("a 1,2,3")
+        .assert()
+        .stdout("a(1, 2, 3)\n")
+        .code(0)
+        .success();
+}
+
+#[test]
+fn test_stdin_filepath_respects_gitignore_directory_pattern() {
+    let dir = tempdir().unwrap();
+    create_dir(dir.path().join(".git")).unwrap();
+    fs::write(dir.path().join(".gitignore"), "ignored/").unwrap();
+
+    // File in ignored directory should not be formatted, but output unchanged
+    Command::cargo_bin("rubyfmt-main")
+        .unwrap()
+        .current_dir(dir.path())
+        .arg("--stdin-filepath")
+        .arg("ignored/foo.rb")
+        .write_stdin("a 1,2,3")
+        .assert()
+        .stdout("a 1,2,3")
+        .code(0)
+        .success();
+
+    // File in ignored directory with --include-gitignored should be formatted
+    Command::cargo_bin("rubyfmt-main")
+        .unwrap()
+        .current_dir(dir.path())
+        .arg("--stdin-filepath")
+        .arg("ignored/foo.rb")
+        .arg("--include-gitignored")
+        .write_stdin("a 1,2,3")
+        .assert()
+        .stdout("a(1, 2, 3)\n")
+        .code(0)
+        .success();
+}
+
+#[test]
+fn test_stdin_filepath_check_mode_ignored_file() {
+    let dir = tempdir().unwrap();
+    fs::write(dir.path().join(".rubyfmtignore"), "ignored.rb").unwrap();
+
+    // Check mode with ignored file should produce no output and exit 0
+    Command::cargo_bin("rubyfmt-main")
+        .unwrap()
+        .current_dir(dir.path())
+        .arg("--check")
+        .arg("--stdin-filepath")
+        .arg("ignored.rb")
+        .write_stdin("a 1,2,3")
+        .assert()
+        .stdout("")
+        .code(0)
+        .success();
+}
+
+#[test]
+fn test_stdin_filepath_conflicts_with_file_paths() {
+    let mut file = NamedTempFile::new().unwrap();
+    writeln!(file, "a 1,2,3").unwrap();
+
+    let output = Command::cargo_bin("rubyfmt-main")
+        .unwrap()
+        .arg("--stdin-filepath")
+        .arg("lib/foo.rb")
+        .arg(file.path())
+        .output()
+        .unwrap();
+
+    assert!(!output.status.success());
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        stderr.contains("--stdin-filepath") && stderr.contains("cannot be used with"),
+        "Expected error about --stdin-filepath conflict, got: {}",
+        stderr
+    );
+}
+
+#[test]
+fn test_stdin_filepath_conflicts_with_in_place() {
+    let output = Command::cargo_bin("rubyfmt-main")
+        .unwrap()
+        .arg("--stdin-filepath")
+        .arg("lib/foo.rb")
+        .arg("-i")
+        .write_stdin("a 1,2,3")
+        .output()
+        .unwrap();
+
+    assert!(!output.status.success());
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        stderr.contains("--stdin-filepath") && stderr.contains("cannot be used with"),
+        "Expected error about --stdin-filepath conflict with -i, got: {}",
+        stderr
+    );
+}
+
+#[test]
+fn test_explicit_file_path_ignores_rubyfmtignore() {
+    // When a file is passed explicitly (not via directory traversal),
+    // ignore patterns should not apply - the user explicitly asked for this file.
+    let dir = tempdir().unwrap();
+
+    let mut file = tempfile::Builder::new()
+        .prefix("rubyfmt")
+        .suffix(".rb")
+        .tempfile_in(dir.path())
+        .unwrap();
+    writeln!(file, "a 1,2,3").unwrap();
+
+    fs::write(
+        dir.path().join(".rubyfmtignore"),
+        file.path().file_name().unwrap().to_str().unwrap(),
+    )
+    .unwrap();
+
+    Command::cargo_bin("rubyfmt-main")
+        .unwrap()
+        .current_dir(dir.path())
+        .arg("-i")
+        .arg(file.path())
+        .assert()
+        .stdout("")
+        .code(0)
+        .success();
+
+    // File should be formatted despite being in .rubyfmtignore
+    assert_eq!("a(1, 2, 3)\n", read_to_string(file.path()).unwrap());
+}
