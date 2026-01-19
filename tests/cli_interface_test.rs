@@ -785,3 +785,60 @@ fn test_formats_non_rb_files() {
         .success();
     assert_eq!("a(1, 2, 3)\n", read_to_string(file.path()).unwrap());
 }
+
+#[test]
+fn test_version_uses_rubyfmt_name() {
+    let output = Command::cargo_bin("rubyfmt-main")
+        .unwrap()
+        .arg("-V")
+        .output()
+        .unwrap();
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(
+        stdout.starts_with("rubyfmt "),
+        "Version output should start with 'rubyfmt ', got: {stdout}"
+    );
+    assert!(
+        !stdout.contains("rubyfmt-main"),
+        "Version output should not contain 'rubyfmt-main', got: {stdout}"
+    );
+}
+
+#[test]
+fn test_help_uses_rubyfmt_name() {
+    let output = Command::cargo_bin("rubyfmt-main")
+        .unwrap()
+        .arg("-h")
+        .output()
+        .unwrap();
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(
+        stdout.contains("Usage: rubyfmt"),
+        "Help output should contain 'Usage: rubyfmt', got: {stdout}"
+    );
+    assert!(
+        !stdout.contains("rubyfmt-main"),
+        "Help output should not contain 'rubyfmt-main', got: {stdout}"
+    );
+}
+
+#[test]
+fn test_error_uses_rubyfmt_name() {
+    let output = Command::cargo_bin("rubyfmt-main")
+        .unwrap()
+        .arg("--not-a-real-flag")
+        .output()
+        .unwrap();
+
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        stderr.contains("rubyfmt"),
+        "Error output should contain 'rubyfmt', got: {stderr}"
+    );
+    assert!(
+        !stderr.contains("rubyfmt-main"),
+        "Error output should not contain 'rubyfmt-main', got: {stderr}"
+    );
+}
