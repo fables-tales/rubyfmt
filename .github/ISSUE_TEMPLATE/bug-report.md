@@ -24,7 +24,7 @@ issues up to those in a future release.
 
 - `rubyfmt` version/commit: TODO <!--- If unsure, run `rubyfmt --version` --->
 
-[→ View on rubyfmt.run](TODO_replace_this_with_your_sorbet_run_link)
+[→ View on rubyfmt.run](TODO_replace_this_with_your_rubyfmt_run_link)
 
 ## Input
 
