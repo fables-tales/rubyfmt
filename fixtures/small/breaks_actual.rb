@@ -12,4 +12,9 @@ loop do
       attemptes: off_reservation_payment.attempts + 1
     )
   ]
+  break([
+    off_reservation_payment,
+    payment_intent_mode,
+    Return.new(outcome: Outcome::Succeeded, attemptes: off_reservation_payment.attempts + 1)
+  ])
 end
