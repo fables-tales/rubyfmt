@@ -552,9 +552,11 @@ fn format_break_node<'src>(ps: &mut ParserState<'src>, break_node: prism::BreakN
     ps.emit_ident("break");
     if let Some(arguments_node) = break_node.arguments() {
         ps.with_start_of_line(false, |ps| {
-            ps.breakable_of(BreakableDelims::for_kw(), |ps| {
-                format_arguments_node(ps, arguments_node);
-            });
+            let arguments = arguments_node.arguments();
+            let end_offset = arguments.last().unwrap().location().end_offset();
+
+            ps.emit_space();
+            format_list_like_thing(ps, arguments, end_offset, true);
         });
     }
 }
