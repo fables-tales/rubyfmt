@@ -9,7 +9,7 @@ Hi there! Thanks for taking the time to file an issue against rubyfmt!
 To make filling out this form faster:
 
 1. Create a program showing the bug on https://rubyfmt.run
-3. Click "Gihub" in the header, then "Create issue with example" in the dropdown menu
+3. Click "GitHub" in the header, then "Create issue with example" in the dropdown menu
 
 This will pre-populate most of the form below.
 
