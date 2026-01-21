@@ -4943,6 +4943,9 @@ fn is_keyword_expression(node: &prism::Node) -> bool {
         Node::BeginNode { .. } => true,
         // For completeness: other control flow that shouldn't be unwrapped
         Node::ForNode { .. } => true,
+        // Assignments to local variables can be left wrapped for consistency with
+        // wrapping assignments in `if` conditions and the like.
+        Node::LocalVariableWriteNode { .. } => true,
         _ => false,
     }
 }
