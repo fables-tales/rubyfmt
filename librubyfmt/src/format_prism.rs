@@ -1467,8 +1467,7 @@ fn format_else_node<'src>(ps: &mut ParserState<'src>, else_node: prism::ElseNode
                     .statements()
                     .expect("Statements must be present in a ternary")
                     .body()
-                    .iter()
-                    .next()
+                    .first()
                     .expect("Ternaries cannot have multiple statements"),
             );
         });
@@ -1817,8 +1816,7 @@ fn format_call_node<'src>(
                     ps.emit_ident(" = ");
                     let value = arguments
                         .arguments()
-                        .iter()
-                        .next()
+                        .first()
                         .expect("Attribute writes must have a value");
                     ps.with_start_of_line(false, |ps| format_node(ps, value));
                 }
@@ -1849,7 +1847,7 @@ fn format_call_node<'src>(
                         .and_then(|b| b.as_block_argument_node())
                         .is_none()
                 {
-                    let first_arg = arguments.arguments().iter().next().unwrap();
+                    let first_arg = arguments.arguments().first().unwrap();
                     unwrap_single_arg_paren(&first_arg)
                 } else {
                     None
@@ -1986,13 +1984,7 @@ fn format_call_node<'src>(
                         method_name,
                         // For infix operators, we still get an ArgumentsNode, but it will
                         // always be an argument list of a single node.
-                        call_node
-                            .arguments()
-                            .unwrap()
-                            .arguments()
-                            .iter()
-                            .next()
-                            .unwrap(),
+                        call_node.arguments().unwrap().arguments().first().unwrap(),
                     );
                 });
             } else {
@@ -3715,8 +3707,7 @@ fn format_conditional_node<'src>(
             .statements()
             .expect("Begin modifiers must have a StatementsNode")
             .body()
-            .iter()
-            .next()
+            .first()
             .expect("Begin modifiers must have a single statement")
             .as_begin_node()
             .expect("Statement in a begin modifier must be a BeginNode");
@@ -3858,8 +3849,7 @@ fn format_if_node<'src>(ps: &mut ParserState<'src>, if_node: prism::IfNode<'src>
                         .statements()
                         .expect("Ternaries must have a `statements` branch")
                         .body()
-                        .iter()
-                        .next()
+                        .first()
                         .expect("There must be exactly one statement inside a ternary branch"),
                 );
                 format_node(
@@ -4783,7 +4773,6 @@ fn format_true_node<'src>(ps: &mut ParserState<'src>, true_node: prism::TrueNode
 fn format_undef_node<'src>(ps: &mut ParserState<'src>, undef_node: prism::UndefNode<'src>) {
     let names = undef_node.names();
     let end_offset = names
-        .iter()
         .last()
         .expect("`undef` must have at least one argument")
         .location()
@@ -4817,7 +4806,6 @@ fn format_when_node<'src>(ps: &mut ParserState<'src>, when_node: prism::WhenNode
                     when_node.conditions(),
                     when_node
                         .conditions()
-                        .iter()
                         .last()
                         .unwrap()
                         .location()
@@ -4860,7 +4848,6 @@ fn format_yield_node<'src>(ps: &mut ParserState<'src>, yield_node: prism::YieldN
                     args.arguments().len() == 1
                         && args
                             .arguments()
-                            .iter()
                             .last()
                             .unwrap()
                             .as_keyword_hash_node()
@@ -4978,7 +4965,7 @@ fn unwrap_single_arg_paren<'src>(node: &prism::Node<'src>) -> Option<prism::Node
         return None;
     }
 
-    let inner = statements.body().iter().next()?;
+    let inner = statements.body().first()?;
 
     // Don't unwrap if the inner expression contains keywords that would change semantics
     if is_keyword_expression(&inner) {
