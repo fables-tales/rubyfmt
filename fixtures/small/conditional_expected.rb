@@ -13,3 +13,11 @@ if it_isnt_dangerous(
   )
   do_stuff!
 end
+
+module Amp
+  def self.trim_team(team)
+    {
+      descendent_members: (team[:descendant_members].map { |v| self.trim_person } if team[descendant_members].present?)
+    }
+  end
+end

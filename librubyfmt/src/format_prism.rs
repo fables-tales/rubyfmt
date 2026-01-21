@@ -3745,23 +3745,10 @@ fn format_conditional_node<'src>(
             Conditional::If(_) | Conditional::Unless(_) => {
                 let predicate = conditional.predicate();
                 let statements = conditional.statements();
-                let predicate_start_line =
-                    ps.get_line_number_for_offset(predicate.location().start_offset());
-                let predicate_end_line =
-                    ps.get_line_number_for_offset(predicate.location().end_offset());
-                if predicate_start_line != predicate_end_line {
-                    true
-                } else {
-                    // Check if it renders multiline due to length
-                    ps.will_render_as_multiline(|next_ps| {
-                        format_inline_conditional(
-                            next_ps,
-                            predicate,
-                            statements,
-                            conditional_keyword,
-                        )
-                    })
-                }
+                // Check if it renders multiline due to length
+                ps.will_render_as_multiline(|next_ps| {
+                    format_inline_conditional(next_ps, predicate, statements, conditional_keyword)
+                })
             }
         };
 
