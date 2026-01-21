@@ -21,3 +21,12 @@ module Amp
     }
   end
 end
+
+module Amp2
+  def self.trim_team(team)
+    {
+      descendent_members: (team[:descendant_members].map { |v| self.trim_person } if team[descendant_members]
+        .present_break?)
+    }
+  end
+end
