@@ -37,3 +37,9 @@ foo(1..10)
 
 # Ternary without keywords
 foo(condition ? a : b)
+
+# Assignments we leave alone, for consistency with code like:
+#
+# if (var = thing)
+foo((var = thing))
+foo(1, (var2 = thing))
