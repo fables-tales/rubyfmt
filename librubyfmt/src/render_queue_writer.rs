@@ -31,6 +31,14 @@ impl<'src> RenderQueueWriter<'src> {
         Self::write_final_tokens(writer, accum.into_tokens())
     }
 
+    /// Convert the render queue to final tokens without writing them.
+    /// This is used for extracting heredoc segments.
+    pub fn into_tokens(self) -> Vec<ConcreteLineToken<'src>> {
+        let mut accum = Intermediary::new();
+        Self::render_as(&mut accum, self.tokens);
+        accum.into_tokens()
+    }
+
     fn render_as(accum: &mut Intermediary<'src>, tokens: Vec<ConcreteLineTokenAndTargets<'src>>) {
         use ConcreteLineToken::*;
         let token_len = tokens.len();

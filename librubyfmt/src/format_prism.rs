@@ -980,14 +980,50 @@ fn format_inner_string<'src>(
                     }
                 };
 
-                prev_ended_with_newline = contents.ends_with('\n');
+                // If there are pending heredocs and the content contains a newline
+                // (but doesn't start with one), we need to split the content at the
+                // first newline, emit the part before, then a HardNewLine, then
+                // render the heredocs (with a proper newline after
+                // heredoc close), then emit the rest. This handles cases like:
+                //   <<EOD
+                //   text #{<<INNER} after brace
+                //   inner content
+                //   INNER
+                //   more outer content
+                //   EOD
+                let mut rendered_heredocs = false;
+                if ps.has_pending_heredocs()
+                    && !contents.starts_with('\n')
+                    && let Some(newline_idx) = contents.find('\n')
+                {
+                    let before_newline = &contents[..newline_idx];
+                    if !before_newline.is_empty() {
+                        ps.emit_string_content(before_newline.to_string());
+                    }
+                    ps.emit_hard_newline_in_heredoc();
+                    // Use skip=false to ensure proper newline after heredoc close
+                    ps.render_heredocs(false);
+                    contents = contents[newline_idx + 1..].to_string();
+                    rendered_heredocs = true;
+                }
+
+                // If we rendered heredocs, they end with a newline (since skip=false),
+                // so the next StringNode should have its first line treated as starting
+                // at a line boundary for common_indent stripping purposes.
+                prev_ended_with_newline = if rendered_heredocs && contents.is_empty() {
+                    true
+                } else {
+                    contents.ends_with('\n')
+                };
 
                 if peekable.peek().is_none() && contents.ends_with('\n') {
                     contents.pop();
                 }
 
                 ps.at_offset(part.location().end_offset());
-                ps.emit_string_content(contents);
+                if !contents.is_empty() {
+                    ps.emit_string_content(contents);
+                }
             }
             prism::Node::InterpolatedStringNode { .. } => {
                 ps.at_offset(part.location().start_offset());

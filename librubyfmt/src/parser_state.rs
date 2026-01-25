@@ -1,7 +1,7 @@
 use crate::comment_block::{CommentBlock, Merge};
 use crate::delimiters::BreakableDelims;
 use crate::file_comments::FileComments;
-use crate::heredoc_string::{HeredocKind, HeredocString};
+use crate::heredoc_string::{HeredocKind, HeredocSegment, HeredocString};
 use crate::line_tokens::*;
 use crate::render_queue_writer::{MAX_LINE_LENGTH, RenderQueueWriter};
 use crate::render_targets::{BaseQueue, Breakable, BreakableCallChainEntry, BreakableEntry};
@@ -66,6 +66,9 @@ pub struct ParserState<'src> {
     insert_user_newlines: bool,
     spaces_after_last_newline: ColNumber,
     scopes: Vec<Vec<Cow<'src, str>>>,
+    /// Whether we're currently rendering inside a squiggly heredoc's content.
+    /// Used to mark nested non-squiggly heredocs so they don't get incorrect indentation.
+    inside_squiggly_heredoc: bool,
 }
 
 impl<'src> ParserState<'src> {
@@ -99,7 +102,9 @@ impl<'src> ParserState<'src> {
     ) where
         F: FnOnce(&mut ParserState<'src>),
     {
-        let mut next_ps = ParserState::render_with_blank_state(self, formatting_func);
+        let mut next_ps = ParserState::new_with_reset_indentation(self);
+        next_ps.inside_squiggly_heredoc = kind.is_squiggly() || self.inside_squiggly_heredoc;
+        formatting_func(&mut next_ps);
 
         self.heredoc_strings
             .extend(next_ps.heredoc_strings.drain(0..));
@@ -112,11 +117,11 @@ impl<'src> ParserState<'src> {
             .extract_comments_to_line(self.current_orig_line_number, end_line);
         self.current_orig_line_number = end_line;
 
-        let data = next_ps.render_to_buffer();
+        let segments = next_ps.render_to_segments();
         self.heredoc_strings.push(HeredocString::new(
             symbol.into(),
             kind,
-            data,
+            segments,
             self.current_spaces(),
         ));
     }
@@ -438,6 +443,12 @@ impl<'src> ParserState<'src> {
         self.spaces_after_last_newline = self.current_spaces();
     }
 
+    /// Emit a hard newline token without triggering heredoc rendering.
+    /// Used when we need to manually control when heredocs are rendered.
+    pub(crate) fn emit_hard_newline_in_heredoc(&mut self) {
+        self.push_concrete_token(ConcreteLineToken::HardNewLine);
+    }
+
     pub(crate) fn wind_dumping_comments_until_line(&mut self, line_number: LineNumber) {
         self.wind_dumping_comments(Some(line_number))
     }
@@ -660,7 +671,11 @@ impl<'src> ParserState<'src> {
     }
 
     pub(crate) fn render_heredocs(&mut self, skip: bool) {
-        while let Some(next_heredoc) = self.heredoc_strings.pop() {
+        // Drain to process heredocs in declaration order (FIFO).
+        // When multiple heredocs are declared on the same line (e.g., #{<<A} middle #{<<B}),
+        // they are pushed in order [A, B], so we iterate in that order to render A before B.
+        let heredocs: Vec<_> = self.heredoc_strings.drain(..).collect();
+        for next_heredoc in heredocs {
             let want_newline = !self.last_token_is_a_newline();
             if want_newline {
                 self.push_concrete_token(ConcreteLineToken::HardNewLine);
@@ -671,18 +686,45 @@ impl<'src> ParserState<'src> {
             let space_count = next_heredoc.indent;
             let string_contents = next_heredoc.render_as_string();
 
+            // When inside a squiggly heredoc context and this is a non-squiggly heredoc,
+            // emit RawHeredocContent tokens so the content won't receive squiggly indentation.
+            let emit_as_raw = self.inside_squiggly_heredoc && !kind.is_squiggly();
+
             if !string_contents.is_empty() {
-                self.push_concrete_token(ConcreteLineToken::DirectPart {
-                    part: Cow::Owned(string_contents),
-                });
+                if emit_as_raw {
+                    self.push_concrete_token(ConcreteLineToken::RawHeredocContent {
+                        content: string_contents,
+                    });
+                } else {
+                    self.push_concrete_token(ConcreteLineToken::DirectPart {
+                        part: Cow::Owned(string_contents),
+                    });
+                }
                 self.emit_newline();
             }
-            if !kind.is_bare() {
-                self.push_concrete_token(ConcreteLineToken::Indent { depth: space_count })
+
+            if emit_as_raw {
+                // For bare/dash heredocs inside squiggly context, emit the close as raw content
+                let close_content = if kind.is_bare() {
+                    symbol.replace('\'', "")
+                } else {
+                    // Dash heredocs can have indented close
+                    format!(
+                        "{}{}",
+                        crate::util::get_indent(space_count as usize),
+                        symbol.replace('\'', "")
+                    )
+                };
+                self.push_concrete_token(ConcreteLineToken::RawHeredocContent {
+                    content: close_content,
+                });
             } else {
-                self.push_concrete_token(ConcreteLineToken::Indent { depth: 0 });
+                if !kind.is_bare() {
+                    self.push_concrete_token(ConcreteLineToken::Indent { depth: space_count });
+                }
+                self.emit_heredoc_close(symbol.replace('\'', ""));
             }
-            self.emit_heredoc_close(symbol.replace('\'', ""));
+
             if !skip {
                 self.emit_newline();
             }
@@ -718,6 +760,7 @@ impl<'src> ParserState<'src> {
             insert_user_newlines: true,
             spaces_after_last_newline: 0,
             scopes: vec![vec![]],
+            inside_squiggly_heredoc: false,
         }
     }
 
@@ -812,6 +855,43 @@ impl<'src> ParserState<'src> {
         bufio.into_inner()
     }
 
+    /// Convert the render queue to heredoc segments. This separates content into
+    /// Normal segments (which should receive squiggly indentation) and Raw segments
+    /// (content from nested non-squiggly heredocs that should not be indented).
+    pub(crate) fn render_to_segments(self) -> Vec<HeredocSegment> {
+        // First, render to get the final token stream (resolving breakable entries)
+        let rqw = RenderQueueWriter::new(self.consume_to_render_queue());
+        let final_tokens = rqw.into_tokens();
+
+        let mut segments = Vec::new();
+        let mut current_normal = String::new();
+
+        fn flush_normal(current: &mut String, segments: &mut Vec<HeredocSegment>) {
+            if !current.is_empty() {
+                segments.push(HeredocSegment::Normal(std::mem::take(current)));
+            }
+        }
+
+        for token in final_tokens {
+            if let ConcreteLineToken::RawHeredocContent { content } = token {
+                // Flush accumulated normal content, then add raw segment
+                flush_normal(&mut current_normal, &mut segments);
+                segments.push(HeredocSegment::Raw(content));
+            } else {
+                // Accumulate into normal content
+                current_normal.push_str(&token.into_ruby());
+            }
+        }
+
+        // Flush any remaining normal content
+        flush_normal(&mut current_normal, &mut segments);
+        segments
+    }
+
+    pub(crate) fn has_pending_heredocs(&self) -> bool {
+        !self.heredoc_strings.is_empty()
+    }
+
     pub(crate) fn write<W: Write>(self, writer: &mut W) -> io::Result<()> {
         let rqw = RenderQueueWriter::new(self.consume_to_render_queue());
         rqw.write(writer)
@@ -891,15 +971,6 @@ impl<'src> ParserState<'src> {
             Some(be) => be.push(t),
             None => self.render_queue.push(Self::dangerously_convert(t)),
         }
-    }
-
-    pub(crate) fn render_with_blank_state<F>(ps: &mut ParserState<'src>, f: F) -> ParserState<'src>
-    where
-        F: FnOnce(&mut ParserState<'src>),
-    {
-        let mut next_ps = ParserState::new_with_reset_indentation(ps);
-        f(&mut next_ps);
-        next_ps
     }
 }
 
