@@ -82,6 +82,13 @@ impl BreakableDelims {
         }
     }
 
+    pub fn for_parens() -> Self {
+        BreakableDelims {
+            single_line: DelimiterPair::new("(", ")"),
+            multi_line: DelimiterPair::new("(", ")"),
+        }
+    }
+
     pub fn single_line_open<'src>(&self) -> ConcreteLineToken<'src> {
         ConcreteLineToken::Delim {
             contents: self.single_line.open,

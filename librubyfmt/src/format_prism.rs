@@ -2995,21 +2995,19 @@ fn format_array_pattern_node<'src>(
     });
 }
 
-/// Returns true if a node is inherently multiline (like case, begin, def, class, etc.)
-/// Note: Modifier forms (if/unless/while/until without `end`) are NOT multiline.
-fn is_multiline_node(node: &prism::Node) -> bool {
+/// Returns true if a node could potentially be rendered as multiline.
+fn is_multilinable_node(node: &prism::Node) -> bool {
     use prism::Node;
     match node {
         // Case and begin are always multiline
         Node::CaseNode { .. } | Node::CaseMatchNode { .. } | Node::BeginNode { .. } => true,
-        // If/unless are multiline only if they have an `end` keyword (not modifier form)
+        // `unless` may be converted to block form
+        Node::UnlessNode { .. } => true,
+        // If may be converted to block form (if it's not a ternary)
         Node::IfNode { .. } => {
             let if_node = node.as_if_node().unwrap();
-            if_node.end_keyword_loc().is_some()
-        }
-        Node::UnlessNode { .. } => {
-            let unless_node = node.as_unless_node().unwrap();
-            unless_node.end_keyword_loc().is_some()
+            // Ternary operators (no if_keyword_loc) are NOT multilinable
+            if_node.if_keyword_loc().is_some()
         }
         // While/until are multiline only if they have an `end` keyword (not modifier form)
         Node::WhileNode { .. } => {
@@ -3033,16 +3031,13 @@ fn format_parentheses_node<'src>(
     ps: &mut ParserState<'src>,
     parentheses_node: prism::ParenthesesNode<'src>,
 ) {
-    ps.emit_open_paren();
-
-    let is_multiline = if let Some(body) = parentheses_node.body() {
+    let is_multilinable = if let Some(body) = parentheses_node.body() {
         if let Some(statements_node) = body.as_statements_node() {
-            // Multiline if multiple statements OR if single statement is inherently multiline
             statements_node.body().len() > 1
                 || statements_node
                     .body()
                     .first()
-                    .is_some_and(|node| is_multiline_node(&node))
+                    .is_some_and(|node| is_multilinable_node(&node))
         } else {
             true
         }
@@ -3050,43 +3045,45 @@ fn format_parentheses_node<'src>(
         false
     };
 
-    if let Some(body) = parentheses_node.body() {
+    if is_multilinable {
         ps.with_start_of_line(false, |ps| {
-            if let Some(statements_node) = body.as_statements_node() {
-                let single_inline = statements_node.body().len() == 1
-                    && !statements_node
-                        .body()
-                        .first()
-                        .is_some_and(|node| is_multiline_node(&node));
-                if single_inline {
-                    ps.with_start_of_line(false, |ps| {
-                        format_node(ps, statements_node.body().first().unwrap())
-                    });
-                } else {
-                    ps.emit_newline();
-                    ps.new_block(|ps| {
-                        ps.with_start_of_line(true, |ps| {
+            ps.breakable_of(BreakableDelims::for_parens(), |ps| {
+                if let Some(body) = parentheses_node.body() {
+                    if let Some(statements_node) = body.as_statements_node() {
+                        let statements = statements_node.body();
+                        for (idx, stmt) in statements.iter().enumerate() {
+                            ps.emit_soft_indent();
+                            ps.with_start_of_line(false, |ps| {
+                                format_node(ps, stmt);
+                            });
+                            if idx < statements.len() - 1 {
+                                ps.emit_soft_newline();
+                            }
+                        }
+                    } else {
+                        // I'm *pretty* sure this should always be a StatementsNode, but this is here
+                        // just to be defensive
+                        ps.emit_soft_indent();
+                        ps.with_start_of_line(false, |ps| {
                             format_node(ps, body);
                         });
-                    });
+                    }
                 }
-            } else {
-                // I'm *pretty* sure this should always be a StatementsNode, but this is here
-                // just to be defensive
-                ps.emit_newline();
-                ps.new_block(|ps| {
-                    ps.with_start_of_line(true, |ps| {
-                        format_node(ps, body);
-                    });
-                });
-            }
+            });
         });
-    }
-
-    if is_multiline {
-        ps.emit_indent();
-        ps.emit_paren_expr_close();
     } else {
+        ps.emit_open_paren();
+        if let Some(body) = parentheses_node.body() {
+            ps.with_start_of_line(false, |ps| {
+                if let Some(statements_node) = body.as_statements_node() {
+                    if let Some(stmt) = statements_node.body().first() {
+                        format_node(ps, stmt);
+                    }
+                } else {
+                    format_node(ps, body);
+                }
+            });
+        }
         ps.emit_close_paren();
     }
 }

@@ -60,7 +60,6 @@ pub enum ConcreteLineToken<'src> {
     CloseCurlyBracket,
     OpenParen,
     CloseParen,
-    ParenExprClose,
     Op {
         op: &'src str,
     },
@@ -114,7 +113,7 @@ impl<'src> ConcreteLineToken<'src> {
             Self::OpenCurlyBracket => Cow::Borrowed("{"),
             Self::CloseCurlyBracket => Cow::Borrowed("}"),
             Self::OpenParen => Cow::Borrowed("("),
-            Self::CloseParen | Self::ParenExprClose => Cow::Borrowed(")"),
+            Self::CloseParen => Cow::Borrowed(")"),
             Self::Op { op } => Cow::Borrowed(op),
             Self::DoubleQuote => Cow::Borrowed("\""),
             Self::LTStringContent { content } => content,
@@ -148,8 +147,8 @@ impl<'src> ConcreteLineToken<'src> {
             DirectPart { part: contents } | LTStringContent { content: contents } => contents.len(),
             Comment { contents } | HeredocClose { symbol: contents } => contents.len(),
             HardNewLine | Comma | Space | Dot | OpenSquareBracket | CloseSquareBracket
-            | OpenCurlyBracket | CloseCurlyBracket | OpenParen | CloseParen | ParenExprClose
-            | SingleSlash | DoubleQuote => 1,
+            | OpenCurlyBracket | CloseCurlyBracket | OpenParen | CloseParen | SingleSlash
+            | DoubleQuote => 1,
             DoKeyword | CommaSpace | LonelyOperator | ColonColon => 2,
             DefKeyword | End => 3, // "def"/"..."/"end"
             ClassKeyword => 5,     // "class"
@@ -159,7 +158,7 @@ impl<'src> ConcreteLineToken<'src> {
 
     fn is_block_closing_token(&self) -> bool {
         match self {
-            Self::End | Self::ParenExprClose => true,
+            Self::End => true,
             Self::DirectPart { part } => *part == "}" || *part == "]" || *part == ")",
             Self::Delim { contents } => *contents == "}" || *contents == "]" || *contents == ")",
             _ => false,

@@ -559,10 +559,6 @@ impl<'src> ParserState<'src> {
         self.push_concrete_token(ConcreteLineToken::CloseParen);
     }
 
-    pub(crate) fn emit_paren_expr_close(&mut self) {
-        self.push_concrete_token(ConcreteLineToken::ParenExprClose);
-    }
-
     pub(crate) fn emit_slash(&mut self) {
         self.push_concrete_token(ConcreteLineToken::SingleSlash);
     }
