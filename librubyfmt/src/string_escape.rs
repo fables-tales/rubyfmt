@@ -60,45 +60,38 @@ pub fn escape_word_array_content(
     const TARGET_OPEN: char = '[';
     const TARGET_CLOSE: char = ']';
 
-    let chars: Vec<char> = content.chars().collect();
+    let mut chars = content.chars().peekable();
     let mut output = String::new();
-    let mut i = 0;
 
-    while i < chars.len() {
-        let c = chars[i];
-
-        if c == '\\' && i + 1 < chars.len() {
-            let next = chars[i + 1];
-            if next == '\\' {
-                // Escaped backslash, keep both
-                output.push('\\');
-                output.push('\\');
-                i += 2;
-            } else if next == orig_open_delim || next == orig_close_delim {
-                // Original delimiter was escaped - unescape unless it's also a target delimiter
-                if next == TARGET_OPEN || next == TARGET_CLOSE {
+    while let Some(c) = chars.next() {
+        if c == '\\' {
+            if let Some(&next) = chars.peek() {
+                if next == '\\' {
+                    // Escaped backslash, keep both
                     output.push('\\');
+                    output.push('\\');
+                } else if next == orig_open_delim || next == orig_close_delim {
+                    // Original delimiter was escaped - unescape unless it's also a target delimiter
+                    if next == TARGET_OPEN || next == TARGET_CLOSE {
+                        output.push('\\');
+                    }
+                    output.push(next);
+                } else if next == TARGET_OPEN || next == TARGET_CLOSE {
+                    // Already escaped target delimiter, keep it
+                    output.push('\\');
+                    output.push(next);
+                } else {
+                    output.push('\\');
+                    output.push(next);
                 }
-                output.push(next);
-                i += 2;
-            } else if next == TARGET_OPEN || next == TARGET_CLOSE {
-                // Already escaped target delimiter, keep it
-                output.push('\\');
-                output.push(next);
-                i += 2;
-            } else {
-                output.push('\\');
-                output.push(next);
-                i += 2;
+                chars.next();
             }
         } else if c == TARGET_OPEN || c == TARGET_CLOSE {
             // Unescaped target delimiter needs escaping
             output.push('\\');
             output.push(c);
-            i += 1;
         } else {
             output.push(c);
-            i += 1;
         }
     }
 
@@ -110,51 +103,48 @@ fn escape_string(content: &str, opening_delim: char, closing_delim: char) -> Str
         return content.to_string();
     }
 
-    let chars = content.chars().collect::<Vec<char>>();
-    let mut i = 0;
-
+    let mut chars = content.chars().peekable();
     let mut output = String::new();
 
-    while let Some(i_char) = chars.get(i) {
-        match i_char {
+    while let Some(c) = chars.next() {
+        match c {
             '"' => {
                 output.push('\\');
             }
             '\\' => {
-                if let Some(next_char) = chars.get(i + 1) {
+                if let Some(&next_char) = chars.peek() {
                     match next_char {
                         '\'' => {
                             // String#inspect strips the leading backslash from \', despite it being a valid
                             // escape character in double-quoted strings as well. Leaving the behavior the same
                             // for consistency with the previous behavior.
                             output.push('\'');
-                            i += 2;
+                            chars.next();
                             continue;
                         }
                         // '\\' is considered an escape sequence in both single and double quoted strings
                         // and thus we don't need to "double-escape" it to "\\\\"
                         '\\' => {
                             output.push_str("\\\\");
-                            i += 2;
+                            chars.next();
                             continue;
                         }
                         // '\"' is a slash char and a double-quote char, not an escaped double-quote,
                         // so here we print an escaped slash character and then an escaped quote character: `"\\\""`
                         '"' => {
                             output.push_str("\\\\\\\"");
-                            i += 2;
+                            chars.next();
                             continue;
                         }
                         delim_char
-                            if (*delim_char == opening_delim
-                                || *delim_char == closing_delim)
+                            if (delim_char == opening_delim || delim_char == closing_delim)
                                 // We only care about the "non-standard" delimiters like %() etc.
                                 // For single-quoted strings, these characters should *not* be treated as escape sequences.
                                 && opening_delim != '\'' =>
                         {
                             // In percent-strings, the opening and closing delimiters can be escaped to prevent terminating the string.
-                            output.push(*delim_char);
-                            i += 2;
+                            output.push(delim_char);
+                            chars.next();
                             continue;
                         }
                         // For everything else, this is not an escape sequnce, so we need to
@@ -162,23 +152,23 @@ fn escape_string(content: &str, opening_delim: char, closing_delim: char) -> Str
                         _ => {
                             output.push('\\');
                             output.push('\\');
-                            output.push(*next_char);
-                            i += 2;
+                            output.push(next_char);
+                            chars.next();
                             continue;
                         }
                     }
                 }
             }
             '#' => {
-                if let Some(next_char) = chars.get(i + 1) {
+                if let Some(&next_char) = chars.peek() {
                     match next_char {
                         // These are shorthands for embedded variables when double-quoted,
                         // e.g. "#@foo", "#$GLOBAL", and "#{1}", so they must be escaped
                         '$' | '@' | '{' => {
                             output.push('\\');
-                            output.push(*i_char);
-                            output.push(*next_char);
-                            i += 2;
+                            output.push(c);
+                            output.push(next_char);
+                            chars.next();
                             continue;
                         }
                         _ => {}
@@ -187,9 +177,7 @@ fn escape_string(content: &str, opening_delim: char, closing_delim: char) -> Str
             }
             _ => {}
         };
-
-        output.push(*i_char);
-        i += 1;
+        output.push(c);
     }
 
     output
