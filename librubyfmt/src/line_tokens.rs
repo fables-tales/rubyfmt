@@ -87,6 +87,9 @@ pub enum ConcreteLineToken<'src> {
         kind: HeredocKind,
         symbol: &'src str,
     },
+    RawHeredocContent {
+        content: String,
+    },
 }
 
 impl<'src> ConcreteLineToken<'src> {
@@ -123,6 +126,7 @@ impl<'src> ConcreteLineToken<'src> {
             Self::End => Cow::Borrowed("end"),
             Self::HeredocClose { symbol } => Cow::Owned(symbol),
             Self::HeredocStart { symbol, .. } => Cow::Borrowed(symbol),
+            Self::RawHeredocContent { content } => Cow::Owned(content),
             // no-op, this is purely semantic information
             // for the render queue
             Self::AfterCallChain | Self::BeginCallChainIndent | Self::EndCallChainIndent => {
@@ -145,7 +149,9 @@ impl<'src> ConcreteLineToken<'src> {
             Keyword { keyword: contents } | ConditionalKeyword { contents } => contents.len(),
             Op { op } | MethodName { name: op } => op.len(),
             DirectPart { part: contents } | LTStringContent { content: contents } => contents.len(),
-            Comment { contents } | HeredocClose { symbol: contents } => contents.len(),
+            Comment { contents }
+            | HeredocClose { symbol: contents }
+            | RawHeredocContent { content: contents } => contents.len(),
             HardNewLine | Comma | Space | Dot | OpenSquareBracket | CloseSquareBracket
             | OpenCurlyBracket | CloseCurlyBracket | OpenParen | CloseParen | SingleSlash
             | DoubleQuote => 1,
