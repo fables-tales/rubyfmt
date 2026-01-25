@@ -215,9 +215,8 @@ impl FileComments {
         let split_point = self
             .other_comments
             .partition_point(|(ln, _)| *ln <= line_number);
-        let comments: Vec<_> = self.other_comments.drain(..split_point).collect();
 
-        if comments.is_empty() {
+        if split_point == 0 {
             return Some((
                 CommentBlock::new(lowest_line..line_number + 1, Vec::new()),
                 starting_line_number,
@@ -227,11 +226,14 @@ impl FileComments {
         let mut comment_block_with_spaces: Vec<String> = Vec::new();
         let mut last_line = None;
 
-        if line_difference_requires_newline(comments.first().unwrap().0, starting_line_number) {
+        if line_difference_requires_newline(
+            self.other_comments.first().unwrap().0,
+            starting_line_number,
+        ) {
             comment_block_with_spaces.push(String::new());
         }
 
-        for (index, comment_contents) in comments {
+        for (index, comment_contents) in self.other_comments.drain(..split_point) {
             if let Some(last_line) = last_line
                 && line_difference_requires_newline(index, last_line)
             {
