@@ -936,15 +936,6 @@ impl<'src> ParserState<'src> {
         }
     }
 
-    pub(crate) fn render_with_blank_state<F>(ps: &mut ParserState<'src>, f: F) -> ParserState<'src>
-    where
-        F: FnOnce(&mut ParserState<'src>),
-    {
-        let mut next_ps = ParserState::new_with_reset_indentation(ps);
-        f(&mut next_ps);
-        next_ps
-    }
-
     /// Format a conditional modifier expression (e.g., `x if y` or `x unless y`).
     pub(crate) fn conditional_layout_of<FP, FS>(
         &mut self,
