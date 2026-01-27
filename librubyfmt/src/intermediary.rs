@@ -34,20 +34,6 @@ impl<'src> Intermediary<'src> {
         self.tokens.len()
     }
 
-    // Pops off excessive whitespace for `require` calls followed
-    // by comments. In the intermediary, this looks like
-    // a `require` call followed by
-    // - HardNewline
-    // - HardNewline
-    // - Comment { contents: "" }
-    // - HardNewline
-    // so this method actually pops off the extra empty comment whitespace
-    pub fn pop_require_comment_whitespace(&mut self) {
-        self.tokens.pop();
-        self.tokens.pop();
-        self.index_of_last_hard_newline = self.tokens.len() - 1;
-    }
-
     pub fn pop_heredoc_mistake(&mut self) {
         self.tokens.remove(self.tokens.len() - 1);
         self.tokens.remove(self.tokens.len() - 1);
@@ -134,39 +120,6 @@ impl<'src> Intermediary<'src> {
                 if *name == "require" && self.tokens.last().map(|t| t.is_indent()).unwrap_or(false)
                 {
                     self.current_line_metadata.set_has_require();
-                }
-            }
-            ConcreteLineToken::Comment { .. } => {
-                if matches!(
-                    self.last::<4>(),
-                    Some([
-                        _,
-                        _,
-                        ConcreteLineToken::HardNewLine,
-                        ConcreteLineToken::HardNewLine
-                    ])
-                ) {
-                    let mut module_or_class_before_newline = false;
-                    let mut past_first_two_newlines = 0;
-                    for tok in self.tokens.iter().rev() {
-                        if tok == &ConcreteLineToken::HardNewLine {
-                            if past_first_two_newlines < 2 {
-                                past_first_two_newlines += 1;
-                            } else {
-                                break;
-                            }
-                        }
-                        if tok == &ConcreteLineToken::ModuleKeyword
-                            || tok == &ConcreteLineToken::ClassKeyword
-                        {
-                            module_or_class_before_newline = true;
-                        }
-                    }
-
-                    if module_or_class_before_newline {
-                        self.tokens.pop();
-                        self.index_of_last_hard_newline = self.tokens.len() - 1;
-                    }
                 }
             }
             _ => {}
