@@ -212,16 +212,16 @@ impl FileComments {
         line_number: LineNumber,
     ) -> Option<(CommentBlock, LineNumber)> {
         let lowest_line = self.other_comments.first().map(|(ln, _)| *ln)?;
-        let split_point = self
-            .other_comments
-            .partition_point(|(ln, _)| *ln <= line_number);
-
-        if split_point == 0 {
+        if lowest_line > line_number {
             return Some((
                 CommentBlock::new(lowest_line..line_number + 1, Vec::new()),
                 starting_line_number,
             ));
         }
+
+        let split_point = self
+            .other_comments
+            .partition_point(|(ln, _)| *ln <= line_number);
 
         let mut comment_block_with_spaces: Vec<String> = Vec::new();
         let mut last_line = None;
