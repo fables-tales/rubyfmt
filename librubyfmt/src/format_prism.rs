@@ -1,4 +1,4 @@
-use std::{borrow::Cow, collections::HashSet, sync::LazyLock};
+use std::borrow::Cow;
 
 use ruby_prism as prism;
 
@@ -1632,18 +1632,11 @@ fn format_block_argument_node<'src>(
     }
 }
 
-pub static RSPEC_METHODS: LazyLock<HashSet<&'static str>> =
-    LazyLock::new(|| vec!["it", "describe"].into_iter().collect());
+pub static RSPEC_METHODS: [&str; 2] = ["it", "describe"];
 
-pub static GEMFILE_METHODS: LazyLock<HashSet<&'static str>> =
-    LazyLock::new(|| vec!["gem", "source", "ruby", "group"].into_iter().collect());
+pub static GEMFILE_METHODS: [&str; 4] = ["gem", "source", "ruby", "group"];
 
-pub static OPTIONALLY_PARENTHESIZED_METHODS: LazyLock<HashSet<&'static str>> =
-    LazyLock::new(|| {
-        vec!["super", "require", "require_relative"]
-            .into_iter()
-            .collect::<HashSet<_>>()
-    });
+pub static OPTIONALLY_PARENTHESIZED_METHODS: [&str; 3] = ["super", "require", "require_relative"];
 
 fn use_parens_for_call_node<'src>(
     ps: &ParserState<'src>,
@@ -1712,8 +1705,8 @@ fn use_parens_for_call_node<'src>(
         return false;
     }
 
-    if OPTIONALLY_PARENTHESIZED_METHODS.contains(method_name)
-        || GEMFILE_METHODS.contains(method_name)
+    if OPTIONALLY_PARENTHESIZED_METHODS.contains(&method_name)
+        || GEMFILE_METHODS.contains(&method_name)
     {
         return original_used_parens;
     }
@@ -1733,7 +1726,7 @@ fn use_parens_for_call_node<'src>(
         return true;
     }
 
-    if RSPEC_METHODS.contains(method_name)
+    if RSPEC_METHODS.contains(&method_name)
         && call_node.receiver().is_none()
         // Only elide parens for blocks, not block params (`&blk`)
         && call_node
