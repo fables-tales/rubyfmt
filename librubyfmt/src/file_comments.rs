@@ -213,10 +213,7 @@ impl FileComments {
     ) -> Option<(CommentBlock, LineNumber)> {
         let lowest_line = self.other_comments.first().map(|(ln, _)| *ln)?;
         if lowest_line > line_number {
-            return Some((
-                CommentBlock::new(lowest_line..line_number + 1, Vec::new()),
-                starting_line_number,
-            ));
+            return None;
         }
 
         let split_point = self
