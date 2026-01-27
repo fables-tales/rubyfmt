@@ -1632,12 +1632,11 @@ fn format_block_argument_node<'src>(
     }
 }
 
-pub static RSPEC_METHODS: [&'static str; 2] = ["it", "describe"];
+pub static RSPEC_METHODS: [&str; 2] = ["it", "describe"];
 
-pub static GEMFILE_METHODS: [&'static str; 4] = ["gem", "source", "ruby", "group"];
+pub static GEMFILE_METHODS: [&str; 4] = ["gem", "source", "ruby", "group"];
 
-pub static OPTIONALLY_PARENTHESIZED_METHODS: [&'static str; 3] =
-    ["super", "require", "require_relative"];
+pub static OPTIONALLY_PARENTHESIZED_METHODS: [&str; 3] = ["super", "require", "require_relative"];
 
 fn use_parens_for_call_node<'src>(
     ps: &ParserState<'src>,
