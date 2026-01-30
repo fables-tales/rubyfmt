@@ -25,11 +25,30 @@ impl CommentBlock {
     }
 
     pub fn into_line_tokens<'src>(self) -> impl Iterator<Item = ConcreteLineToken<'src>> {
-        self.comments.into_iter().flat_map(|c| {
-            [
-                ConcreteLineToken::Comment { contents: c },
-                ConcreteLineToken::HardNewLine,
-            ]
+        let comments = self.comments;
+        let len = comments.len();
+
+        comments.into_iter().enumerate().flat_map(move |(i, c)| {
+            if c.is_empty() {
+                // Empty strings represent blank lines
+                // If this is a trailing empty comment (at the end), keep it as an empty Comment token
+                // to bypass the HardNewLine deduplication logic. Otherwise convert to just HardNewLine.
+                if i == len - 1 {
+                    // Trailing empty - keep as empty comment to preserve blank lines
+                    vec![
+                        ConcreteLineToken::Comment { contents: c },
+                        ConcreteLineToken::HardNewLine,
+                    ]
+                } else {
+                    // Between comments - convert to just HardNewLine
+                    vec![ConcreteLineToken::HardNewLine]
+                }
+            } else {
+                vec![
+                    ConcreteLineToken::Comment { contents: c },
+                    ConcreteLineToken::HardNewLine,
+                ]
+            }
         })
     }
 

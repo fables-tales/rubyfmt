@@ -158,13 +158,6 @@ impl<'src> RenderQueueWriter<'src> {
                 accum.insert_trailing_blankline(BlanklineReason::ComesAfterEnd);
             }
 
-            if let Some([HardNewLine, HardNewLine, Comment { contents }, HardNewLine]) =
-                accum.last::<4>()
-                && contents.is_empty()
-            {
-                accum.pop_require_comment_whitespace();
-            }
-
             if let Some(
                 [
                     ConcreteLineToken::End,
