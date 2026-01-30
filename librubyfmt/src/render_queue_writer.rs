@@ -135,18 +135,6 @@ impl<'src> RenderQueueWriter<'src> {
 
             if let Some(
                 [
-                    ConcreteLineToken::HeredocClose { .. },
-                    ConcreteLineToken::HardNewLine,
-                    ConcreteLineToken::Indent { .. },
-                    ConcreteLineToken::HardNewLine,
-                ],
-            ) = accum.last::<4>()
-            {
-                accum.pop_heredoc_mistake();
-            }
-
-            if let Some(
-                [
                     ConcreteLineToken::End,
                     ConcreteLineToken::HardNewLine,
                     ConcreteLineToken::Indent { .. },
@@ -209,21 +197,6 @@ impl<'src> RenderQueueWriter<'src> {
             ) = accum.last::<5>()
             {
                 accum.fix_heredoc_duplicate_indent_mistake();
-            }
-
-            if let Some(
-                [
-                    ConcreteLineToken::HeredocClose { .. },
-                    ConcreteLineToken::HardNewLine,
-                    ConcreteLineToken::Indent { .. },
-                    ConcreteLineToken::Delim { .. },
-                    ConcreteLineToken::Comma,
-                    ConcreteLineToken::HardNewLine,
-                    ConcreteLineToken::HardNewLine,
-                ],
-            ) = accum.last::<7>()
-            {
-                accum.fix_heredoc_arg_newline_mistake();
             }
         }
     }

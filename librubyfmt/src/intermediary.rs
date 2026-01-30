@@ -34,21 +34,9 @@ impl<'src> Intermediary<'src> {
         self.tokens.len()
     }
 
-    pub fn pop_heredoc_mistake(&mut self) {
-        self.tokens.remove(self.tokens.len() - 1);
-        self.tokens.remove(self.tokens.len() - 1);
-        self.index_of_last_hard_newline = self.tokens.len() - 1;
-    }
-
     pub fn fix_heredoc_duplicate_indent_mistake(&mut self) {
         // Remove duplicate indent
         self.tokens.remove(self.tokens.len() - 3);
-    }
-
-    pub fn fix_heredoc_arg_newline_mistake(&mut self) {
-        // Remove duplicate newline
-        self.tokens.remove(self.tokens.len() - 1);
-        self.index_of_last_hard_newline = self.tokens.len() - 1;
     }
 
     pub fn last<const N: usize>(&self) -> Option<&[ConcreteLineToken<'src>; N]> {
