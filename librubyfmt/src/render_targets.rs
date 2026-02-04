@@ -408,6 +408,7 @@ impl<'src> BreakableCallChainEntry<'src> {
 pub enum Breakable<'src> {
     DelimiterExpr(BreakableEntry<'src>),
     CallChain(BreakableCallChainEntry<'src>),
+    InlineConditional(ConditionalLayoutEntry<'src>),
 }
 
 impl<'src> Breakable<'src> {
@@ -415,6 +416,7 @@ impl<'src> Breakable<'src> {
         match self {
             Breakable::DelimiterExpr(be) => be.push(lt),
             Breakable::CallChain(bcce) => bcce.push(lt),
+            Breakable::InlineConditional(cle) => cle.push(lt),
         }
     }
 
@@ -425,6 +427,7 @@ impl<'src> Breakable<'src> {
         match self {
             Breakable::DelimiterExpr(be) => be.insert_at(idx, tokens),
             Breakable::CallChain(bcce) => bcce.insert_at(idx, tokens),
+            Breakable::InlineConditional(cle) => cle.insert_at(idx, tokens),
         }
     }
 
@@ -432,6 +435,9 @@ impl<'src> Breakable<'src> {
         match self {
             Breakable::DelimiterExpr(be) => be.push_line_number(number),
             Breakable::CallChain(bcce) => bcce.push_line_number(number),
+            Breakable::InlineConditional(_) => {
+                // No-op for conditional layout - line numbers are tracked by nested breakables
+            }
         }
     }
 
@@ -439,6 +445,7 @@ impl<'src> Breakable<'src> {
         match self {
             Breakable::DelimiterExpr(be) => be.len(),
             Breakable::CallChain(bcce) => bcce.len(),
+            Breakable::InlineConditional(cle) => cle.len(),
         }
     }
 
@@ -446,6 +453,7 @@ impl<'src> Breakable<'src> {
         match self {
             Breakable::DelimiterExpr(be) => be.last_token_is_a_newline(),
             Breakable::CallChain(bcce) => bcce.last_token_is_a_newline(),
+            Breakable::InlineConditional(cle) => cle.last_token_is_a_newline(),
         }
     }
 
@@ -453,20 +461,35 @@ impl<'src> Breakable<'src> {
         match self {
             Breakable::DelimiterExpr(be) => be.index_of_prev_newline(),
             Breakable::CallChain(bcce) => bcce.index_of_prev_newline(),
+            Breakable::InlineConditional(cle) => cle.index_of_prev_newline(),
         }
     }
 
     pub fn into_breakable_entry(self) -> Option<BreakableEntry<'src>> {
         match self {
             Breakable::DelimiterExpr(be) => Some(be),
-            Breakable::CallChain(_) => None,
+            _ => None,
         }
     }
 
     pub fn into_breakable_call_chain(self) -> Option<BreakableCallChainEntry<'src>> {
         match self {
-            Breakable::DelimiterExpr(_) => None,
             Breakable::CallChain(bcce) => Some(bcce),
+            _ => None,
+        }
+    }
+
+    pub fn into_conditional_layout(self) -> Option<ConditionalLayoutEntry<'src>> {
+        match self {
+            Breakable::InlineConditional(cle) => Some(cle),
+            _ => None,
+        }
+    }
+
+    pub fn as_conditional_layout_mut(&mut self) -> Option<&mut ConditionalLayoutEntry<'src>> {
+        match self {
+            Breakable::InlineConditional(cle) => Some(cle),
+            _ => None,
         }
     }
 }
@@ -476,6 +499,206 @@ impl<'src> Breakable<'src> {
 struct MultilineTracker {
     first_line: Option<LineNumber>,
     is_multiline: bool,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum ConditionalLayoutPhase {
+    Predicate,
+    Statement,
+}
+
+/// An entry that holds predicate and statement tokens for a conditional modifier.
+///
+/// This is used for conditionals like:
+/// - Inline: `statement if predicate`
+/// - Block:  `if predicate\n  statement\nend`
+#[derive(Debug, Clone)]
+pub struct ConditionalLayoutEntry<'src> {
+    predicate_tokens: Vec<AbstractLineToken<'src>>,
+    statement_tokens: Vec<AbstractLineToken<'src>>,
+    keyword: &'static str,
+    indent_depth: u32,
+    phase: ConditionalLayoutPhase,
+}
+
+impl<'src> ConditionalLayoutEntry<'src> {
+    pub fn new(keyword: &'static str, indent_depth: u32) -> Self {
+        ConditionalLayoutEntry {
+            predicate_tokens: Vec::new(),
+            statement_tokens: Vec::new(),
+            keyword,
+            indent_depth,
+            phase: ConditionalLayoutPhase::Predicate,
+        }
+    }
+
+    pub fn push(&mut self, token: AbstractLineToken<'src>) {
+        match self.phase {
+            ConditionalLayoutPhase::Predicate => self.predicate_tokens.push(token),
+            ConditionalLayoutPhase::Statement => self.statement_tokens.push(token),
+        }
+    }
+
+    pub fn switch_to_statement(&mut self) {
+        debug_assert_eq!(
+            self.phase,
+            ConditionalLayoutPhase::Predicate,
+            "switch_to_statement called when not in Predicate phase"
+        );
+        self.phase = ConditionalLayoutPhase::Statement;
+    }
+
+    /// Returns the number of tokens in the current phase's token list.
+    ///
+    /// This returns only the current phase's count (not the combined total) because
+    /// `len()` is used by `shift_comments_at_index` to determine where to insert
+    /// comments. Since we collect into separate token lists per phase, the index
+    /// needs to be relative to whichever list we're currently building.
+    pub fn len(&self) -> usize {
+        match self.phase {
+            ConditionalLayoutPhase::Predicate => self.predicate_tokens.len(),
+            ConditionalLayoutPhase::Statement => self.statement_tokens.len(),
+        }
+    }
+
+    pub fn insert_at(
+        &mut self,
+        idx: usize,
+        tokens: impl IntoIterator<Item = AbstractLineToken<'src>>,
+    ) {
+        match self.phase {
+            ConditionalLayoutPhase::Predicate => insert_at(idx, &mut self.predicate_tokens, tokens),
+            ConditionalLayoutPhase::Statement => insert_at(idx, &mut self.statement_tokens, tokens),
+        }
+    }
+
+    pub fn last_token_is_a_newline(&self) -> bool {
+        let tokens = match self.phase {
+            ConditionalLayoutPhase::Predicate => &self.predicate_tokens,
+            ConditionalLayoutPhase::Statement => &self.statement_tokens,
+        };
+        tokens.last().map(|x| x.is_newline()).unwrap_or(false)
+    }
+
+    pub fn index_of_prev_newline(&self) -> Option<usize> {
+        let tokens = match self.phase {
+            ConditionalLayoutPhase::Predicate => &self.predicate_tokens,
+            ConditionalLayoutPhase::Statement => &self.statement_tokens,
+        };
+        tokens
+            .iter()
+            .rposition(|v| v.is_newline() || v.is_indent())
+            .map(|x| {
+                let token = &tokens[x];
+                if matches!(token, AbstractLineToken::CollapsingNewLine(_))
+                    || matches!(token, AbstractLineToken::SoftNewline(_))
+                {
+                    x + 1
+                } else {
+                    x
+                }
+            })
+    }
+
+    pub fn inline_single_line_len(&self) -> usize {
+        let statement_len: usize = self
+            .statement_tokens
+            .iter()
+            .map(|t| t.single_line_len())
+            .sum();
+        let predicate_len: usize = self
+            .predicate_tokens
+            .iter()
+            .map(|t| t.single_line_len())
+            .sum();
+        // statement + space + keyword + space + predicate
+        statement_len + 1 + self.keyword.len() + 1 + predicate_len
+    }
+
+    fn is_multiline(&self) -> bool {
+        self.statement_tokens.iter().any(Self::token_is_multiline)
+            || self.predicate_tokens.iter().any(Self::token_is_multiline)
+    }
+
+    fn token_is_multiline(token: &AbstractLineToken<'src>) -> bool {
+        match token {
+            AbstractLineToken::ConcreteLineToken(ConcreteLineToken::HardNewLine) => true,
+            AbstractLineToken::BreakableEntry(be) => be.is_multiline(),
+            AbstractLineToken::BreakableCallChainEntry(bcce) => {
+                bcce.is_multiline() || bcce.tokens().iter().any(Self::token_is_multiline)
+            }
+            AbstractLineToken::ConditionalLayoutEntry(cle) => cle.is_multiline(),
+            _ => false,
+        }
+    }
+
+    pub fn should_use_block_form(&self, current_line_length: usize) -> bool {
+        self.is_multiline()
+            || current_line_length + self.inline_single_line_len()
+                > crate::render_queue_writer::MAX_LINE_LENGTH
+    }
+
+    pub fn into_inline_tokens(self) -> Vec<ConcreteLineTokenAndTargets<'src>> {
+        let mut result = Vec::new();
+
+        for token in self.statement_tokens {
+            token.write_single_line(&mut result);
+        }
+
+        result.push(ConcreteLineToken::Space.into());
+        result.push(
+            ConcreteLineToken::ConditionalKeyword {
+                contents: self.keyword,
+            }
+            .into(),
+        );
+        result.push(ConcreteLineToken::Space.into());
+
+        for token in self.predicate_tokens {
+            token.write_single_line(&mut result);
+        }
+
+        result
+    }
+
+    pub fn into_block_tokens(self) -> Vec<ConcreteLineTokenAndTargets<'src>> {
+        let mut result = Vec::new();
+
+        result.push(
+            ConcreteLineToken::ConditionalKeyword {
+                contents: self.keyword,
+            }
+            .into(),
+        );
+        result.push(ConcreteLineToken::Space.into());
+
+        for token in self.predicate_tokens {
+            token.write_multi_line(&mut result);
+        }
+
+        result.push(ConcreteLineToken::HardNewLine.into());
+        result.push(
+            ConcreteLineToken::Indent {
+                depth: self.indent_depth + 2,
+            }
+            .into(),
+        );
+
+        for token in self.statement_tokens {
+            token.write_multi_line(&mut result);
+        }
+
+        result.push(ConcreteLineToken::HardNewLine.into());
+        result.push(
+            ConcreteLineToken::Indent {
+                depth: self.indent_depth,
+            }
+            .into(),
+        );
+        result.push(ConcreteLineToken::End.into());
+
+        result
+    }
 }
 
 impl MultilineTracker {

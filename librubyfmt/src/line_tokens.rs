@@ -1,5 +1,5 @@
 use crate::heredoc_string::{HeredocKind, HeredocString};
-use crate::render_targets::{BreakableCallChainEntry, BreakableEntry};
+use crate::render_targets::{BreakableCallChainEntry, BreakableEntry, ConditionalLayoutEntry};
 use crate::types::ColNumber;
 use crate::util::get_indent;
 use std::borrow::Cow;
@@ -229,6 +229,9 @@ impl<'src> From<ConcreteLineTokenAndTargets<'src>> for AbstractLineToken<'src> {
             ConcreteLineTokenAndTargets::BreakableCallChainEntry(bcce) => {
                 AbstractLineToken::BreakableCallChainEntry(bcce)
             }
+            ConcreteLineTokenAndTargets::ConditionalLayoutEntry(cle) => {
+                AbstractLineToken::ConditionalLayoutEntry(cle)
+            }
         }
     }
 }
@@ -238,6 +241,7 @@ pub enum ConcreteLineTokenAndTargets<'src> {
     ConcreteLineToken(ConcreteLineToken<'src>),
     BreakableEntry(BreakableEntry<'src>),
     BreakableCallChainEntry(BreakableCallChainEntry<'src>),
+    ConditionalLayoutEntry(ConditionalLayoutEntry<'src>),
 }
 
 impl<'src> ConcreteLineTokenAndTargets<'src> {
@@ -265,6 +269,7 @@ pub enum AbstractLineToken<'src> {
     SoftIndent { depth: u32 },
     BreakableEntry(BreakableEntry<'src>),
     BreakableCallChainEntry(BreakableCallChainEntry<'src>),
+    ConditionalLayoutEntry(ConditionalLayoutEntry<'src>),
 }
 
 impl<'src> AbstractLineToken<'src> {
@@ -292,6 +297,9 @@ impl<'src> AbstractLineToken<'src> {
             Self::BreakableCallChainEntry(bcce) => {
                 out.push(ConcreteLineTokenAndTargets::BreakableCallChainEntry(bcce));
             }
+            Self::ConditionalLayoutEntry(cle) => {
+                out.push(ConcreteLineTokenAndTargets::ConditionalLayoutEntry(cle))
+            }
         }
     }
 
@@ -318,6 +326,9 @@ impl<'src> AbstractLineToken<'src> {
             }
             Self::BreakableCallChainEntry(bcce) => {
                 out.push(ConcreteLineTokenAndTargets::BreakableCallChainEntry(bcce));
+            }
+            Self::ConditionalLayoutEntry(cle) => {
+                out.push(ConcreteLineTokenAndTargets::ConditionalLayoutEntry(cle))
             }
         }
     }
@@ -390,6 +401,7 @@ impl<'src> AbstractLineToken<'src> {
             Self::ConcreteLineToken(clt) => clt.len(),
             Self::BreakableEntry(be) => be.single_line_len(),
             Self::BreakableCallChainEntry(bcce) => bcce.single_line_len(),
+            Self::ConditionalLayoutEntry(cle) => cle.inline_single_line_len(),
         }
     }
 }

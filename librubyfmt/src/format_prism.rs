@@ -3757,47 +3757,29 @@ fn format_conditional_node<'src>(
         // For while/until, always use the inline format for modifiers, since
         //   some transformations are unsafe.
         // For if/unless, check if we should convert to block form.
-        let should_convert_to_block = match conditional {
-            Conditional::While(_) | Conditional::Until(_) => false,
-            Conditional::If(_) | Conditional::Unless(_) => {
-                let predicate = conditional.predicate();
-                let statements = conditional.statements();
-                let predicate_start_line =
-                    ps.get_line_number_for_offset(predicate.location().start_offset());
-                let predicate_end_line =
-                    ps.get_line_number_for_offset(predicate.location().end_offset());
-                if predicate_start_line != predicate_end_line {
-                    true
-                } else {
-                    // Check if it renders multiline due to length
-                    ps.will_render_as_multiline(|next_ps| {
-                        format_inline_conditional(
-                            next_ps,
-                            predicate,
-                            statements,
-                            conditional_keyword,
-                        )
-                    })
-                }
+        match conditional {
+            Conditional::While(_) | Conditional::Until(_) => {
+                // Always use inline format for while/until modifiers
+                format_inline_conditional(
+                    ps,
+                    conditional.predicate(),
+                    conditional.statements(),
+                    conditional_keyword,
+                );
             }
-        };
-
-        if should_convert_to_block {
-            format_conditional_block_form(
-                ps,
-                conditional_keyword,
-                conditional.predicate(),
-                conditional.statements(),
-                conditional.subsequent_or_else(),
-                requires_end_keyword,
-            );
-        } else {
-            format_inline_conditional(
-                ps,
-                conditional.predicate(),
-                conditional.statements(),
-                conditional_keyword,
-            );
+            Conditional::If(_) | Conditional::Unless(_) => {
+                ps.conditional_layout_of(
+                    conditional_keyword,
+                    |ps| format_node(ps, conditional.predicate()),
+                    |ps| {
+                        if let Some(statements) = conditional.statements()
+                            && let Some(first_statement) = statements.body().iter().next()
+                        {
+                            format_node(ps, first_statement);
+                        }
+                    },
+                );
+            }
         }
     } else {
         format_conditional_block_form(
