@@ -75,11 +75,7 @@ pub struct ParserState<'src> {
 
 impl<'src> ParserState<'src> {
     pub(crate) fn scope_has_variable(&self, s: &str) -> bool {
-        self.scopes
-            .last()
-            .expect("it's never empty")
-            .iter()
-            .any(|e| *e == s)
+        self.scopes.last().expect("it's never empty").contains(&s)
     }
     pub(crate) fn new_scope<F>(&mut self, f: F)
     where
@@ -90,10 +86,7 @@ impl<'src> ParserState<'src> {
         self.scopes.pop();
     }
     pub(crate) fn bind_variable(&mut self, s: &'src str) {
-        self.scopes
-            .last_mut()
-            .expect("it's never empty")
-            .push(s.into());
+        self.scopes.last_mut().expect("it's never empty").push(s);
     }
     pub(crate) fn push_heredoc_content<F>(
         &mut self,
