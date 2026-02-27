@@ -302,7 +302,7 @@ impl<'src> RenderQueueWriter<'src> {
 
         for line_token in tokens.into_iter() {
             let s = line_token.into_ruby();
-            writer.write_all(s.as_bytes())?;
+            writer.write_all(&s)?;
         }
         Ok(())
     }

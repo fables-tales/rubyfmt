@@ -61,7 +61,7 @@ pub enum ConcreteLineToken<'src> {
     OpenParen,
     CloseParen,
     Op {
-        op: &'src str,
+        op: &'src [u8],
     },
     DoubleQuote,
     LTStringContent {
@@ -93,44 +93,53 @@ pub enum ConcreteLineToken<'src> {
 }
 
 impl<'src> ConcreteLineToken<'src> {
-    pub fn into_ruby(self) -> Cow<'src, str> {
+    pub fn into_ruby(self) -> Cow<'src, [u8]> {
         match self {
-            Self::HardNewLine => Cow::Borrowed("\n"),
-            Self::Indent { depth } => get_indent(depth as usize),
-            Self::Keyword { keyword } => Cow::Borrowed(keyword),
-            Self::ConditionalKeyword { contents } => Cow::Borrowed(contents),
-            Self::DoKeyword => Cow::Borrowed("do"),
-            Self::ClassKeyword => Cow::Borrowed("class"),
-            Self::DefKeyword => Cow::Borrowed("def"),
-            Self::ModuleKeyword => Cow::Borrowed("module"),
-            Self::DirectPart { part } => part,
-            Self::MethodName { name } => Cow::Borrowed(name),
-            Self::CommaSpace => Cow::Borrowed(", "),
-            Self::Comma => Cow::Borrowed(","),
-            Self::Space => Cow::Borrowed(" "),
-            Self::Dot => Cow::Borrowed("."),
-            Self::ColonColon => Cow::Borrowed("::"),
-            Self::LonelyOperator => Cow::Borrowed("&."),
-            Self::OpenSquareBracket => Cow::Borrowed("["),
-            Self::CloseSquareBracket => Cow::Borrowed("]"),
-            Self::OpenCurlyBracket => Cow::Borrowed("{"),
-            Self::CloseCurlyBracket => Cow::Borrowed("}"),
-            Self::OpenParen => Cow::Borrowed("("),
-            Self::CloseParen => Cow::Borrowed(")"),
+            Self::HardNewLine => Cow::Borrowed(b"\n"),
+            Self::Indent { depth } => match get_indent(depth as usize) {
+                Cow::Borrowed(s) => Cow::Borrowed(s.as_bytes()),
+                Cow::Owned(s) => Cow::Owned(s.into_bytes()),
+            },
+            Self::Keyword { keyword } => Cow::Borrowed(keyword.as_bytes()),
+            Self::ConditionalKeyword { contents } => Cow::Borrowed(contents.as_bytes()),
+            Self::DoKeyword => Cow::Borrowed(b"do"),
+            Self::ClassKeyword => Cow::Borrowed(b"class"),
+            Self::DefKeyword => Cow::Borrowed(b"def"),
+            Self::ModuleKeyword => Cow::Borrowed(b"module"),
+            Self::DirectPart { part } => match part {
+                Cow::Borrowed(s) => Cow::Borrowed(s.as_bytes()),
+                Cow::Owned(s) => Cow::Owned(s.into_bytes()),
+            },
+            Self::MethodName { name } => Cow::Borrowed(name.as_bytes()),
+            Self::CommaSpace => Cow::Borrowed(b", "),
+            Self::Comma => Cow::Borrowed(b","),
+            Self::Space => Cow::Borrowed(b" "),
+            Self::Dot => Cow::Borrowed(b"."),
+            Self::ColonColon => Cow::Borrowed(b"::"),
+            Self::LonelyOperator => Cow::Borrowed(b"&."),
+            Self::OpenSquareBracket => Cow::Borrowed(b"["),
+            Self::CloseSquareBracket => Cow::Borrowed(b"]"),
+            Self::OpenCurlyBracket => Cow::Borrowed(b"{"),
+            Self::CloseCurlyBracket => Cow::Borrowed(b"}"),
+            Self::OpenParen => Cow::Borrowed(b"("),
+            Self::CloseParen => Cow::Borrowed(b")"),
             Self::Op { op } => Cow::Borrowed(op),
-            Self::DoubleQuote => Cow::Borrowed("\""),
-            Self::LTStringContent { content } => content,
-            Self::SingleSlash => Cow::Borrowed("\\"),
-            Self::Comment { contents } => Cow::Owned(contents),
-            Self::Delim { contents } => Cow::Borrowed(contents),
-            Self::End => Cow::Borrowed("end"),
-            Self::HeredocClose { symbol } => Cow::Owned(symbol),
-            Self::HeredocStart { symbol, .. } => Cow::Borrowed(symbol),
-            Self::RawHeredocContent { content } => Cow::Owned(content),
+            Self::DoubleQuote => Cow::Borrowed(b"\""),
+            Self::LTStringContent { content } => match content {
+                Cow::Borrowed(s) => Cow::Borrowed(s.as_bytes()),
+                Cow::Owned(s) => Cow::Owned(s.into_bytes()),
+            },
+            Self::SingleSlash => Cow::Borrowed(b"\\"),
+            Self::Comment { contents } => Cow::Owned(contents.into()),
+            Self::Delim { contents } => Cow::Borrowed(contents.as_bytes()),
+            Self::End => Cow::Borrowed(b"end"),
+            Self::HeredocClose { symbol } => Cow::Owned(symbol.into()),
+            Self::HeredocStart { symbol, .. } => Cow::Borrowed(symbol.as_bytes()),
+            Self::RawHeredocContent { content } => Cow::Owned(content.into()),
             // no-op, this is purely semantic information
             // for the render queue
             Self::AfterCallChain | Self::BeginCallChainIndent | Self::EndCallChainIndent => {
-                Cow::Borrowed("")
+                Cow::Borrowed(b"")
             }
         }
     }
@@ -147,7 +156,8 @@ impl<'src> ConcreteLineToken<'src> {
             Delim { contents } => contents.len(),
             Indent { depth } => *depth as usize,
             Keyword { keyword: contents } | ConditionalKeyword { contents } => contents.len(),
-            Op { op } | MethodName { name: op } => op.len(),
+            Op { op } => op.len(),
+            MethodName { name: op } => op.len(),
             DirectPart { part: contents } | LTStringContent { content: contents } => contents.len(),
             Comment { contents }
             | HeredocClose { symbol: contents }
