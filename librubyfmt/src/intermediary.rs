@@ -105,7 +105,7 @@ impl<'src> Intermediary<'src> {
                 }
             }
             ConcreteLineToken::MethodName { name } => {
-                if *name == "require" && self.tokens.last().map(|t| t.is_indent()).unwrap_or(false)
+                if *name == b"require" && self.tokens.last().map(|t| t.is_indent()).unwrap_or(false)
                 {
                     self.current_line_metadata.set_has_require();
                 }
