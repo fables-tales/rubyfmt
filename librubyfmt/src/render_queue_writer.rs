@@ -8,7 +8,6 @@ use crate::render_targets::{
 use crate::util::get_indent;
 #[cfg(debug_assertions)]
 use log::debug;
-use std::borrow::Cow;
 use std::io::{self, Write};
 
 pub const MAX_LINE_LENGTH: usize = 120;
@@ -86,16 +85,19 @@ impl<'src> RenderQueueWriter<'src> {
                         .unwrap_or(false)
                     {
                         let indent = get_indent(accum.additional_indent as usize * 2);
-                        let new_contents = part
-                            .split('\n')
-                            .map(|p| {
-                                if p.is_empty() {
-                                    return p.into();
-                                }
-                                format!("{}{}", indent, p).into()
-                            })
-                            .collect::<Vec<Cow<'_, str>>>()
-                            .join("\n");
+                        let indent_bytes = indent.as_bytes();
+                        let mut new_contents = Vec::new();
+                        let parts = part.split(|&b| b == b'\n');
+
+                        for (i, p) in parts.enumerate() {
+                            if i > 0 {
+                                new_contents.push(b'\n');
+                            }
+                            if !p.is_empty() {
+                                new_contents.extend_from_slice(indent_bytes);
+                            }
+                            new_contents.extend_from_slice(p);
+                        }
                         next_token = clats_direct_part(new_contents)
                     }
                 }
