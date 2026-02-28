@@ -1245,7 +1245,7 @@ fn format_flip_flop_node<'src>(
         if let Some(left) = flip_flop_node.left() {
             format_node(ps, left);
         }
-        ps.emit_op(loc_to_str(flip_flop_node.operator_loc()));
+        ps.emit_op(flip_flop_node.operator_loc().as_slice());
         if let Some(right) = flip_flop_node.right() {
             format_node(ps, right);
         }
@@ -1285,7 +1285,7 @@ fn format_class_variable_and_write_node<'src>(
     format_write_node(
         ps,
         const_to_str(class_variable_and_write_node.name()),
-        "&&=",
+        b"&&=",
         class_variable_and_write_node.value(),
     );
 }
@@ -1297,7 +1297,9 @@ fn format_class_variable_operator_write_node<'src>(
     format_write_node(
         ps,
         const_to_str(class_variable_operator_write_node.name()),
-        loc_to_str(class_variable_operator_write_node.binary_operator_loc()),
+        class_variable_operator_write_node
+            .binary_operator_loc()
+            .as_slice(),
         class_variable_operator_write_node.value(),
     );
 }
@@ -1309,7 +1311,7 @@ fn format_class_variable_or_write_node<'src>(
     format_write_node(
         ps,
         const_to_str(class_variable_or_write_node.name()),
-        "||=",
+        b"||=",
         class_variable_or_write_node.value(),
     );
 }
@@ -1336,7 +1338,7 @@ fn format_class_variable_write_node<'src>(
     format_write_node(
         ps,
         const_to_str(class_variable_write_node.name()),
-        "=",
+        b"=",
         class_variable_write_node.value(),
     );
 }
@@ -1432,7 +1434,7 @@ fn format_def_body<'src>(ps: &mut ParserState<'src>, def_node: prism::DefNode<'s
                     });
                 } else {
                     ps.emit_space();
-                    ps.emit_op("=");
+                    ps.emit_op(b"=");
                     ps.emit_space();
 
                     ps.with_start_of_line(
@@ -2233,7 +2235,7 @@ fn format_call_chain_segments<'src>(
         // Attr_write values are formatted after the breakable so they break independently
         if let Some(value) = trailing_attr_write_value {
             ps.emit_space();
-            ps.emit_op("=");
+            ps.emit_op(b"=");
             ps.emit_space();
             ps.with_start_of_line(false, |ps| format_node(ps, value));
         }
@@ -2507,7 +2509,7 @@ fn format_call_and_write_node<'src>(
     }
 
     ps.emit_space();
-    ps.emit_op("&&=");
+    ps.emit_op(b"&&=");
     ps.emit_space();
 
     ps.with_start_of_line(false, |ps| format_node(ps, call_and_write_node.value()));
@@ -2530,7 +2532,7 @@ fn format_call_operator_write_node<'src>(
     }
 
     ps.emit_space();
-    ps.emit_op(loc_to_str(call_operator_write_node.binary_operator_loc()));
+    ps.emit_op(call_operator_write_node.binary_operator_loc().as_slice());
     ps.emit_space();
 
     ps.with_start_of_line(false, |ps| {
@@ -2555,7 +2557,7 @@ fn format_call_or_write_node<'src>(
     }
 
     ps.emit_space();
-    ps.emit_op("||=");
+    ps.emit_op(b"||=");
     ps.emit_space();
 
     ps.with_start_of_line(false, |ps| format_node(ps, call_or_write_node.value()));
@@ -3298,7 +3300,7 @@ fn format_local_variable_and_write_node<'src>(
     format_write_node(
         ps,
         variable_name,
-        "&&=",
+        b"&&=",
         local_variable_and_write_node.value(),
     );
 }
@@ -3312,7 +3314,9 @@ fn format_local_variable_operator_write_node<'src>(
     format_write_node(
         ps,
         variable_name,
-        loc_to_str(local_variable_operator_write_node.binary_operator_loc()),
+        local_variable_operator_write_node
+            .binary_operator_loc()
+            .as_slice(),
         local_variable_operator_write_node.value(),
     );
 }
@@ -3326,7 +3330,7 @@ fn format_local_variable_or_write_node<'src>(
     format_write_node(
         ps,
         variable_name,
-        "||=",
+        b"||=",
         local_variable_or_write_node.value(),
     );
 }
@@ -3354,7 +3358,7 @@ fn format_local_variable_write_node<'src>(
 ) {
     let name = const_to_str(local_variable_write_node.name());
     ps.bind_variable(name);
-    format_write_node(ps, name, "=", local_variable_write_node.value());
+    format_write_node(ps, name, b"=", local_variable_write_node.value());
 }
 
 fn format_splat_node<'src>(ps: &mut ParserState<'src>, splat_node: prism::SplatNode<'src>) {
@@ -3378,7 +3382,7 @@ fn format_instance_variable_write_node<'src>(
     format_write_node(
         ps,
         const_to_str(instance_variable_write_node.name()),
-        "=",
+        b"=",
         instance_variable_write_node.value(),
     );
 }
@@ -3492,7 +3496,7 @@ fn format_global_variable_and_write_node<'src>(
     format_write_node(
         ps,
         const_to_str(global_variable_and_write_node.name()),
-        "&&=",
+        b"&&=",
         global_variable_and_write_node.value(),
     );
 }
@@ -3504,7 +3508,9 @@ fn format_global_variable_operator_write_node<'src>(
     format_write_node(
         ps,
         const_to_str(global_variable_operator_write_node.name()),
-        loc_to_str(global_variable_operator_write_node.binary_operator_loc()),
+        global_variable_operator_write_node
+            .binary_operator_loc()
+            .as_slice(),
         global_variable_operator_write_node.value(),
     );
 }
@@ -3516,7 +3522,7 @@ fn format_global_variable_or_write_node<'src>(
     format_write_node(
         ps,
         const_to_str(global_variable_or_write_node.name()),
-        "||=",
+        b"||=",
         global_variable_or_write_node.value(),
     );
 }
@@ -3542,7 +3548,7 @@ fn format_global_variable_write_node<'src>(
     format_write_node(
         ps,
         const_to_str(global_variable_write_node.name()),
-        "=",
+        b"=",
         global_variable_write_node.value(),
     );
 }
@@ -3931,7 +3937,7 @@ fn format_index_and_write_node<'src>(
     }
 
     ps.emit_space();
-    ps.emit_op("&&=");
+    ps.emit_op(b"&&=");
     ps.emit_space();
 
     ps.with_start_of_line(false, |ps| format_node(ps, index_and_write_node.value()));
@@ -3952,7 +3958,7 @@ fn format_index_operator_write_node<'src>(
     }
 
     ps.emit_space();
-    ps.emit_op(loc_to_str(index_operator_write_node.binary_operator_loc()));
+    ps.emit_op(index_operator_write_node.binary_operator_loc().as_slice());
     ps.emit_space();
 
     ps.with_start_of_line(false, |ps| {
@@ -3975,7 +3981,7 @@ fn format_index_or_write_node<'src>(
     }
 
     ps.emit_space();
-    ps.emit_op("||=");
+    ps.emit_op(b"||=");
     ps.emit_space();
 
     ps.with_start_of_line(false, |ps| format_node(ps, index_or_write_node.value()));
@@ -4001,7 +4007,7 @@ fn format_instance_variable_and_write_node<'src>(
     format_write_node(
         ps,
         const_to_str(instance_variable_and_write_node.name()),
-        "&&=",
+        b"&&=",
         instance_variable_and_write_node.value(),
     );
 }
@@ -4013,7 +4019,9 @@ fn format_instance_variable_operator_write_node<'src>(
     format_write_node(
         ps,
         const_to_str(instance_variable_operator_write_node.name()),
-        loc_to_str(instance_variable_operator_write_node.binary_operator_loc()),
+        instance_variable_operator_write_node
+            .binary_operator_loc()
+            .as_slice(),
         instance_variable_operator_write_node.value(),
     );
 }
@@ -4025,7 +4033,7 @@ fn format_instance_variable_or_write_node<'src>(
     format_write_node(
         ps,
         const_to_str(instance_variable_or_write_node.name()),
-        "||=",
+        b"||=",
         instance_variable_or_write_node.value(),
     );
 }
@@ -4082,7 +4090,7 @@ fn format_constant_and_write_node<'src>(
     format_write_node(
         ps,
         const_to_str(constant_and_write_node.name()),
-        "&&=",
+        b"&&=",
         constant_and_write_node.value(),
     );
 }
@@ -4094,7 +4102,9 @@ fn format_constant_operator_write_node<'src>(
     format_write_node(
         ps,
         const_to_str(constant_operator_write_node.name()),
-        loc_to_str(constant_operator_write_node.binary_operator_loc()),
+        constant_operator_write_node
+            .binary_operator_loc()
+            .as_slice(),
         constant_operator_write_node.value(),
     );
 }
@@ -4106,7 +4116,7 @@ fn format_constant_or_write_node<'src>(
     format_write_node(
         ps,
         const_to_str(constant_or_write_node.name()),
-        "||=",
+        b"||=",
         constant_or_write_node.value(),
     );
 }
@@ -4118,7 +4128,7 @@ fn format_constant_path_and_write_node<'src>(
     format_constant_path_write(
         ps,
         constant_path_and_write_node.target(),
-        "&&=",
+        b"&&=",
         constant_path_and_write_node.value(),
     );
 }
@@ -4130,7 +4140,9 @@ fn format_constant_path_operator_write_node<'src>(
     format_constant_path_write(
         ps,
         constant_path_operator_write_node.target(),
-        loc_to_str(constant_path_operator_write_node.binary_operator_loc()),
+        constant_path_operator_write_node
+            .binary_operator_loc()
+            .as_slice(),
         constant_path_operator_write_node.value(),
     );
 }
@@ -4142,7 +4154,7 @@ fn format_constant_path_or_write_node<'src>(
     format_constant_path_write(
         ps,
         constant_path_or_write_node.target(),
-        "||=",
+        b"||=",
         constant_path_or_write_node.value(),
     );
 }
@@ -4174,7 +4186,7 @@ fn format_constant_path_write_node<'src>(
     format_constant_path_write(
         ps,
         constant_path_write_node.target(),
-        "=",
+        b"=",
         constant_path_write_node.value(),
     );
 }
@@ -4193,7 +4205,7 @@ fn format_constant_target_node<'src>(
 fn format_constant_path_write<'src>(
     ps: &mut ParserState<'src>,
     target: prism::ConstantPathNode<'src>,
-    op: &'src str,
+    op: &'src [u8],
     value: prism::Node<'src>,
 ) {
     format_constant_path_node(ps, target);
@@ -4210,7 +4222,7 @@ fn format_constant_write_node<'src>(
     format_write_node(
         ps,
         const_to_str(constant_write_node.name()),
-        "=",
+        b"=",
         constant_write_node.value(),
     );
 }
@@ -4475,7 +4487,7 @@ fn format_optional_keyword_parameter_node<'src>(
     let name = const_to_str(optional_keyword_parameter_node.name());
     ps.bind_variable(name);
     ps.emit_ident(name);
-    ps.emit_op(":");
+    ps.emit_op(b":");
     ps.emit_space();
     ps.with_start_of_line(false, |ps| {
         format_node(ps, optional_keyword_parameter_node.value());
@@ -4490,7 +4502,7 @@ fn format_optional_parameter_node<'src>(
     ps.bind_variable(name);
     ps.emit_ident(name);
     ps.emit_space();
-    ps.emit_op("=");
+    ps.emit_op(b"=");
     ps.emit_space();
     format_node(ps, optional_parameter_node.value());
 }
@@ -4581,7 +4593,7 @@ fn format_range_node<'src>(ps: &mut ParserState<'src>, range_node: prism::RangeN
         if let Some(left) = range_node.left() {
             format_node(ps, left);
         }
-        ps.emit_op(loc_to_str(range_node.operator_loc()));
+        ps.emit_op(range_node.operator_loc().as_slice());
         if let Some(right) = range_node.right() {
             format_node(ps, right);
         }
@@ -4655,7 +4667,7 @@ fn format_rescue_node<'src>(ps: &mut ParserState<'src>, rescue_node: prism::Resc
                 }
                 if let Some(ref_node) = reference {
                     ps.emit_space();
-                    ps.emit_op("=>");
+                    ps.emit_op(b"=>");
                     ps.emit_space();
                     format_node(ps, ref_node);
                 }
@@ -4663,7 +4675,7 @@ fn format_rescue_node<'src>(ps: &mut ParserState<'src>, rescue_node: prism::Resc
         });
     } else if let Some(ref_node) = reference {
         ps.emit_space();
-        ps.emit_op("=>");
+        ps.emit_op(b"=>");
         ps.emit_space();
         ps.with_start_of_line(false, |ps| {
             format_node(ps, ref_node);
@@ -5046,7 +5058,7 @@ fn format_list_like_thing<'src>(
 fn format_write_node<'src>(
     ps: &mut ParserState<'src>,
     name: &'src str,
-    op: &'src str,
+    op: &'src [u8],
     value: prism::Node<'src>,
 ) {
     ps.emit_ident(name);

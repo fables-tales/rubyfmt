@@ -382,7 +382,7 @@ impl<'src> ParserState<'src> {
             .merge(comments.apply_spaces(self.spaces_after_last_newline));
     }
 
-    pub(crate) fn emit_op(&mut self, op: &'src str) {
+    pub(crate) fn emit_op(&mut self, op: &'src [u8]) {
         self.push_concrete_token(ConcreteLineToken::Op { op });
     }
 
@@ -835,7 +835,9 @@ impl<'src> ParserState<'src> {
                 segments.push(HeredocSegment::Raw(content));
             } else {
                 // Accumulate into normal content
-                current_normal.push_str(&token.into_ruby());
+                current_normal
+                    // TODO(@reese): Use &[u8] here when string internals are updated
+                    .push_str(std::str::from_utf8(&token.into_ruby()).unwrap());
             }
         }
 
