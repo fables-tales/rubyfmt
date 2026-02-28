@@ -67,14 +67,14 @@ pub struct ParserState<'src> {
     formatting_context: Vec<FormattingContext>,
     insert_user_newlines: bool,
     spaces_after_last_newline: ColNumber,
-    scopes: Vec<Vec<&'src str>>,
+    scopes: Vec<Vec<&'src [u8]>>,
     /// Whether we're currently rendering inside a squiggly heredoc's content.
     /// Used to mark nested non-squiggly heredocs so they don't get incorrect indentation.
     inside_squiggly_heredoc: bool,
 }
 
 impl<'src> ParserState<'src> {
-    pub(crate) fn scope_has_variable(&self, s: &str) -> bool {
+    pub(crate) fn scope_has_variable(&self, s: &[u8]) -> bool {
         self.scopes.last().expect("it's never empty").contains(&s)
     }
     pub(crate) fn new_scope<F>(&mut self, f: F)
@@ -85,7 +85,7 @@ impl<'src> ParserState<'src> {
         f(self);
         self.scopes.pop();
     }
-    pub(crate) fn bind_variable(&mut self, s: &'src str) {
+    pub(crate) fn bind_variable(&mut self, s: &'src [u8]) {
         self.scopes.last_mut().expect("it's never empty").push(s);
     }
     pub(crate) fn push_heredoc_content<F>(
@@ -405,7 +405,7 @@ impl<'src> ParserState<'src> {
         self.push_concrete_token(ConcreteLineToken::DirectPart { part: ident.into() });
     }
 
-    pub(crate) fn emit_method_name(&mut self, name: &'src str) {
+    pub(crate) fn emit_method_name(&mut self, name: &'src [u8]) {
         self.push_concrete_token(ConcreteLineToken::MethodName { name });
     }
 

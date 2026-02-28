@@ -46,7 +46,7 @@ pub enum ConcreteLineToken<'src> {
         part: Cow<'src, [u8]>,
     },
     MethodName {
-        name: &'src str,
+        name: &'src [u8],
     },
     CommaSpace,
     Comma,
@@ -107,7 +107,7 @@ impl<'src> ConcreteLineToken<'src> {
             Self::DefKeyword => Cow::Borrowed(b"def"),
             Self::ModuleKeyword => Cow::Borrowed(b"module"),
             Self::DirectPart { part } => part,
-            Self::MethodName { name } => Cow::Borrowed(name.as_bytes()),
+            Self::MethodName { name } => Cow::Borrowed(name),
             Self::CommaSpace => Cow::Borrowed(b", "),
             Self::Comma => Cow::Borrowed(b","),
             Self::Space => Cow::Borrowed(b" "),

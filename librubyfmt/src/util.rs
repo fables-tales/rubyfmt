@@ -1,6 +1,6 @@
 use std::borrow::Cow;
 
-use ruby_prism::{ConstantId, Location};
+use ruby_prism::Location;
 
 /// Maximum indent depth we cache without allocation.
 const MAX_CACHED_INDENT: usize = 128;
@@ -23,10 +23,6 @@ pub fn u8_to_str(arr: &[u8]) -> &str {
 
 pub fn u8_to_string(arr: &[u8]) -> String {
     u8_to_str(arr).to_string()
-}
-
-pub fn const_to_str(constant_id: ConstantId<'_>) -> &str {
-    u8_to_str(constant_id.as_slice())
 }
 
 pub fn loc_to_str(loc: Location<'_>) -> &str {
