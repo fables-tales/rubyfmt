@@ -282,7 +282,7 @@ fn iterate_input_files(opts: &CommandlineOpts, f: &dyn Fn((&Path, &String))) {
             if is_path_ignored(path, opts.include_gitignored) {
                 // Print unchanged output for ignored files unless we're in check mode
                 if !opts.check {
-                    puts_stdout(&buffer.as_bytes());
+                    puts_stdout(buffer.as_bytes());
                 }
                 return;
             }
