@@ -9,7 +9,7 @@ pub fn cltats_hard_newline<'src>() -> ConcreteLineTokenAndTargets<'src> {
 }
 
 pub fn clats_direct_part<'src>(
-    part: impl Into<Cow<'src, str>>,
+    part: impl Into<Cow<'src, [u8]>>,
 ) -> ConcreteLineTokenAndTargets<'src> {
     ConcreteLineTokenAndTargets::ConcreteLineToken(ConcreteLineToken::DirectPart {
         part: part.into(),
@@ -43,7 +43,7 @@ pub enum ConcreteLineToken<'src> {
         contents: &'static str,
     },
     DirectPart {
-        part: Cow<'src, str>,
+        part: Cow<'src, [u8]>,
     },
     MethodName {
         name: &'src str,
@@ -106,10 +106,7 @@ impl<'src> ConcreteLineToken<'src> {
             Self::ClassKeyword => Cow::Borrowed(b"class"),
             Self::DefKeyword => Cow::Borrowed(b"def"),
             Self::ModuleKeyword => Cow::Borrowed(b"module"),
-            Self::DirectPart { part } => match part {
-                Cow::Borrowed(s) => Cow::Borrowed(s.as_bytes()),
-                Cow::Owned(s) => Cow::Owned(s.into_bytes()),
-            },
+            Self::DirectPart { part } => part,
             Self::MethodName { name } => Cow::Borrowed(name.as_bytes()),
             Self::CommaSpace => Cow::Borrowed(b", "),
             Self::Comma => Cow::Borrowed(b","),
@@ -158,7 +155,8 @@ impl<'src> ConcreteLineToken<'src> {
             Keyword { keyword: contents } | ConditionalKeyword { contents } => contents.len(),
             Op { op } => op.len(),
             MethodName { name: op } => op.len(),
-            DirectPart { part: contents } | LTStringContent { content: contents } => contents.len(),
+            DirectPart { part } => part.len(),
+            LTStringContent { content } => content.len(),
             Comment { contents }
             | HeredocClose { symbol: contents }
             | RawHeredocContent { content: contents } => contents.len(),
@@ -175,7 +173,9 @@ impl<'src> ConcreteLineToken<'src> {
     fn is_block_closing_token(&self) -> bool {
         match self {
             Self::End => true,
-            Self::DirectPart { part } => *part == "}" || *part == "]" || *part == ")",
+            Self::DirectPart { part } => {
+                part.as_ref() == b"}" || part.as_ref() == b"]" || part.as_ref() == b")"
+            }
             Self::Delim { contents } => *contents == "}" || *contents == "]" || *contents == ")",
             _ => false,
         }
@@ -185,7 +185,7 @@ impl<'src> ConcreteLineToken<'src> {
         match self {
             Self::ConditionalKeyword { contents } => !(*contents == "else" || *contents == "elsif"),
             Self::Dot | Self::LonelyOperator => false,
-            Self::DirectPart { part } => *part != "&.",
+            Self::DirectPart { part } => part.as_ref() != b"&.",
             _ => true,
         }
     }
@@ -202,7 +202,7 @@ impl<'src> ConcreteLineToken<'src> {
         match self {
             Self::HardNewLine => true,
             Self::DirectPart { part } => {
-                if *part == "\n" {
+                if part.as_ref() == b"\n" {
                     panic!("shouldn't ever have a single newline direct part");
                 } else {
                     false
@@ -355,7 +355,7 @@ impl<'src> AbstractLineToken<'src> {
 
                 let s = hds.render_as_string();
                 if !s.is_empty() {
-                    out.push(clats_direct_part(s));
+                    out.push(clats_direct_part(s.into_bytes()));
                     out.push(cltats_hard_newline());
                 }
                 if !kind.is_bare() {

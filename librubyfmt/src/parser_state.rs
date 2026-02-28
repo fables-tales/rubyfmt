@@ -401,7 +401,7 @@ impl<'src> ParserState<'src> {
         self.push_concrete_token(ConcreteLineToken::LTStringContent { content });
     }
 
-    pub(crate) fn emit_ident(&mut self, ident: &'src str) {
+    pub(crate) fn emit_ident(&mut self, ident: &'src [u8]) {
         self.push_concrete_token(ConcreteLineToken::DirectPart { part: ident.into() });
     }
 
@@ -595,7 +595,7 @@ impl<'src> ParserState<'src> {
         self.emit_conditional_keyword("else");
     }
 
-    pub(crate) fn emit_data(&mut self, data: &'src str) {
+    pub(crate) fn emit_data(&mut self, data: &'src [u8]) {
         self.push_concrete_token(ConcreteLineToken::DirectPart {
             part: Cow::Borrowed(data),
         })
@@ -666,7 +666,7 @@ impl<'src> ParserState<'src> {
                     });
                 } else {
                     self.push_concrete_token(ConcreteLineToken::DirectPart {
-                        part: Cow::Owned(string_contents),
+                        part: Cow::Owned(string_contents.into_bytes()),
                     });
                 }
                 self.emit_newline();
