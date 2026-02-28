@@ -61,7 +61,7 @@ pub enum FormatError {
     DiffDetected = 5,
 }
 
-pub fn format_buffer(buf: &str) -> Result<String, RichFormatError> {
+pub fn format_buffer(buf: &str) -> Result<Vec<u8>, RichFormatError> {
     let out_data = vec![];
     let mut output = Cursor::new(out_data);
 
@@ -80,7 +80,7 @@ pub fn format_buffer(buf: &str) -> Result<String, RichFormatError> {
     )?;
 
     output.flush().expect("flushing to a vec should never fail");
-    Ok(String::from_utf8(output.into_inner()).expect("we never write invalid UTF-8"))
+    Ok(output.into_inner())
 }
 
 pub fn toplevel_format_program_with_prism<W: Write>(
