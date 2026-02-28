@@ -885,7 +885,7 @@ fn maybe_render_heredocs_in_string<'src: 'a, 'a>(
         .peek()
         .and_then(|node| {
             node.as_string_node()
-                .map(|sn| loc_to_str(sn.content_loc()).starts_with('\n'))
+                .map(|sn| sn.content_loc().as_slice().starts_with(b"\n"))
         })
         .unwrap_or(false);
     if should_render {
@@ -1725,7 +1725,7 @@ fn use_parens_for_call_node<'src>(
     let has_brace_block = call_node
         .block()
         .and_then(|b| b.as_block_node())
-        .map(|block| loc_to_str(block.opening_loc()) != "do")
+        .map(|block| block.opening_loc().as_slice() != b"do")
         .unwrap_or(false);
 
     if has_arguments && has_brace_block {
@@ -2668,7 +2668,7 @@ fn format_assoc_splat_node<'src>(
 }
 
 fn format_block_node<'src>(ps: &mut ParserState<'src>, block_node: prism::BlockNode<'src>) {
-    if loc_to_str(block_node.opening_loc()) == "do" {
+    if block_node.opening_loc().as_slice() == b"do" {
         ps.new_block(|ps| {
             ps.emit_do_keyword();
             if let Some(block_parameters) = block_node.parameters()
@@ -4231,13 +4231,13 @@ fn format_constant_write_node<'src>(
 }
 
 fn format_lambda_node<'src>(ps: &mut ParserState<'src>, lambda_node: prism::LambdaNode<'src>) {
-    let operator = loc_to_str(lambda_node.operator_loc());
+    let operator = lambda_node.operator_loc().as_slice();
 
     ps.with_start_of_line(false, |ps| {
-        ps.emit_ident(operator.as_bytes());
+        ps.emit_ident(operator);
 
         if let Some(parameters_node) = lambda_node.parameters() {
-            if operator == "->"
+            if operator == b"->"
                 && let Some(block_parameters) = parameters_node.as_block_parameters_node()
             {
                 if block_parameters.parameters().is_some() || !block_parameters.locals().is_empty()
@@ -4257,9 +4257,9 @@ fn format_lambda_node<'src>(ps: &mut ParserState<'src>, lambda_node: prism::Lamb
             }
         }
 
-        let opening = loc_to_str(lambda_node.opening_loc());
+        let opening = lambda_node.opening_loc().as_slice();
 
-        if opening == "do" {
+        if opening == b"do" {
             ps.emit_space();
             ps.new_block(|ps| {
                 ps.emit_do_keyword();
@@ -4953,12 +4953,12 @@ fn is_keyword_expression(node: &prism::Node) -> bool {
         // `and` keyword (but NOT `&&` operator)
         Node::AndNode { .. } => {
             let and_node = node.as_and_node().unwrap();
-            loc_to_str(and_node.operator_loc()) == "and"
+            and_node.operator_loc().as_slice() == b"and"
         }
         // `or` keyword (but NOT `||` operator)
         Node::OrNode { .. } => {
             let or_node = node.as_or_node().unwrap();
-            loc_to_str(or_node.operator_loc()) == "or"
+            or_node.operator_loc().as_slice() == b"or"
         }
         // Case expressions
         Node::CaseNode { .. } | Node::CaseMatchNode { .. } => true,
