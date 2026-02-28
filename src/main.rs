@@ -156,7 +156,7 @@ fn rubyfmt_string(
         ..
     }: &CommandlineOpts,
     buffer: &str,
-) -> Result<Option<String>, rubyfmt::RichFormatError> {
+) -> Result<Option<Vec<u8>>, rubyfmt::RichFormatError> {
     if header_opt_in || header_opt_out {
         // Only look at the first 500 bytes for the magic header.
         // This is for performance
@@ -282,7 +282,7 @@ fn iterate_input_files(opts: &CommandlineOpts, f: &dyn Fn((&Path, &String))) {
             if is_path_ignored(path, opts.include_gitignored) {
                 // Print unchanged output for ignored files unless we're in check mode
                 if !opts.check {
-                    puts_stdout(&buffer);
+                    puts_stdout(&buffer.as_bytes());
                 }
                 return;
             }
@@ -350,7 +350,7 @@ fn iterate_input_files(opts: &CommandlineOpts, f: &dyn Fn((&Path, &String))) {
     }
 }
 
-type FormattingFunc<'a> = &'a dyn Fn((&Path, &String, Option<String>));
+type FormattingFunc<'a> = &'a dyn Fn((&Path, &String, Option<Vec<u8>>));
 
 fn iterate_formatted(opts: &CommandlineOpts, f: FormattingFunc) {
     iterate_input_files(
@@ -365,9 +365,9 @@ fn iterate_formatted(opts: &CommandlineOpts, f: FormattingFunc) {
     );
 }
 
-fn puts_stdout(input: &String) {
+fn puts_stdout(input: &[u8]) {
     io::stdout()
-        .write_all(input.as_bytes())
+        .write_all(input)
         .expect("Could not write to stdout");
     io::stdout().flush().expect("flush works");
 }
@@ -392,7 +392,7 @@ fn main() {
                 &|(file_path, before)| match rubyfmt_string(&opts, before) {
                     Ok(None) => {}
                     Ok(Some(fmtted)) => {
-                        let diff = TextDiff::from_lines(before, &fmtted);
+                        let diff = TextDiff::from_lines(before.as_bytes(), &fmtted);
                         let path_string = file_path.to_str().unwrap();
                         text_diffs.lock().unwrap().push(format!(
                             "{}",
@@ -416,7 +416,7 @@ fn main() {
 
             for diff in all_diffs.iter() {
                 if !diff.is_empty() {
-                    puts_stdout(diff);
+                    puts_stdout(diff.as_bytes());
                     diffs_reported += 1
                 }
             }
@@ -434,12 +434,12 @@ fn main() {
             iterate_formatted(&opts, &|(file_path, before, after)| match after {
                 None => {}
                 Some(fmtted) => {
-                    if fmtted.ne(before) {
+                    if fmtted.ne(before.as_bytes()) {
                         let file_write = OpenOptions::new()
                             .write(true)
                             .truncate(true)
                             .open(file_path)
-                            .and_then(|mut file| file.write_all(fmtted.as_bytes()));
+                            .and_then(|mut file| file.write_all(&fmtted));
 
                         match file_write {
                             Ok(_) => {}
@@ -455,7 +455,7 @@ fn main() {
 
         _ => iterate_formatted(&opts, &|(_, before, after)| match after {
             Some(fmtted) => puts_stdout(&fmtted),
-            None => puts_stdout(before),
+            None => puts_stdout(before.as_bytes()),
         }),
     }
 }

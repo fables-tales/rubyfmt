@@ -17,7 +17,7 @@ ctrlc = { version = "3.2", features = ["termination"] }
 ignore = "0.4.18"
 regex = "1.11.1"
 rubyfmt = { path = "./librubyfmt" }
-similar = "2.1.0"
+similar = { version = "2.7.0", features = ["bytes"] }
 
 [dev-dependencies]
 assert_cmd = "2"
