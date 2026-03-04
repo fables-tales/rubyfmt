@@ -17,12 +17,8 @@ pub fn get_indent(depth: usize) -> Cow<'static, str> {
     }
 }
 
-pub fn u8_to_str(arr: &[u8]) -> &str {
+fn u8_to_str(arr: &[u8]) -> &str {
     std::str::from_utf8(arr).unwrap()
-}
-
-pub fn u8_to_string(arr: &[u8]) -> String {
-    u8_to_str(arr).to_string()
 }
 
 pub fn loc_to_str(loc: Location<'_>) -> &str {

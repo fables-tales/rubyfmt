@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+use std::io::BufRead;
 use std::ops::Range;
 
 use crate::line_tokens::ConcreteLineToken;
@@ -7,11 +9,11 @@ use crate::util::get_indent;
 #[derive(Clone, Debug)]
 pub struct CommentBlock {
     span: Range<LineNumber>,
-    comments: Vec<String>,
+    comments: Vec<Cow<'static, [u8]>>,
 }
 
 impl CommentBlock {
-    pub fn new(span: Range<LineNumber>, comments: Vec<String>) -> Self {
+    pub fn new(span: Range<LineNumber>, comments: Vec<Cow<'static, [u8]>>) -> Self {
         CommentBlock { span, comments }
     }
 
@@ -19,7 +21,7 @@ impl CommentBlock {
         self.span.end
     }
 
-    pub fn add_line(&mut self, line: String) {
+    pub fn add_line(&mut self, line: Cow<'static, [u8]>) {
         self.span.end += 1;
         self.comments.push(line);
     }
@@ -30,7 +32,7 @@ impl CommentBlock {
 
         comments.into_iter().enumerate().flat_map(move |(i, c)| {
             if c.is_empty() {
-                // Empty strings represent blank lines
+                // Empty vecs represent blank lines
                 // If this is a trailing empty comment (at the end), keep it as an empty Comment token
                 // to bypass the HardNewLine deduplication logic. Otherwise convert to just HardNewLine.
                 if i == len - 1 {
@@ -53,12 +55,18 @@ impl CommentBlock {
     }
 
     pub fn apply_spaces(mut self, indent_depth: ColNumber) -> Self {
+        if indent_depth == 0 {
+            return self;
+        }
+
         let indent = get_indent(indent_depth as usize);
         for comment in &mut self.comments {
-            // Ignore empty strings -- these represent blank lines between
+            // Ignore empty vecs -- these represent blank lines between
             // groups of comments
-            if !comment.is_empty() && !comment.starts_with("=begin") {
-                comment.insert_str(0, &indent);
+            if !comment.is_empty() && !comment.starts_with(b"=begin") {
+                comment
+                    .to_mut()
+                    .splice(0..0, indent.as_bytes().iter().copied());
             }
         }
         self
