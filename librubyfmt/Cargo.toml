@@ -7,7 +7,6 @@ edition = "2024"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-fancy-regex = "0.14.0"
 log = { version = "0.4.8", features = ["max_level_debug", "release_max_level_warn"] }
 memchr = "2.7"
 simplelog = "0.12"
