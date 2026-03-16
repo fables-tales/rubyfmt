@@ -69,7 +69,7 @@ pub enum ConcreteLineToken<'src> {
     },
     SingleSlash,
     Comment {
-        contents: String,
+        contents: Cow<'src, [u8]>,
     },
     Delim {
         contents: &'static str,
@@ -127,7 +127,7 @@ impl<'src> ConcreteLineToken<'src> {
                 Cow::Owned(s) => Cow::Owned(s.into_bytes()),
             },
             Self::SingleSlash => Cow::Borrowed(b"\\"),
-            Self::Comment { contents } => Cow::Owned(contents.into()),
+            Self::Comment { contents } => contents,
             Self::Delim { contents } => Cow::Borrowed(contents.as_bytes()),
             Self::End => Cow::Borrowed(b"end"),
             Self::HeredocClose { symbol } => Cow::Owned(symbol.into()),
@@ -157,9 +157,11 @@ impl<'src> ConcreteLineToken<'src> {
             MethodName { name: op } => op.len(),
             DirectPart { part } => part.len(),
             LTStringContent { content } => content.len(),
-            Comment { contents }
-            | HeredocClose { symbol: contents }
-            | RawHeredocContent { content: contents } => contents.len(),
+            Comment { contents } => contents.len(),
+            HeredocClose { symbol: contents } | RawHeredocContent { content: contents } => {
+                contents.len()
+            }
+
             HardNewLine | Comma | Space | Dot | OpenSquareBracket | CloseSquareBracket
             | OpenCurlyBracket | CloseCurlyBracket | OpenParen | CloseParen | SingleSlash
             | DoubleQuote => 1,

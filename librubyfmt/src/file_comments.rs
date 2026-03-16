@@ -1,9 +1,11 @@
+use std::borrow::Cow;
+use std::io::BufRead;
+
 use memchr::memchr_iter;
 
 use crate::comment_block::CommentBlock;
 use crate::parser_state::line_difference_requires_newline;
 use crate::types::{LineNumber, SourceOffset};
-use crate::util::u8_to_string;
 
 /// A vector of offsets in the source code where lines start, which
 /// we use to detect what line a given offset is one.
@@ -51,7 +53,7 @@ impl LineIndex {
 pub struct FileComments {
     start_of_file_contiguous_comment_lines: Option<CommentBlock>,
     /// A list of comments, sorted in order by `LineNumber`
-    other_comments: Vec<(LineNumber, String)>,
+    other_comments: Vec<(LineNumber, Vec<u8>)>,
     /// Sorted list of line numbers that contain Ruby code (not comments/blank)
     lines_with_ruby: Vec<LineNumber>,
     last_lineno: LineNumber,
@@ -96,7 +98,7 @@ impl FileComments {
         for comment in comments {
             file_comments.push_comment(
                 line_index.get_line_number(comment.location().start_offset()) as u64,
-                u8_to_string(comment.text().trim_ascii_end()),
+                comment.text().trim_ascii_end().to_vec(),
             );
             file_comments
                 .comment_start_offsets
@@ -146,7 +148,7 @@ impl FileComments {
     /// Add a new comment. If the beginning of this file is a comment block,
     /// each of those comment lines must be pushed before any other line, or
     /// the end of the block from the start of the file will be incorrectly calculated.
-    fn push_comment(&mut self, line_number: u64, l: String) {
+    fn push_comment(&mut self, line_number: u64, l: Vec<u8>) {
         match (
             &mut self.start_of_file_contiguous_comment_lines,
             line_number,
@@ -158,10 +160,10 @@ impl FileComments {
                      otherwise we won't know where the last line is",
                 );
                 self.start_of_file_contiguous_comment_lines =
-                    Some(CommentBlock::new(1..2, vec![l]));
+                    Some(CommentBlock::new(1..2, vec![l.into()]));
             }
             (Some(sled), _) if sled.following_line_number() == line_number => {
-                sled.add_line(l);
+                sled.add_line(l.into());
             }
             _ => {
                 debug_assert!(
@@ -220,21 +222,22 @@ impl FileComments {
             .other_comments
             .partition_point(|(ln, _)| *ln <= line_number);
 
-        let mut comment_block_with_spaces: Vec<String> = Vec::new();
+        let mut comment_block_with_spaces = Vec::new();
         let mut last_line = None;
 
         if line_difference_requires_newline(
             self.other_comments.first().unwrap().0,
             starting_line_number,
         ) {
-            comment_block_with_spaces.push(String::new());
+            comment_block_with_spaces.push(b"".into());
         }
 
         for (index, comment_contents) in self.other_comments.drain(..split_point) {
+            let comment_contents: Cow<'_, [u8]> = Cow::Owned(comment_contents);
             if let Some(last_line) = last_line
                 && line_difference_requires_newline(index, last_line)
             {
-                comment_block_with_spaces.push(String::new());
+                comment_block_with_spaces.push(b"".into());
             }
             let line_count = comment_contents.lines().count() as u64;
             last_line = Some(index + line_count - 1);
@@ -243,7 +246,7 @@ impl FileComments {
 
         if line_number > last_line.unwrap() + 1 {
             last_line = Some(line_number);
-            comment_block_with_spaces.push(String::new());
+            comment_block_with_spaces.push(b"".into());
         }
 
         Some((

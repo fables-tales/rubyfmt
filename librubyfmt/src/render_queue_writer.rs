@@ -65,14 +65,12 @@ impl<'src> RenderQueueWriter<'src> {
                     contents,
                 }) => {
                     if !contents.is_empty() {
-                        let new_contents = format!(
-                            "{}{}",
-                            get_indent(accum.additional_indent as usize * 2),
-                            contents
-                        );
+                        let indent = get_indent(accum.additional_indent as usize * 2);
+                        let mut new_contents = indent.as_bytes().to_vec();
+                        new_contents.extend_from_slice(contents);
                         next_token = ConcreteLineTokenAndTargets::ConcreteLineToken(
                             ConcreteLineToken::Comment {
-                                contents: new_contents,
+                                contents: new_contents.into(),
                             },
                         )
                     }

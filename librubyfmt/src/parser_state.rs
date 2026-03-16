@@ -471,7 +471,7 @@ impl<'src> ParserState<'src> {
                 && let Some(comments) = self.comments_to_insert.as_mut()
                 && comments.line_count() > 0
             {
-                comments.add_line("".to_string());
+                comments.add_line(b"".into());
             }
             self.on_line(self.current_orig_line_number + 1);
         }
