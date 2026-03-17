@@ -1,7 +1,5 @@
 use std::borrow::Cow;
 
-use fancy_regex::Regex;
-
 pub fn single_to_double_quoted<'src>(
     content: &'src str,
     start_delim: &'src str,
@@ -15,38 +13,70 @@ pub fn single_to_double_quoted<'src>(
         )
         .into()
     } else {
-        // For percent literals, we only care about the delimiter
-        // e.g. for `%<` we're looking for the `<`
-        let start_delim = if let Some(stripped) = start_delim.strip_prefix('%') {
-            stripped
-        } else {
-            start_delim
-        };
-
-        let regexp = Regex::new(&format!(
-            r#"(?<!\\)(\\\\)*(\"|\\{}|\\{})"#,
-            fancy_regex::escape(start_delim),
-            fancy_regex::escape(end_delim)
-        ))
-        .unwrap();
-
-        regexp.replace_all(content, |captures: &fancy_regex::Captures| {
-            // first capture is the entire match
-            let val = captures.get(0).unwrap();
-            let val_str = val.as_str();
-            if val_str.ends_with("\"") {
-                // Ends with a quote, which we transform to `\"`
-                format!("{}\\\"", &val_str[0..(val_str.len() - 1)])
-            } else {
-                // drop unnecessary escape
-                format!(
-                    "{}{}",
-                    &val_str[0..(val_str.len() - 2)],
-                    val_str.chars().last().unwrap()
-                )
-            }
-        })
+        let start_delim_char = start_delim.chars().last().unwrap();
+        let end_delim_char = end_delim.chars().last().unwrap();
+        convert_percent_literal_escapes(content, start_delim_char, end_delim_char)
     }
+}
+
+/// Converts escape sequences in a percent-literal string's content so they are
+/// valid inside a double-quoted string.
+fn convert_percent_literal_escapes(
+    content: &str,
+    start_delim: char,
+    end_delim: char,
+) -> Cow<'_, str> {
+    let first_change_pos = {
+        let mut pos = None;
+        let mut chars = content.char_indices().peekable();
+        while let Some((i, c)) = chars.next() {
+            if c == '"' {
+                pos = Some(i);
+                break;
+            } else if c == '\\'
+                && let Some(&(_, next)) = chars.peek()
+            {
+                if next == start_delim || next == end_delim {
+                    pos = Some(i);
+                    break;
+                }
+                chars.next(); // skip next char — treat \X as a unit
+            }
+        }
+        pos
+    };
+
+    let Some(start) = first_change_pos else {
+        return Cow::Borrowed(content); // No changes
+    };
+
+    let mut output = content[..start].to_string();
+    let mut chars = content[start..].chars().peekable();
+
+    while let Some(c) = chars.next() {
+        if c == '\\' {
+            if let Some(&next) = chars.peek() {
+                if next == start_delim || next == end_delim {
+                    // Drop the delimiter escape: \( → (
+                    output.push(next);
+                    chars.next();
+                } else {
+                    // Write back the original with no changes
+                    output.push('\\');
+                    output.push(next);
+                    chars.next();
+                }
+            } else {
+                output.push('\\');
+            }
+        } else if c == '"' {
+            output.push_str("\\\"");
+        } else {
+            output.push(c);
+        }
+    }
+
+    Cow::Owned(output)
 }
 
 /// Escapes content for word arrays when converting to bracket delimiters.
