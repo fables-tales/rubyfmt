@@ -250,7 +250,7 @@ pub enum ConcreteLineTokenAndTargets<'src> {
     ConditionalLayoutEntry(ConditionalLayoutEntry<'src>),
 }
 
-impl<'src> ConcreteLineTokenAndTargets<'src> {
+impl ConcreteLineTokenAndTargets<'_> {
     pub fn is_newline(&self) -> bool {
         match self {
             Self::ConcreteLineToken(clt) => clt.is_newline(),
