@@ -2261,9 +2261,7 @@ fn format_call_chain_segments<'src>(
     }
 }
 
-fn extract_trailing_arefs<'src>(
-    mut elements: Vec<prism::Node<'src>>,
-) -> (Vec<prism::Node<'src>>, Vec<prism::Node<'src>>) {
+fn extract_trailing_arefs(mut elements: Vec<prism::Node>) -> (Vec<prism::Node>, Vec<prism::Node>) {
     let mut trailing_arefs = Vec::new();
     let has_dot_calls = elements.iter().any(|elem| {
         elem.as_call_node()
@@ -2387,8 +2385,8 @@ fn format_call_body<'src>(
     }
 }
 
-fn call_chain_elements_are_user_multilined<'src>(
-    ps: &ParserState<'src>,
+fn call_chain_elements_are_user_multilined(
+    ps: &ParserState,
     call_chain_elements: &[prism::Node],
 ) -> bool {
     // Making a mutable copy since we may pop some items off later
@@ -4459,7 +4457,7 @@ fn format_next_node<'src>(ps: &mut ParserState<'src>, next_node: prism::NextNode
     }
 }
 
-fn format_nil_node<'src>(ps: &mut ParserState<'src>) {
+fn format_nil_node(ps: &mut ParserState) {
     ps.emit_ident(b"nil");
 }
 
@@ -4618,7 +4616,7 @@ fn format_rational_node<'src>(
     );
 }
 
-fn format_redo_node<'src>(ps: &mut ParserState<'src>) {
+fn format_redo_node(ps: &mut ParserState) {
     ps.emit_ident(b"redo");
 }
 
@@ -4705,7 +4703,7 @@ fn format_rescue_node<'src>(ps: &mut ParserState<'src>, rescue_node: prism::Resc
     ps.at_offset(rescue_node.location().end_offset());
 }
 
-fn format_retry_node<'src>(ps: &mut ParserState<'src>) {
+fn format_retry_node(ps: &mut ParserState) {
     ps.emit_keyword("retry");
 }
 
@@ -4789,7 +4787,7 @@ fn format_source_line_node<'src>(
     handle_string_at_offset(ps, b"__LINE__", source_line_node.location().start_offset());
 }
 
-fn format_self_node<'src>(ps: &mut ParserState<'src>) {
+fn format_self_node(ps: &mut ParserState) {
     ps.emit_ident(b"self");
 }
 
@@ -4899,7 +4897,7 @@ fn handle_string_at_offset<'src>(ps: &mut ParserState<'src>, ident: &'src [u8], 
     ps.emit_ident(ident);
 }
 
-fn non_null_positions<'src>(params: &prism::ParametersNode<'src>) -> [bool; 7] {
+fn non_null_positions(params: &prism::ParametersNode) -> [bool; 7] {
     [
         !params.requireds().is_empty(),
         !params.optionals().is_empty(),
@@ -4913,7 +4911,7 @@ fn non_null_positions<'src>(params: &prism::ParametersNode<'src>) -> [bool; 7] {
 
 /// Checks if a node is an empty ParenthesesNode (like `()` in `foo ()`).
 /// These should be treated as "no arguments" and the parens removed entirely.
-fn is_empty_parentheses_node<'src>(node: &prism::Node<'src>) -> bool {
+fn is_empty_parentheses_node(node: &prism::Node) -> bool {
     if let Some(paren_node) = node.as_parentheses_node() {
         match paren_node.body() {
             None => true,
