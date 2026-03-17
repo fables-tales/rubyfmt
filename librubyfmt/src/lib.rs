@@ -2,7 +2,6 @@
 #![allow(clippy::upper_case_acronyms, clippy::enum_variant_names)]
 
 use std::io::{Cursor, Write};
-use std::str;
 
 #[cfg(all(feature = "use_jemalloc", not(target_env = "msvc")))]
 #[global_allocator]
@@ -61,11 +60,11 @@ pub enum FormatError {
     DiffDetected = 5,
 }
 
-pub fn format_buffer(buf: &str) -> Result<Vec<u8>, RichFormatError> {
+pub fn format_buffer(buf: &[u8]) -> Result<Vec<u8>, RichFormatError> {
     let out_data = vec![];
     let mut output = Cursor::new(out_data);
 
-    let parse_result = ruby_prism::parse(buf.as_bytes());
+    let parse_result = ruby_prism::parse(buf);
     if parse_result.errors().next().is_some() {
         return Err(RichFormatError::SyntaxError);
     }
@@ -75,7 +74,7 @@ pub fn format_buffer(buf: &str) -> Result<Vec<u8>, RichFormatError> {
         &mut output,
         parse_result.node(),
         parse_result.comments(),
-        buf.as_bytes(),
+        buf,
         end_data,
     )?;
 

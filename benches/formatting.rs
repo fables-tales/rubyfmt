@@ -2,11 +2,11 @@ use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
 use std::fs;
 use std::path::Path;
 
-fn format_with_prism(source: &str) {
+fn format_with_prism(source: &[u8]) {
     rubyfmt::format_buffer(source).expect("formatting failed");
 }
 
-fn collect_fixtures(dir: &Path) -> Vec<(String, String)> {
+fn collect_fixtures(dir: &Path) -> Vec<(String, Vec<u8>)> {
     let mut fixtures = Vec::new();
     let base = Path::new("fixtures/large");
 
@@ -23,7 +23,7 @@ fn collect_fixtures(dir: &Path) -> Vec<(String, String)> {
                 .to_string_lossy()
                 .trim_end_matches("_actual.rb")
                 .to_string();
-            let source = fs::read_to_string(&path).expect("failed to read file");
+            let source = fs::read(&path).expect("failed to read file");
             fixtures.push((name, source));
         }
     }
@@ -41,7 +41,7 @@ fn bench_stress_tests(c: &mut Criterion) {
     ];
 
     for (name, path) in files {
-        let source = fs::read_to_string(path).expect("failed to read file");
+        let source = fs::read(path).expect("failed to read file");
         group.bench_with_input(BenchmarkId::new("prism", name), &source, |b, source| {
             b.iter(|| format_with_prism(source));
         });
