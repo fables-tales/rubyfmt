@@ -153,8 +153,7 @@ impl<'src> ParserState<'src> {
                 if self
                     .comments_to_insert
                     .as_ref()
-                    .map(|comments| comments.has_comments())
-                    .unwrap_or(false)
+                    .is_some_and(|comments| comments.has_comments())
                 {
                     self.push_concrete_token(ConcreteLineToken::HardNewLine);
                 }
@@ -431,10 +430,7 @@ impl<'src> ParserState<'src> {
     pub(crate) fn wind_dumping_comments(&mut self, maybe_max_line_number: Option<LineNumber>) {
         // Return early if we're already at/past
         // the max line number
-        if maybe_max_line_number
-            .map(|ln| ln <= self.current_orig_line_number)
-            .unwrap_or(false)
-        {
+        if maybe_max_line_number.is_some_and(|ln| ln <= self.current_orig_line_number) {
             return;
         }
 
@@ -443,18 +439,13 @@ impl<'src> ParserState<'src> {
             // If we have a max line number, it will be the last token
             // of an expression (e.g. the `end` of a `do`/`end` block), so it's
             // fine if we wind forward to that line
-            if maybe_max_line_number
-                .map(|max| ln + 1 == max)
-                .unwrap_or(false)
-            {
+            if maybe_max_line_number.is_some_and(|max| ln + 1 == max) {
                 return true;
             }
 
             ps.comments_hash.still_in_file(ln + 1)
                 && (ps.comments_hash.has_line(ln + 1) || ps.comments_hash.is_empty_line(ln + 1))
-                && maybe_max_line_number
-                    .map(|max_line| ln + 1 < max_line)
-                    .unwrap_or(true)
+                && maybe_max_line_number.is_none_or(|max_line| ln + 1 < max_line)
         };
         while should_iter(self, self.current_orig_line_number) {
             // If the next line is empty (no comment, no Ruby code), and we have
