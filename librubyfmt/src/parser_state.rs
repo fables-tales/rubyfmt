@@ -286,8 +286,7 @@ impl<'src> ParserState<'src> {
         F: FnOnce(&mut ParserState<'src>),
     {
         self.shift_comments();
-        let mut be = BreakableCallChainEntry::new(&self.formatting_context, is_user_multilined);
-        be.push_line_number(self.current_orig_line_number);
+        let be = BreakableCallChainEntry::new(&self.formatting_context, is_user_multilined);
         self.breakable_entry_stack.push(Breakable::CallChain(be));
 
         f(self);
