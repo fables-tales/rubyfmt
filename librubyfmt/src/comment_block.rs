@@ -66,7 +66,7 @@ impl CommentBlock {
             if !comment.is_empty() && !comment.starts_with(b"=begin") {
                 comment
                     .to_mut()
-                    .splice(0..0, indent.as_bytes().iter().copied());
+                    .splice(0..0, indent.iter().copied());
             }
         }
         self

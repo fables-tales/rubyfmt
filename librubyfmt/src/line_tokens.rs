@@ -16,7 +16,7 @@ pub fn clats_direct_part<'src>(
     })
 }
 
-pub fn clats_heredoc_close<'src>(symbol: String) -> ConcreteLineTokenAndTargets<'src> {
+pub fn clats_heredoc_close<'src>(symbol: Vec<u8>) -> ConcreteLineTokenAndTargets<'src> {
     ConcreteLineTokenAndTargets::ConcreteLineToken(ConcreteLineToken::HeredocClose { symbol })
 }
 
@@ -65,7 +65,7 @@ pub enum ConcreteLineToken<'src> {
     },
     DoubleQuote,
     LTStringContent {
-        content: Cow<'src, str>,
+        content: Cow<'src, [u8]>,
     },
     SingleSlash,
     Comment {
@@ -76,7 +76,7 @@ pub enum ConcreteLineToken<'src> {
     },
     End,
     HeredocClose {
-        symbol: String,
+        symbol: Vec<u8>,
     },
     // These are "magic" tokens. They have no concrete representation,
     // but they're meaningful inside of the render queue
@@ -85,10 +85,10 @@ pub enum ConcreteLineToken<'src> {
     EndCallChainIndent,
     HeredocStart {
         kind: HeredocKind,
-        symbol: &'src str,
+        symbol: &'src [u8],
     },
     RawHeredocContent {
-        content: String,
+        content: Vec<u8>,
     },
 }
 
@@ -96,10 +96,7 @@ impl<'src> ConcreteLineToken<'src> {
     pub fn into_ruby(self) -> Cow<'src, [u8]> {
         match self {
             Self::HardNewLine => Cow::Borrowed(b"\n"),
-            Self::Indent { depth } => match get_indent(depth as usize) {
-                Cow::Borrowed(s) => Cow::Borrowed(s.as_bytes()),
-                Cow::Owned(s) => Cow::Owned(s.into_bytes()),
-            },
+            Self::Indent { depth } => get_indent(depth as usize),
             Self::Keyword { keyword } => Cow::Borrowed(keyword.as_bytes()),
             Self::ConditionalKeyword { contents } => Cow::Borrowed(contents.as_bytes()),
             Self::DoKeyword => Cow::Borrowed(b"do"),
@@ -122,17 +119,14 @@ impl<'src> ConcreteLineToken<'src> {
             Self::CloseParen => Cow::Borrowed(b")"),
             Self::Op { op } => Cow::Borrowed(op),
             Self::DoubleQuote => Cow::Borrowed(b"\""),
-            Self::LTStringContent { content } => match content {
-                Cow::Borrowed(s) => Cow::Borrowed(s.as_bytes()),
-                Cow::Owned(s) => Cow::Owned(s.into_bytes()),
-            },
+            Self::LTStringContent { content } => content,
             Self::SingleSlash => Cow::Borrowed(b"\\"),
             Self::Comment { contents } => contents,
             Self::Delim { contents } => Cow::Borrowed(contents.as_bytes()),
             Self::End => Cow::Borrowed(b"end"),
-            Self::HeredocClose { symbol } => Cow::Owned(symbol.into()),
-            Self::HeredocStart { symbol, .. } => Cow::Borrowed(symbol.as_bytes()),
-            Self::RawHeredocContent { content } => Cow::Owned(content.into()),
+            Self::HeredocClose { symbol } => Cow::Owned(symbol),
+            Self::HeredocStart { symbol, .. } => Cow::Borrowed(symbol),
+            Self::RawHeredocContent { content } => Cow::Owned(content),
             // no-op, this is purely semantic information
             // for the render queue
             Self::AfterCallChain | Self::BeginCallChainIndent | Self::EndCallChainIndent => {
@@ -355,9 +349,9 @@ impl<'src> AbstractLineToken<'src> {
                 let kind = hds.kind;
                 let symbol = hds.closing_symbol();
 
-                let s = hds.render_as_string();
+                let s = hds.render_as_bytes();
                 if !s.is_empty() {
-                    out.push(clats_direct_part(s.into_bytes()));
+                    out.push(clats_direct_part(s));
                     out.push(cltats_hard_newline());
                 }
                 if !kind.is_bare() {

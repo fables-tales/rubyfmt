@@ -66,7 +66,7 @@ impl<'src> RenderQueueWriter<'src> {
                 }) => {
                     if !contents.is_empty() {
                         let indent = get_indent(accum.additional_indent as usize * 2);
-                        let mut new_contents = indent.as_bytes().to_vec();
+                        let mut new_contents = indent.into_owned();
                         new_contents.extend_from_slice(contents);
                         next_token = ConcreteLineTokenAndTargets::ConcreteLineToken(
                             ConcreteLineToken::Comment {
@@ -83,7 +83,7 @@ impl<'src> RenderQueueWriter<'src> {
                         .unwrap_or(false)
                     {
                         let indent = get_indent(accum.additional_indent as usize * 2);
-                        let indent_bytes = indent.as_bytes();
+                        let indent_bytes = indent.as_ref();
                         let mut new_contents = Vec::new();
                         let parts = part.split(|&b| b == b'\n');
 
@@ -108,11 +108,9 @@ impl<'src> RenderQueueWriter<'src> {
                     // Bare heredocs (e.g. <<FOO) must have the closing ident completely unindented, so
                     // ignore them in this case
                     if current_heredoc_kind.map(|k| !k.is_bare()).unwrap_or(false) {
-                        let new_contents: String = format!(
-                            "{}{}",
-                            get_indent(accum.additional_indent as usize * 2),
-                            symbol
-                        );
+                        let indent = get_indent(accum.additional_indent as usize * 2);
+                        let mut new_contents = indent.into_owned();
+                        new_contents.extend_from_slice(symbol);
                         next_token = clats_heredoc_close(new_contents);
                     }
                     current_heredoc_kind = None;
