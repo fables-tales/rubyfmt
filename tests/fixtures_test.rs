@@ -1,7 +1,7 @@
 use libtest_mimic::{Arguments, Trial};
 use std::{
     collections::HashMap,
-    fs::{self, read_to_string},
+    fs::{self, read},
     io,
     path::{Path, PathBuf},
 };
@@ -43,7 +43,7 @@ impl Fixture {
                 );
             };
 
-            let expected_text = read_to_string(&expected)?;
+            let expected_text = read(&expected)?;
 
             // Test if the formatting works as expected
             let mut cmd = Command::cargo_bin("rubyfmt-main").unwrap();

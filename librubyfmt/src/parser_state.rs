@@ -11,7 +11,6 @@ use crate::types::{ColNumber, LineNumber, SourceOffset};
 use log::debug;
 use std::borrow::Cow;
 use std::io::{self, Write};
-use std::str;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum FormattingContext {
@@ -90,7 +89,7 @@ impl<'src> ParserState<'src> {
     }
     pub(crate) fn push_heredoc_content<F>(
         &mut self,
-        symbol: impl Into<Cow<'src, str>>,
+        symbol: impl Into<Cow<'src, [u8]>>,
         kind: HeredocKind,
         end_line: LineNumber,
         formatting_func: F,
@@ -121,11 +120,11 @@ impl<'src> ParserState<'src> {
         ));
     }
 
-    pub(crate) fn emit_heredoc_start(&mut self, symbol: &'src str, kind: HeredocKind) {
+    pub(crate) fn emit_heredoc_start(&mut self, symbol: &'src [u8], kind: HeredocKind) {
         self.push_concrete_token(ConcreteLineToken::HeredocStart { kind, symbol });
     }
 
-    pub(crate) fn emit_heredoc_close(&mut self, symbol: String) {
+    pub(crate) fn emit_heredoc_close(&mut self, symbol: Vec<u8>) {
         self.push_concrete_token(ConcreteLineToken::HeredocClose { symbol });
     }
 
@@ -390,9 +389,9 @@ impl<'src> ParserState<'src> {
         self.push_concrete_token(ConcreteLineToken::DoubleQuote);
     }
 
-    pub(crate) fn emit_string_content(&mut self, s: impl Into<Cow<'src, str>>) {
+    pub(crate) fn emit_string_content(&mut self, s: impl Into<Cow<'src, [u8]>>) {
         let content = s.into();
-        let newline_count = content.matches('\n').count() as u64;
+        let newline_count = content.iter().filter(|&&b| b == b'\n').count() as u64;
         self.current_orig_line_number += newline_count;
         for be in self.breakable_entry_stack.iter_mut().rev() {
             be.push_line_number(self.current_orig_line_number);
@@ -653,7 +652,7 @@ impl<'src> ParserState<'src> {
             let kind = next_heredoc.kind;
             let symbol = next_heredoc.closing_symbol();
             let space_count = next_heredoc.indent;
-            let string_contents = next_heredoc.render_as_string();
+            let string_contents = next_heredoc.render_as_bytes();
 
             // When inside a squiggly heredoc context and this is a non-squiggly heredoc,
             // emit RawHeredocContent tokens so the content won't receive squiggly indentation.
@@ -666,7 +665,7 @@ impl<'src> ParserState<'src> {
                     });
                 } else {
                     self.push_concrete_token(ConcreteLineToken::DirectPart {
-                        part: Cow::Owned(string_contents.into_bytes()),
+                        part: Cow::Owned(string_contents),
                     });
                 }
                 self.emit_newline();
@@ -675,14 +674,13 @@ impl<'src> ParserState<'src> {
             if emit_as_raw {
                 // For bare/dash heredocs inside squiggly context, emit the close as raw content
                 let close_content = if kind.is_bare() {
-                    symbol.replace('\'', "")
+                    symbol
                 } else {
                     // Dash heredocs can have indented close
-                    format!(
-                        "{}{}",
-                        crate::util::get_indent(space_count as usize),
-                        symbol.replace('\'', "")
-                    )
+                    let indent = crate::util::get_indent(space_count as usize);
+                    let mut content = indent.into_owned();
+                    content.extend_from_slice(&symbol);
+                    content
                 };
                 self.push_concrete_token(ConcreteLineToken::RawHeredocContent {
                     content: close_content,
@@ -691,7 +689,7 @@ impl<'src> ParserState<'src> {
                 if !kind.is_bare() {
                     self.push_concrete_token(ConcreteLineToken::Indent { depth: space_count });
                 }
-                self.emit_heredoc_close(symbol.replace('\'', ""));
+                self.emit_heredoc_close(symbol);
             }
 
             if !skip {
@@ -820,9 +818,9 @@ impl<'src> ParserState<'src> {
         let final_tokens = rqw.into_tokens();
 
         let mut segments = Vec::new();
-        let mut current_normal = String::new();
+        let mut current_normal = Vec::new();
 
-        fn flush_normal(current: &mut String, segments: &mut Vec<HeredocSegment>) {
+        fn flush_normal(current: &mut Vec<u8>, segments: &mut Vec<HeredocSegment>) {
             if !current.is_empty() {
                 segments.push(HeredocSegment::Normal(std::mem::take(current)));
             }
@@ -835,9 +833,7 @@ impl<'src> ParserState<'src> {
                 segments.push(HeredocSegment::Raw(content));
             } else {
                 // Accumulate into normal content
-                current_normal
-                    // TODO(@reese): Use &[u8] here when string internals are updated
-                    .push_str(std::str::from_utf8(&token.into_ruby()).unwrap());
+                current_normal.extend_from_slice(&token.into_ruby());
             }
         }
 

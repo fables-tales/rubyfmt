@@ -64,9 +64,7 @@ impl CommentBlock {
             // Ignore empty vecs -- these represent blank lines between
             // groups of comments
             if !comment.is_empty() && !comment.starts_with(b"=begin") {
-                comment
-                    .to_mut()
-                    .splice(0..0, indent.as_bytes().iter().copied());
+                comment.to_mut().splice(0..0, indent.iter().copied());
             }
         }
         self

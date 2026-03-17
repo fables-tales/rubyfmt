@@ -7,7 +7,6 @@ use crate::{
     heredoc_string::HeredocKind,
     parser_state::{FormattingContext, HashType, ParserState},
     types::SourceOffset,
-    util::loc_to_str,
 };
 
 pub fn format_node<'src>(ps: &mut ParserState<'src>, node: prism::Node<'src>) {
@@ -660,9 +659,9 @@ fn format_string_node<'src>(ps: &mut ParserState<'src>, string_node: prism::Stri
 
     // `opening_loc()` is only `None` in the case of the inner parts of multiline strings
     // (e.g. the inner contents of a heredoc)
-    let opener = string_node.opening_loc().map(|s| loc_to_str(s).trim());
-    let closer = string_node.closing_loc().map(|s| loc_to_str(s).trim());
-    let is_heredoc = opener.map(|s| s.starts_with("<")).unwrap_or(false);
+    let opener = string_node.opening_loc().map(|s| s.as_slice().trim_ascii());
+    let closer = string_node.closing_loc().map(|s| s.as_slice().trim_ascii());
+    let is_heredoc = opener.map(|s| s.starts_with(b"<")).unwrap_or(false);
 
     if is_heredoc {
         format_heredoc(
@@ -681,21 +680,21 @@ fn format_string_node<'src>(ps: &mut ParserState<'src>, string_node: prism::Stri
 
         // If opener is nil, we must be in some kind of interpolated string context, which
         // means the contents must already be appropriately escaped -- hence we default to `true` here
-        let in_escaped_context = is_heredoc || opener.map(|s| s.starts_with("\"")).unwrap_or(true);
+        let in_escaped_context = is_heredoc || opener.map(|s| s.starts_with(b"\"")).unwrap_or(true);
         let string_content = if in_escaped_context {
-            Cow::Borrowed(loc_to_str(string_node.content_loc()))
+            Cow::Borrowed(string_node.content_loc().as_slice())
         } else {
             // For character literals (`?a`), there can be an opening loc without
             // a closing loc. In that case, fall back to a double quote, since
             // we render character literals as double-quoted string literals
-            let end_delim = if let Some(ref closer) = closer {
+            let end_delim = if let Some(closer) = closer {
                 closer
             } else {
-                "\""
+                b"\""
             };
 
             crate::string_escape::single_to_double_quoted(
-                loc_to_str(string_node.content_loc()),
+                string_node.content_loc().as_slice(),
                 opener.unwrap(),
                 end_delim,
             )
@@ -718,13 +717,13 @@ fn format_interpolated_string_node<'src>(
 ) {
     let opener = interpolated_string_node
         .opening_loc()
-        .map(|s| loc_to_str(s).trim());
+        .map(|s| s.as_slice().trim_ascii());
     let closer = interpolated_string_node
         .closing_loc()
-        .map(|s| loc_to_str(s).trim());
-    let is_heredoc = opener.map(|s| s.starts_with("<")).unwrap_or(false);
+        .map(|s| s.as_slice().trim_ascii());
+    let is_heredoc = opener.map(|s| s.starts_with(b"<")).unwrap_or(false);
     let needs_escape = opener
-        .map(|s| !s.starts_with("\"") && !is_heredoc)
+        .map(|s| !s.starts_with(b"\"") && !is_heredoc)
         .unwrap_or(false);
 
     // Prism actually handles string concatenation when using "\", so it treats
@@ -788,11 +787,10 @@ fn format_interpolated_string_node<'src>(
             }
 
             if needs_escape && let Some(string_node) = part.as_string_node() {
-                let content = loc_to_str(string_node.content_loc());
                 let escaped = crate::string_escape::single_to_double_quoted(
-                    content,
+                    string_node.content_loc().as_slice(),
                     opener.unwrap(),
-                    closer.unwrap_or("\""),
+                    closer.unwrap_or(b"\""),
                 );
                 ps.emit_string_content(escaped);
             } else {
@@ -859,14 +857,14 @@ impl<'src> HeredocNodeType<'src> {
 fn format_heredoc<'src>(
     ps: &mut ParserState<'src>,
     heredoc: HeredocNodeType<'src>,
-    heredoc_symbol: &'src str,
+    heredoc_symbol: &'src [u8],
 ) {
-    let heredoc_kind = HeredocKind::from_string(heredoc_symbol);
+    let heredoc_kind = HeredocKind::from_bytes(heredoc_symbol);
     ps.emit_heredoc_start(heredoc_symbol, heredoc_kind);
 
     let parts = heredoc.parts();
     ps.push_heredoc_content(
-        loc_to_str(heredoc.closing_loc()).trim(),
+        heredoc.closing_loc().as_slice().trim_ascii(),
         heredoc_kind,
         ps.get_line_number_for_offset(heredoc.closing_loc().start_offset()),
         |n: &mut ParserState<'src>| {
@@ -958,9 +956,10 @@ fn format_inner_string<'src>(
                 let part = part.as_string_node().unwrap();
                 // For heredocs, use raw `content_loc` to preserve escape sequences like `\n`
                 let mut contents = {
-                    let raw = loc_to_str(part.content_loc());
+                    let raw = part.content_loc().as_slice();
                     if common_indent > 0 {
-                        raw.split('\n')
+                        let lines = raw
+                            .split(|&b| b == b'\n')
                             .enumerate()
                             .map(|(line_idx, line)| {
                                 // Strip from lines at line boundaries
@@ -973,10 +972,17 @@ fn format_inner_string<'src>(
                                     line
                                 }
                             })
-                            .collect::<Vec<_>>()
-                            .join("\n")
+                            .collect::<Vec<&[u8]>>();
+                        let mut result = Vec::with_capacity(raw.len());
+                        for (i, line) in lines.iter().enumerate() {
+                            if i > 0 {
+                                result.push(b'\n');
+                            }
+                            result.extend_from_slice(line);
+                        }
+                        result
                     } else {
-                        raw.to_string()
+                        raw.to_vec()
                     }
                 };
 
@@ -993,17 +999,17 @@ fn format_inner_string<'src>(
                 //   EOD
                 let mut rendered_heredocs = false;
                 if ps.has_pending_heredocs()
-                    && !contents.starts_with('\n')
-                    && let Some(newline_idx) = contents.find('\n')
+                    && !contents.starts_with(b"\n")
+                    && let Some(newline_idx) = contents.iter().position(|&b| b == b'\n')
                 {
                     let before_newline = &contents[..newline_idx];
                     if !before_newline.is_empty() {
-                        ps.emit_string_content(before_newline.to_string());
+                        ps.emit_string_content(before_newline.to_vec());
                     }
                     ps.emit_hard_newline_in_heredoc();
                     // Use skip=false to ensure proper newline after heredoc close
                     ps.render_heredocs(false);
-                    contents = contents[newline_idx + 1..].to_string();
+                    contents = contents[newline_idx + 1..].to_vec();
                     rendered_heredocs = true;
                 }
 
@@ -1013,10 +1019,10 @@ fn format_inner_string<'src>(
                 prev_ended_with_newline = if rendered_heredocs && contents.is_empty() {
                     true
                 } else {
-                    contents.ends_with('\n')
+                    contents.ends_with(b"\n")
                 };
 
-                if peekable.peek().is_none() && contents.ends_with('\n') {
+                if peekable.peek().is_none() && contents.ends_with(b"\n") {
                     contents.pop();
                 }
 
@@ -1156,7 +1162,7 @@ fn format_embedded_statements_node<'src>(
     ps: &mut ParserState<'src>,
     embedded_statements_node: prism::EmbeddedStatementsNode<'src>,
 ) {
-    ps.emit_string_content("#{");
+    ps.emit_string_content(b"#{");
     if let Some(statements) = embedded_statements_node.statements() {
         ps.with_formatting_context(FormattingContext::StringEmbexpr, |ps| {
             let has_multiple_statements = statements.body().len() > 1;
@@ -1171,16 +1177,16 @@ fn format_embedded_statements_node<'src>(
             });
         });
     }
-    ps.emit_string_content("}");
+    ps.emit_string_content(b"}");
 }
 
 fn format_embedded_variable_node<'src>(
     ps: &mut ParserState<'src>,
     embedded_variable_node: prism::EmbeddedVariableNode<'src>,
 ) {
-    ps.emit_string_content("#{");
+    ps.emit_string_content(b"#{");
     format_node(ps, embedded_variable_node.variable());
-    ps.emit_string_content("}");
+    ps.emit_string_content(b"}");
 }
 
 fn format_ensure_node<'src>(ps: &mut ParserState<'src>, ensure_node: prism::EnsureNode<'src>) {
@@ -2326,13 +2332,13 @@ fn format_call_body<'src>(
             .and_then(|n| n.as_call_node())
             .filter(|c| c.is_attribute_write())
     {
-        let call_operator = attr_write.call_operator_loc().map(|loc| loc_to_str(loc));
+        let call_operator = attr_write.call_operator_loc().map(|loc| loc.as_slice());
         if let Some(call_operator) = call_operator {
             match call_operator {
-                "." => ps.emit_dot(),
-                "&." => ps.emit_lonely_operator(),
-                "::" => ps.emit_colon_colon(),
-                _ => ps.emit_ident(call_operator.as_bytes()),
+                b"." => ps.emit_dot(),
+                b"&." => ps.emit_lonely_operator(),
+                b"::" => ps.emit_colon_colon(),
+                _ => ps.emit_ident(call_operator),
             }
         }
 
@@ -2351,9 +2357,9 @@ fn format_call_body<'src>(
 
                 // `call_operator_loc` is the `.`/`::`/`&.` etc.
                 // it may be None in the case of arefs, e.g. foo[bar]
-                let call_operator = element.call_operator_loc().map(|loc| loc_to_str(loc));
+                let call_operator = element.call_operator_loc().map(|loc| loc.as_slice());
                 if let Some(call_operator) = call_operator {
-                    if call_operator != "::" {
+                    if call_operator != b"::" {
                         ps.emit_collapsing_newline();
                         ps.emit_soft_indent();
                     }
@@ -2362,10 +2368,10 @@ fn format_call_body<'src>(
                     // in single_line_string_length (which is used to determine whether to
                     // break the call chain or just the arguments)
                     match call_operator {
-                        "." => ps.emit_dot(),
-                        "&." => ps.emit_lonely_operator(),
-                        "::" => ps.emit_colon_colon(),
-                        _ => ps.emit_ident(call_operator.as_bytes()),
+                        b"." => ps.emit_dot(),
+                        b"&." => ps.emit_lonely_operator(),
+                        b"::" => ps.emit_colon_colon(),
+                        _ => ps.emit_ident(call_operator),
                     }
                 }
 
@@ -2580,21 +2586,20 @@ fn format_call_target_node<'src>(
 }
 
 fn format_symbol_node<'src>(ps: &mut ParserState<'src>, symbol_node: prism::SymbolNode<'src>) {
-    let opener = symbol_node.opening_loc().map(|s| loc_to_str(s));
-    let closer = symbol_node.closing_loc().map(|s| loc_to_str(s));
+    let opener = symbol_node.opening_loc().map(|s| s.as_slice());
+    let closer = symbol_node.closing_loc().map(|s| s.as_slice());
 
     // Check if this is a quoted symbol that needs normalization to double quotes
     // Symbols like :'"foo"' (single-quoted) should become :"\"foo\""
-    let is_single_quoted = opener.map(|s| s == ":'").unwrap_or(false);
+    let is_single_quoted = opener.map(|s| s == b":'").unwrap_or(false);
 
     if is_single_quoted {
         ps.emit_ident(b":");
         ps.emit_double_quote();
 
         if let Some(value_loc) = symbol_node.value_loc() {
-            let content = loc_to_str(value_loc);
             let escaped = crate::string_escape::single_to_double_quoted(
-                content,
+                value_loc.as_slice(),
                 opener.expect("We must have an opener to know we're single-quoted"),
                 closer.expect("We must have a closer when wrapped in single quotes"),
             );
@@ -2605,7 +2610,7 @@ fn format_symbol_node<'src>(ps: &mut ParserState<'src>, symbol_node: prism::Symb
     } else {
         // For other symbols, emit as-is
         if let Some(opening) = opener {
-            ps.emit_ident(opening.as_bytes());
+            ps.emit_ident(opening);
         }
         if let Some(value_loc) = symbol_node.value_loc() {
             ps.emit_ident(value_loc.as_slice());
@@ -2615,11 +2620,11 @@ fn format_symbol_node<'src>(ps: &mut ParserState<'src>, symbol_node: prism::Symb
             // String symbols, such as the key in `{ "a": b }` will have
             // a closing_str of `"\":"`, so we have to trim instead of
             // dropping the entire closing item.
-            if closing_str.ends_with(":") {
+            if closing_str.ends_with(b":") {
                 closing_str = &closing_str[..(closing_str.len() - 1)];
             }
             if !closing_str.is_empty() {
-                ps.emit_ident(closing_str.as_bytes());
+                ps.emit_ident(closing_str);
             }
         }
     }
@@ -2810,13 +2815,15 @@ fn format_block_local_variable_node<'src>(
 }
 
 fn format_array_node<'src>(ps: &mut ParserState<'src>, array_node: prism::ArrayNode<'src>) {
-    let opening = array_node.opening_loc().map(|loc| loc_to_str(loc).trim());
-    let is_word_array = opening.map(|s| s.starts_with("%")).unwrap_or(false);
+    let opening = array_node
+        .opening_loc()
+        .map(|loc| loc.as_slice().trim_ascii());
+    let is_word_array = opening.map(|s| s.starts_with(b"%")).unwrap_or(false);
 
-    let orig_delim = opening.and_then(|s| s.chars().nth(2)).unwrap_or('[');
+    let orig_delim = opening.and_then(|s| s.get(2).copied()).unwrap_or(b'[');
 
     if is_word_array {
-        ps.emit_ident(opening.unwrap().split_at(2).0.as_bytes());
+        ps.emit_ident(&opening.unwrap()[..2]);
     }
 
     if array_node.elements().is_empty() {
@@ -2875,7 +2882,7 @@ fn format_word_array_elements<'src>(
     ps: &mut ParserState<'src>,
     node_list: prism::NodeList<'src>,
     end_offset: SourceOffset,
-    orig_open_delim: char,
+    orig_open_delim: u8,
 ) {
     let args_count = node_list.len();
     let orig_close_delim = matching_delimiter(orig_open_delim);
@@ -2889,9 +2896,8 @@ fn format_word_array_elements<'src>(
                 if let Some(string_node) = expr.as_string_node() {
                     ps.at_offset(string_node.location().start_offset());
 
-                    let content = loc_to_str(string_node.content_loc());
                     let escaped = crate::string_escape::escape_word_array_content(
-                        content,
+                        string_node.content_loc().as_slice(),
                         orig_open_delim,
                         orig_close_delim,
                     );
@@ -2900,9 +2906,8 @@ fn format_word_array_elements<'src>(
                     ps.at_offset(symbol_node.location().start_offset());
 
                     if let Some(value_loc) = symbol_node.value_loc() {
-                        let content = loc_to_str(value_loc);
                         let escaped = crate::string_escape::escape_word_array_content(
-                            content,
+                            value_loc.as_slice(),
                             orig_open_delim,
                             orig_close_delim,
                         );
@@ -2940,12 +2945,12 @@ fn format_word_array_elements<'src>(
     );
 }
 
-fn matching_delimiter(open: char) -> char {
+fn matching_delimiter(open: u8) -> u8 {
     match open {
-        '[' => ']',
-        '(' => ')',
-        '{' => '}',
-        '<' => '>',
+        b'[' => b']',
+        b'(' => b')',
+        b'{' => b'}',
+        b'<' => b'>',
         // For non-paired delimiters (like ^, |, etc.), the closing is the same
         c => c,
     }
@@ -2954,8 +2959,8 @@ fn matching_delimiter(open: char) -> char {
 fn format_word_array_interpolated_parts<'src>(
     ps: &mut ParserState<'src>,
     parts: prism::NodeList<'src>,
-    orig_open_delim: char,
-    orig_close_delim: char,
+    orig_open_delim: u8,
+    orig_close_delim: u8,
 ) {
     for part in parts.iter() {
         let start_offset = part.location().start_offset();
@@ -2964,9 +2969,8 @@ fn format_word_array_interpolated_parts<'src>(
         ps.at_offset(start_offset);
 
         if let Some(string_node) = part.as_string_node() {
-            let content = loc_to_str(string_node.content_loc());
             let escaped = crate::string_escape::escape_word_array_content(
-                content,
+                string_node.content_loc().as_slice(),
                 orig_open_delim,
                 orig_close_delim,
             );
@@ -3617,9 +3621,9 @@ fn format_hash_pattern_node<'src>(
         });
     }
 
-    let opener = hash_pattern_node.opening_loc().map(|loc| loc_to_str(loc));
+    let opener = hash_pattern_node.opening_loc().map(|loc| loc.as_slice());
     let use_parens = hash_pattern_node.constant().is_some()
-        || opener.map(|s| s.starts_with("(")).unwrap_or(false);
+        || opener.map(|s| s.starts_with(b"(")).unwrap_or(false);
 
     let elements = hash_pattern_node.elements();
 
@@ -4321,7 +4325,7 @@ fn format_match_last_line_node<'src>(
     match_last_line_node: prism::MatchLastLineNode<'src>,
 ) {
     ps.emit_ident(match_last_line_node.opening_loc().as_slice());
-    ps.emit_string_content(loc_to_str(match_last_line_node.content_loc()));
+    ps.emit_string_content(match_last_line_node.content_loc().as_slice());
     ps.emit_ident(match_last_line_node.closing_loc().as_slice());
 }
 
@@ -4623,7 +4627,7 @@ fn format_regular_expression_node<'src>(
     regular_expression_node: prism::RegularExpressionNode<'src>,
 ) {
     ps.emit_ident(regular_expression_node.opening_loc().as_slice());
-    ps.emit_string_content(loc_to_str(regular_expression_node.content_loc()));
+    ps.emit_string_content(regular_expression_node.content_loc().as_slice());
     ps.emit_ident(regular_expression_node.closing_loc().as_slice());
 }
 
@@ -4855,7 +4859,7 @@ fn format_while_node<'src>(ps: &mut ParserState<'src>, while_node: prism::WhileN
 
 fn format_x_string_node<'src>(ps: &mut ParserState<'src>, x_string_node: prism::XStringNode<'src>) {
     ps.emit_ident(b"`");
-    ps.emit_string_content(loc_to_str(x_string_node.content_loc()));
+    ps.emit_string_content(x_string_node.content_loc().as_slice());
     ps.emit_ident(b"`");
 }
 
