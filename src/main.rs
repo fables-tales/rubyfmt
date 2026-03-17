@@ -7,7 +7,7 @@ use regex::Regex;
 use rubyfmt::init_logger;
 use similar::TextDiff;
 use std::ffi::OsStr;
-use std::fs::{File, OpenOptions, read_to_string};
+use std::fs::{File, OpenOptions, read};
 use std::io::{self, BufRead, BufReader, IsTerminal, Read, Write};
 use std::path::Path;
 use std::process::{Command, exit};
@@ -155,24 +155,17 @@ fn rubyfmt_string(
         header_opt_out,
         ..
     }: &CommandlineOpts,
-    buffer: &str,
+    buffer: &[u8],
 ) -> Result<Option<Vec<u8>>, rubyfmt::RichFormatError> {
     if header_opt_in || header_opt_out {
         // Only look at the first 500 bytes for the magic header.
-        // This is for performance
-        let mut slice = buffer;
-        let mut slice_size = 500;
-        let blength = buffer.len();
-
-        if blength > slice_size {
-            while !buffer.is_char_boundary(slice_size) && slice_size < blength {
-                slice_size += 1;
-            }
-            slice = &buffer[..slice_size]
-        }
+        // This is for performance. Use lossy UTF-8 conversion since the
+        // magic comment is always ASCII.
+        let slice_size = buffer.len().min(500);
+        let slice = String::from_utf8_lossy(&buffer[..slice_size]);
 
         let matched = MAGIC_COMMENT_REGEX
-            .captures(slice)
+            .captures(&slice)
             .and_then(|c| c.name("enabled"))
             .map(|s| s.as_str());
 
@@ -260,10 +253,10 @@ fn get_command_line_options() -> CommandlineOpts {
     }
 }
 
-fn iterate_input_files(opts: &CommandlineOpts, f: &dyn Fn((&Path, &String))) {
+fn iterate_input_files(opts: &CommandlineOpts, f: InputFunc) {
     if opts.include_paths.is_empty() {
         // If not include paths are present, assume user is passing via STDIN
-        let mut buffer = String::new();
+        let mut buffer = Vec::new();
 
         if io::stdin().is_terminal() {
             // Call executable with `--help` args to print help statement
@@ -274,7 +267,7 @@ fn iterate_input_files(opts: &CommandlineOpts, f: &dyn Fn((&Path, &String))) {
         }
 
         io::stdin()
-            .read_to_string(&mut buffer)
+            .read_to_end(&mut buffer)
             .expect("reading from stdin to not fail");
 
         let path = if let Some(stdin_filepath) = &opts.stdin_filepath {
@@ -282,7 +275,7 @@ fn iterate_input_files(opts: &CommandlineOpts, f: &dyn Fn((&Path, &String))) {
             if is_path_ignored(path, opts.include_gitignored) {
                 // Print unchanged output for ignored files unless we're in check mode
                 if !opts.check {
-                    puts_stdout(buffer.as_bytes());
+                    puts_stdout(&buffer);
                 }
                 return;
             }
@@ -308,9 +301,7 @@ fn iterate_input_files(opts: &CommandlineOpts, f: &dyn Fn((&Path, &String))) {
                 match result {
                     Ok(pp) => {
                         let file_path = pp.path();
-                        let buffer_res = read_to_string(file_path);
-
-                        match buffer_res {
+                        match read(file_path) {
                             Ok(buffer) => f((file_path, &buffer)),
                             Err(e) => handle_execution_error(
                                 opts,
@@ -332,9 +323,7 @@ fn iterate_input_files(opts: &CommandlineOpts, f: &dyn Fn((&Path, &String))) {
                         if file_path.is_file()
                             && file_path.extension().and_then(OsStr::to_str) == Some("rb")
                         {
-                            let buffer_res = read_to_string(file_path);
-
-                            match buffer_res {
+                            match read(file_path) {
                                 Ok(buffer) => f((file_path, &buffer)),
                                 Err(e) => handle_execution_error(
                                     opts,
@@ -350,7 +339,8 @@ fn iterate_input_files(opts: &CommandlineOpts, f: &dyn Fn((&Path, &String))) {
     }
 }
 
-type FormattingFunc<'a> = &'a dyn Fn((&Path, &String, Option<Vec<u8>>));
+type InputFunc<'a> = &'a dyn Fn((&Path, &[u8]));
+type FormattingFunc<'a> = &'a dyn Fn((&Path, &[u8], Option<Vec<u8>>));
 
 fn iterate_formatted(opts: &CommandlineOpts, f: FormattingFunc) {
     iterate_input_files(
@@ -392,7 +382,7 @@ fn main() {
                 &|(file_path, before)| match rubyfmt_string(&opts, before) {
                     Ok(None) => {}
                     Ok(Some(fmtted)) => {
-                        let diff = TextDiff::from_lines(before.as_bytes(), &fmtted);
+                        let diff = TextDiff::from_lines(before, &fmtted);
                         let path_string = file_path.to_str().unwrap();
                         text_diffs.lock().unwrap().push(format!(
                             "{}",
@@ -434,7 +424,7 @@ fn main() {
             iterate_formatted(&opts, &|(file_path, before, after)| match after {
                 None => {}
                 Some(fmtted) => {
-                    if fmtted.ne(before.as_bytes()) {
+                    if fmtted.ne(before) {
                         let file_write = OpenOptions::new()
                             .write(true)
                             .truncate(true)
@@ -455,7 +445,7 @@ fn main() {
 
         _ => iterate_formatted(&opts, &|(_, before, after)| match after {
             Some(fmtted) => puts_stdout(&fmtted),
-            None => puts_stdout(before.as_bytes()),
+            None => puts_stdout(before),
         }),
     }
 }
