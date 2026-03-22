@@ -36,7 +36,7 @@ impl<'src> BaseQueue<'src> {
     }
 
     pub fn last_token_is_a_newline(&self) -> bool {
-        self.tokens.last().map(|x| x.is_newline()).unwrap_or(false)
+        self.tokens.last().is_some_and(|x| x.is_newline())
     }
 
     pub fn index_of_prev_newline(&self) -> Option<usize> {
@@ -572,7 +572,7 @@ impl<'src> ConditionalLayoutEntry<'src> {
             ConditionalLayoutPhase::Predicate => &self.predicate_tokens,
             ConditionalLayoutPhase::Statement => &self.statement_tokens,
         };
-        tokens.last().map(|x| x.is_newline()).unwrap_or(false)
+        tokens.last().is_some_and(|x| x.is_newline())
     }
 
     pub fn index_of_prev_newline(&self) -> Option<usize> {

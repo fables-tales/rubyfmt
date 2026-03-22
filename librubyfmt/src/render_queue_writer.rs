@@ -78,10 +78,7 @@ impl<'src> RenderQueueWriter<'src> {
                 ConcreteLineTokenAndTargets::ConcreteLineToken(ConcreteLineToken::DirectPart {
                     part,
                 }) => {
-                    if current_heredoc_kind
-                        .map(|k| k.is_squiggly())
-                        .unwrap_or(false)
-                    {
+                    if current_heredoc_kind.is_some_and(|k| k.is_squiggly()) {
                         let indent = get_indent(accum.additional_indent as usize * 2);
                         let indent_bytes = indent.as_ref();
                         let mut new_contents = Vec::new();
@@ -107,7 +104,7 @@ impl<'src> RenderQueueWriter<'src> {
                 ) => {
                     // Bare heredocs (e.g. <<FOO) must have the closing ident completely unindented, so
                     // ignore them in this case
-                    if current_heredoc_kind.map(|k| !k.is_bare()).unwrap_or(false) {
+                    if current_heredoc_kind.is_some_and(|k| !k.is_bare()) {
                         let indent = get_indent(accum.additional_indent as usize * 2);
                         let mut new_contents = indent.into_owned();
                         new_contents.extend_from_slice(symbol);

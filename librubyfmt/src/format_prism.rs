@@ -26,8 +26,7 @@ pub fn format_node<'src>(ps: &mut ParserState<'src>, node: prism::Node<'src>) {
         && !(matches!(node, Node::StatementsNode { .. })
             || node
                 .as_begin_node()
-                .map(|b| b.begin_keyword_loc().is_none())
-                .unwrap_or(false));
+                .is_some_and(|b| b.begin_keyword_loc().is_none()));
 
     if needs_handling {
         ps.emit_indent();
@@ -661,7 +660,7 @@ fn format_string_node<'src>(ps: &mut ParserState<'src>, string_node: prism::Stri
     // (e.g. the inner contents of a heredoc)
     let opener = string_node.opening_loc().map(|s| s.as_slice().trim_ascii());
     let closer = string_node.closing_loc().map(|s| s.as_slice().trim_ascii());
-    let is_heredoc = opener.map(|s| s.starts_with(b"<")).unwrap_or(false);
+    let is_heredoc = opener.is_some_and(|s| s.starts_with(b"<"));
 
     if is_heredoc {
         format_heredoc(
@@ -680,7 +679,7 @@ fn format_string_node<'src>(ps: &mut ParserState<'src>, string_node: prism::Stri
 
         // If opener is nil, we must be in some kind of interpolated string context, which
         // means the contents must already be appropriately escaped -- hence we default to `true` here
-        let in_escaped_context = is_heredoc || opener.map(|s| s.starts_with(b"\"")).unwrap_or(true);
+        let in_escaped_context = is_heredoc || opener.is_none_or(|s| s.starts_with(b"\""));
         let string_content = if in_escaped_context {
             Cow::Borrowed(string_node.content_loc().as_slice())
         } else {
@@ -721,10 +720,8 @@ fn format_interpolated_string_node<'src>(
     let closer = interpolated_string_node
         .closing_loc()
         .map(|s| s.as_slice().trim_ascii());
-    let is_heredoc = opener.map(|s| s.starts_with(b"<")).unwrap_or(false);
-    let needs_escape = opener
-        .map(|s| !s.starts_with(b"\"") && !is_heredoc)
-        .unwrap_or(false);
+    let is_heredoc = opener.is_some_and(|s| s.starts_with(b"<"));
+    let needs_escape = opener.is_some_and(|s| !s.starts_with(b"\"") && !is_heredoc);
 
     // Prism actually handles string concatenation when using "\", so it treats
     // ```ruby
@@ -742,12 +739,10 @@ fn format_interpolated_string_node<'src>(
         && interpolated_string_node.parts().len() > 1
         && interpolated_string_node.parts().iter().any(|node| {
             node.as_string_node()
-                .map(|node| node.opening_loc().is_some())
-                .unwrap_or(false)
+                .is_some_and(|node| node.opening_loc().is_some())
                 || node
                     .as_interpolated_string_node()
-                    .map(|node| node.opening_loc().is_some())
-                    .unwrap_or(false)
+                    .is_some_and(|node| node.opening_loc().is_some())
         });
 
     ps.at_offset(interpolated_string_node.location().start_offset());
@@ -879,13 +874,10 @@ fn maybe_render_heredocs_in_string<'src: 'a, 'a>(
     ps: &mut ParserState<'src>,
     peekable: &mut std::iter::Peekable<impl Iterator<Item = &'a prism::Node<'src>>>,
 ) {
-    let should_render = peekable
-        .peek()
-        .and_then(|node| {
-            node.as_string_node()
-                .map(|sn| sn.content_loc().as_slice().starts_with(b"\n"))
-        })
-        .unwrap_or(false);
+    let should_render = peekable.peek().is_some_and(|node| {
+        node.as_string_node()
+            .is_some_and(|sn| sn.content_loc().as_slice().starts_with(b"\n"))
+    });
     if should_render {
         ps.render_heredocs(true)
     }
@@ -1671,14 +1663,11 @@ fn use_parens_for_call_node<'src>(
     // Foo # class reference
     // Foo() # method call
     // ```
-    let has_arguments = call_node
-        .arguments()
-        .map(|args| {
-            !(args.arguments().is_empty()
-                || (args.arguments().len() == 1
-                    && is_empty_parentheses_node(&args.arguments().first().unwrap())))
-        })
-        .unwrap_or(false);
+    let has_arguments = call_node.arguments().is_some_and(|args| {
+        !(args.arguments().is_empty()
+            || (args.arguments().len() == 1
+                && is_empty_parentheses_node(&args.arguments().first().unwrap())))
+    });
 
     if is_terminal_call && method_name.first().is_some_and(|c| c.is_ascii_uppercase()) {
         if !has_arguments && call_node.block().is_some() {
@@ -1731,8 +1720,7 @@ fn use_parens_for_call_node<'src>(
     let has_brace_block = call_node
         .block()
         .and_then(|b| b.as_block_node())
-        .map(|block| block.opening_loc().as_slice() != b"do")
-        .unwrap_or(false);
+        .is_some_and(|block| block.opening_loc().as_slice() != b"do");
 
     if has_arguments && has_brace_block {
         // Brace blocks require parens, eliding is a syntax error
@@ -1948,8 +1936,7 @@ fn format_call_node<'src>(
             && (!skip_receiver
                 || call_node
                     .receiver()
-                    .map(|r| r.as_self_node().is_some())
-                    .unwrap_or(false))
+                    .is_some_and(|r| r.as_self_node().is_some()))
         {
             // Check if we need parens in two cases: we're the
             // first/only item in a call chain (thus `!skip_receiver`)
@@ -2048,8 +2035,7 @@ fn format_unary_operator<'src>(
     let is_not_with_parens = method_name == b"!"
         && call_node
             .message_loc()
-            .map(|loc| loc.as_slice() == b"not")
-            .unwrap_or(false)
+            .is_some_and(|loc| loc.as_slice() == b"not")
         && call_node.opening_loc().is_some();
 
     let operator_symbol: &[u8] = match method_name {
@@ -2265,8 +2251,7 @@ fn extract_trailing_arefs(mut elements: Vec<prism::Node>) -> (Vec<prism::Node>, 
     let mut trailing_arefs = Vec::new();
     let has_dot_calls = elements.iter().any(|elem| {
         elem.as_call_node()
-            .map(|c| c.call_operator_loc().is_some())
-            .unwrap_or(false)
+            .is_some_and(|c| c.call_operator_loc().is_some())
     });
 
     if has_dot_calls {
@@ -2444,12 +2429,10 @@ fn call_chain_elements_are_user_multilined(
     // to first skip it if it's not a CallNode and there's an aref following it.
     let first_is_not_call = call_chain_elements
         .first()
-        .map(|n| n.as_call_node().is_none())
-        .unwrap_or(false);
+        .is_some_and(|n| n.as_call_node().is_none());
     let second_is_aref = call_chain_elements.get(1).is_some_and(|n| {
         n.as_call_node()
-            .map(|c| c.call_operator_loc().is_none())
-            .unwrap_or(false)
+            .is_some_and(|c| c.call_operator_loc().is_none())
     });
 
     if first_is_not_call && second_is_aref {
@@ -2481,8 +2464,9 @@ fn call_chain_elements_are_user_multilined(
                 .as_call_node()
                 .unwrap()
                 .call_operator_loc()
-                .map(|loc| ps.get_line_number_for_offset(loc.start_offset()))
-                .unwrap_or(start_line)
+                .map_or(start_line, |loc| {
+                    ps.get_line_number_for_offset(loc.start_offset())
+                })
     })
 }
 
@@ -2589,7 +2573,7 @@ fn format_symbol_node<'src>(ps: &mut ParserState<'src>, symbol_node: prism::Symb
 
     // Check if this is a quoted symbol that needs normalization to double quotes
     // Symbols like :'"foo"' (single-quoted) should become :"\"foo\""
-    let is_single_quoted = opener.map(|s| s == b":'").unwrap_or(false);
+    let is_single_quoted = opener.is_some_and(|s| s == b":'");
 
     if is_single_quoted {
         ps.emit_ident(b":");
@@ -2716,8 +2700,7 @@ fn format_block_node<'src>(ps: &mut ParserState<'src>, block_node: prism::BlockN
             if let Some(body) = block_node.body() {
                 let has_multiple_statements = body
                     .as_statements_node()
-                    .map(|statements_node| statements_node.body().len() > 1)
-                    .unwrap_or(false);
+                    .is_some_and(|statements_node| statements_node.body().len() > 1);
                 if has_multiple_statements {
                     ps.emit_newline();
                     ps.emit_indent();
@@ -2816,7 +2799,7 @@ fn format_array_node<'src>(ps: &mut ParserState<'src>, array_node: prism::ArrayN
     let opening = array_node
         .opening_loc()
         .map(|loc| loc.as_slice().trim_ascii());
-    let is_word_array = opening.map(|s| s.starts_with(b"%")).unwrap_or(false);
+    let is_word_array = opening.is_some_and(|s| s.starts_with(b"%"));
 
     let orig_delim = opening.and_then(|s| s.get(2).copied()).unwrap_or(b'[');
 
@@ -3620,8 +3603,8 @@ fn format_hash_pattern_node<'src>(
     }
 
     let opener = hash_pattern_node.opening_loc().map(|loc| loc.as_slice());
-    let use_parens = hash_pattern_node.constant().is_some()
-        || opener.map(|s| s.starts_with(b"(")).unwrap_or(false);
+    let use_parens =
+        hash_pattern_node.constant().is_some() || opener.is_some_and(|s| s.starts_with(b"("));
 
     let elements = hash_pattern_node.elements();
 
@@ -3721,8 +3704,7 @@ impl<'pr> Conditional<'pr> {
         match self {
             Conditional::If(node) => node
                 .if_keyword_loc()
-                .map(|loc| loc.start_offset())
-                .unwrap_or(node.location().start_offset()),
+                .map_or(node.location().start_offset(), |loc| loc.start_offset()),
             Conditional::Unless(node) => node.keyword_loc().start_offset(),
             Conditional::While(node) => node.keyword_loc().start_offset(),
             Conditional::Until(node) => node.keyword_loc().start_offset(),
@@ -4864,9 +4846,9 @@ fn format_yield_node<'src>(ps: &mut ParserState<'src>, yield_node: prism::YieldN
         let use_parens = ps.current_formatting_context_requires_parens()
             || yield_node.lparen_loc().is_some()
             // For single assoc values (`yield a: b`) we keep parens
-            || (yield_node
+            || yield_node
                 .arguments()
-                .map(|args| {
+                .is_some_and(|args| {
                     args.arguments().len() == 1
                         && args
                             .arguments()
@@ -4874,8 +4856,7 @@ fn format_yield_node<'src>(ps: &mut ParserState<'src>, yield_node: prism::YieldN
                             .unwrap()
                             .as_keyword_hash_node()
                             .is_some()
-                })
-                .unwrap_or(false));
+                });
 
         let delims = if use_parens {
             BreakableDelims::for_method_call()

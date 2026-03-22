@@ -169,8 +169,7 @@ impl FileComments {
                 debug_assert!(
                     self.other_comments
                         .last()
-                        .map(|(last_line_number, _)| *last_line_number < line_number)
-                        .unwrap_or(true),
+                        .is_none_or(|(last_line_number, _)| *last_line_number < line_number),
                     "Expected comments to be inserted in order"
                 );
 
