@@ -4284,25 +4284,18 @@ fn format_lambda_node<'src>(ps: &mut ParserState<'src>, lambda_node: prism::Lamb
             ps.emit_space();
             ps.inline_breakable_of(BreakableDelims::for_brace_block(), |ps| {
                 if let Some(body) = lambda_node.body() {
-                    let has_multiple_statements = body
-                        .as_statements_node()
-                        .map(|statements_node| statements_node.body().len() > 1)
-                        .unwrap_or(false);
-                    if has_multiple_statements {
-                        ps.emit_soft_newline();
-                        ps.with_start_of_line(true, |ps| {
-                            format_node(ps, body);
-                        });
-                    } else {
-                        ps.with_start_of_line(false, |ps| {
-                            if let Some(node) = body.as_statements_node().unwrap().body().first() {
-                                ps.emit_soft_newline();
+                    ps.with_start_of_line(false, |ps| {
+                        let statements = body.as_statements_node().unwrap().body();
+                        if !statements.is_empty() {
+                            ps.emit_soft_newline();
+                            for node in statements.iter() {
                                 ps.emit_soft_indent();
                                 format_node(ps, node);
                                 ps.emit_soft_newline();
                             }
-                        });
-                    }
+                            ps.shift_comments();
+                        }
+                    });
                 } else if ps.has_comment_in_offset_span(
                     lambda_node.opening_loc().start_offset(),
                     lambda_node.closing_loc().end_offset(),
