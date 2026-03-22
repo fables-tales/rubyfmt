@@ -516,13 +516,13 @@ pub enum ConditionalLayoutPhase {
 pub struct ConditionalLayoutEntry<'src> {
     predicate_tokens: Vec<AbstractLineToken<'src>>,
     statement_tokens: Vec<AbstractLineToken<'src>>,
-    keyword: &'static str,
+    keyword: &'static [u8],
     indent_depth: u32,
     phase: ConditionalLayoutPhase,
 }
 
 impl<'src> ConditionalLayoutEntry<'src> {
-    pub fn new(keyword: &'static str, indent_depth: u32) -> Self {
+    pub fn new(keyword: &'static [u8], indent_depth: u32) -> Self {
         ConditionalLayoutEntry {
             predicate_tokens: Vec::new(),
             statement_tokens: Vec::new(),

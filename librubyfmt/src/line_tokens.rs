@@ -33,14 +33,14 @@ pub enum ConcreteLineToken<'src> {
         depth: u32,
     },
     Keyword {
-        keyword: &'static str,
+        keyword: &'static [u8],
     },
     DefKeyword,
     ClassKeyword,
     ModuleKeyword,
     DoKeyword,
     ConditionalKeyword {
-        contents: &'static str,
+        contents: &'static [u8],
     },
     DirectPart {
         part: Cow<'src, [u8]>,
@@ -72,7 +72,7 @@ pub enum ConcreteLineToken<'src> {
         contents: Cow<'src, [u8]>,
     },
     Delim {
-        contents: &'static str,
+        contents: &'static [u8],
     },
     End,
     HeredocClose {
@@ -97,8 +97,8 @@ impl<'src> ConcreteLineToken<'src> {
         match self {
             Self::HardNewLine => Cow::Borrowed(b"\n"),
             Self::Indent { depth } => get_indent(depth as usize),
-            Self::Keyword { keyword } => Cow::Borrowed(keyword.as_bytes()),
-            Self::ConditionalKeyword { contents } => Cow::Borrowed(contents.as_bytes()),
+            Self::Keyword { keyword } => Cow::Borrowed(keyword),
+            Self::ConditionalKeyword { contents } => Cow::Borrowed(contents),
             Self::DoKeyword => Cow::Borrowed(b"do"),
             Self::ClassKeyword => Cow::Borrowed(b"class"),
             Self::DefKeyword => Cow::Borrowed(b"def"),
@@ -122,7 +122,7 @@ impl<'src> ConcreteLineToken<'src> {
             Self::LTStringContent { content } => content,
             Self::SingleSlash => Cow::Borrowed(b"\\"),
             Self::Comment { contents } => contents,
-            Self::Delim { contents } => Cow::Borrowed(contents.as_bytes()),
+            Self::Delim { contents } => Cow::Borrowed(contents),
             Self::End => Cow::Borrowed(b"end"),
             Self::HeredocClose { symbol } => Cow::Owned(symbol),
             Self::HeredocStart { symbol, .. } => Cow::Borrowed(symbol),
@@ -172,14 +172,16 @@ impl<'src> ConcreteLineToken<'src> {
             Self::DirectPart { part } => {
                 part.as_ref() == b"}" || part.as_ref() == b"]" || part.as_ref() == b")"
             }
-            Self::Delim { contents } => *contents == "}" || *contents == "]" || *contents == ")",
+            Self::Delim { contents } => *contents == b"}" || *contents == b"]" || *contents == b")",
             _ => false,
         }
     }
 
     fn is_conditional_spaced_token(&self) -> bool {
         match self {
-            Self::ConditionalKeyword { contents } => !(*contents == "else" || *contents == "elsif"),
+            Self::ConditionalKeyword { contents } => {
+                !(*contents == b"else" || *contents == b"elsif")
+            }
             Self::Dot | Self::LonelyOperator => false,
             Self::DirectPart { part } => part.as_ref() != b"&.",
             _ => true,
