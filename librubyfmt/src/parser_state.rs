@@ -563,19 +563,19 @@ impl<'src> ParserState<'src> {
     }
 
     pub(crate) fn emit_rescue(&mut self) {
-        self.push_concrete_token(ConcreteLineToken::Keyword { keyword: "rescue" });
+        self.push_concrete_token(ConcreteLineToken::Keyword { keyword: b"rescue" });
     }
 
     pub(crate) fn emit_case_keyword(&mut self) {
-        self.push_concrete_token(ConcreteLineToken::Keyword { keyword: "case" });
+        self.push_concrete_token(ConcreteLineToken::Keyword { keyword: b"case" });
     }
 
     pub(crate) fn emit_when_keyword(&mut self) {
-        self.push_concrete_token(ConcreteLineToken::Keyword { keyword: "when" });
+        self.push_concrete_token(ConcreteLineToken::Keyword { keyword: b"when" });
     }
 
     pub(crate) fn emit_in_keyword(&mut self) {
-        self.push_concrete_token(ConcreteLineToken::Keyword { keyword: "in" });
+        self.push_concrete_token(ConcreteLineToken::Keyword { keyword: b"in" });
     }
 
     pub(crate) fn emit_do_keyword(&mut self) {
@@ -591,7 +591,7 @@ impl<'src> ParserState<'src> {
     }
 
     pub(crate) fn emit_else(&mut self) {
-        self.emit_conditional_keyword("else");
+        self.emit_conditional_keyword(b"else");
     }
 
     pub(crate) fn emit_data(&mut self, data: &'src [u8]) {
@@ -702,11 +702,11 @@ impl<'src> ParserState<'src> {
         self.push_concrete_token(ConcreteLineToken::DefKeyword);
     }
 
-    pub(crate) fn emit_keyword(&mut self, keyword: &'static str) {
+    pub(crate) fn emit_keyword(&mut self, keyword: &'static [u8]) {
         self.push_concrete_token(ConcreteLineToken::Keyword { keyword });
     }
 
-    pub(crate) fn emit_conditional_keyword(&mut self, contents: &'static str) {
+    pub(crate) fn emit_conditional_keyword(&mut self, contents: &'static [u8]) {
         self.push_concrete_token(ConcreteLineToken::ConditionalKeyword { contents });
     }
 }
@@ -930,7 +930,7 @@ impl<'src> ParserState<'src> {
     /// Format a conditional modifier expression (e.g., `x if y` or `x unless y`).
     pub(crate) fn conditional_layout_of<FP, FS>(
         &mut self,
-        keyword: &'static str,
+        keyword: &'static [u8],
         format_predicate: FP,
         format_statement: FS,
     ) where

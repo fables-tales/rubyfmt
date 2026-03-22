@@ -2,12 +2,12 @@ use crate::line_tokens::ConcreteLineToken;
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 struct DelimiterPair {
-    open: &'static str,
-    close: &'static str,
+    open: &'static [u8],
+    close: &'static [u8],
 }
 
 impl DelimiterPair {
-    fn new(open: &'static str, close: &'static str) -> Self {
+    fn new(open: &'static [u8], close: &'static [u8]) -> Self {
         DelimiterPair { open, close }
     }
 }
@@ -21,71 +21,71 @@ pub struct BreakableDelims {
 impl BreakableDelims {
     pub fn for_method_call() -> Self {
         BreakableDelims {
-            single_line: DelimiterPair::new("(", ")"),
-            multi_line: DelimiterPair::new("(", ")"),
+            single_line: DelimiterPair::new(b"(", b")"),
+            multi_line: DelimiterPair::new(b"(", b")"),
         }
     }
 
     pub fn for_return_kw() -> Self {
         BreakableDelims {
-            single_line: DelimiterPair::new(" ", ""),
-            multi_line: DelimiterPair::new(" [", "]"),
+            single_line: DelimiterPair::new(b" ", b""),
+            multi_line: DelimiterPair::new(b" [", b"]"),
         }
     }
 
     pub fn for_kw() -> Self {
         BreakableDelims {
-            single_line: DelimiterPair::new(" ", ""),
-            multi_line: DelimiterPair::new("(", ")"),
+            single_line: DelimiterPair::new(b" ", b""),
+            multi_line: DelimiterPair::new(b"(", b")"),
         }
     }
 
     pub fn for_block_params() -> Self {
         BreakableDelims {
-            single_line: DelimiterPair::new(" |", "|"),
-            multi_line: DelimiterPair::new(" |", "|"),
+            single_line: DelimiterPair::new(b" |", b"|"),
+            multi_line: DelimiterPair::new(b" |", b"|"),
         }
     }
 
     pub fn for_array() -> Self {
         BreakableDelims {
-            single_line: DelimiterPair::new("[", "]"),
-            multi_line: DelimiterPair::new("[", "]"),
+            single_line: DelimiterPair::new(b"[", b"]"),
+            multi_line: DelimiterPair::new(b"[", b"]"),
         }
     }
 
     pub fn for_when() -> Self {
         BreakableDelims {
-            single_line: DelimiterPair::new(" ", ""),
-            multi_line: DelimiterPair::new("", ""),
+            single_line: DelimiterPair::new(b" ", b""),
+            multi_line: DelimiterPair::new(b"", b""),
         }
     }
 
     pub fn for_hash() -> Self {
         BreakableDelims {
-            single_line: DelimiterPair::new("{", "}"),
-            multi_line: DelimiterPair::new("{", "}"),
+            single_line: DelimiterPair::new(b"{", b"}"),
+            multi_line: DelimiterPair::new(b"{", b"}"),
         }
     }
 
     pub fn for_brace_block() -> Self {
         BreakableDelims {
-            single_line: DelimiterPair::new("{", " }"),
-            multi_line: DelimiterPair::new("{", "}"),
+            single_line: DelimiterPair::new(b"{", b" }"),
+            multi_line: DelimiterPair::new(b"{", b"}"),
         }
     }
 
     pub fn for_binary_op() -> Self {
         BreakableDelims {
-            single_line: DelimiterPair::new("", ""),
-            multi_line: DelimiterPair::new("", ""),
+            single_line: DelimiterPair::new(b"", b""),
+            multi_line: DelimiterPair::new(b"", b""),
         }
     }
 
     pub fn for_parens() -> Self {
         BreakableDelims {
-            single_line: DelimiterPair::new("(", ")"),
-            multi_line: DelimiterPair::new("(", ")"),
+            single_line: DelimiterPair::new(b"(", b")"),
+            multi_line: DelimiterPair::new(b"(", b")"),
         }
     }
 
