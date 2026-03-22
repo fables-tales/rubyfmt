@@ -367,11 +367,6 @@ impl<'src> BreakableCallChainEntry<'src> {
         insert_at(idx, &mut self.tokens, tokens)
     }
 
-    pub fn push_line_number(&mut self, _number: LineNumber) {
-        // No-op, BreakableCallChainEntry has custom multilining logic
-        // that doesn't depend on the source line numbers
-    }
-
     /// Removes `BeginCallChainIndent` and `EndCallChainIndent`, which is only really
     /// necessary when rendering a call chain as single-line. This prevents unnecessariliy
     /// increasing the indentation for a trailing block in e.g. `thing.each do; /* block */; end`
@@ -434,9 +429,9 @@ impl<'src> Breakable<'src> {
     pub fn push_line_number(&mut self, number: LineNumber) {
         match self {
             Breakable::DelimiterExpr(be) => be.push_line_number(number),
-            Breakable::CallChain(bcce) => bcce.push_line_number(number),
-            Breakable::InlineConditional(_) => {
-                // No-op for conditional layout - line numbers are tracked by nested breakables
+            Breakable::CallChain(_) | Breakable::InlineConditional(_) => {
+                // `InlineConditional` line numbers are tracked by nested breakables,
+                // and `CallChain` has its own multilining logic
             }
         }
     }
