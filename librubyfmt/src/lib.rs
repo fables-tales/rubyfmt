@@ -88,7 +88,11 @@ pub fn toplevel_format_program_with_prism<W: Write>(
     source: &[u8],
     data: Option<ruby_prism::Location>,
 ) -> Result<(), RichFormatError> {
-    let mut ps = ParserState::new(FileComments::from_prism_comments(comments, source));
+    let mut ps = ParserState::new(FileComments::from_prism_comments(
+        comments,
+        source,
+        tree.location().end_line(),
+    ));
     ps.flush_start_of_file_comments();
 
     format_prism::format_program(&mut ps, tree.as_program_node().unwrap(), data);

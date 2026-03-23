@@ -7,48 +7,6 @@ use crate::comment_block::CommentBlock;
 use crate::parser_state::line_difference_requires_newline;
 use crate::types::{LineNumber, SourceOffset};
 
-/// A vector of offsets in the source code where lines start, which
-/// we use to detect what line a given offset is one.
-///
-/// Note: The Prism Ruby API does track lines, but it's currently not exposed
-/// by the Rust crate, so this is our alternative while we're building Prism support
-/// and can always clean it up later.
-#[derive(Debug, Clone, Default)]
-pub struct LineIndex {
-    // Stores the byte offset of each line's start position
-    line_starts: Vec<usize>,
-}
-
-impl LineIndex {
-    fn from_vec(line_starts: Vec<usize>) -> Self {
-        LineIndex { line_starts }
-    }
-
-    // Get the line number (1-based) for a given byte offset
-    pub fn get_line_number(&self, offset: usize) -> usize {
-        let line = match self.line_starts.binary_search(&offset) {
-            // Exact match means we're at the start of a line
-            Ok(line) => line,
-
-            // No exact match, so the insertion_point is the index of the next line.
-            // We want the current line, which is insertion_point - 1
-            Err(insertion_point) => {
-                // Should only happen if we're checking an offset
-                // in the middle of the first line
-                if insertion_point == 0 {
-                    0
-                } else {
-                    insertion_point - 1
-                }
-            }
-        };
-        // These are one-offset to be equivalent to Ripper's behavior.
-        // Once we remove the Ripper version, we can 0-index these,
-        // since they're not user-facing anywhere
-        line + 1
-    }
-}
-
 #[derive(Clone, Debug, Default)]
 pub struct FileComments {
     start_of_file_contiguous_comment_lines: Option<CommentBlock>,
@@ -57,25 +15,23 @@ pub struct FileComments {
     /// Sorted list of line numbers that contain Ruby code (not comments/blank)
     lines_with_ruby: Vec<LineNumber>,
     last_lineno: LineNumber,
-    line_index: LineIndex,
     /// Sorted list of byte offsets where comments start
-    comment_start_offsets: Vec<usize>,
+    comment_start_offsets: Vec<SourceOffset>,
 }
 
 impl FileComments {
-    pub fn from_prism_comments(comments: ruby_prism::Comments, source: &[u8]) -> FileComments {
-        let mut line_starts = Vec::new();
+    pub fn from_prism_comments(
+        comments: ruby_prism::Comments,
+        source: &[u8],
+        end_line: i32,
+    ) -> FileComments {
         let mut lines_with_ruby = Vec::new();
-
-        line_starts.push(0); // First line always starts at position 0
 
         let mut line_start = 0;
         let mut lineno = 1;
         let mut inside_embdoc = false;
 
         for i in memchr_iter(b'\n', source) {
-            line_starts.push(i + 1);
-
             if Self::line_has_ruby(&source[line_start..i], &mut inside_embdoc) {
                 lines_with_ruby.push(lineno);
             }
@@ -92,22 +48,19 @@ impl FileComments {
             }
         }
 
-        let line_index = LineIndex::from_vec(line_starts);
-
         let mut file_comments = FileComments::default();
         for comment in comments {
             file_comments.push_comment(
-                line_index.get_line_number(comment.location().start_offset()) as u64,
+                comment.location().start_line(),
                 comment.text().trim_ascii_end().to_vec(),
             );
             file_comments
                 .comment_start_offsets
-                .push(comment.location().start_offset());
+                .push(comment.location().start());
         }
 
         file_comments.lines_with_ruby = lines_with_ruby;
-        file_comments.last_lineno = line_index.line_starts.len() as u64;
-        file_comments.line_index = line_index;
+        file_comments.last_lineno = end_line;
         file_comments
     }
 
@@ -148,7 +101,7 @@ impl FileComments {
     /// Add a new comment. If the beginning of this file is a comment block,
     /// each of those comment lines must be pushed before any other line, or
     /// the end of the block from the start of the file will be incorrectly calculated.
-    fn push_comment(&mut self, line_number: u64, l: Vec<u8>) {
+    fn push_comment(&mut self, line_number: LineNumber, l: Vec<u8>) {
         match (
             &mut self.start_of_file_contiguous_comment_lines,
             line_number,
@@ -238,7 +191,7 @@ impl FileComments {
             {
                 comment_block_with_spaces.push(b"".into());
             }
-            let line_count = comment_contents.lines().count() as u64;
+            let line_count = comment_contents.lines().count() as i32;
             last_line = Some(index + line_count - 1);
             comment_block_with_spaces.push(comment_contents);
         }
@@ -252,11 +205,5 @@ impl FileComments {
             CommentBlock::new(lowest_line..line_number + 1, comment_block_with_spaces),
             last_line.unwrap(),
         ))
-    }
-
-    // Note: this is currently only used for Prism support, see the details
-    // on the `LineIndex` struct for context
-    pub fn get_line_number_for_offset(&self, source_offset: usize) -> u64 {
-        self.line_index.get_line_number(source_offset) as u64
     }
 }

@@ -348,10 +348,6 @@ impl<'src> ParserState<'src> {
         self.current_orig_line_number = line_number;
     }
 
-    pub(crate) fn at_offset(&mut self, source_offset: SourceOffset) {
-        self.on_line(self.get_line_number_for_offset(source_offset));
-    }
-
     pub(crate) fn emit_indent(&mut self) {
         self.push_concrete_token(ConcreteLineToken::Indent {
             depth: self.current_spaces(),
@@ -389,7 +385,7 @@ impl<'src> ParserState<'src> {
 
     pub(crate) fn emit_string_content(&mut self, s: impl Into<Cow<'src, [u8]>>) {
         let content = s.into();
-        let newline_count = content.iter().filter(|&&b| b == b'\n').count() as u64;
+        let newline_count = content.iter().filter(|&&b| b == b'\n').count() as i32;
         self.current_orig_line_number += newline_count;
         for be in self.breakable_entry_stack.iter_mut().rev() {
             be.push_line_number(self.current_orig_line_number);
@@ -421,10 +417,6 @@ impl<'src> ParserState<'src> {
 
     pub(crate) fn wind_dumping_comments_until_line(&mut self, line_number: LineNumber) {
         self.wind_dumping_comments(Some(line_number))
-    }
-
-    pub(crate) fn wind_dumping_comments_until_offset(&mut self, source_offset: SourceOffset) {
-        self.wind_dumping_comments_until_line(self.get_line_number_for_offset(source_offset))
     }
 
     pub(crate) fn wind_dumping_comments(&mut self, maybe_max_line_number: Option<LineNumber>) {
@@ -624,10 +616,6 @@ impl<'src> ParserState<'src> {
             .expect("formatting context is never empty")
     }
 
-    pub(crate) fn get_line_number_for_offset(&self, source_offset: SourceOffset) -> LineNumber {
-        self.comments_hash.get_line_number_for_offset(source_offset)
-    }
-
     pub(crate) fn render_heredocs(&mut self, skip: bool) {
         // Drain to process heredocs in declaration order (FIFO).
         // When multiple heredocs are declared on the same line (e.g., #{<<A} middle #{<<B}),
@@ -743,7 +731,7 @@ impl<'src> ParserState<'src> {
             let trailing_comment = comments.is_trailing();
             self.insert_comment_collection(comments);
             if !trailing_comment {
-                self.current_orig_line_number += line_count as u64;
+                self.current_orig_line_number += line_count as i32;
             }
         }
     }
