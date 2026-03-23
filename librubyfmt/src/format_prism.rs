@@ -330,6 +330,9 @@ pub fn format_node<'src>(ps: &mut ParserState<'src>, node: prism::Node<'src>) {
         }
         Node::NextNode { .. } => format_next_node(ps, node.as_next_node().unwrap()),
         Node::NilNode { .. } => format_nil_node(ps),
+        Node::NoBlockParameterNode { .. } => {
+            format_no_block_parameter_node(ps, node.as_no_block_parameter_node().unwrap())
+        }
         Node::NoKeywordsParameterNode { .. } => {
             format_no_keywords_parameter_node(ps, node.as_no_keywords_parameter_node().unwrap())
         }
@@ -4438,6 +4441,14 @@ fn format_next_node<'src>(ps: &mut ParserState<'src>, next_node: prism::NextNode
 
 fn format_nil_node(ps: &mut ParserState) {
     ps.emit_ident(b"nil");
+}
+
+fn format_no_block_parameter_node<'src>(
+    ps: &mut ParserState<'src>,
+    no_block_parameter_node: prism::NoBlockParameterNode<'src>,
+) {
+    ps.emit_soft_indent();
+    handle_string_at_line(ps, b"&nil", no_block_parameter_node.location().start_line());
 }
 
 fn format_no_keywords_parameter_node<'src>(
