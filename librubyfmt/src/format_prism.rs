@@ -173,6 +173,9 @@ pub fn format_node<'src>(ps: &mut ParserState<'src>, node: prism::Node<'src>) {
             format_embedded_variable_node(ps, node.as_embedded_variable_node().unwrap())
         }
         Node::EnsureNode { .. } => format_ensure_node(ps, node.as_ensure_node().unwrap()),
+        Node::ErrorRecoveryNode { .. } => unreachable!(
+            "ErrorRecoveryNode should only occur in files with syntax errors, which cannot be formatted"
+        ),
         Node::FalseNode { .. } => format_false_node(ps, node.as_false_node().unwrap()),
         Node::FindPatternNode { .. } => {
             format_find_pattern_node(ps, node.as_find_pattern_node().unwrap())
@@ -318,9 +321,6 @@ pub fn format_node<'src>(ps: &mut ParserState<'src>, node: prism::Node<'src>) {
         Node::MatchWriteNode { .. } => {
             format_match_write_node(ps, node.as_match_write_node().unwrap())
         }
-        Node::MissingNode { .. } => unreachable!(
-            "MissingNode should only occur in files with syntax errors, which cannot be formatted"
-        ),
         Node::ModuleNode { .. } => format_module_node(ps, node.as_module_node().unwrap()),
         Node::MultiTargetNode { .. } => {
             format_multi_target_node(ps, node.as_multi_target_node().unwrap())
@@ -1235,7 +1235,7 @@ fn format_find_pattern_node<'src>(
                 ps.emit_soft_newline();
                 ps.emit_soft_indent();
                 ps.with_start_of_line(false, |ps| {
-                    format_node(ps, find_pattern_node.right());
+                    format_node(ps, find_pattern_node.right().as_node());
                 });
             });
         });
