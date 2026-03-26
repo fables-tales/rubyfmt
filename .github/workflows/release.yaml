@@ -36,31 +36,11 @@ jobs:
         with:
           name: rubyfmt-release-artifact-${{ matrix.os }}
           path: rubyfmt-*.tar.gz
-  source-release:
-    runs-on: macos-latest
-    steps:
-      - uses: actions/checkout@v6
-        with:
-          submodules: true
-          fetch-depth: 0
-      - run: |
-          TAG=$(git describe HEAD)
-          RELEASE_DIR="out/release"
-          mkdir -p ${RELEASE_DIR}
-          ./script/make_source_release ${TAG}
-      - uses: actions/upload-artifact@v6
-        with:
-          name: rubyfmt-source-release
-          path: "out/release/source"
   release:
     runs-on: macos-latest
     needs:
       - build
-      - source-release
     steps:
-      - uses: actions/download-artifact@v5
-        with:
-          name: rubyfmt-source-release
       - uses: actions/download-artifact@v5
         with:
           name: rubyfmt-release-artifact-ubuntu-22.04
