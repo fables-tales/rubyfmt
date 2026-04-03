@@ -99,6 +99,18 @@ Rubyfmt is also supported by the (now-deprecated) [VSCode Ruby extension](https:
 }
 ```
 
+This is additionally supported by the [Formatto for VS Code](https://marketplace.visualstudio.com/items?itemName=damolinx.formatto) extension.  Use it as your project's formatter by adding this entry to your `.vscode/settings.json` after installing the extension: 
+
+```jsonc
+  {
+  "[ruby]": {
+    "editor.defaultFormatter": "damolinx.formatto"
+  },
+}
+```
+
+Check its [README](https://github.com/damolinx/vscode-formatto#readme) for additional configuration options.
+
 ### Neovim + null-ls
 
 The [null-ls](https://github.com/jose-elias-alvarez/null-ls.nvim) plugin supports rubyfmt out of the box:
