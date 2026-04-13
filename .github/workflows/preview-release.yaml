@@ -48,7 +48,7 @@ jobs:
           override: true
           target: aarch64-unknown-linux-gnu
       - run: ./script/make_release
-      - uses: actions/upload-artifact@v6
+      - uses: actions/upload-artifact@v7
         with:
           name: rubyfmt-release-artifact-${{ matrix.os }}
           path: rubyfmt-*.tar.gz
@@ -60,17 +60,17 @@ jobs:
       - uses: actions/checkout@v6
       - uses: actions-ecosystem/action-get-latest-tag@v1
         id: get-latest-tag
-      - uses: actions/download-artifact@v5
+      - uses: actions/download-artifact@v8
         with:
           name: rubyfmt-release-artifact-ubuntu-22.04-arm
-      - uses: actions/download-artifact@v5
+      - uses: actions/download-artifact@v8
         with:
           name: rubyfmt-release-artifact-ubuntu-22.04
-      - uses: actions/download-artifact@v5
+      - uses: actions/download-artifact@v8
         with:
           name: rubyfmt-release-artifact-macos-latest
       - name: Upload Release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v3
         with:
           files: rubyfmt-*.tar.gz
           fail_on_unmatched_files: true
