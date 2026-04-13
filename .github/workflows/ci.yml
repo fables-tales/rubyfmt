@@ -64,7 +64,7 @@ jobs:
         override: true
         target: aarch64-unknown-linux-gnu
     - run: cargo test --release
-    - uses: actions/upload-artifact@v6
+    - uses: actions/upload-artifact@v7
       with:
         name: rubyfmt-artifact-${{ matrix.os }}
         path: target/release/rubyfmt-main
