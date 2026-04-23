@@ -23,7 +23,7 @@ jobs:
       - uses: actions/checkout@v6
       - uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
-          toolchain: 1.93.0
+          toolchain: 1.95.0
           components: clippy
           override: true
       - run: cargo clippy --all --all-features -- -D warnings
@@ -54,13 +54,13 @@ jobs:
     - if: runner.os == 'macOS'
       uses: actions-rust-lang/setup-rust-toolchain@v1
       with:
-        toolchain: 1.93.0
+        toolchain: 1.95.0
         target: aarch64-apple-darwin
         override: true
     - if: runner.os != 'macOS'
       uses: actions-rust-lang/setup-rust-toolchain@v1
       with:
-        toolchain: 1.93.0
+        toolchain: 1.95.0
         override: true
         target: aarch64-unknown-linux-gnu
     - run: cargo test --release
