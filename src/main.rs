@@ -422,24 +422,22 @@ fn main() {
 
         CommandlineOpts { in_place: true, .. } => {
             iterate_formatted(&opts, &|(file_path, before, after)| match after {
-                None => {}
-                Some(fmtted) => {
-                    if fmtted.ne(before) {
-                        let file_write = OpenOptions::new()
-                            .write(true)
-                            .truncate(true)
-                            .open(file_path)
-                            .and_then(|mut file| file.write_all(&fmtted));
+                Some(fmtted) if fmtted.ne(before) => {
+                    let file_write = OpenOptions::new()
+                        .write(true)
+                        .truncate(true)
+                        .open(file_path)
+                        .and_then(|mut file| file.write_all(&fmtted));
 
-                        match file_write {
-                            Ok(_) => {}
-                            Err(e) => handle_execution_error(
-                                &opts,
-                                ExecutionError::IOError(e, file_path.display().to_string()),
-                            ),
-                        }
+                    match file_write {
+                        Ok(_) => {}
+                        Err(e) => handle_execution_error(
+                            &opts,
+                            ExecutionError::IOError(e, file_path.display().to_string()),
+                        ),
                     }
                 }
+                _ => {}
             })
         }
 

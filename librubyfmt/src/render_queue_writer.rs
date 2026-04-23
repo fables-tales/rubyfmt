@@ -63,38 +63,33 @@ impl<'src> RenderQueueWriter<'src> {
                 }
                 ConcreteLineTokenAndTargets::ConcreteLineToken(ConcreteLineToken::Comment {
                     contents,
-                }) => {
-                    if !contents.is_empty() {
-                        let indent = get_indent(accum.additional_indent as usize * 2);
-                        let mut new_contents = indent.into_owned();
-                        new_contents.extend_from_slice(contents);
-                        next_token = ConcreteLineTokenAndTargets::ConcreteLineToken(
-                            ConcreteLineToken::Comment {
-                                contents: new_contents.into(),
-                            },
-                        )
-                    }
+                }) if !contents.is_empty() => {
+                    let indent = get_indent(accum.additional_indent as usize * 2);
+                    let mut new_contents = indent.into_owned();
+                    new_contents.extend_from_slice(contents);
+                    next_token =
+                        ConcreteLineTokenAndTargets::ConcreteLineToken(ConcreteLineToken::Comment {
+                            contents: new_contents.into(),
+                        })
                 }
                 ConcreteLineTokenAndTargets::ConcreteLineToken(ConcreteLineToken::DirectPart {
                     part,
-                }) => {
-                    if current_heredoc_kind.is_some_and(|k| k.is_squiggly()) {
-                        let indent = get_indent(accum.additional_indent as usize * 2);
-                        let indent_bytes = indent.as_ref();
-                        let mut new_contents = Vec::new();
-                        let parts = part.split(|&b| b == b'\n');
+                }) if current_heredoc_kind.is_some_and(|k| k.is_squiggly()) => {
+                    let indent = get_indent(accum.additional_indent as usize * 2);
+                    let indent_bytes = indent.as_ref();
+                    let mut new_contents = Vec::new();
+                    let parts = part.split(|&b| b == b'\n');
 
-                        for (i, p) in parts.enumerate() {
-                            if i > 0 {
-                                new_contents.push(b'\n');
-                            }
-                            if !p.is_empty() {
-                                new_contents.extend_from_slice(indent_bytes);
-                            }
-                            new_contents.extend_from_slice(p);
+                    for (i, p) in parts.enumerate() {
+                        if i > 0 {
+                            new_contents.push(b'\n');
                         }
-                        next_token = clats_direct_part(new_contents)
+                        if !p.is_empty() {
+                            new_contents.extend_from_slice(indent_bytes);
+                        }
+                        new_contents.extend_from_slice(p);
                     }
+                    next_token = clats_direct_part(new_contents)
                 }
                 ConcreteLineTokenAndTargets::ConcreteLineToken(
                     ConcreteLineToken::HeredocStart { kind, .. },

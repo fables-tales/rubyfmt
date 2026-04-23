@@ -104,10 +104,10 @@ impl<'src> Intermediary<'src> {
                     prev.set_gets_indented()
                 }
             }
-            ConcreteLineToken::MethodName { name } => {
-                if *name == b"require" && self.tokens.last().is_some_and(|t| t.is_indent()) {
-                    self.current_line_metadata.set_has_require();
-                }
+            ConcreteLineToken::MethodName { name }
+                if *name == b"require" && self.tokens.last().is_some_and(|t| t.is_indent()) =>
+            {
+                self.current_line_metadata.set_has_require();
             }
             _ => {}
         }
