@@ -1075,14 +1075,9 @@ fn format_interpolated_symbol_node<'src>(
         }
     });
 
-    // Shorthand hash keys like `{ "#{x}": 1 }` give a closing of `":`. Drop the
-    // trailing `:` here — `format_assoc_node` re-emits it as the key/value
-    // separator. (Mirrors the same handling in `format_symbol_node`.)
-    let closing_str = closer.unwrap_or(b"\"");
-    let closing_str = closing_str.strip_suffix(b":").unwrap_or(closing_str);
-    if !closing_str.is_empty() {
-        ps.emit_ident(closing_str);
-    }
+    // Defer trailing-`:` handling for shorthand hash keys like
+    // `{ "#{x}": 1 }` to the shared helper.
+    emit_symbol_key_closer(ps, closer.unwrap_or(b"\""));
 }
 
 fn format_interpolated_x_string_node<'src>(
@@ -2609,7 +2604,9 @@ fn format_symbol_node<'src>(ps: &mut ParserState<'src>, symbol_node: prism::Symb
 
         ps.emit_double_quote();
     } else {
-        // For other symbols, emit as-is
+        // For other symbols, emit as-is. The closer routes through
+        // `emit_symbol_key_closer` to drop the trailing `:` of shorthand
+        // hash keys (e.g. `"foo":`); see that helper for context.
         if let Some(opening) = opener {
             ps.emit_ident(opening);
         }
@@ -2617,17 +2614,23 @@ fn format_symbol_node<'src>(ps: &mut ParserState<'src>, symbol_node: prism::Symb
             ps.emit_ident(value_loc.as_slice());
         }
         if let Some(closing_str) = closer {
-            let mut closing_str = closing_str;
-            // String symbols, such as the key in `{ "a": b }` will have
-            // a closing_str of `"\":"`, so we have to trim instead of
-            // dropping the entire closing item.
-            if closing_str.ends_with(b":") {
-                closing_str = &closing_str[..(closing_str.len() - 1)];
-            }
-            if !closing_str.is_empty() {
-                ps.emit_ident(closing_str);
-            }
+            emit_symbol_key_closer(ps, closing_str);
         }
+    }
+}
+
+/// Emit the closing-delimiter slice of a symbol-shaped hash key, dropping a
+/// trailing `:` if present.
+///
+/// Shorthand hash keys like `foo:`, `"foo":`, and `"#{x}":` carry the `:`
+/// separator inside the symbol node's `closing_loc`. `format_assoc_node`
+/// owns the separator (re-emitted as `:` for shorthand, replaced with ` =>`
+/// for the rocket-form branch on mixed hashes), so the symbol-key formatters
+/// route through this helper instead of emitting the closer directly.
+fn emit_symbol_key_closer<'src>(ps: &mut ParserState<'src>, closer: &'src [u8]) {
+    let trimmed = closer.strip_suffix(b":").unwrap_or(closer);
+    if !trimmed.is_empty() {
+        ps.emit_ident(trimmed);
     }
 }
 
