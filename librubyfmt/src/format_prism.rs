@@ -1047,8 +1047,20 @@ fn format_interpolated_symbol_node<'src>(
     ps: &mut ParserState<'src>,
     interpolated_symbol_node: prism::InterpolatedSymbolNode<'src>,
 ) {
-    ps.emit_ident(b":");
-    ps.emit_double_quote();
+    let opener = interpolated_symbol_node.opening_loc().map(|s| s.as_slice());
+    let closer = interpolated_symbol_node.closing_loc().map(|s| s.as_slice());
+
+    // Every interpolated symbol reachable through this function has explicit
+    // delimiters: `:"…"` literals, or shorthand hash keys like `"…":` whose
+    // delimiters are reported by prism as `"` / `":`. Percent-array elements
+    // (`%I[…]`) do not go through this function. Fall back gracefully so a
+    // future prism path can't silently emit broken output.
+    debug_assert!(
+        opener.is_some() && closer.is_some(),
+        "InterpolatedSymbolNode without explicit opening/closing locations"
+    );
+
+    ps.emit_ident(opener.unwrap_or(b":\""));
 
     ps.with_start_of_line(false, |ps| {
         for part in interpolated_symbol_node.parts().iter() {
@@ -1063,7 +1075,14 @@ fn format_interpolated_symbol_node<'src>(
         }
     });
 
-    ps.emit_double_quote();
+    // Shorthand hash keys like `{ "#{x}": 1 }` give a closing of `":`. Drop the
+    // trailing `:` here — `format_assoc_node` re-emits it as the key/value
+    // separator. (Mirrors the same handling in `format_symbol_node`.)
+    let closing_str = closer.unwrap_or(b"\"");
+    let closing_str = closing_str.strip_suffix(b":").unwrap_or(closing_str);
+    if !closing_str.is_empty() {
+        ps.emit_ident(closing_str);
+    }
 }
 
 fn format_interpolated_x_string_node<'src>(
