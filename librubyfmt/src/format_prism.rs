@@ -1047,8 +1047,20 @@ fn format_interpolated_symbol_node<'src>(
     ps: &mut ParserState<'src>,
     interpolated_symbol_node: prism::InterpolatedSymbolNode<'src>,
 ) {
-    ps.emit_ident(b":");
-    ps.emit_double_quote();
+    let opener = interpolated_symbol_node.opening_loc().map(|s| s.as_slice());
+    let closer = interpolated_symbol_node.closing_loc().map(|s| s.as_slice());
+
+    // Every interpolated symbol reachable through this function has explicit
+    // delimiters: `:"…"` literals, or shorthand hash keys like `"…":` whose
+    // delimiters are reported by prism as `"` / `":`. Percent-array elements
+    // (`%I[…]`) do not go through this function. Fall back gracefully so a
+    // future prism path can't silently emit broken output.
+    debug_assert!(
+        opener.is_some() && closer.is_some(),
+        "InterpolatedSymbolNode without explicit opening/closing locations"
+    );
+
+    ps.emit_ident(opener.unwrap_or(b":\""));
 
     ps.with_start_of_line(false, |ps| {
         for part in interpolated_symbol_node.parts().iter() {
@@ -1063,7 +1075,9 @@ fn format_interpolated_symbol_node<'src>(
         }
     });
 
-    ps.emit_double_quote();
+    // Defer trailing-`:` handling for shorthand hash keys like
+    // `{ "#{x}": 1 }` to the shared helper.
+    emit_symbol_key_closer(ps, closer.unwrap_or(b"\""));
 }
 
 fn format_interpolated_x_string_node<'src>(
@@ -2590,7 +2604,9 @@ fn format_symbol_node<'src>(ps: &mut ParserState<'src>, symbol_node: prism::Symb
 
         ps.emit_double_quote();
     } else {
-        // For other symbols, emit as-is
+        // For other symbols, emit as-is. The closer routes through
+        // `emit_symbol_key_closer` to drop the trailing `:` of shorthand
+        // hash keys (e.g. `"foo":`); see that helper for context.
         if let Some(opening) = opener {
             ps.emit_ident(opening);
         }
@@ -2598,17 +2614,23 @@ fn format_symbol_node<'src>(ps: &mut ParserState<'src>, symbol_node: prism::Symb
             ps.emit_ident(value_loc.as_slice());
         }
         if let Some(closing_str) = closer {
-            let mut closing_str = closing_str;
-            // String symbols, such as the key in `{ "a": b }` will have
-            // a closing_str of `"\":"`, so we have to trim instead of
-            // dropping the entire closing item.
-            if closing_str.ends_with(b":") {
-                closing_str = &closing_str[..(closing_str.len() - 1)];
-            }
-            if !closing_str.is_empty() {
-                ps.emit_ident(closing_str);
-            }
+            emit_symbol_key_closer(ps, closing_str);
         }
+    }
+}
+
+/// Emit the closing-delimiter slice of a symbol-shaped hash key, dropping a
+/// trailing `:` if present.
+///
+/// Shorthand hash keys like `foo:`, `"foo":`, and `"#{x}":` carry the `:`
+/// separator inside the symbol node's `closing_loc`. `format_assoc_node`
+/// owns the separator (re-emitted as `:` for shorthand, replaced with ` =>`
+/// for the rocket-form branch on mixed hashes), so the symbol-key formatters
+/// route through this helper instead of emitting the closer directly.
+fn emit_symbol_key_closer<'src>(ps: &mut ParserState<'src>, closer: &'src [u8]) {
+    let trimmed = closer.strip_suffix(b":").unwrap_or(closer);
+    if !trimmed.is_empty() {
+        ps.emit_ident(trimmed);
     }
 }
 
