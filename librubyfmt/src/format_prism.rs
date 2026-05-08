@@ -3126,7 +3126,7 @@ fn format_parentheses_node<'src>(
                                 format_node(ps, stmt);
                             });
                             if idx < statements.len() - 1 {
-                                ps.emit_soft_newline();
+                                ps.emit_newline();
                             }
                         }
                     } else {
