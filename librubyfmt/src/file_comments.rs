@@ -211,6 +211,7 @@ impl FileComments {
         &mut self,
         starting_line_number: LineNumber,
         line_number: LineNumber,
+        suppress_leading_blank: bool,
     ) -> Option<(CommentBlock, LineNumber)> {
         let lowest_line = self.other_comments.first().map(|(ln, _)| *ln)?;
         if lowest_line > line_number {
@@ -224,10 +225,12 @@ impl FileComments {
         let mut comment_block_with_spaces = Vec::new();
         let mut last_line = None;
 
-        if line_difference_requires_newline(
-            self.other_comments.first().unwrap().0,
-            starting_line_number,
-        ) {
+        if !suppress_leading_blank
+            && line_difference_requires_newline(
+                self.other_comments.first().unwrap().0,
+                starting_line_number,
+            )
+        {
             comment_block_with_spaces.push(b"".into());
         }
 

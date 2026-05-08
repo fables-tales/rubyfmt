@@ -70,6 +70,10 @@ pub struct ParserState<'src> {
     /// Whether we're currently rendering inside a squiggly heredoc's content.
     /// Used to mark nested non-squiggly heredocs so they don't get incorrect indentation.
     inside_squiggly_heredoc: bool,
+    /// When true, strip blank lines that would otherwise be prepended to an extracted comment
+    /// block. Used during call-chain element offset jumps, where a trailing-dot blank line in
+    /// the source must not produce an invalid blank line before a leading-dot comment.
+    suppress_blank_before_comment: bool,
 }
 
 impl<'src> ParserState<'src> {
@@ -106,9 +110,11 @@ impl<'src> ParserState<'src> {
         // Update line number and clear out any comments we might have rendered in e.g. an embexpr
         //
         // (Ignore this comment extraction, we've already rendered them elsewhere)
-        let _ = self
-            .comments_hash
-            .extract_comments_to_line(self.current_orig_line_number, end_line);
+        let _ = self.comments_hash.extract_comments_to_line(
+            self.current_orig_line_number,
+            end_line,
+            false,
+        );
         self.current_orig_line_number = end_line;
 
         let segments = next_ps.render_to_segments();
@@ -329,10 +335,11 @@ impl<'src> ParserState<'src> {
             be.push_line_number(line_number);
         }
 
-        if let Some((comments, last_comment_line)) = self
-            .comments_hash
-            .extract_comments_to_line(self.current_orig_line_number, line_number)
-        {
+        if let Some((comments, last_comment_line)) = self.comments_hash.extract_comments_to_line(
+            self.current_orig_line_number,
+            line_number,
+            self.suppress_blank_before_comment,
+        ) {
             self.push_comments(comments);
             self.current_orig_line_number =
                 std::cmp::max(self.current_orig_line_number, last_comment_line);
@@ -718,6 +725,7 @@ impl<'src> ParserState<'src> {
             spaces_after_last_newline: 0,
             scopes: vec![vec![]],
             inside_squiggly_heredoc: false,
+            suppress_blank_before_comment: false,
         }
     }
 
@@ -773,6 +781,21 @@ impl<'src> ParserState<'src> {
 
     pub(crate) fn disable_user_newlines(&mut self) {
         self.insert_user_newlines = false;
+    }
+
+    pub(crate) fn with_user_newlines_disabled<F>(&mut self, f: F)
+    where
+        F: FnOnce(&mut ParserState<'src>),
+    {
+        let saved_newlines = self.insert_user_newlines;
+        let saved_blank = self.suppress_blank_before_comment;
+        self.insert_user_newlines = false;
+        self.suppress_blank_before_comment = true;
+
+        f(self);
+
+        self.insert_user_newlines = saved_newlines;
+        self.suppress_blank_before_comment = saved_blank;
     }
 
     pub(crate) fn last_token_is_a_newline(&self) -> bool {

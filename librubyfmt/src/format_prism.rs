@@ -2396,7 +2396,10 @@ fn format_call_body<'src>(
                     }
                 }
 
-                ps.at_offset(start_loc_for_call_node_in_chain(&element));
+                // Blank lines between leading-dot chain elements produce invalid Ruby.
+                ps.with_user_newlines_disabled(|ps| {
+                    ps.at_offset(start_loc_for_call_node_in_chain(&element));
+                });
                 ps.shift_comments();
 
                 let skip_value =
