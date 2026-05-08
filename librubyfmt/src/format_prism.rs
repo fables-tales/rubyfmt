@@ -1657,6 +1657,25 @@ pub static GEMFILE_METHODS: [&[u8]; 4] = [b"gem", b"source", b"ruby", b"group"];
 pub static OPTIONALLY_PARENTHESIZED_METHODS: [&[u8]; 3] =
     [b"super", b"require", b"require_relative"];
 
+// Returns true if `node` is a DefNode or a modifier CallNode (no receiver, one DefNode argument)
+// that itself contains a def modifier node — e.g. `public def foo` or `memoize public def foo`.
+fn is_def_modifier_node(node: &prism::Node) -> bool {
+    if node.as_def_node().is_some() {
+        return true;
+    }
+
+    if let Some(call_node) = node.as_call_node()
+        && call_node.receiver().is_none()
+        && let Some(args) = call_node.arguments()
+        && args.arguments().len() == 1
+        && let Some(argument) = args.arguments().first()
+    {
+        return is_def_modifier_node(&argument);
+    }
+
+    false
+}
+
 fn use_parens_for_call_node<'src>(
     ps: &ParserState<'src>,
     call_node: &prism::CallNode<'src>,
@@ -1822,13 +1841,18 @@ fn format_call_node<'src>(
         if let Some(arguments) = call_node.arguments()
             && !has_only_empty_paren_arg
         {
-            // For callers where the only arg is a def node,
+            // For callers where the only arg is a def node (or a modifier wrapping one),
             // we assume that's a `public def` style modifier and don't use parens
             if arguments.arguments().len() == 1
-                && let Some(def_node) = arguments.arguments().first().unwrap().as_def_node()
+                && let Some(arg) = arguments.arguments().first()
+                && is_def_modifier_node(&arg)
             {
                 ps.emit_space();
-                format_def_node(ps, def_node);
+                if let Some(def_node) = arg.as_def_node() {
+                    format_def_node(ps, def_node);
+                } else {
+                    ps.with_start_of_line(false, |ps| format_node(ps, arg));
+                }
             } else if is_aref_write {
                 let arg_count = arguments.arguments().len();
 
