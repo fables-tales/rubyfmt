@@ -135,7 +135,7 @@ See the [null-ls documentation](https://github.com/jose-elias-alvarez/null-ls.nv
 
 1. Install the [File Watchers plugin](https://www.jetbrains.com/help/ruby/settings-tools-file-watchers.html)
 2. Go to File | Settings | Tools | File Watchers
-3. Import `watchers.xml` from `editor_plugins/rubymine/`
+3. Import [`watchers.xml`](editor_plugins/rubymine/watchers.xml)
 4. Optionally set Level to Global for all projects
 
 See the [File Watchers documentation](https://www.jetbrains.com/help/ruby/using-file-watchers.html#ws_filewatcher_type_and_location_of_input_files) for more details.
