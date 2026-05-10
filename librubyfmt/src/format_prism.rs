@@ -2703,6 +2703,50 @@ fn format_assoc_splat_node<'src>(
     });
 }
 
+fn format_brace_block_body<'src>(
+    ps: &mut ParserState<'src>,
+    body: Option<prism::Node<'src>>,
+    opening_start_offset: usize,
+    closing_end_offset: usize,
+    end_offset: usize,
+) {
+    if let Some(body) = body {
+        if let Some(statements_node) = body.as_statements_node() {
+            let statements = statements_node.body();
+            if statements.len() > 1 {
+                ps.emit_newline();
+                ps.emit_indent();
+                ps.with_start_of_line(false, |ps| {
+                    let mut peekable = statements.iter().peekable();
+                    while let Some(node) = peekable.next() {
+                        format_node(ps, node);
+                        ps.emit_soft_newline();
+                        if peekable.peek().is_some() {
+                            ps.emit_soft_indent();
+                        }
+                    }
+                    ps.shift_comments();
+                });
+            } else {
+                ps.with_start_of_line(false, |ps| {
+                    if let Some(node) = statements.first() {
+                        ps.emit_soft_newline();
+                        ps.emit_soft_indent();
+                        format_node(ps, node);
+                        ps.emit_soft_newline();
+                    }
+                });
+            }
+        }
+    } else if ps.has_comment_in_offset_span(opening_start_offset, closing_end_offset) {
+        ps.emit_soft_newline();
+    }
+
+    ps.dedent(|ps| ps.emit_soft_indent());
+    ps.wind_dumping_comments_until_offset(end_offset);
+    ps.shift_comments();
+}
+
 fn format_block_node<'src>(ps: &mut ParserState<'src>, block_node: prism::BlockNode<'src>) {
     if block_node.opening_loc().as_slice() == b"do" {
         ps.new_block(|ps| {
@@ -2746,50 +2790,13 @@ fn format_block_node<'src>(ps: &mut ParserState<'src>, block_node: prism::BlockN
                 format_node(ps, parameters);
             }
 
-            if let Some(body) = block_node.body() {
-                let has_multiple_statements = body
-                    .as_statements_node()
-                    .is_some_and(|statements_node| statements_node.body().len() > 1);
-                if has_multiple_statements {
-                    ps.emit_newline();
-                    ps.emit_indent();
-                    ps.with_start_of_line(false, |ps| {
-                        let statements = body.as_statements_node().unwrap().body();
-                        let mut peekable = statements.iter().peekable();
-                        while let Some(node) = peekable.next() {
-                            format_node(ps, node);
-                            ps.emit_soft_newline();
-                            if peekable.peek().is_some() {
-                                ps.emit_soft_indent();
-                            }
-                        }
-                        ps.shift_comments();
-                    });
-                } else {
-                    ps.with_start_of_line(false, |ps| {
-                        if let Some(node) = body.as_statements_node().unwrap().body().first() {
-                            ps.emit_soft_newline();
-                            ps.emit_soft_indent();
-                            format_node(ps, node);
-                            ps.emit_soft_newline();
-                        }
-                    });
-                }
-            } else if ps.has_comment_in_offset_span(
+            format_brace_block_body(
+                ps,
+                block_node.body(),
                 block_node.opening_loc().start_offset(),
                 block_node.closing_loc().end_offset(),
-            ) {
-                // Even if there's no `body` node -- that is, there are no statements in the block --
-                // we still need to look for comments and multiline if they're present.
-                // Note that this is a soft newline, which are special-cased in breakables to correctly handle
-                // comments, so we use one here instead of a hard newline.
-                ps.emit_soft_newline();
-            }
-
-            // `inline_breakable_of` doesn't handle the indentation for the closing delimeter for us.
-            ps.dedent(|ps| ps.emit_soft_indent());
-            ps.wind_dumping_comments_until_offset(block_node.location().end_offset());
-            ps.shift_comments();
+                block_node.location().end_offset(),
+            );
         });
     }
 }
@@ -4318,29 +4325,13 @@ fn format_lambda_node<'src>(ps: &mut ParserState<'src>, lambda_node: prism::Lamb
         } else {
             ps.emit_space();
             ps.inline_breakable_of(BreakableDelims::for_brace_block(), |ps| {
-                if let Some(body) = lambda_node.body() {
-                    ps.with_start_of_line(false, |ps| {
-                        let statements = body.as_statements_node().unwrap().body();
-                        if !statements.is_empty() {
-                            ps.emit_soft_newline();
-                            for node in statements.iter() {
-                                ps.emit_soft_indent();
-                                format_node(ps, node);
-                                ps.emit_soft_newline();
-                            }
-                            ps.shift_comments();
-                        }
-                    });
-                } else if ps.has_comment_in_offset_span(
+                format_brace_block_body(
+                    ps,
+                    lambda_node.body(),
                     lambda_node.opening_loc().start_offset(),
                     lambda_node.closing_loc().end_offset(),
-                ) {
-                    ps.emit_soft_newline();
-                }
-
-                ps.dedent(|ps| ps.emit_soft_indent());
-                ps.wind_dumping_comments_until_offset(lambda_node.location().end_offset());
-                ps.shift_comments();
+                    lambda_node.location().end_offset(),
+                );
             });
         }
     });
