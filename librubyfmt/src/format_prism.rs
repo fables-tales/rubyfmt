@@ -4862,6 +4862,14 @@ fn format_when_node<'src>(ps: &mut ParserState<'src>, when_node: prism::WhenNode
         });
     });
 
+    // Ruby treats `..` at end-of-line as a line continuation operator.
+    // When the last condition is an endless range, we must emit `then`
+    // to prevent a SyntaxError.
+    if when_conditions_end_with_endless_range(&when_node) {
+        ps.emit_space();
+        ps.emit_keyword(b"then");
+    }
+
     ps.new_block(|ps| {
         ps.with_start_of_line(true, |ps| {
             ps.emit_newline();
@@ -4870,6 +4878,14 @@ fn format_when_node<'src>(ps: &mut ParserState<'src>, when_node: prism::WhenNode
             }
         });
     });
+}
+
+fn when_conditions_end_with_endless_range(when_node: &prism::WhenNode) -> bool {
+    when_node
+        .conditions()
+        .last()
+        .and_then(|c| c.as_range_node())
+        .is_some_and(|r| r.right().is_none())
 }
 
 fn format_while_node<'src>(ps: &mut ParserState<'src>, while_node: prism::WhileNode<'src>) {
