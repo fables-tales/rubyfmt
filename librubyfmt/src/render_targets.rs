@@ -7,6 +7,21 @@ fn insert_at<T>(idx: usize, target: &mut Vec<T>, input: impl IntoIterator<Item =
     target.splice(idx..idx, input);
 }
 
+/// Recursively checks if a token tree contains any `HardNewLine`
+fn tokens_contain_hard_newline(token: &AbstractLineToken<'_>) -> bool {
+    match token {
+        AbstractLineToken::ConcreteLineToken(ConcreteLineToken::HardNewLine) => true,
+        AbstractLineToken::BreakableEntry(be) => {
+            be.tokens().iter().any(tokens_contain_hard_newline)
+        }
+        AbstractLineToken::BreakableCallChainEntry(bcce) => {
+            bcce.tokens().iter().any(tokens_contain_hard_newline)
+        }
+        AbstractLineToken::ConditionalLayoutEntry(cle) => cle.contains_hard_newline(),
+        _ => false,
+    }
+}
+
 #[derive(Copy, Clone, Debug)]
 pub enum ConvertType {
     MultiLine,
@@ -171,12 +186,7 @@ impl<'src> BreakableEntry<'src> {
     }
 
     fn contains_hard_newline(&self) -> bool {
-        self.tokens.iter().any(|t| {
-            matches!(
-                t,
-                AbstractLineToken::ConcreteLineToken(ConcreteLineToken::HardNewLine)
-            )
-        })
+        self.tokens.iter().any(tokens_contain_hard_newline)
     }
 
     pub fn single_line_len(&self) -> usize {
@@ -613,6 +623,16 @@ impl<'src> ConditionalLayoutEntry<'src> {
     fn is_multiline(&self) -> bool {
         self.statement_tokens.iter().any(Self::token_is_multiline)
             || self.predicate_tokens.iter().any(Self::token_is_multiline)
+    }
+
+    pub fn contains_hard_newline(&self) -> bool {
+        self.statement_tokens
+            .iter()
+            .any(tokens_contain_hard_newline)
+            || self
+                .predicate_tokens
+                .iter()
+                .any(tokens_contain_hard_newline)
     }
 
     fn token_is_multiline(token: &AbstractLineToken<'src>) -> bool {
