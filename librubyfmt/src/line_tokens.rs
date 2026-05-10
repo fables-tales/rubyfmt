@@ -71,6 +71,9 @@ pub enum ConcreteLineToken<'src> {
     Comment {
         contents: Cow<'src, [u8]>,
     },
+    InlineComment {
+        contents: Cow<'src, [u8]>,
+    },
     Delim {
         contents: &'static [u8],
     },
@@ -122,6 +125,11 @@ impl<'src> ConcreteLineToken<'src> {
             Self::LTStringContent { content } => content,
             Self::SingleSlash => Cow::Borrowed(b"\\"),
             Self::Comment { contents } => contents,
+            Self::InlineComment { contents } => {
+                let mut result = b" ".to_vec();
+                result.extend_from_slice(&contents);
+                Cow::Owned(result)
+            }
             Self::Delim { contents } => Cow::Borrowed(contents),
             Self::End => Cow::Borrowed(b"end"),
             Self::HeredocClose { symbol } => Cow::Owned(symbol),
@@ -152,6 +160,7 @@ impl<'src> ConcreteLineToken<'src> {
             DirectPart { part } => part.len(),
             LTStringContent { content } => content.len(),
             Comment { contents } => contents.len(),
+            InlineComment { contents } => 1 + contents.len(),
             HeredocClose { symbol: contents } | RawHeredocContent { content: contents } => {
                 contents.len()
             }

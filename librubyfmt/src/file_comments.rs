@@ -7,6 +7,28 @@ use crate::comment_block::CommentBlock;
 use crate::parser_state::line_difference_requires_newline;
 use crate::types::{LineNumber, SourceOffset};
 
+pub fn is_inline_directive(comment: &[u8]) -> bool {
+    let trimmed = if let Some(rest) = comment.strip_prefix(b"#") {
+        rest.trim_ascii_start()
+    } else {
+        return false;
+    };
+
+    const PATTERNS: &[&[u8]] = &[
+        b"rubocop:disable",
+        b"rubocop:enable",
+        b"rubocop:todo",
+        b"rubocop:push",
+        b"rubocop:pop",
+        b"standard:disable",
+        b"standard:enable",
+        b"steep:ignore",
+        b":reek:",
+    ];
+
+    PATTERNS.iter().any(|p| trimmed.starts_with(p))
+}
+
 /// A vector of offsets in the source code where lines start, which
 /// we use to detect what line a given offset is one.
 ///
@@ -94,20 +116,24 @@ impl FileComments {
 
         let line_index = LineIndex::from_vec(line_starts);
 
-        let mut file_comments = FileComments::default();
+        let mut file_comments = FileComments {
+            lines_with_ruby,
+            last_lineno: line_index.line_starts.len() as u64,
+            line_index,
+            ..Default::default()
+        };
+
         for comment in comments {
             file_comments.push_comment(
-                line_index.get_line_number(comment.location().start_offset()) as u64,
+                file_comments
+                    .line_index
+                    .get_line_number(comment.location().start_offset()) as u64,
                 comment.text().trim_ascii_end().to_vec(),
             );
             file_comments
                 .comment_start_offsets
                 .push(comment.location().start_offset());
         }
-
-        file_comments.lines_with_ruby = lines_with_ruby;
-        file_comments.last_lineno = line_index.line_starts.len() as u64;
-        file_comments.line_index = line_index;
         file_comments
     }
 
@@ -149,11 +175,13 @@ impl FileComments {
     /// each of those comment lines must be pushed before any other line, or
     /// the end of the block from the start of the file will be incorrectly calculated.
     fn push_comment(&mut self, line_number: u64, l: Vec<u8>) {
+        let on_code_line = self.line_has_ruby_code(line_number);
+
         match (
             &mut self.start_of_file_contiguous_comment_lines,
             line_number,
         ) {
-            (None, 1) => {
+            (None, 1) if !on_code_line => {
                 debug_assert!(
                     self.other_comments.is_empty(),
                     "If we have a start of file sled, it needs to come first,
@@ -162,14 +190,14 @@ impl FileComments {
                 self.start_of_file_contiguous_comment_lines =
                     Some(CommentBlock::new(1..2, vec![l.into()]));
             }
-            (Some(sled), _) if sled.following_line_number() == line_number => {
+            (Some(sled), _) if !on_code_line && sled.following_line_number() == line_number => {
                 sled.add_line(l.into());
             }
             _ => {
                 debug_assert!(
                     self.other_comments
                         .last()
-                        .is_none_or(|(last_line_number, _)| *last_line_number < line_number),
+                        .is_none_or(|(last_line_number, _)| *last_line_number <= line_number),
                     "Expected comments to be inserted in order"
                 );
 
@@ -213,6 +241,20 @@ impl FileComments {
         line_number: LineNumber,
         suppress_leading_blank: bool,
     ) -> Option<(CommentBlock, LineNumber)> {
+        self.extract_comments_to_line_with_directives(
+            starting_line_number,
+            line_number,
+            suppress_leading_blank,
+        )
+        .map(|(cb, ln, _)| (cb, ln))
+    }
+
+    pub fn extract_comments_to_line_with_directives(
+        &mut self,
+        starting_line_number: LineNumber,
+        line_number: LineNumber,
+        suppress_leading_blank: bool,
+    ) -> Option<(CommentBlock, LineNumber, Vec<Vec<u8>>)> {
         let lowest_line = self.other_comments.first().map(|(ln, _)| *ln)?;
         if lowest_line > line_number {
             return None;
@@ -224,6 +266,7 @@ impl FileComments {
 
         let mut comment_block_with_spaces = Vec::new();
         let mut last_line = None;
+        let mut inline_directives = Vec::new();
 
         if !suppress_leading_blank
             && line_difference_requires_newline(
@@ -234,7 +277,13 @@ impl FileComments {
             comment_block_with_spaces.push(b"".into());
         }
 
+        let lines_with_ruby = &self.lines_with_ruby;
         for (index, comment_contents) in self.other_comments.drain(..split_point) {
+            let on_code_line = lines_with_ruby.binary_search(&index).is_ok();
+            if on_code_line && is_inline_directive(&comment_contents) {
+                inline_directives.push(comment_contents);
+                continue;
+            }
             let comment_contents: Cow<'_, [u8]> = Cow::Owned(comment_contents);
             if let Some(last_line) = last_line
                 && line_difference_requires_newline(index, last_line)
@@ -246,6 +295,18 @@ impl FileComments {
             comment_block_with_spaces.push(comment_contents);
         }
 
+        if last_line.is_none() && inline_directives.is_empty() {
+            return None;
+        }
+
+        if last_line.is_none() {
+            return Some((
+                CommentBlock::new(line_number..line_number + 1, vec![]),
+                line_number,
+                inline_directives,
+            ));
+        }
+
         if line_number > last_line.unwrap() + 1 {
             last_line = Some(line_number);
             comment_block_with_spaces.push(b"".into());
@@ -254,7 +315,12 @@ impl FileComments {
         Some((
             CommentBlock::new(lowest_line..line_number + 1, comment_block_with_spaces),
             last_line.unwrap(),
+            inline_directives,
         ))
+    }
+
+    fn line_has_ruby_code(&self, line_number: LineNumber) -> bool {
+        !self.is_empty_line(line_number)
     }
 
     // Note: this is currently only used for Prism support, see the details

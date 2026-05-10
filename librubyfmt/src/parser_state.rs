@@ -74,6 +74,7 @@ pub struct ParserState<'src> {
     /// block. Used during call-chain element offset jumps, where a trailing-dot blank line in
     /// the source must not produce an invalid blank line before a leading-dot comment.
     suppress_blank_before_comment: bool,
+    pending_inline_comments: Vec<Vec<u8>>,
 }
 
 impl<'src> ParserState<'src> {
@@ -335,14 +336,19 @@ impl<'src> ParserState<'src> {
             be.push_line_number(line_number);
         }
 
-        if let Some((comments, last_comment_line)) = self.comments_hash.extract_comments_to_line(
-            self.current_orig_line_number,
-            line_number,
-            self.suppress_blank_before_comment,
-        ) {
-            self.push_comments(comments);
+        if let Some((comments, last_comment_line, inline_directives)) =
+            self.comments_hash.extract_comments_to_line_with_directives(
+                self.current_orig_line_number,
+                line_number,
+                self.suppress_blank_before_comment,
+            )
+        {
+            if comments.has_comments() {
+                self.push_comments(comments);
+            }
             self.current_orig_line_number =
                 std::cmp::max(self.current_orig_line_number, last_comment_line);
+            self.pending_inline_comments.extend(inline_directives);
         }
 
         debug!("lns: {} {}", line_number, self.current_orig_line_number);
@@ -415,6 +421,7 @@ impl<'src> ParserState<'src> {
 
     pub(crate) fn emit_newline(&mut self) {
         self.shift_comments();
+        self.flush_inline_comments();
         self.push_concrete_token(ConcreteLineToken::HardNewLine);
         self.render_heredocs(false);
         self.spaces_after_last_newline = self.current_spaces();
@@ -495,6 +502,14 @@ impl<'src> ParserState<'src> {
     pub(crate) fn shift_comments_at_index(&mut self, index: usize) {
         if let Some(new_comments) = self.comments_to_insert.take() {
             self.insert_concrete_tokens(index, new_comments.into_line_tokens());
+        }
+    }
+
+    fn flush_inline_comments(&mut self) {
+        for comment in std::mem::take(&mut self.pending_inline_comments) {
+            self.push_concrete_token(ConcreteLineToken::InlineComment {
+                contents: Cow::Owned(comment),
+            });
         }
     }
 
@@ -726,6 +741,7 @@ impl<'src> ParserState<'src> {
             scopes: vec![vec![]],
             inside_squiggly_heredoc: false,
             suppress_blank_before_comment: false,
+            pending_inline_comments: vec![],
         }
     }
 
