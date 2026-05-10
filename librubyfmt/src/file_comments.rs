@@ -295,26 +295,25 @@ impl FileComments {
             comment_block_with_spaces.push(comment_contents);
         }
 
-        if last_line.is_none() && inline_directives.is_empty() {
-            return None;
-        }
-
-        if last_line.is_none() {
+        let Some(mut last_line) = last_line else {
+            if inline_directives.is_empty() {
+                return None;
+            }
             return Some((
                 CommentBlock::new(line_number..line_number + 1, vec![]),
                 line_number,
                 inline_directives,
             ));
-        }
+        };
 
-        if line_number > last_line.unwrap() + 1 {
-            last_line = Some(line_number);
+        if line_number > last_line + 1 {
+            last_line = line_number;
             comment_block_with_spaces.push(b"".into());
         }
 
         Some((
             CommentBlock::new(lowest_line..line_number + 1, comment_block_with_spaces),
-            last_line.unwrap(),
+            last_line,
             inline_directives,
         ))
     }
