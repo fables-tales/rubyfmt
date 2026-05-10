@@ -3,9 +3,10 @@ other_cool_method((a + b).round(4))
 
 # rubocop:disable PrisonGuard/PrivateModule
 (foo(
+  # rubocop:enable PrisonGuard/PrivateModule
   foo
 ))
-  .flatten # rubocop:enable PrisonGuard/PrivateModule
+  .flatten
 
 # rubocop:disable Style/Stuff
 (MyModel::InSomeNamespace

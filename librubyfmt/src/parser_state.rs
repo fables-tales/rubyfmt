@@ -348,7 +348,20 @@ impl<'src> ParserState<'src> {
             }
             self.current_orig_line_number =
                 std::cmp::max(self.current_orig_line_number, last_comment_line);
-            self.pending_inline_comments.extend(inline_directives);
+            let inside_delimited_expr = self
+                .breakable_entry_stack
+                .last()
+                .is_some_and(|b| matches!(b, Breakable::DelimiterExpr(_)));
+            if inside_delimited_expr {
+                for directive in inline_directives {
+                    self.insert_comment_collection(CommentBlock::new(
+                        line_number..line_number + 1,
+                        vec![Cow::Owned(directive)],
+                    ));
+                }
+            } else {
+                self.pending_inline_comments.extend(inline_directives);
+            }
         }
 
         debug!("lns: {} {}", line_number, self.current_orig_line_number);
