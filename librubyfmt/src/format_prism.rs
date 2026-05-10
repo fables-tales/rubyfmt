@@ -4765,7 +4765,9 @@ fn format_singleton_class_node<'src>(
     ps.emit_space();
     ps.emit_ident(b"<<");
     ps.emit_space();
-    ps.emit_ident(b"self");
+    ps.with_start_of_line(false, |ps| {
+        format_node(ps, singleton_class_node.expression())
+    });
 
     ps.new_block(|ps| {
         ps.with_start_of_line(true, |ps| {
