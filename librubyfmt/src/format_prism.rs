@@ -4319,18 +4319,36 @@ fn format_lambda_node<'src>(ps: &mut ParserState<'src>, lambda_node: prism::Lamb
             ps.emit_space();
             ps.inline_breakable_of(BreakableDelims::for_brace_block(), |ps| {
                 if let Some(body) = lambda_node.body() {
-                    ps.with_start_of_line(false, |ps| {
-                        let statements = body.as_statements_node().unwrap().body();
-                        if !statements.is_empty() {
-                            ps.emit_soft_newline();
-                            for node in statements.iter() {
+                    let has_multiple_statements = body
+                        .as_statements_node()
+                        .is_some_and(|statements_node| statements_node.body().len() > 1);
+                    if has_multiple_statements {
+                        ps.emit_newline();
+                        ps.emit_indent();
+                        ps.with_start_of_line(false, |ps| {
+                            let statements = body.as_statements_node().unwrap().body();
+                            let mut peekable = statements.iter().peekable();
+                            while let Some(node) = peekable.next() {
+                                format_node(ps, node);
+                                ps.emit_soft_newline();
+                                if peekable.peek().is_some() {
+                                    ps.emit_soft_indent();
+                                }
+                            }
+                            ps.shift_comments();
+                        });
+                    } else {
+                        ps.with_start_of_line(false, |ps| {
+                            if let Some(node) =
+                                body.as_statements_node().unwrap().body().first()
+                            {
+                                ps.emit_soft_newline();
                                 ps.emit_soft_indent();
                                 format_node(ps, node);
                                 ps.emit_soft_newline();
                             }
-                            ps.shift_comments();
-                        }
-                    });
+                        });
+                    }
                 } else if ps.has_comment_in_offset_span(
                     lambda_node.opening_loc().start_offset(),
                     lambda_node.closing_loc().end_offset(),
