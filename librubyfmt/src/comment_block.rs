@@ -70,6 +70,23 @@ impl CommentBlock {
         self
     }
 
+    /// Replace any baked-in leading space indent with `indent_depth` spaces.
+    /// Use this when a CommentBlock was captured under one indent and needs
+    /// to be emitted under another.
+    pub fn reindent_to(mut self, indent_depth: ColNumber) -> Self {
+        for comment in &mut self.comments {
+            if comment.is_empty() || comment.starts_with(b"=begin") {
+                continue;
+            }
+            let leading = comment.iter().take_while(|&&b| b == b' ').count();
+            if leading > 0 {
+                let trimmed = comment[leading..].to_vec();
+                *comment = Cow::Owned(trimmed);
+            }
+        }
+        self.apply_spaces(indent_depth)
+    }
+
     pub fn has_comments(&self) -> bool {
         !self.comments.is_empty()
     }
