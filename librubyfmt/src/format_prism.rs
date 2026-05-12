@@ -2683,11 +2683,20 @@ fn format_assoc_node<'src>(ps: &mut ParserState<'src>, assoc_node: prism::AssocN
             ps.emit_space();
             ps.emit_ident(b"=>");
         }
-        // For assoc nodes, skip the space so it renders as `{ a:, b:, c: }`
-        if assoc_node.value().as_implicit_node().is_none() {
+
+        let value = assoc_node.value();
+        if let Some(implicit) = value.as_implicit_node() {
+            // A mixed hash forces hash rocket form, so we have to expand the
+            // shorthand `x:` into the equivalent `:x => x` rather than
+            // emitting nothing for the implicit value.
+            if !as_symbol {
+                ps.emit_space();
+                format_node(ps, implicit.value());
+            }
+        } else {
             ps.emit_space();
+            format_node(ps, value);
         }
-        format_node(ps, assoc_node.value());
     });
 }
 
