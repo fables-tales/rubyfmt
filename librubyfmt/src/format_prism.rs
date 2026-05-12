@@ -588,6 +588,11 @@ fn format_case_match_node<'src>(
     ps.emit_newline();
     ps.with_start_of_line(true, |ps| {
         for condition in case_match_node.conditions().iter() {
+            // We keep start_of_line false and handle indentation here
+            // so that format_node's trailing emit_newline doesn't insert
+            // a blank line between consecutive `in` clauses.
+            ps.at_offset(condition.location().start_offset());
+            ps.emit_indent();
             ps.with_start_of_line(false, |ps| format_node(ps, condition));
         }
 
