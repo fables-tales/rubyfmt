@@ -2686,9 +2686,11 @@ fn format_assoc_node<'src>(ps: &mut ParserState<'src>, assoc_node: prism::AssocN
 
         let value = assoc_node.value();
         if let Some(implicit) = value.as_implicit_node() {
-            // A mixed hash forces hash rocket form, so we have to expand the
-            // shorthand `x:` into the equivalent `:x => x` rather than
-            // emitting nothing for the implicit value.
+            // If there's an implicit node here, that means we're in a hash shorthand
+            // mixed with hash rockets, e.g. `{ key:, bar => baz }`.
+            // If `as_symbol` is false, we're forcing conversions to hash rockets,
+            // but in this case we've already rendered the `key =>` and have to re-render the
+            // key as the value so that `key:` transforms into syntactically-valid `:key => key`
             if !as_symbol {
                 ps.emit_space();
                 format_node(ps, implicit.value());
