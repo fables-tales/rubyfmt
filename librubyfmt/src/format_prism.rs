@@ -1708,6 +1708,16 @@ fn use_parens_for_call_node<'src>(
     });
 
     if is_terminal_call && method_name.first().is_some_and(|c| c.is_ascii_uppercase()) {
+        // The block-argument render path emits its own parens around `(&blk)`, so we can skip them
+        // if they're the only arg
+        let has_block_arg_only = !has_arguments
+            && call_node
+                .block()
+                .and_then(|b| b.as_block_argument_node())
+                .is_some();
+        if has_block_arg_only {
+            return false;
+        }
         if !has_arguments && call_node.block().is_some() && call_node.receiver().is_none() {
             return false;
         }
