@@ -24,3 +24,10 @@ Test.Case() { }
 Test.Case() do; end
 Test.Case(args) { }
 Test.Case(args) do ;end
+
+Case(&blk)
+Case(args, &blk)
+Test::Case(&blk)
+Test::Case(args, &blk)
+Test.Case(&blk)
+Test.Case(args, &blk)
