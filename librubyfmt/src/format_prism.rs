@@ -2526,7 +2526,7 @@ fn call_chain_elements_are_user_multilined(
     })
 }
 
-/// Finds an appropriate starting loc for for a call node inside a call chain.
+/// Finds an appropriate starting loc for a call node inside a call chain.
 /// In the middle of a chain, the node's `location().start_offset()` is always the
 /// beginning of the chain, since `receiver()` is the entirety of the chain so far.
 /// To find the loc in the middle of the chain, we need to use something else to approximate that,
