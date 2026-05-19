@@ -1,9 +1,9 @@
 while do_something
-  # hi ther
+  # hi there
   do_something_else
 end
 
 until do_something
-  # hi ther
+  # hi there
   do_something_else
 end
