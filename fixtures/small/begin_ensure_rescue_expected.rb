@@ -39,7 +39,7 @@ class ForIndents
     end
   end
 
-  def func_with_mulilines
+  def func_with_multilines
     _lambda_to_break_stuff = lambda do |this, that, the_other|
       wreak_havoc!
     end
