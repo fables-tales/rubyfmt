@@ -40,7 +40,7 @@ end
 describe("foo", flag: true, other: "b") { it("bar", other: "b", another: false) { 1 } }
 
 describe(
-  "writing some really really long test name",
+  "writing some really, really, long test name",
   truth: "this isn't actually a test, it just looks like one",
   opinion: "please don't name your DSL 'describe', but a little too late now I guess"
 ) do
