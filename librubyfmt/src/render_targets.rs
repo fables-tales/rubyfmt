@@ -533,7 +533,7 @@ impl<'src> ConditionalLayoutEntry<'src> {
             statement_tokens: Vec::new(),
             keyword,
             indent_depth,
-            phase: ConditionalLayoutPhase::Predicate,
+            phase: ConditionalLayoutPhase::Statement,
         }
     }
 
@@ -544,13 +544,13 @@ impl<'src> ConditionalLayoutEntry<'src> {
         }
     }
 
-    pub fn switch_to_statement(&mut self) {
+    pub fn switch_to_predicate(&mut self) {
         debug_assert_eq!(
             self.phase,
-            ConditionalLayoutPhase::Predicate,
-            "switch_to_statement called when not in Predicate phase"
+            ConditionalLayoutPhase::Statement,
+            "switch_to_predicate called when not in Statement phase"
         );
-        self.phase = ConditionalLayoutPhase::Statement;
+        self.phase = ConditionalLayoutPhase::Predicate;
     }
 
     /// Returns the number of tokens in the current phase's token list.

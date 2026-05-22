@@ -54,17 +54,24 @@ impl CommentBlock {
         })
     }
 
+    /// Set each comment's leading indent to exactly `indent_depth` spaces
     pub fn apply_spaces(mut self, indent_depth: ColNumber) -> Self {
-        if indent_depth == 0 {
-            return self;
-        }
-
-        let indent = get_indent(indent_depth as usize);
+        let target = indent_depth as usize;
         for comment in &mut self.comments {
             // Ignore empty vecs -- these represent blank lines between
             // groups of comments
-            if !comment.is_empty() && !comment.starts_with(b"=begin") {
-                comment.to_mut().splice(0..0, indent.iter().copied());
+            if comment.is_empty() || comment.starts_with(b"=begin") {
+                continue;
+            }
+            let current = comment.iter().take_while(|&&b| b == b' ').count();
+            if current == target {
+                continue;
+            }
+            if current > target {
+                comment.to_mut().drain(0..(current - target));
+            } else {
+                let extra = get_indent(target - current);
+                comment.to_mut().splice(0..0, extra.iter().copied());
             }
         }
         self
