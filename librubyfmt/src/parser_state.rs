@@ -986,13 +986,13 @@ impl<'src> ParserState<'src> {
         // (e.g. a trailing `# comment` on the modifier line) so they aren't
         // dropped when restoring the comments that were pending beforehand.
         // The accumulated comments may have an inner-scope indent baked in
-        // (from `apply_spaces` at capture time), so re-indent to the
+        // (from `apply_spaces` at capture time), so re-apply at the
         // conditional's outer indent before merging.
         let outer_spaces = self.current_spaces();
         let accumulated = self
             .comments_to_insert
             .take()
-            .map(|c| c.reindent_to(outer_spaces));
+            .map(|c| c.apply_spaces(outer_spaces));
         self.comments_to_insert = saved_comments;
         if let Some(acc) = accumulated {
             self.comments_to_insert.merge(acc);
