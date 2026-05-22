@@ -34,7 +34,7 @@ impl CommentBlock {
             if c.is_empty() {
                 // Empty vecs represent blank lines
                 // If this is a trailing empty comment (at the end), keep it as an empty Comment token
-                // to bypass the HardNewLine deduplication logic. Otherwise convert to just HardNewLine.
+                // to bypass the HardNewLine deduplication logic. Otherwise, convert to just HardNewLine.
                 if i == len - 1 {
                     // Trailing empty - keep as empty comment to preserve blank lines
                     vec![

@@ -1,5 +1,5 @@
 {
-  # The rain has finallyt stopped;
+  # The rain has finally stopped;
   # now just a thin stream trickles from the root.
   all_night_the_incessant: "cry of insects",
   # Wide awake, unable to sleep

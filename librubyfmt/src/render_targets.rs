@@ -378,7 +378,7 @@ impl<'src> BreakableCallChainEntry<'src> {
     }
 
     /// Removes `BeginCallChainIndent` and `EndCallChainIndent`, which is only really
-    /// necessary when rendering a call chain as single-line. This prevents unnecessariliy
+    /// necessary when rendering a call chain as single-line. This prevents unnecessarily
     /// increasing the indentation for a trailing block in e.g. `thing.each do; /* block */; end`
     pub fn remove_call_chain_magic_tokens(&mut self) {
         self.tokens.retain(|t| {

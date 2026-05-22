@@ -2,7 +2,7 @@
   #{'foo'} bar
   more stuff
   stuff #{another_interpolation} things
-  thing #{"#{interploation} more"} even more
+  thing #{"#{interpolation} more"} even more
 FOO
 
 
@@ -11,7 +11,7 @@ def foo
     #{"foo"} bar
     more stuff
     stuff #{another_interpolation} things
-    thing #{"#{interploation} more"} even more
+    thing #{"#{interpolation} more"} even more
   FOO
 end
 

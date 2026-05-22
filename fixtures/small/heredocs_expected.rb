@@ -23,19 +23,19 @@ end
 
 <<~FOO
   some stuff
-  with a empty last line
+  with an empty last line
 
 FOO
 
 <<-FOO
   some stuff
-  with a empty last line
+  with an empty last line
 
 FOO
 
 <<FOO
   some stuff
-  with a empty last line
+  with an empty last line
 
 FOO
 
