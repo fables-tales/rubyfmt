@@ -94,8 +94,10 @@ impl FileComments {
 
         let line_index = LineIndex::from_vec(line_starts);
 
-        let mut file_comments = FileComments::default();
-        file_comments.lines_with_ruby = lines_with_ruby;
+        let mut file_comments = FileComments {
+            lines_with_ruby,
+            ..Default::default()
+        };
 
         for comment in comments {
             file_comments.push_comment(
