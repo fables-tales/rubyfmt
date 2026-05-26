@@ -95,6 +95,8 @@ impl FileComments {
         let line_index = LineIndex::from_vec(line_starts);
 
         let mut file_comments = FileComments::default();
+        file_comments.lines_with_ruby = lines_with_ruby;
+
         for comment in comments {
             file_comments.push_comment(
                 line_index.get_line_number(comment.location().start_offset()) as u64,
@@ -105,7 +107,6 @@ impl FileComments {
                 .push(comment.location().start_offset());
         }
 
-        file_comments.lines_with_ruby = lines_with_ruby;
         file_comments.last_lineno = line_index.line_starts.len() as u64;
         file_comments.line_index = line_index;
         file_comments
@@ -149,11 +150,14 @@ impl FileComments {
     /// each of those comment lines must be pushed before any other line, or
     /// the end of the block from the start of the file will be incorrectly calculated.
     fn push_comment(&mut self, line_number: u64, l: Vec<u8>) {
+        // Only comment-only lines may seed or extend the start-of-file header sled
+        let is_empty_line = self.is_empty_line(line_number);
+
         match (
             &mut self.start_of_file_contiguous_comment_lines,
             line_number,
         ) {
-            (None, 1) => {
+            (None, 1) if is_empty_line => {
                 debug_assert!(
                     self.other_comments.is_empty(),
                     "If we have a start of file sled, it needs to come first,
@@ -162,7 +166,7 @@ impl FileComments {
                 self.start_of_file_contiguous_comment_lines =
                     Some(CommentBlock::new(1..2, vec![l.into()]));
             }
-            (Some(sled), _) if sled.following_line_number() == line_number => {
+            (Some(sled), _) if is_empty_line && sled.following_line_number() == line_number => {
                 sled.add_line(l.into());
             }
             _ => {
