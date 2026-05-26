@@ -185,7 +185,7 @@ impl<'src> BreakableEntry<'src> {
         self.in_string_embexpr
     }
 
-    fn contains_hard_newline(&self) -> bool {
+    pub fn contains_hard_newline(&self) -> bool {
         self.tokens.iter().any(tokens_contain_hard_newline)
     }
 
