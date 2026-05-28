@@ -1745,10 +1745,9 @@ fn use_parens_for_call_node<'src>(
         }
 
         if let Some(arguments) = call_node.arguments()
-            && arguments
-                .arguments()
-                .iter()
-                .any(|arg| arg.as_splat_node().is_some())
+            && arguments.arguments().iter().any(|arg| {
+                arg.as_splat_node().is_some() || arg.as_forwarding_arguments_node().is_some()
+            })
         {
             return true;
         }
