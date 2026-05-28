@@ -5,7 +5,7 @@ members = [
 
 [package]
 name = "rubyfmt-main"
-version = "0.14.0"
+version = "0.14.1"
 authors = ["Fable Tales <penelopedotzone@gmail.com>"]
 edition = "2024"
 

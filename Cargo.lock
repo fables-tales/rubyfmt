@@ -765,7 +765,7 @@ dependencies = [
 
 [[package]]
 name = "rubyfmt"
-version = "0.14.0"
+version = "0.14.1"
 dependencies = [
  "log",
  "memchr",
@@ -776,7 +776,7 @@ dependencies = [
 
 [[package]]
 name = "rubyfmt-main"
-version = "0.14.0"
+version = "0.14.1"
 dependencies = [
  "assert_cmd",
  "clap",
