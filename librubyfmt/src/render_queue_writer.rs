@@ -198,9 +198,12 @@ impl<'src> RenderQueueWriter<'src> {
     fn format_breakable_entry(accum: &mut Intermediary<'src>, be: BreakableEntry<'src>) {
         // We generally will force expressions embedded in strings to be on a single line,
         // but if that expression has a heredoc nested in it, we should let it render across lines
-        // so that the collapsing newlines render properly.
-        let force_single_line =
-            !be.any_collapsing_newline_has_heredoc_content() && be.in_string_embexpr();
+        // so that the collapsing newlines render properly. Similarly, if the entry already
+        // contains hard newlines (e.g. a multi-statement brace block), forcing single-line
+        // would leave dangling newlines and squash statements together.
+        let force_single_line = be.in_string_embexpr()
+            && !be.any_collapsing_newline_has_heredoc_content()
+            && !be.contains_hard_newline();
 
         let mut tokens = Vec::new();
         if !force_single_line
