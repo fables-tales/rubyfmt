@@ -2270,9 +2270,9 @@ fn format_call_chain_segments<'src>(
             })
         });
 
-        let is_user_multilined = call_chain_elements_are_user_multilined(ps, &chain_elements);
+        let should_multiline = call_chain_should_be_multilined(ps, &chain_elements);
 
-        ps.breakable_call_chain_of(is_user_multilined, |ps| {
+        ps.breakable_call_chain_of(should_multiline, |ps| {
             // Recurse and format previous segments inside this breakable
             format_call_chain_segments(ps, segments);
 
@@ -2426,10 +2426,7 @@ fn format_call_body<'src>(
     }
 }
 
-fn call_chain_elements_are_user_multilined(
-    ps: &ParserState,
-    call_chain_elements: &[prism::Node],
-) -> bool {
+fn call_chain_should_be_multilined(ps: &ParserState, call_chain_elements: &[prism::Node]) -> bool {
     // Making a mutable copy since we may pop some items off later
     let mut call_chain_elements = call_chain_elements;
 
@@ -2475,7 +2472,9 @@ fn call_chain_elements_are_user_multilined(
             let has_comment_between_expression_and_call =
                 ps.has_comments_in_line(leading_expr_end_line + 1, first_call_start_line + 1);
 
-            if !has_comment_between_expression_and_call {
+            if !has_comment_between_expression_and_call
+                && !element_forces_chain_to_multiline(&call_chain_elements[0])
+            {
                 call_chain_elements = &call_chain_elements[1..];
             }
         }
@@ -2514,16 +2513,48 @@ fn call_chain_elements_are_user_multilined(
         }
     };
 
-    call_chain_elements[1..].iter().any(|cce| {
-        start_line
+    call_chain_elements[1..].iter().enumerate().any(|(i, cce)| {
+        let operator_on_new_line = start_line
             != cce
                 .as_call_node()
                 .unwrap()
                 .call_operator_loc()
                 .map_or(start_line, |loc| {
                     ps.get_line_number_for_offset(loc.start_offset())
-                })
+                });
+        if operator_on_new_line {
+            return true;
+        }
+
+        // If the *previous* element will be forced to render multi-line (a do/end
+        // block, a brace block with multiple statements, or the equivalent on a
+        // lambda receiver), the chain itself must break too — otherwise the next
+        // pass would see the calls on different lines and rewrite the chain,
+        // costing idempotency.
+        element_forces_chain_to_multiline(&call_chain_elements[i])
     })
+}
+
+fn element_forces_chain_to_multiline(element: &prism::Node) -> bool {
+    if let Some(block) = element
+        .as_call_node()
+        .and_then(|c| c.block())
+        .and_then(|b| b.as_block_node())
+    {
+        return block_body_renders_multiline(block.opening_loc().as_slice(), block.body());
+    } else if let Some(lambda) = element.as_lambda_node() {
+        return block_body_renders_multiline(lambda.opening_loc().as_slice(), lambda.body());
+    }
+
+    false
+}
+
+fn block_body_renders_multiline(opening: &[u8], body: Option<prism::Node>) -> bool {
+    if opening == b"do" {
+        return true;
+    }
+    body.and_then(|n| n.as_statements_node())
+        .is_some_and(|statements| statements.body().len() > 1)
 }
 
 /// Finds an appropriate starting loc for a call node inside a call chain.
