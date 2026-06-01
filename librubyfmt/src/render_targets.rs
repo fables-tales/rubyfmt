@@ -1,4 +1,5 @@
 use crate::delimiters::BreakableDelims;
+use crate::heredoc_string::HeredocString;
 use crate::line_tokens::{AbstractLineToken, ConcreteLineToken, ConcreteLineTokenAndTargets};
 use crate::parser_state::FormattingContext;
 use crate::types::LineNumber;
@@ -553,6 +554,8 @@ pub struct ConditionalLayoutEntry<'src> {
     tokens: Vec<AbstractLineToken<'src>>,
     /// Index of the boundary between the two phases in `tokens`
     predicate_start: usize,
+    statement_heredocs: Vec<HeredocString<'src>>,
+    predicate_heredocs: Vec<HeredocString<'src>>,
     keyword: ConditionalKeyword,
     indent_depth: u32,
     phase: ConditionalLayoutPhase,
@@ -563,9 +566,18 @@ impl<'src> ConditionalLayoutEntry<'src> {
         ConditionalLayoutEntry {
             tokens: Vec::new(),
             predicate_start: 0,
+            statement_heredocs: Vec::new(),
+            predicate_heredocs: Vec::new(),
             keyword,
             indent_depth,
             phase: ConditionalLayoutPhase::Statement,
+        }
+    }
+
+    pub fn gather_heredocs(&mut self, heredocs: Vec<HeredocString<'src>>) {
+        match self.phase {
+            ConditionalLayoutPhase::Statement => self.statement_heredocs.extend(heredocs),
+            ConditionalLayoutPhase::Predicate => self.predicate_heredocs.extend(heredocs),
         }
     }
 
@@ -705,6 +717,12 @@ impl<'src> ConditionalLayoutEntry<'src> {
     }
 
     pub fn should_use_block_form(&self, current_line_length: usize) -> bool {
+        // A statement-side heredoc body makes the conditional inherently
+        // multi-line, so promote to `if … end` block form. (Predicate-side
+        // heredocs alone don't force this — the predicate is just longer.)
+        if !self.statement_heredocs.is_empty() {
+            return true;
+        }
         self.is_multiline()
             || current_line_length + self.inline_single_line_len()
                 > crate::render_queue_writer::MAX_LINE_LENGTH
@@ -729,6 +747,18 @@ impl<'src> ConditionalLayoutEntry<'src> {
         for token in self.drain_predicate_tokens() {
             token.write_single_line(result);
         }
+
+        // Heredocs gathered during either phase render after the inline
+        // line — statement heredocs first, then predicate heredocs (source
+        // order). We don't expect to reach inline form when there are
+        // statement heredocs (`should_use_block_form` forces block) but
+        // handle it defensively.
+        if !self.statement_heredocs.is_empty() || !self.predicate_heredocs.is_empty() {
+            result.push(ConcreteLineToken::HardNewLine.into());
+            let mut combined = self.statement_heredocs;
+            combined.extend(self.predicate_heredocs);
+            AbstractLineToken::write_heredocs(Some(combined), result);
+        }
     }
 
     pub fn write_block_tokens(mut self, result: &mut Vec<ConcreteLineTokenAndTargets<'src>>) {
@@ -747,6 +777,10 @@ impl<'src> ConditionalLayoutEntry<'src> {
         }
 
         result.push(ConcreteLineToken::HardNewLine.into());
+        if !self.predicate_heredocs.is_empty() {
+            let predicate_heredocs = std::mem::take(&mut self.predicate_heredocs);
+            AbstractLineToken::write_heredocs(Some(predicate_heredocs), result);
+        }
         result.push(
             ConcreteLineToken::Indent {
                 depth: self.indent_depth + 2,
@@ -759,6 +793,9 @@ impl<'src> ConditionalLayoutEntry<'src> {
         }
 
         result.push(ConcreteLineToken::HardNewLine.into());
+        if !self.statement_heredocs.is_empty() {
+            AbstractLineToken::write_heredocs(Some(self.statement_heredocs), result);
+        }
         result.push(
             ConcreteLineToken::Indent {
                 depth: self.indent_depth,
