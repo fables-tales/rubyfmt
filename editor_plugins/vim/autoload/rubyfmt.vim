@@ -1,8 +1,6 @@
 let s:cpo_save = &cpo
 set cpo&vim
 
-let g:rubyfmt_path = '/Users/penelope/dev/rubyfmt/target/release/rubyfmt-main'
-
 function! rubyfmt#format() abort
   let l:bin_args = [g:rubyfmt_path, '-i']
   let l:curw = winsaveview()
@@ -68,11 +66,6 @@ endfunction
 function! rubyfmt#show_errors(errors) abort
   echom a:errors
 endfunction
-
-if !exists("s:rubyfmt_ac_set")
-  let s:rubyfmt_ac_set=1
-  autocmd FileType ruby autocmd! BufWritePre <buffer> call rubyfmt#format()
-endif
 
 let &cpo = s:cpo_save
 unlet s:cpo_save
