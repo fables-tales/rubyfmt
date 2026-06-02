@@ -2943,9 +2943,11 @@ fn format_array_node<'src>(ps: &mut ParserState<'src>, array_node: prism::ArrayN
                     array_node.location().end_offset(),
                     orig_delim,
                 );
-                ps.wind_dumping_comments_until_offset(array_node.location().end_offset());
             });
         });
+        // Wind outside the breakable so that a comment on the same line as the
+        // closing bracket shifts above the array instead of being absorbed into its body.
+        ps.wind_dumping_comments_until_offset(array_node.location().end_offset());
     } else {
         ps.with_start_of_line(false, |ps| {
             if array_node.opening_loc().is_none() {
