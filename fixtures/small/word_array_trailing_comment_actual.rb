@@ -9,6 +9,7 @@ d = %w[
 
 g = %i[
   h
+  # this looks like a comment but isn't
   i
 ] # symbol trailing
 

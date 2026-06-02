@@ -12,6 +12,14 @@ d = %w[
 # symbol trailing
 g = %i[
   h
+  #
+  this
+  looks
+  like
+  a
+  comment
+  but
+  isn't
   i
 ]
 
