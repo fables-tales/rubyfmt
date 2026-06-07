@@ -1462,15 +1462,12 @@ fn format_def_body<'src>(ps: &mut ParserState<'src>, def_node: prism::DefNode<'s
                         false,
                         |ps| {
                             if let Some(body) = def_node.body() {
-                                let mut body_node_list = body.as_statements_node()
+                                let body_node_list = body.as_statements_node()
                                     .expect("Endless methods must have a body, and method definitions are always a Statements node")
-                                    .body()
-                                    .iter();
-                                let body_expression = body_node_list.next().expect("Endless methods must have exactly one expression in their body");
+                                    .body();
+                                debug_assert!(body_node_list.len() == 1, "Expected endless method body to contain exactly one node.");
 
-                                debug_assert!(body_node_list.next().is_none(), "Expected endless method body to have exactly one node.");
-
-                                format_node(ps, body_expression);
+                                format_node(ps, body_node_list.first().expect("Expected endless method body to have exactly one node."));
                             }
                         },
                     )
@@ -3880,7 +3877,7 @@ fn format_conditional_node<'src>(
                     |ps| format_node(ps, conditional.predicate()),
                     |ps| {
                         if let Some(statements) = conditional.statements()
-                            && let Some(first_statement) = statements.body().iter().next()
+                            && let Some(first_statement) = statements.body().first()
                         {
                             format_node(ps, first_statement);
                         }
