@@ -784,7 +784,6 @@ dependencies = [
  "ctrlc",
  "ignore",
  "libtest-mimic",
- "regex",
  "rubyfmt",
  "similar",
  "tempfile",
