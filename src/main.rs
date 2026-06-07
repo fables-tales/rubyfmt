@@ -3,7 +3,6 @@
 use clap::Parser;
 use ignore::WalkBuilder;
 use ignore::gitignore::GitignoreBuilder;
-use regex::Regex;
 use rubyfmt::init_logger;
 use similar::TextDiff;
 use std::ffi::OsStr;
@@ -11,10 +10,7 @@ use std::fs::{File, OpenOptions, read};
 use std::io::{self, BufRead, BufReader, IsTerminal, Read, Write};
 use std::path::Path;
 use std::process::{Command, exit};
-use std::sync::{Arc, LazyLock, Mutex};
-
-static MAGIC_COMMENT_REGEX: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"(?m)^#\s*rubyfmt:\s*(?P<enabled>true|false)\s*$").unwrap());
+use std::sync::{Arc, Mutex};
 
 /// Simple Enum to exit on errors or not
 #[derive(Debug, PartialEq, Copy, Clone)]
@@ -164,10 +160,7 @@ fn rubyfmt_string(
         let slice_size = buffer.len().min(500);
         let slice = String::from_utf8_lossy(&buffer[..slice_size]);
 
-        let matched = MAGIC_COMMENT_REGEX
-            .captures(&slice)
-            .and_then(|c| c.name("enabled"))
-            .map(|s| s.as_str());
+        let matched = parse_magic_comment(&slice);
 
         // If opted in to magic "# rubyfmt: true" header and true is not
         // in the file, return early
@@ -188,6 +181,22 @@ fn rubyfmt_string(
 /******************************************************/
 /* Helpers                                            */
 /******************************************************/
+
+/// Scan for a `# rubyfmt: true` or `# rubyfmt: false` magic comment
+fn parse_magic_comment(slice: &str) -> Option<&str> {
+    for line in slice.lines() {
+        if let Some(rest) = line.strip_prefix('#') {
+            let rest = rest.trim_start();
+            if let Some(rest) = rest.strip_prefix("rubyfmt:") {
+                let val = rest.trim();
+                if val == "true" || val == "false" {
+                    return Some(val);
+                }
+            }
+        }
+    }
+    None
+}
 
 /// Check if a path should be ignored based on .gitignore and .rubyfmtignore patterns.
 /// The path should be relative to the current working directory.
