@@ -4728,6 +4728,7 @@ fn format_rescue_node<'src>(ps: &mut ParserState<'src>, rescue_node: prism::Resc
     let exceptions = rescue_node.exceptions();
     let reference = rescue_node.reference();
     if !exceptions.is_empty() {
+        // Preemptively extract inline comments so they land before rescue, not inside the breakable.
         ps.at_offset(exceptions.first().unwrap().location().start_offset());
         ps.with_start_of_line(false, |ps| {
             ps.inline_breakable_of(BreakableDelims::for_binary_op(), |ps| {
