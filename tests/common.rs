@@ -13,6 +13,7 @@ macro_rules! fixture {
 }
 
 pub fn test_fixture(name: &str) {
+    assert!(!name.is_empty(), "fixture name must not be empty");
     let expected = read_to_string(format!("fixtures/{}_expected.rb", name)).unwrap();
 
     // Test if the formatting works as expected

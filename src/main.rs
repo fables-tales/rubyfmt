@@ -456,3 +456,72 @@ fn main() {
         }),
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::parse_magic_comment;
+
+    #[test]
+    fn parse_magic_comment_true() {
+        assert_eq!(parse_magic_comment("# rubyfmt: true"), Some("true"));
+    }
+
+    #[test]
+    fn parse_magic_comment_false() {
+        assert_eq!(parse_magic_comment("# rubyfmt: false"), Some("false"));
+    }
+
+    #[test]
+    fn parse_magic_comment_no_spaces() {
+        assert_eq!(parse_magic_comment("#rubyfmt:true"), Some("true"));
+        assert_eq!(parse_magic_comment("#rubyfmt:false"), Some("false"));
+    }
+
+    #[test]
+    fn parse_magic_comment_extra_whitespace() {
+        assert_eq!(parse_magic_comment("#   rubyfmt:   true  "), Some("true"));
+        assert_eq!(parse_magic_comment("# \t rubyfmt: \t false \t"), Some("false"));
+    }
+
+    #[test]
+    fn parse_magic_comment_ignores_invalid_value() {
+        assert_eq!(parse_magic_comment("# rubyfmt: maybe"), None);
+        assert_eq!(parse_magic_comment("# rubyfmt: 1"), None);
+    }
+
+    #[test]
+    fn parse_magic_comment_ignores_non_comment_lines() {
+        assert_eq!(parse_magic_comment("a 1,2,3\n# rubyfmt: true"), Some("true"));
+    }
+
+    #[test]
+    fn parse_magic_comment_returns_first_match() {
+        assert_eq!(
+            parse_magic_comment("# rubyfmt: true\n# rubyfmt: false"),
+            Some("true")
+        );
+        assert_eq!(
+            parse_magic_comment("# rubyfmt: false\n# rubyfmt: true"),
+            Some("false")
+        );
+    }
+
+    #[test]
+    fn parse_magic_comment_ignores_double_hash() {
+        assert_eq!(parse_magic_comment("## rubyfmt: true"), None);
+    }
+
+    #[test]
+    fn parse_magic_comment_requires_exact_value() {
+        assert_eq!(parse_magic_comment("# rubyfmt: truefalse"), None);
+        assert_eq!(parse_magic_comment("# rubyfmt: truely"), None);
+        assert_eq!(parse_magic_comment("# rubyfmt: falsehood"), None);
+    }
+
+    #[test]
+    fn parse_magic_comment_empty_and_no_header() {
+        assert_eq!(parse_magic_comment(""), None);
+        assert_eq!(parse_magic_comment("a 1,2,3"), None);
+        assert_eq!(parse_magic_comment("# some other comment"), None);
+    }
+}
