@@ -1636,6 +1636,8 @@ fn format_block_parameter_node<'src>(
             let ident_str = ident.as_slice();
             ps.bind_variable(ident_str);
             handle_string_at_offset(ps, ident_str, block_arg.name_loc().unwrap().end_offset());
+        } else {
+            ps.at_offset(block_arg.location().start_offset());
         }
     });
 }
