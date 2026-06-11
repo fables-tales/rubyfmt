@@ -127,9 +127,20 @@ See the [null-ls documentation](https://github.com/jose-elias-alvarez/null-ls.nv
 
 ### Vim
 
-1. Run `cargo build --release`
-2. Add `source /path/to/rubyfmt.vim` to your `~/.vimrc`
-3. Add `let g:rubyfmt_path = /path/to/target/release/rubyfmt-main` beneath the source line
+vim-plug:
+
+```vim
+Plug 'fables-tales/rubyfmt', { 'rtp': 'editor_plugins/vim' }
+```
+
+Native packages:
+
+```sh
+git clone https://github.com/fables-tales/rubyfmt ~/.rubyfmt
+ln -s ~/.rubyfmt/editor_plugins/vim ~/.vim/pack/rubyfmt/start/rubyfmt
+```
+
+Set `g:rubyfmt_path` if `rubyfmt` is not on your `$PATH`.
 
 ### RubyMine (and JetBrains IDEs)
 
