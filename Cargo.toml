@@ -14,7 +14,7 @@ edition = "2024"
 [dependencies]
 clap = { version = "4.5.32", features = ["derive"] }
 ctrlc = { version = "3.2", features = ["termination"] }
-ignore = "0.4.18"
+ignore = "0.4.26"
 rubyfmt = { path = "./librubyfmt" }
 similar = { version = "2.7.0", features = ["bytes"] }
 
