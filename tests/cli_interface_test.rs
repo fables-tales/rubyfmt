@@ -729,6 +729,34 @@ fn test_respects_rubyfmtignore() {
 }
 
 #[test]
+fn test_respects_rubyfmtignore_with_multiple_directory_arguments() {
+    for arguments in [["app", "db"], ["db", "app"]] {
+        let dir = tempdir().unwrap();
+        create_dir(dir.path().join("app")).unwrap();
+        create_dir(dir.path().join("db")).unwrap();
+
+        let app_file = dir.path().join("app/application.rb");
+        let schema_file = dir.path().join("db/schema.rb");
+        fs::write(&app_file, "a 1, 2, 3\n").unwrap();
+        fs::write(&schema_file, "a 4, 5, 6\n").unwrap();
+        fs::write(dir.path().join(".rubyfmtignore"), "db/schema.rb\n").unwrap();
+
+        Command::cargo_bin("rubyfmt-main")
+            .unwrap()
+            .current_dir(dir.path())
+            .arg("-i")
+            .args(arguments)
+            .assert()
+            .stdout("")
+            .code(0)
+            .success();
+
+        assert_eq!("a(1, 2, 3)\n", read_to_string(app_file).unwrap());
+        assert_eq!("a 4, 5, 6\n", read_to_string(schema_file).unwrap());
+    }
+}
+
+#[test]
 fn test_respects_gitignore() {
     let dir = tempdir().unwrap();
     // Fake a git repo
