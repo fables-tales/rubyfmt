@@ -232,6 +232,12 @@ fn file_walker_builder(include_paths: Vec<&String>, include_gitignored: bool) ->
 
     builder.git_ignore(!include_gitignored);
     builder.add_custom_ignore_filename(".rubyfmtignore");
+
+    // WalkBuilder ignores hidden files by default, dropping .rb files under
+    // dot-directories like .buildkite/. Un-hide dotfiles, but keep .git out.
+    builder.hidden(false);
+    builder.filter_entry(|entry| entry.file_name() != OsStr::new(".git"));
+
     builder
 }
 
