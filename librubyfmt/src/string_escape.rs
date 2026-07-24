@@ -179,6 +179,17 @@ fn escape_string(content: &[u8], opening_delim: u8, closing_delim: u8) -> Vec<u8
                             bytes.next();
                             continue;
                         }
+                        // '\#' is a literal backslash followed by a literal '#', not an escape
+                        // sequence, in single-quoted strings. Don't consume the '#' here — leave
+                        // it for the `b'#'` match arm below so it can decide (based on what
+                        // follows) whether it needs to be escaped to avoid becoming an
+                        // interpolation trigger (e.g. `\#{`, `\#$`, `\#@`) in the double-quoted
+                        // output.
+                        b'#' => {
+                            output.push(b'\\');
+                            output.push(b'\\');
+                            continue;
+                        }
                         // For everything else, this is not an escape sequence, so we need to
                         // escape the slash and then print the next character.
                         _ => {
