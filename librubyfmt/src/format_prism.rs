@@ -1706,17 +1706,20 @@ fn use_parens_for_call_node<'src>(
                 && is_empty_parentheses_node(&args.arguments().first().unwrap())))
     });
 
+    // The block-argument render path emits its own parens around `(&blk)`, so we
+    // should never emit an extra empty `()` pair before it, regardless of any
+    // other reason we might otherwise add parens (e.g. a same-named local
+    // variable in scope, or a capitalized/const-style method name).
+    let has_block_arg_only = !has_arguments
+        && call_node
+            .block()
+            .and_then(|b| b.as_block_argument_node())
+            .is_some();
+    if has_block_arg_only {
+        return false;
+    }
+
     if is_terminal_call && method_name.first().is_some_and(|c| c.is_ascii_uppercase()) {
-        // The block-argument render path emits its own parens around `(&blk)`, so we can skip them
-        // if they're the only arg
-        let has_block_arg_only = !has_arguments
-            && call_node
-                .block()
-                .and_then(|b| b.as_block_argument_node())
-                .is_some();
-        if has_block_arg_only {
-            return false;
-        }
         if !has_arguments && call_node.block().is_some() && call_node.receiver().is_none() {
             return false;
         }
@@ -2006,14 +2009,20 @@ fn format_call_node<'src>(
             }
         } else {
             // There's no arguments, but we may still need parens
-            let should_use_parens = is_dot_call
-                || use_parens_for_call_node(
-                    ps,
-                    &call_node,
-                    method_name,
-                    is_final_call_in_chain,
-                    ps.current_formatting_context(),
-                );
+            let has_block_arg_only = call_node.arguments().is_none()
+                && call_node
+                    .block()
+                    .and_then(|b| b.as_block_argument_node())
+                    .is_some();
+            let should_use_parens = !has_block_arg_only
+                && (is_dot_call
+                    || use_parens_for_call_node(
+                        ps,
+                        &call_node,
+                        method_name,
+                        is_final_call_in_chain,
+                        ps.current_formatting_context(),
+                    ));
             if should_use_parens {
                 ps.emit_open_paren();
                 ps.emit_close_paren();
