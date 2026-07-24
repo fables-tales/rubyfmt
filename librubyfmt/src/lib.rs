@@ -60,8 +60,21 @@ pub enum FormatError {
 }
 
 pub fn format_buffer(buf: &[u8]) -> Result<Vec<u8>, RichFormatError> {
-    let out_data = vec![];
-    let mut output = Cursor::new(out_data);
+    // Strip a leading UTF-8 BOM before parsing/analysis. Prism already ignores
+    // the BOM when parsing, but our own line/comment analysis (e.g.
+    // `FileComments`) operates on the raw bytes and would otherwise misclassify
+    // the first line. We re-emit the BOM in the output below so we don't
+    // silently drop the file's encoding marker
+    const BOM: &[u8] = b"\xEF\xBB\xBF";
+    let had_bom = buf.starts_with(BOM);
+    let buf = buf.strip_prefix(BOM).unwrap_or(buf);
+
+    let mut output = Cursor::new(Vec::new());
+    if had_bom {
+        output
+            .write_all(BOM)
+            .expect("writing to a vec should never fail");
+    }
 
     let parse_result = ruby_prism::parse(buf);
     if parse_result.errors().next().is_some() {
