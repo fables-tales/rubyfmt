@@ -15,9 +15,9 @@ module MathsAndPhysics
   #   degree_codes:       The corresponding JAC codes to the subject(s)
   #                       the teacher completed their degree in.
   CONST = [
-    #maths
+    # maths
     a,
-    #physics
+    # physics
     b,
 
     # foreign language
