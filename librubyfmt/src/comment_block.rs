@@ -12,11 +12,13 @@ pub struct CommentBlock {
     comments: Vec<Cow<'static, [u8]>>,
 }
 
-const SPECIAL_CHARS_AFTER_HASH_TO_IGNORE: [u8; 4] = [
+const SPECIAL_CHARS_AFTER_HASH_TO_IGNORE: [u8; 6] = [
     b'!', // #! 'shebang' comments cannot be modified since they are Unix directives.
     b'=', // #=== is a common delimiting pattern.
     b'-', // #--- is a common delimiting pattern.
-    b':', // #: is used for RBS directives.
+    b':', // #: is used for RBS annotations.
+    b'|', // #| is used for RBS annotations.
+    b'*', // #** is used for doxygen comments.
 ];
 
 impl CommentBlock {
@@ -81,8 +83,7 @@ impl CommentBlock {
                     continue;
                 }
 
-                let current = comment[anchor..].iter().take_while(|&&b| b == b' ').count();
-                if current > 0 {
+                if comment[anchor].is_ascii_whitespace() {
                     // Any amount of spaces after `#` is fine.
                     continue;
                 }
@@ -92,8 +93,8 @@ impl CommentBlock {
                     continue;
                 }
 
-                // Add at least one space
-                comment.to_mut().splice(anchor..anchor, [b' ']);
+                // Add one space
+                comment.to_mut().insert(anchor, b' ');
             }
         }
         self

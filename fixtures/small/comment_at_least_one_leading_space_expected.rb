@@ -8,7 +8,9 @@
 
 #### ####
 ###----------
-#:
+#: asdf
+#| asdf
+#** doc doc
 #
 #
 # This is a class that frobs a gizmo. It:
