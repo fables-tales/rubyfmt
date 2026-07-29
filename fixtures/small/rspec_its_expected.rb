@@ -2,19 +2,19 @@ it(
   "a" \
     "b"
 ) do
-  #hi
+  # hi
 end
 
 it "a" do
-  #hi
+  # hi
 end
 
 it "a", flag: true do
-  #hi
+  # hi
 end
 
 it "a", flag: true, other: "b", another: false do
-  #hi
+  # hi
 end
 
 it("a", flag: true, other: "b", another: false) { 1 }

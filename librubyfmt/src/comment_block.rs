@@ -12,6 +12,15 @@ pub struct CommentBlock {
     comments: Vec<Cow<'static, [u8]>>,
 }
 
+const SPECIAL_CHARS_AFTER_HASH_TO_IGNORE: [u8; 6] = [
+    b'!', // #! 'shebang' comments cannot be modified since they are Unix directives.
+    b'=', // #=== is a common delimiting pattern.
+    b'-', // #--- is a common delimiting pattern.
+    b':', // #: is used for RBS annotations.
+    b'|', // #| is used for RBS annotations.
+    b'*', // #** is used for doxygen comments.
+];
+
 impl CommentBlock {
     pub fn new(span: Range<LineNumber>, comments: Vec<Cow<'static, [u8]>>) -> Self {
         CommentBlock { span, comments }
@@ -52,6 +61,43 @@ impl CommentBlock {
                 ]
             }
         })
+    }
+
+    pub fn enforce_at_least_one_space_after_comment_symbol(mut self) -> Self {
+        for comment in &mut self.comments {
+            // Ignore empty vecs -- these represent blank lines between
+            // groups of comments
+            if comment.is_empty() || comment.starts_with(b"=begin") {
+                continue;
+            }
+            if let Some(start_idx) = comment.iter().position(|&c| c == b'#') {
+                // Allow any amount of '#' after the leading '#'.
+                let collapse = comment[start_idx..]
+                    .iter()
+                    .take_while(|&&b| b == b'#')
+                    .count();
+
+                let anchor = start_idx + collapse;
+                if anchor == comment.len() {
+                    // No point truncating an empty comment.
+                    continue;
+                }
+
+                if comment[anchor].is_ascii_whitespace() {
+                    // Any amount of spaces after `#` is fine.
+                    continue;
+                }
+
+                let next_char = comment[anchor];
+                if SPECIAL_CHARS_AFTER_HASH_TO_IGNORE.contains(&next_char) {
+                    continue;
+                }
+
+                // Add one space
+                comment.to_mut().insert(anchor, b' ');
+            }
+        }
+        self
     }
 
     /// Set each comment's leading indent to exactly `indent_depth` spaces

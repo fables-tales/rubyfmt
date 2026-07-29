@@ -1,8 +1,8 @@
 def foo
-  #a
-  #b
-  #c
-  #d
+  # a
+  # b
+  # c
+  # d
 end
 
 if a

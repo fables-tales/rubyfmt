@@ -382,8 +382,11 @@ impl<'src> ParserState<'src> {
     }
 
     pub(crate) fn insert_comment_collection(&mut self, comments: CommentBlock) {
-        self.comments_to_insert
-            .merge(comments.apply_spaces(self.spaces_after_last_newline));
+        self.comments_to_insert.merge(
+            comments
+                .enforce_at_least_one_space_after_comment_symbol()
+                .apply_spaces(self.spaces_after_last_newline),
+        );
     }
 
     pub(crate) fn emit_op(&mut self, op: &'src [u8]) {
@@ -890,6 +893,7 @@ impl<'src> ParserState<'src> {
                 self.on_line(1);
             }
             Some(comments) => {
+                let comments = comments.enforce_at_least_one_space_after_comment_symbol();
                 let line_count = comments.line_count();
                 for token in comments.into_line_tokens() {
                     self.push_concrete_token(token);

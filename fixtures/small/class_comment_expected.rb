@@ -1,6 +1,6 @@
-#adsf
+# adsf
 class Foo
-  #but this one doesn't get a proceeding newline
+  # but this one doesn't get a proceeding newline
   a
 end
 
