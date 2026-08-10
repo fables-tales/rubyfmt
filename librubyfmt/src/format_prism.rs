@@ -931,9 +931,12 @@ fn format_inner_string<'src>(
                         .count()
                         - escaped_ws_count;
 
+                    let raw_leading_cols = count_indent_cols(&raw[..raw_leading]);
+                    let unescaped_leading_cols = count_indent_cols(&unescaped[..unescaped_leading]);
+
                     // The difference is the common indent (if raw has more leading whitespace)
-                    if raw_leading > unescaped_leading {
-                        return Some(raw_leading - unescaped_leading);
+                    if raw_leading_cols > unescaped_leading_cols {
+                        return Some(raw_leading_cols - unescaped_leading_cols);
                     }
                 }
                 None
@@ -960,11 +963,10 @@ fn format_inner_string<'src>(
                             .enumerate()
                             .map(|(line_idx, line)| {
                                 // Strip from lines at line boundaries
-                                let should_strip = (line_idx > 0 || prev_ended_with_newline)
-                                    && !line.is_empty()
-                                    && line.len() >= common_indent;
+                                let should_strip =
+                                    (line_idx > 0 || prev_ended_with_newline) && !line.is_empty();
                                 if should_strip {
-                                    &line[common_indent..]
+                                    strip_indent_cols(line, common_indent)
                                 } else {
                                     line
                                 }
@@ -5175,4 +5177,43 @@ fn format_write_node<'src>(
     ps.emit_op(op);
     ps.emit_space();
     ps.with_start_of_line(false, |ps| format_node(ps, value));
+}
+
+/// Count leading whitespace columns. Tabs advance to the next multiple of 8.
+fn count_indent_cols(line: &[u8]) -> usize {
+    let mut col = 0;
+    for &b in line {
+        match b {
+            b' ' => col += 1,
+            b'\t' => col = (col / 8 + 1) * 8,
+            _ => break,
+        }
+    }
+    col
+}
+
+/// Strip up to `cols` leading whitespace columns from `line`.
+/// Tabs advance to the next multiple of 8.
+/// If a tab would advance past `cols`, it is not stripped.
+fn strip_indent_cols(line: &[u8], cols: usize) -> &[u8] {
+    let mut col = 0;
+    let mut i = 0;
+    while i < line.len() && col < cols {
+        match line[i] {
+            b' ' => {
+                col += 1;
+                i += 1;
+            }
+            b'\t' => {
+                col = (col / 8 + 1) * 8;
+                if col > cols {
+                    // We are in the middle of a tab. Do not strip it.
+                    break;
+                }
+                i += 1;
+            }
+            _ => break,
+        }
+    }
+    &line[i..]
 }

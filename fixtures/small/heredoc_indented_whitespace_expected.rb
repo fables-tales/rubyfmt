@@ -1,15 +1,15 @@
 def foo
   <<~THING
-    awfweaf
+    awfweaf 
       awefawef
-
-
-
+      
+      
+      
     hi there
   THING
 
   <<-THING
-
+  
   hi there
   THING
 end
