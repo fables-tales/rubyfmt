@@ -179,6 +179,17 @@ fn escape_string(content: &[u8], opening_delim: u8, closing_delim: u8) -> Vec<u8
                             bytes.next();
                             continue;
                         }
+                        // '\#' is a literal backslash followed by a literal '#', not an escape
+                        // sequence, in single-quoted strings. Don't consume the '#' here — leave
+                        // it for the `b'#'` match arm below so it can decide (based on what
+                        // follows) whether it needs to be escaped to avoid becoming an
+                        // interpolation trigger (e.g. `\#{`, `\#$`, `\#@`) in the double-quoted
+                        // output.
+                        b'#' => {
+                            output.push(b'\\');
+                            output.push(b'\\');
+                            continue;
+                        }
                         // For everything else, this is not an escape sequence, so we need to
                         // escape the slash and then print the next character.
                         _ => {
@@ -306,6 +317,58 @@ mod tests {
         assert_eq!(
             single_to_double_quoted(b"#foo", b"'", b"'").as_ref(),
             b"#foo"
+        );
+    }
+
+    /// In a single-quoted string, a backslash is only special before `\` or `'`.
+    /// So `\#$g`, `\#@g` and `\#{x}` are just the literal characters `\`, `#`, and
+    /// whatever follows — there is no interpolation. When converting to a
+    /// double-quoted string we must preserve that: the backslash needs to be
+    /// escaped (`\\`) *and* the `#` needs to be escaped (`\#`) so it doesn't turn
+    /// into real interpolation.
+    #[test]
+    fn single_quoted_literal_backslash_hash_dollar_not_interpolated() {
+        assert_eq!(
+            single_to_double_quoted(b"\\#$g", b"'", b"'").as_ref(),
+            b"\\\\\\#$g"
+        );
+    }
+
+    #[test]
+    fn single_quoted_literal_backslash_hash_at_not_interpolated() {
+        assert_eq!(
+            single_to_double_quoted(b"\\#@g", b"'", b"'").as_ref(),
+            b"\\\\\\#@g"
+        );
+    }
+
+    #[test]
+    fn single_quoted_literal_backslash_hash_brace_not_interpolated() {
+        assert_eq!(
+            single_to_double_quoted(b"\\#{x}", b"'", b"'").as_ref(),
+            b"\\\\\\#{x}"
+        );
+    }
+
+    #[test]
+    fn single_quoted_literal_backslash_hash_before_regular_char() {
+        // \#foo — the backslash needs escaping, but `#foo` isn't an
+        // interpolation trigger so the `#` stays unescaped.
+        assert_eq!(
+            single_to_double_quoted(b"\\#foo", b"'", b"'").as_ref(),
+            b"\\\\#foo"
+        );
+    }
+
+    #[test]
+    fn single_quoted_escaped_backslash_then_hash_brace_is_interpolation() {
+        // '\\#{x}' is an *escaped* backslash followed by `#{x}`, which *is*
+        // interpolation-worthy in the original single-quoted source too — so
+        // once converted to double-quoted, the `#` must still be escaped to
+        // preserve the literal (non-interpolated) meaning.
+        assert_eq!(
+            single_to_double_quoted(b"\\\\#{x}", b"'", b"'").as_ref(),
+            b"\\\\\\#{x}"
         );
     }
 

@@ -66,6 +66,22 @@ puts '
 @foo = 3
 puts '#@foo'
 puts '#{3}'
+
+$global = 1
+puts '\#$global'
+puts '"\#$global"'
+
+@ivar = 2
+puts '\#@ivar'
+puts '"\#@ivar"'
+
+local_var = 3
+puts '\#{local_var}'
+puts '"\#{local_var}"'
+puts %q{text with \#{local_var} test}
+puts '\#foo'
+puts 'a\#{local_var}c'
+puts '\\#{local_var}'
 puts %q("")
 puts %q(\"\")
 puts %Q(\"\")
