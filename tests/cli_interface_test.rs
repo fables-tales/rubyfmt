@@ -462,6 +462,58 @@ fn test_format_directory_with_changes() {
 }
 
 #[test]
+fn test_format_directory_with_changes_in_hidden_directory() {
+    // Hidden directories should not be skipped when walking a directory argument.
+    let dir = tempdir().unwrap();
+    let dir_name = dir.path().to_str().unwrap().to_owned();
+    create_dir(dir_name.clone() + "/.hidden").unwrap();
+
+    let mut file = tempfile::Builder::new()
+        .prefix("rubyfmt")
+        .suffix(".rb")
+        .tempfile_in(dir_name.clone() + "/.hidden")
+        .unwrap();
+    writeln!(file, "a 1, 2, 3").unwrap();
+
+    Command::cargo_bin("rubyfmt-main")
+        .unwrap()
+        .arg(dir_name)
+        .arg("-i")
+        .assert()
+        .stdout("")
+        .code(0)
+        .success();
+
+    assert_eq!("a(1, 2, 3)\n", read_to_string(file.path()).unwrap());
+}
+
+#[test]
+fn test_format_directory_ignores_git_directory() {
+    // .git should still be skipped even though hidden directories are walked now.
+    let dir = tempdir().unwrap();
+    let dir_name = dir.path().to_str().unwrap().to_owned();
+    create_dir(dir_name.clone() + "/.git").unwrap();
+
+    let mut file = tempfile::Builder::new()
+        .prefix("rubyfmt")
+        .suffix(".rb")
+        .tempfile_in(dir_name.clone() + "/.git")
+        .unwrap();
+    writeln!(file, "a 1, 2, 3").unwrap();
+
+    Command::cargo_bin("rubyfmt-main")
+        .unwrap()
+        .arg(dir_name)
+        .arg("-i")
+        .assert()
+        .stdout("")
+        .code(0)
+        .success();
+
+    assert_eq!("a 1, 2, 3\n", read_to_string(file.path()).unwrap());
+}
+
+#[test]
 fn format_input_file_with_changes() {
     let mut file_one = NamedTempFile::new().unwrap();
     writeln!(file_one, "a 1, 2, 3").unwrap();
