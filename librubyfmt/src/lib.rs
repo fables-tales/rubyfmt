@@ -6,8 +6,6 @@ use std::io::{Cursor, Write};
 #[global_allocator]
 static ALLOC: tikv_jemallocator::Jemalloc = tikv_jemallocator::Jemalloc;
 
-pub type RawStatus = i64;
-
 mod comment_block;
 mod delimiters;
 mod file_comments;
