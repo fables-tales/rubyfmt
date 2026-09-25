@@ -68,8 +68,16 @@ impl<'src> HeredocString<'src> {
         let indent = self.indent;
 
         if self.kind.is_squiggly() {
-            // For squiggly heredocs, we need to apply indentation to Normal segments
-            // but not to Raw segments (which come from nested non-squiggly heredocs).
+            // Do not indent raw segments (nested non-squiggly heredocs).
+            // Do not indent when all normal segments contain only whitespace.
+            let should_indent = self.segments.iter().any(|seg| {
+                if let HeredocSegment::Normal(c) = seg {
+                    c.iter().any(|&b| b != b' ' && b != b'\t' && b != b'\n')
+                } else {
+                    false
+                }
+            });
+
             let mut result = Vec::new();
             for segment in self.segments {
                 match segment {
@@ -79,9 +87,10 @@ impl<'src> HeredocString<'src> {
                             if i > 0 {
                                 result.push(b'\n');
                             }
-                            let mut indented = get_indent(indent as usize + 2).into_owned();
-                            indented.extend_from_slice(line);
-                            result.extend_from_slice(indented.trim_ascii_end());
+                            if !line.is_empty() && should_indent {
+                                result.extend_from_slice(get_indent(indent as usize + 2).as_ref());
+                            }
+                            result.extend_from_slice(line);
                         }
                     }
                     HeredocSegment::Raw(content) => {
@@ -90,14 +99,14 @@ impl<'src> HeredocString<'src> {
                             if i > 0 {
                                 result.push(b'\n');
                             }
-                            result.extend_from_slice(line.trim_ascii_end());
+                            result.extend_from_slice(line);
                         }
                     }
                 }
             }
             result
         } else {
-            // For non-squiggly heredocs, just join segments and trim line endings
+            // For non-squiggly heredocs, just join segments
             let mut result = Vec::new();
             for segment in self.segments {
                 let content = match segment {
@@ -107,7 +116,7 @@ impl<'src> HeredocString<'src> {
                     if i > 0 {
                         result.push(b'\n');
                     }
-                    result.extend_from_slice(line.trim_ascii_end());
+                    result.extend_from_slice(line);
                 }
             }
             result
