@@ -642,7 +642,7 @@ impl<'src> ParserState<'src> {
         // Drain to process heredocs in declaration order (FIFO).
         // When multiple heredocs are declared on the same line (e.g., #{<<A} middle #{<<B}),
         // they are pushed in order [A, B], so we iterate in that order to render A before B.
-        let heredocs: Vec<_> = std::mem::take(&mut self.heredoc_strings);
+        let heredocs = std::mem::take(&mut self.heredoc_strings);
         for next_heredoc in heredocs {
             let want_newline = !self.last_token_is_a_newline();
             if want_newline {
