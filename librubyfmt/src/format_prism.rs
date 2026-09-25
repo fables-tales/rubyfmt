@@ -704,7 +704,7 @@ fn format_string_node<'src>(ps: &mut ParserState<'src>, string_node: prism::Stri
             )
         };
 
-        ps.emit_string_content(string_content);
+        ps.emit_quoted_string_content(string_content);
         ps.wind_dumping_comments_until_offset(string_node.content_loc().end_offset());
 
         if opener.is_some() {
@@ -792,7 +792,7 @@ fn format_interpolated_string_node<'src>(
                     opener.unwrap(),
                     closer.unwrap_or(b"\""),
                 );
-                ps.emit_string_content(escaped);
+                ps.emit_quoted_string_content(escaped);
             } else {
                 format_node(ps, part);
             }

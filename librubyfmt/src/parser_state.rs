@@ -398,14 +398,26 @@ impl<'src> ParserState<'src> {
     }
 
     pub(crate) fn emit_string_content(&mut self, s: impl Into<Cow<'src, [u8]>>) {
+        let content = self.track_string_content(s);
+        self.push_concrete_token(ConcreteLineToken::LTStringContent { content });
+    }
+
+    /// Emit the interior of a quoted string literal. Distinguished from
+    /// `emit_string_content` so squiggly heredocs do not re-indent these
+    /// newlines as if they were heredoc body text.
+    pub(crate) fn emit_quoted_string_content(&mut self, s: impl Into<Cow<'src, [u8]>>) {
+        let content = self.track_string_content(s);
+        self.push_concrete_token(ConcreteLineToken::QuotedStringContent { content });
+    }
+
+    fn track_string_content(&mut self, s: impl Into<Cow<'src, [u8]>>) -> Cow<'src, [u8]> {
         let content = s.into();
         let newline_count = content.iter().filter(|&&b| b == b'\n').count() as u64;
         self.current_orig_line_number += newline_count;
         for be in self.breakable_entry_stack.iter_mut().rev() {
             be.push_line_number(self.current_orig_line_number);
         }
-
-        self.push_concrete_token(ConcreteLineToken::LTStringContent { content });
+        content
     }
 
     pub(crate) fn emit_ident(&mut self, ident: &'src [u8]) {
@@ -843,13 +855,20 @@ impl<'src> ParserState<'src> {
         }
 
         for token in final_tokens {
-            if let ConcreteLineToken::RawHeredocContent { content } = token {
-                // Flush accumulated normal content, then add raw segment
-                flush_normal(&mut current_normal, &mut segments);
-                segments.push(HeredocSegment::Raw(content));
-            } else {
-                // Accumulate into normal content
-                current_normal.extend_from_slice(&token.into_ruby());
+            match token {
+                ConcreteLineToken::RawHeredocContent { content } => {
+                    // Flush accumulated normal content, then add raw segment
+                    flush_normal(&mut current_normal, &mut segments);
+                    segments.push(HeredocSegment::Raw(content));
+                }
+                ConcreteLineToken::QuotedStringContent { content } => {
+                    flush_normal(&mut current_normal, &mut segments);
+                    segments.push(HeredocSegment::Quoted(content.into_owned()));
+                }
+                token => {
+                    // Accumulate into normal content
+                    current_normal.extend_from_slice(&token.into_ruby());
+                }
             }
         }
 

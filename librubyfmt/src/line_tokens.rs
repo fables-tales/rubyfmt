@@ -67,6 +67,11 @@ pub enum ConcreteLineToken<'src> {
     LTStringContent {
         content: Cow<'src, [u8]>,
     },
+    /// Interior of a quoted string literal. Distinguished from `LTStringContent`
+    /// so squiggly heredocs can avoid re-indenting nested string contents.
+    QuotedStringContent {
+        content: Cow<'src, [u8]>,
+    },
     SingleSlash,
     Comment {
         contents: Cow<'src, [u8]>,
@@ -119,7 +124,7 @@ impl<'src> ConcreteLineToken<'src> {
             Self::CloseParen => Cow::Borrowed(b")"),
             Self::Op { op } => Cow::Borrowed(op),
             Self::DoubleQuote => Cow::Borrowed(b"\""),
-            Self::LTStringContent { content } => content,
+            Self::LTStringContent { content } | Self::QuotedStringContent { content } => content,
             Self::SingleSlash => Cow::Borrowed(b"\\"),
             Self::Comment { contents } => contents,
             Self::Delim { contents } => Cow::Borrowed(contents),
@@ -150,7 +155,7 @@ impl<'src> ConcreteLineToken<'src> {
             Op { op } => op.len(),
             MethodName { name: op } => op.len(),
             DirectPart { part } => part.len(),
-            LTStringContent { content } => content.len(),
+            LTStringContent { content } | QuotedStringContent { content } => content.len(),
             Comment { contents } => contents.len(),
             HeredocClose { symbol: contents } | RawHeredocContent { content: contents } => {
                 contents.len()
