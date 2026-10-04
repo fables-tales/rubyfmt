@@ -89,12 +89,12 @@ pub enum ConcreteLineToken<'src> {
     },
     /// Content that must not receive squiggly indentation.
     ///
-    /// `preserve` is for quoted-string interiors: those bytes are the literal's
-    /// value, so they must not be trimmed, and a newline inside them is not a
-    /// heredoc line boundary. Nested non-squiggly heredocs use `preserve: false`.
+    /// `preserve_whitespace` is for quoted-string interiors: those bytes are the
+    /// literal's value, so they must not be trimmed, and a newline inside them
+    /// is not a heredoc line boundary. Nested non-squiggly heredocs use `false`.
     RawHeredocContent {
         content: Vec<u8>,
-        preserve: bool,
+        preserve_whitespace: bool,
     },
 }
 

@@ -6,10 +6,10 @@ use crate::util::get_indent;
 fn append_raw_segment(
     result: &mut Vec<u8>,
     content: &[u8],
-    preserve: bool,
+    preserve_whitespace: bool,
     at_line_start: &mut bool,
 ) {
-    if preserve {
+    if preserve_whitespace {
         // Quoted-string interiors are the literal's value. Do not trim, and do
         // not treat an interior newline as a heredoc line boundary: indenting
         // the following quote would mutate the string.
@@ -84,14 +84,13 @@ pub enum HeredocSegment {
     Normal(Vec<u8>),
     /// Content that must not receive squiggly indentation.
     ///
-    /// `preserve` is for quoted-string interiors nested in an interpolation:
-    /// those bytes are the string's value, so they must not be trimmed, and a
-    /// newline inside them is not a heredoc line boundary (the following quote
-    /// must not be indented into the literal). Nested non-squiggly heredocs
-    /// use `preserve: false` and still have trailing whitespace trimmed.
+    /// `preserve_whitespace` is for quoted-string interiors nested in an
+    /// interpolation: those bytes are the string's value, so they must not be
+    /// trimmed, and a newline inside them is not a heredoc line boundary.
+    /// Nested non-squiggly heredocs use `preserve_whitespace: false`.
     Raw {
         content: Vec<u8>,
-        preserve: bool,
+        preserve_whitespace: bool,
     },
 }
 
@@ -139,8 +138,16 @@ impl<'src> HeredocString<'src> {
                             at_line_start = content.ends_with(b"\n");
                         }
                     }
-                    HeredocSegment::Raw { content, preserve } => {
-                        append_raw_segment(&mut result, &content, preserve, &mut at_line_start);
+                    HeredocSegment::Raw {
+                        content,
+                        preserve_whitespace,
+                    } => {
+                        append_raw_segment(
+                            &mut result,
+                            &content,
+                            preserve_whitespace,
+                            &mut at_line_start,
+                        );
                     }
                 }
             }
@@ -152,8 +159,16 @@ impl<'src> HeredocString<'src> {
             let mut at_line_start = true;
             for segment in self.segments {
                 match segment {
-                    HeredocSegment::Raw { content, preserve } => {
-                        append_raw_segment(&mut result, &content, preserve, &mut at_line_start);
+                    HeredocSegment::Raw {
+                        content,
+                        preserve_whitespace,
+                    } => {
+                        append_raw_segment(
+                            &mut result,
+                            &content,
+                            preserve_whitespace,
+                            &mut at_line_start,
+                        );
                     }
                     HeredocSegment::Normal(content) => {
                         append_heredoc_lines(&mut result, &content, false, None);

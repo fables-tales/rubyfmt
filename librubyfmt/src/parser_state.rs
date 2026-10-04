@@ -398,23 +398,27 @@ impl<'src> ParserState<'src> {
     }
 
     pub(crate) fn emit_string_content(&mut self, s: impl Into<Cow<'src, [u8]>>) {
-        let content = self.track_string_content(s);
+        let content = self.advance_line_number_for_content(s);
         self.push_concrete_token(ConcreteLineToken::LTStringContent { content });
     }
 
     /// Emit a quoted-string interior as raw heredoc content.
     ///
-    /// `preserve` keeps the bytes out of squiggly indent and trailing-whitespace
-    /// trimming: a newline here is string content, not a heredoc line boundary.
+    /// `preserve_whitespace` keeps the bytes out of squiggly indent and
+    /// trailing-whitespace trimming: a newline here is string content, not a
+    /// heredoc line boundary.
     pub(crate) fn emit_quoted_string_content(&mut self, s: impl Into<Cow<'src, [u8]>>) {
-        let content = self.track_string_content(s).into_owned();
+        let content = self.advance_line_number_for_content(s).into_owned();
         self.push_concrete_token(ConcreteLineToken::RawHeredocContent {
             content,
-            preserve: true,
+            preserve_whitespace: true,
         });
     }
 
-    fn track_string_content(&mut self, s: impl Into<Cow<'src, [u8]>>) -> Cow<'src, [u8]> {
+    fn advance_line_number_for_content(
+        &mut self,
+        s: impl Into<Cow<'src, [u8]>>,
+    ) -> Cow<'src, [u8]> {
         let content = s.into();
         let newline_count = content.iter().filter(|&&b| b == b'\n').count() as u64;
         self.current_orig_line_number += newline_count;
@@ -678,7 +682,7 @@ impl<'src> ParserState<'src> {
                 if emit_as_raw {
                     self.push_concrete_token(ConcreteLineToken::RawHeredocContent {
                         content: string_contents,
-                        preserve: false,
+                        preserve_whitespace: false,
                     });
                 } else {
                     self.push_concrete_token(ConcreteLineToken::DirectPart {
@@ -701,7 +705,7 @@ impl<'src> ParserState<'src> {
                 };
                 self.push_concrete_token(ConcreteLineToken::RawHeredocContent {
                     content: close_content,
-                    preserve: false,
+                    preserve_whitespace: false,
                 });
             } else {
                 if !kind.is_bare() {
@@ -862,12 +866,15 @@ impl<'src> ParserState<'src> {
 
         for token in final_tokens {
             match token {
-                ConcreteLineToken::RawHeredocContent { content, preserve } => {
-                    // Flush accumulated normal content, then add raw segment.
-                    // `preserve` is quoted-string interiors; nested non-squiggly
-                    // heredocs pass false and still have trailing whitespace trimmed.
+                ConcreteLineToken::RawHeredocContent {
+                    content,
+                    preserve_whitespace,
+                } => {
                     flush_normal(&mut current_normal, &mut segments);
-                    segments.push(HeredocSegment::Raw { content, preserve });
+                    segments.push(HeredocSegment::Raw {
+                        content,
+                        preserve_whitespace,
+                    });
                 }
                 token => {
                     // Accumulate into normal content
