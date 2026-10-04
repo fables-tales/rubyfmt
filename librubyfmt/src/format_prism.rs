@@ -3777,7 +3777,12 @@ fn format_inline_conditional<'src>(
     }
     ps.emit_conditional_keyword(keyword);
     ps.emit_space();
-    ps.with_start_of_line(false, |ps| format_node(ps, predicate));
+    // Hide any pending heredocs (e.g. a heredoc statement before `if cond.foo`)
+    // so an eager `render_heredocs` triggered while formatting the predicate
+    // doesn't render the heredoc body into the predicate's output.
+    ps.with_preserved_pending_heredocs(|ps| {
+        ps.with_start_of_line(false, |ps| format_node(ps, predicate));
+    });
 }
 
 enum Conditional<'pr> {
