@@ -4962,7 +4962,9 @@ fn format_while_node<'src>(ps: &mut ParserState<'src>, while_node: prism::WhileN
 
 fn format_x_string_node<'src>(ps: &mut ParserState<'src>, x_string_node: prism::XStringNode<'src>) {
     ps.emit_ident(b"`");
-    ps.emit_string_content(x_string_node.content_loc().as_slice());
+    // Same as quoted strings: a newline here is command-string content, not a
+    // heredoc line, so squiggly indent must not land inside the backticks.
+    ps.emit_quoted_string_content(x_string_node.content_loc().as_slice());
     ps.emit_ident(b"`");
 }
 
