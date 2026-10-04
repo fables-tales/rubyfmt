@@ -69,6 +69,7 @@ pub enum ConcreteLineToken<'src> {
     },
     /// Interior of a quoted string literal. Distinguished from `LTStringContent`
     /// so squiggly heredocs can avoid re-indenting nested string contents.
+    /// Rendered as a preserving `HeredocSegment::Raw`, not a separate segment type.
     QuotedStringContent {
         content: Cow<'src, [u8]>,
     },

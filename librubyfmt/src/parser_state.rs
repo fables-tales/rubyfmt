@@ -857,13 +857,22 @@ impl<'src> ParserState<'src> {
         for token in final_tokens {
             match token {
                 ConcreteLineToken::RawHeredocContent { content } => {
-                    // Flush accumulated normal content, then add raw segment
+                    // Flush accumulated normal content, then add raw segment.
+                    // Nested non-squiggly heredocs still have trailing whitespace trimmed.
                     flush_normal(&mut current_normal, &mut segments);
-                    segments.push(HeredocSegment::Raw(content));
+                    segments.push(HeredocSegment::Raw {
+                        content,
+                        preserve: false,
+                    });
                 }
                 ConcreteLineToken::QuotedStringContent { content } => {
+                    // Same Raw path as nested heredocs, but these bytes are a
+                    // string value and must not be trimmed or re-indented.
                     flush_normal(&mut current_normal, &mut segments);
-                    segments.push(HeredocSegment::Quoted(content.into_owned()));
+                    segments.push(HeredocSegment::Raw {
+                        content: content.into_owned(),
+                        preserve: true,
+                    });
                 }
                 token => {
                     // Accumulate into normal content

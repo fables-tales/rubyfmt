@@ -3,6 +3,28 @@ use std::borrow::Cow;
 use crate::types::ColNumber;
 use crate::util::get_indent;
 
+fn append_raw_segment(
+    result: &mut Vec<u8>,
+    content: &[u8],
+    preserve: bool,
+    at_line_start: &mut bool,
+) {
+    if preserve {
+        // Quoted-string interiors are the literal's value. Do not trim, and do
+        // not treat an interior newline as a heredoc line boundary: indenting
+        // the following quote would mutate the string.
+        result.extend_from_slice(content);
+        if !content.is_empty() {
+            *at_line_start = false;
+        }
+    } else {
+        append_heredoc_lines(result, content, false, None);
+        if !content.is_empty() {
+            *at_line_start = content.ends_with(b"\n");
+        }
+    }
+}
+
 fn append_heredoc_lines(
     result: &mut Vec<u8>,
     content: &[u8],
@@ -56,17 +78,21 @@ impl HeredocKind {
 }
 
 /// A segment of heredoc content. Used to distinguish between content that should
-/// receive squiggly indentation and content from nested non-squiggly heredocs
-/// that should not be indented.
+/// receive squiggly indentation and content that must be left alone.
 #[derive(Debug, Clone)]
 pub enum HeredocSegment {
     Normal(Vec<u8>),
-    /// Content from nested non-squiggly heredocs, should never receive squiggly indentation.
-    /// This includes both the heredoc content and the closing identifier.
-    Raw(Vec<u8>),
-    /// Interior of a nested quoted string. Newlines here are string content, so
-    /// they must not receive squiggly indentation or trailing-whitespace trimming.
-    Quoted(Vec<u8>),
+    /// Content that must not receive squiggly indentation.
+    ///
+    /// `preserve` is for quoted-string interiors nested in an interpolation:
+    /// those bytes are the string's value, so they must not be trimmed, and a
+    /// newline inside them is not a heredoc line boundary (the following quote
+    /// must not be indented into the literal). Nested non-squiggly heredocs
+    /// use `preserve: false` and still have trailing whitespace trimmed.
+    Raw {
+        content: Vec<u8>,
+        preserve: bool,
+    },
 }
 
 #[derive(Debug, Clone)]
@@ -96,9 +122,8 @@ impl<'src> HeredocString<'src> {
         let indent = self.indent;
 
         if self.kind.is_squiggly() {
-            // For squiggly heredocs, apply indentation to Normal segments at real
-            // line starts, but never to Raw (nested non-squiggly heredocs) or Quoted
-            // (nested string interiors). Quoted newlines are string content.
+            // Indent Normal segments at real line starts. Raw segments (nested
+            // non-squiggly heredocs, quoted-string interiors) are left unindented.
             let mut result = Vec::new();
             let mut at_line_start = true;
             for segment in self.segments {
@@ -114,36 +139,23 @@ impl<'src> HeredocString<'src> {
                             at_line_start = content.ends_with(b"\n");
                         }
                     }
-                    HeredocSegment::Raw(content) => {
-                        append_heredoc_lines(&mut result, &content, false, None);
-                        if !content.is_empty() {
-                            at_line_start = content.ends_with(b"\n");
-                        }
-                    }
-                    HeredocSegment::Quoted(content) => {
-                        // Preserve nested string contents byte-for-byte.
-                        // Newlines inside the literal are string content, not
-                        // heredoc line boundaries: indenting the following
-                        // tokens (the closing quote, etc.) would mutate the
-                        // nested string's value.
-                        result.extend_from_slice(&content);
-                        if !content.is_empty() {
-                            at_line_start = false;
-                        }
+                    HeredocSegment::Raw { content, preserve } => {
+                        append_raw_segment(&mut result, &content, preserve, &mut at_line_start);
                     }
                 }
             }
             result
         } else {
-            // For non-squiggly heredocs, join segments and trim line endings of
-            // body text, but leave nested quoted-string interiors untouched.
+            // Non-squiggly heredocs trim line endings of body text, but leave
+            // preserving raw segments (quoted-string interiors) untouched.
             let mut result = Vec::new();
+            let mut at_line_start = true;
             for segment in self.segments {
                 match segment {
-                    HeredocSegment::Quoted(content) => {
-                        result.extend_from_slice(&content);
+                    HeredocSegment::Raw { content, preserve } => {
+                        append_raw_segment(&mut result, &content, preserve, &mut at_line_start);
                     }
-                    HeredocSegment::Normal(content) | HeredocSegment::Raw(content) => {
+                    HeredocSegment::Normal(content) => {
                         append_heredoc_lines(&mut result, &content, false, None);
                     }
                 }
