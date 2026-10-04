@@ -4,4 +4,5 @@ a do
 end
 
 begin
-end.freeze
+end
+  .freeze

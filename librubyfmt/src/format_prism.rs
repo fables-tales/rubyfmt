@@ -2480,7 +2480,7 @@ fn call_chain_should_be_multilined(ps: &ParserState, call_chain_elements: &[pris
                 ps.has_comments_in_line(leading_expr_end_line + 1, first_call_start_line + 1);
 
             if !has_comment_between_expression_and_call
-                && !element_forces_chain_to_multiline(&call_chain_elements[0])
+                && !node_always_renders_multiline(&call_chain_elements[0])
             {
                 call_chain_elements = &call_chain_elements[1..];
             }
@@ -2534,34 +2534,91 @@ fn call_chain_should_be_multilined(ps: &ParserState, call_chain_elements: &[pris
         }
 
         // If the *previous* element will be forced to render multi-line (a do/end
-        // block, a brace block with multiple statements, or the equivalent on a
-        // lambda receiver), the chain itself must break too — otherwise the next
-        // pass would see the calls on different lines and rewrite the chain,
-        // costing idempotency.
-        element_forces_chain_to_multiline(&call_chain_elements[i])
+        // block, a brace block with a def/class/etc., a parenthesized singleton
+        // class, or the equivalent on a lambda receiver), the chain itself must
+        // break too — otherwise the next pass would see the calls on different
+        // lines and rewrite the chain, costing idempotency.
+        node_always_renders_multiline(&call_chain_elements[i])
     })
-}
-
-fn element_forces_chain_to_multiline(element: &prism::Node) -> bool {
-    if let Some(block) = element
-        .as_call_node()
-        .and_then(|c| c.block())
-        .and_then(|b| b.as_block_node())
-    {
-        return block_body_renders_multiline(block.opening_loc().as_slice(), block.body());
-    } else if let Some(lambda) = element.as_lambda_node() {
-        return block_body_renders_multiline(lambda.opening_loc().as_slice(), lambda.body());
-    }
-
-    false
 }
 
 fn block_body_renders_multiline(opening: &[u8], body: Option<prism::Node>) -> bool {
     if opening == b"do" {
         return true;
     }
-    body.and_then(|n| n.as_statements_node())
-        .is_some_and(|statements| statements.body().len() > 1)
+    body.is_some_and(|node| node_always_renders_multiline(&node))
+}
+
+/// True when formatting this node always emits a hard newline, so a following
+/// `.foo` that starts on the same line in the source would move on the next pass.
+fn node_always_renders_multiline(node: &prism::Node) -> bool {
+    use prism::Node;
+    match node {
+        Node::SingletonClassNode { .. }
+        | Node::ClassNode { .. }
+        | Node::ModuleNode { .. }
+        | Node::ForNode { .. }
+        | Node::CaseNode { .. }
+        | Node::CaseMatchNode { .. } => true,
+        Node::DefNode { .. } => node.as_def_node().unwrap().end_keyword_loc().is_some(),
+        Node::BeginNode { .. } => node.as_begin_node().unwrap().begin_keyword_loc().is_some(),
+        Node::IfNode { .. } => {
+            let if_node = node.as_if_node().unwrap();
+            match if_node.if_keyword_loc() {
+                Some(keyword_loc) => {
+                    !conditional_is_modifier(if_node.statements(), keyword_loc.start_offset())
+                }
+                None => false,
+            }
+        }
+        Node::UnlessNode { .. } => {
+            let unless_node = node.as_unless_node().unwrap();
+            !conditional_is_modifier(
+                unless_node.statements(),
+                unless_node.keyword_loc().start_offset(),
+            )
+        }
+        Node::WhileNode { .. } => node.as_while_node().unwrap().closing_loc().is_some(),
+        Node::UntilNode { .. } => node.as_until_node().unwrap().closing_loc().is_some(),
+        Node::ParenthesesNode { .. } => node
+            .as_parentheses_node()
+            .unwrap()
+            .body()
+            .is_some_and(|body| node_always_renders_multiline(&body)),
+        Node::StatementsNode { .. } => {
+            let statements = node.as_statements_node().unwrap();
+            statements.body().len() > 1
+                || statements
+                    .body()
+                    .iter()
+                    .any(|stmt| node_always_renders_multiline(&stmt))
+        }
+        Node::CallNode { .. } => {
+            let call = node.as_call_node().unwrap();
+            let block_forces = call
+                .block()
+                .and_then(|b| b.as_block_node())
+                .is_some_and(|block| {
+                    block_body_renders_multiline(block.opening_loc().as_slice(), block.body())
+                });
+            block_forces
+                || call
+                    .receiver()
+                    .is_some_and(|receiver| node_always_renders_multiline(&receiver))
+        }
+        Node::LambdaNode { .. } => {
+            let lambda = node.as_lambda_node().unwrap();
+            block_body_renders_multiline(lambda.opening_loc().as_slice(), lambda.body())
+        }
+        _ => false,
+    }
+}
+
+fn conditional_is_modifier(
+    statements: Option<prism::StatementsNode<'_>>,
+    keyword_start_offset: usize,
+) -> bool {
+    statements.is_some_and(|s| s.location().start_offset() < keyword_start_offset)
 }
 
 /// Finds an appropriate starting loc for a call node inside a call chain.
