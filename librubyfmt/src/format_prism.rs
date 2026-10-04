@@ -2390,7 +2390,7 @@ fn format_call_body<'src>(
 
         format_call_node(ps, attr_write, true, true, skip_final_attr_write_value);
     } else if !call_chain_elements.is_empty() {
-        ps.start_indent_for_call_chain();
+        let mut in_chain_indent = false;
 
         ps.with_start_of_line(false, |ps| {
             let call_chain_element_count = call_chain_elements.len();
@@ -2403,6 +2403,10 @@ fn format_call_body<'src>(
                 let call_operator = element.call_operator_loc().map(|loc| loc.as_slice());
                 if let Some(call_operator) = call_operator {
                     if call_operator != b"::" {
+                        if !in_chain_indent {
+                            ps.start_indent_for_call_chain();
+                            in_chain_indent = true;
+                        }
                         ps.emit_collapsing_newline();
                         ps.emit_soft_indent();
                     }
@@ -2429,7 +2433,10 @@ fn format_call_body<'src>(
                 format_call_node(ps, element, true, is_final_call, skip_value);
             }
         });
-        ps.end_indent_for_call_chain();
+
+        if in_chain_indent {
+            ps.end_indent_for_call_chain();
+        }
     }
 }
 
