@@ -229,6 +229,7 @@ fn escape_string(content: &[u8], opening_delim: u8, closing_delim: u8) -> Vec<u8
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::assert_matches;
 
     // --- escape_string with single-quoted strings ---
 
@@ -399,14 +400,14 @@ mod tests {
     fn percent_q_upper_no_changes_returns_borrowed() {
         // No " and no escaped delimiters: should return the original slice
         let result = single_to_double_quoted(b"hello world", b"%Q(", b")");
-        assert!(matches!(result, Cow::Borrowed(_)));
+        assert_matches!(result, Cow::Borrowed(_));
         assert_eq!(result.as_ref(), b"hello world");
     }
 
     #[test]
     fn percent_q_upper_double_quote_triggers_owned() {
         let result = single_to_double_quoted(b"say \"hi\"", b"%Q(", b")");
-        assert!(matches!(result, Cow::Owned(_)));
+        assert_matches!(result, Cow::Owned(_));
         assert_eq!(result.as_ref(), b"say \\\"hi\\\"");
     }
 
@@ -423,21 +424,21 @@ mod tests {
     #[test]
     fn percent_q_upper_preserves_other_backslash_sequences() {
         let result = single_to_double_quoted(b"\\n", b"%Q(", b")");
-        assert!(matches!(result, Cow::Borrowed(_)));
+        assert_matches!(result, Cow::Borrowed(_));
         assert_eq!(result.as_ref(), b"\\n");
     }
 
     #[test]
     fn percent_q_upper_preserves_escaped_backslash() {
         let result = single_to_double_quoted(b"\\\\", b"%Q(", b")");
-        assert!(matches!(result, Cow::Borrowed(_)));
+        assert_matches!(result, Cow::Borrowed(_));
         assert_eq!(result.as_ref(), b"\\\\");
     }
 
     #[test]
     fn percent_q_upper_trailing_backslash_preserved() {
         let result = single_to_double_quoted(b"foo\\", b"%Q(", b")");
-        assert!(matches!(result, Cow::Borrowed(_)));
+        assert_matches!(result, Cow::Borrowed(_));
         assert_eq!(result.as_ref(), b"foo\\");
     }
 
