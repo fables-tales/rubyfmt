@@ -2552,9 +2552,6 @@ fn element_forces_chain_to_multiline(element: &prism::Node) -> bool {
     } else if let Some(lambda) = element.as_lambda_node() {
         return block_body_renders_multiline(lambda.opening_loc().as_slice(), lambda.body());
     } else if let Some(parens) = element.as_parentheses_node() {
-        // A parenthesized receiver like `(class << foo; end)` or `(if foo; bar; end)`
-        // always renders across multiple lines, which would break idempotency on the next
-        // pass if the call chain doesn't also break.
         return parens
             .body()
             .is_some_and(|body| statements_force_multiline(&body));
