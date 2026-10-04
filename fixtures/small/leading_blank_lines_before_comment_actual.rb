@@ -1,0 +1,5 @@
+
+
+# comment
+def foo
+end

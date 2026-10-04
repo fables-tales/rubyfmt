@@ -142,6 +142,18 @@ impl FileComments {
         line_number < self.last_lineno
     }
 
+    pub fn first_content_line(&self) -> Option<LineNumber> {
+        let first_comment_line = self.other_comments.first().map(|(ln, _)| *ln);
+        let first_code_line = self.lines_with_ruby.first().copied();
+
+        match (first_comment_line, first_code_line) {
+            (Some(c), Some(r)) => Some(c.min(r)),
+            (Some(c), None) => Some(c),
+            (None, Some(r)) => Some(r),
+            (None, None) => None,
+        }
+    }
+
     pub fn has_line(&self, line_number: LineNumber) -> bool {
         self.other_comments
             .binary_search_by_key(&line_number, |(ln, _)| *ln)
