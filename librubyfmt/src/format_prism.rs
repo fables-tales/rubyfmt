@@ -704,7 +704,7 @@ fn format_string_node<'src>(ps: &mut ParserState<'src>, string_node: prism::Stri
             )
         };
 
-        ps.emit_string_content(string_content);
+        ps.emit_quoted_string_content(string_content);
         ps.wind_dumping_comments_until_offset(string_node.content_loc().end_offset());
 
         if opener.is_some() {
@@ -792,7 +792,7 @@ fn format_interpolated_string_node<'src>(
                     opener.unwrap(),
                     closer.unwrap_or(b"\""),
                 );
-                ps.emit_string_content(escaped);
+                ps.emit_quoted_string_content(escaped);
             } else {
                 format_node(ps, part);
             }
@@ -4962,7 +4962,9 @@ fn format_while_node<'src>(ps: &mut ParserState<'src>, while_node: prism::WhileN
 
 fn format_x_string_node<'src>(ps: &mut ParserState<'src>, x_string_node: prism::XStringNode<'src>) {
     ps.emit_ident(b"`");
-    ps.emit_string_content(x_string_node.content_loc().as_slice());
+    // Same as quoted strings: a newline here is command-string content, not a
+    // heredoc line, so squiggly indent must not land inside the backticks.
+    ps.emit_quoted_string_content(x_string_node.content_loc().as_slice());
     ps.emit_ident(b"`");
 }
 

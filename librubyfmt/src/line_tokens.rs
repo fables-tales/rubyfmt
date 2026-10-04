@@ -87,8 +87,14 @@ pub enum ConcreteLineToken<'src> {
         kind: HeredocKind,
         symbol: &'src [u8],
     },
+    /// Content that must not receive squiggly indentation.
+    ///
+    /// `preserve_whitespace` is for quoted-string interiors: those bytes are the
+    /// literal's value, so they must not be trimmed, and a newline inside them
+    /// is not a heredoc line boundary. Nested non-squiggly heredocs use `false`.
     RawHeredocContent {
         content: Vec<u8>,
+        preserve_whitespace: bool,
     },
 }
 
@@ -126,7 +132,7 @@ impl<'src> ConcreteLineToken<'src> {
             Self::End => Cow::Borrowed(b"end"),
             Self::HeredocClose { symbol } => Cow::Owned(symbol),
             Self::HeredocStart { symbol, .. } => Cow::Borrowed(symbol),
-            Self::RawHeredocContent { content } => Cow::Owned(content),
+            Self::RawHeredocContent { content, .. } => Cow::Owned(content),
             // no-op, this is purely semantic information
             // for the render queue
             Self::AfterCallChain | Self::BeginCallChainIndent | Self::EndCallChainIndent => {
@@ -152,9 +158,10 @@ impl<'src> ConcreteLineToken<'src> {
             DirectPart { part } => part.len(),
             LTStringContent { content } => content.len(),
             Comment { contents } => contents.len(),
-            HeredocClose { symbol: contents } | RawHeredocContent { content: contents } => {
-                contents.len()
-            }
+            HeredocClose { symbol: contents }
+            | RawHeredocContent {
+                content: contents, ..
+            } => contents.len(),
 
             HardNewLine | Comma | Space | Dot | OpenSquareBracket | CloseSquareBracket
             | OpenCurlyBracket | CloseCurlyBracket | OpenParen | CloseParen | SingleSlash
