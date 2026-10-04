@@ -3167,7 +3167,8 @@ fn is_multilinable_node(node: &prism::Node) -> bool {
         Node::ForNode { .. }
         | Node::DefNode { .. }
         | Node::ClassNode { .. }
-        | Node::ModuleNode { .. } => true,
+        | Node::ModuleNode { .. }
+        | Node::SingletonClassNode { .. } => true,
         _ => false,
     }
 }
