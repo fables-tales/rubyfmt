@@ -2551,6 +2551,10 @@ fn element_forces_chain_to_multiline(element: &prism::Node) -> bool {
         return block_body_renders_multiline(block.opening_loc().as_slice(), block.body());
     } else if let Some(lambda) = element.as_lambda_node() {
         return block_body_renders_multiline(lambda.opening_loc().as_slice(), lambda.body());
+    } else if let Some(parens) = element.as_parentheses_node() {
+        return parens
+            .body()
+            .is_some_and(|body| statements_force_multiline(&body));
     }
 
     false
@@ -2560,8 +2564,16 @@ fn block_body_renders_multiline(opening: &[u8], body: Option<prism::Node>) -> bo
     if opening == b"do" {
         return true;
     }
-    body.and_then(|n| n.as_statements_node())
-        .is_some_and(|statements| statements.body().len() > 1)
+    body.is_some_and(|b| statements_force_multiline(&b))
+}
+
+fn statements_force_multiline(node: &prism::Node) -> bool {
+    if let Some(statements) = node.as_statements_node() {
+        let body = statements.body();
+        body.len() > 1 || body.first().is_some_and(|n| is_multilinable_node(&n))
+    } else {
+        is_multilinable_node(node)
+    }
 }
 
 /// Finds an appropriate starting loc for a call node inside a call chain.
@@ -3167,7 +3179,8 @@ fn is_multilinable_node(node: &prism::Node) -> bool {
         Node::ForNode { .. }
         | Node::DefNode { .. }
         | Node::ClassNode { .. }
-        | Node::ModuleNode { .. } => true,
+        | Node::ModuleNode { .. }
+        | Node::SingletonClassNode { .. } => true,
         _ => false,
     }
 }
