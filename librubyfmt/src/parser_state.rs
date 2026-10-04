@@ -920,7 +920,10 @@ impl<'src> ParserState<'src> {
             .take_start_of_file_contiguous_comment_lines()
         {
             None => {
-                self.on_line(1);
+                // Seed `current_orig_line_number` to one less than the line of the first real content
+                // in the file so that the very first `on_line` call won't produce leading blank lines
+                let first_content_line = self.comments_hash.first_content_line().unwrap_or(1);
+                self.current_orig_line_number = first_content_line.saturating_sub(1);
             }
             Some(comments) => {
                 let comments = comments.enforce_at_least_one_space_after_comment_symbol();
