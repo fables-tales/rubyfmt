@@ -42,6 +42,11 @@ struct CommandlineOpts {
     #[clap(long, name = "include-gitignored")]
     include_gitignored: bool,
 
+    /// Also format Ruby files under hidden directories (e.g. `.github/`, `.buildkite/`).
+    /// Hidden paths are skipped by default. `.git/` is still excluded.
+    #[clap(long, name = "include-hidden")]
+    include_hidden: bool,
+
     /// Only format ruby files containing the magic `# rubyfmt: true` header
     #[clap(long, name = "header-opt-in")]
     header_opt_in: bool,
@@ -219,7 +224,11 @@ fn is_path_ignored(path: &Path, include_gitignored: bool) -> bool {
     }
 }
 
-fn file_walker_builder(include_paths: Vec<&String>, include_gitignored: bool) -> WalkBuilder {
+fn file_walker_builder(
+    include_paths: Vec<&String>,
+    include_gitignored: bool,
+    include_hidden: bool,
+) -> WalkBuilder {
     // WalkBuilder does not have an API for adding multiple inputs.
     // Must pass the first input to the constructor, and the tail afterwards.
     // Safe to unwrap here.
@@ -232,6 +241,15 @@ fn file_walker_builder(include_paths: Vec<&String>, include_gitignored: bool) ->
 
     builder.git_ignore(!include_gitignored);
     builder.add_custom_ignore_filename(".rubyfmtignore");
+
+    if include_hidden {
+        // WalkBuilder ignores hidden files by default, independently of gitignore.
+        // Opt in to walking tracked Ruby under dot-directories like .buildkite/,
+        // but keep .git out even when hidden paths are included.
+        builder.hidden(false);
+        builder.filter_entry(|entry| entry.file_name() != OsStr::new(".git"));
+    }
+
     builder
 }
 
@@ -306,7 +324,10 @@ fn iterate_input_files(opts: &CommandlineOpts, f: InputFunc) {
         }
 
         if !file_paths.is_empty() {
-            for result in file_walker_builder(file_paths, opts.include_gitignored).build() {
+            for result in
+                file_walker_builder(file_paths, opts.include_gitignored, opts.include_hidden)
+                    .build()
+            {
                 match result {
                     Ok(pp) => {
                         let file_path = pp.path();
@@ -324,7 +345,9 @@ fn iterate_input_files(opts: &CommandlineOpts, f: InputFunc) {
         }
 
         if !dir_paths.is_empty() {
-            for result in file_walker_builder(dir_paths, opts.include_gitignored).build() {
+            for result in
+                file_walker_builder(dir_paths, opts.include_gitignored, opts.include_hidden).build()
+            {
                 match result {
                     Ok(pp) => {
                         let file_path = pp.path();

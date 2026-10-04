@@ -61,6 +61,8 @@ Create a `.rubyfmtignore` file in your project root to exclude files from format
 
 By default, rubyfmt also respects your `.gitignore`. Use `--include-gitignored` to format those files anyway.
 
+Hidden directories (such as `.github/` or `.buildkite/`) are skipped by default. Use `--include-hidden` to format Ruby files in those directories. `.git/` is still excluded.
+
 ## Editor Integration
 
 ### Visual Studio Code

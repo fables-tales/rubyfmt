@@ -462,6 +462,120 @@ fn test_format_directory_with_changes() {
 }
 
 #[test]
+fn test_format_directory_skips_hidden_directory_by_default() {
+    // Hidden directories are skipped when walking a directory argument.
+    let dir = tempdir().unwrap();
+    let dir_name = dir.path().to_str().unwrap().to_owned();
+    create_dir(dir_name.clone() + "/.hidden").unwrap();
+
+    let mut file = tempfile::Builder::new()
+        .prefix("rubyfmt")
+        .suffix(".rb")
+        .tempfile_in(dir_name.clone() + "/.hidden")
+        .unwrap();
+    writeln!(file, "a 1, 2, 3").unwrap();
+
+    Command::cargo_bin("rubyfmt-main")
+        .unwrap()
+        .arg(&dir_name)
+        .arg("-i")
+        .assert()
+        .stdout("")
+        .code(0)
+        .success();
+
+    assert_eq!("a 1, 2, 3\n", read_to_string(file.path()).unwrap());
+}
+
+#[test]
+fn test_format_directory_with_include_hidden() {
+    // --include-hidden formats tracked Ruby under hidden directories.
+    let dir = tempdir().unwrap();
+    let dir_name = dir.path().to_str().unwrap().to_owned();
+    create_dir(dir_name.clone() + "/.hidden").unwrap();
+    create_dir(dir_name.clone() + "/visible").unwrap();
+
+    let mut hidden_file = tempfile::Builder::new()
+        .prefix("rubyfmt")
+        .suffix(".rb")
+        .tempfile_in(dir_name.clone() + "/.hidden")
+        .unwrap();
+    let mut visible_file = tempfile::Builder::new()
+        .prefix("rubyfmt")
+        .suffix(".rb")
+        .tempfile_in(dir_name.clone() + "/visible")
+        .unwrap();
+    writeln!(hidden_file, "a 1, 2, 3").unwrap();
+    writeln!(visible_file, "a 4, 5, 6").unwrap();
+
+    Command::cargo_bin("rubyfmt-main")
+        .unwrap()
+        .arg(&dir_name)
+        .arg("-i")
+        .arg("--include-hidden")
+        .assert()
+        .stdout("")
+        .code(0)
+        .success();
+
+    assert_eq!("a(1, 2, 3)\n", read_to_string(hidden_file.path()).unwrap());
+    assert_eq!("a(4, 5, 6)\n", read_to_string(visible_file.path()).unwrap());
+}
+
+#[test]
+fn test_format_directory_include_hidden_still_ignores_git_directory() {
+    // .git should still be skipped even with --include-hidden.
+    let dir = tempdir().unwrap();
+    let dir_name = dir.path().to_str().unwrap().to_owned();
+    create_dir(dir_name.clone() + "/.git").unwrap();
+
+    let mut file = tempfile::Builder::new()
+        .prefix("rubyfmt")
+        .suffix(".rb")
+        .tempfile_in(dir_name.clone() + "/.git")
+        .unwrap();
+    writeln!(file, "a 1, 2, 3").unwrap();
+
+    Command::cargo_bin("rubyfmt-main")
+        .unwrap()
+        .arg(&dir_name)
+        .arg("-i")
+        .arg("--include-hidden")
+        .assert()
+        .stdout("")
+        .code(0)
+        .success();
+
+    assert_eq!("a 1, 2, 3\n", read_to_string(file.path()).unwrap());
+}
+
+#[test]
+fn test_explicit_file_path_formats_hidden_file_without_include_hidden() {
+    // Explicit file paths already visit hidden files; the flag is not required.
+    let dir = tempdir().unwrap();
+    let dir_name = dir.path().to_str().unwrap().to_owned();
+    create_dir(dir_name.clone() + "/.hidden").unwrap();
+
+    let mut file = tempfile::Builder::new()
+        .prefix("rubyfmt")
+        .suffix(".rb")
+        .tempfile_in(dir_name.clone() + "/.hidden")
+        .unwrap();
+    writeln!(file, "a 1, 2, 3").unwrap();
+
+    Command::cargo_bin("rubyfmt-main")
+        .unwrap()
+        .arg(file.path())
+        .arg("-i")
+        .assert()
+        .stdout("")
+        .code(0)
+        .success();
+
+    assert_eq!("a(1, 2, 3)\n", read_to_string(file.path()).unwrap());
+}
+
+#[test]
 fn format_input_file_with_changes() {
     let mut file_one = NamedTempFile::new().unwrap();
     writeln!(file_one, "a 1, 2, 3").unwrap();
@@ -693,6 +807,33 @@ fn test_includes_gitignored() {
 }
 
 #[test]
+fn test_include_hidden_respects_gitignore() {
+    let dir = tempdir().unwrap();
+    create_dir(dir.path().join(".git")).unwrap();
+    create_dir(dir.path().join(".hidden")).unwrap();
+
+    let formatted_path = dir.path().join(".hidden").join("formatted.rb");
+    let ignored_path = dir.path().join(".hidden").join("ignored.rb");
+    fs::write(&formatted_path, "a 1, 2, 3\n").unwrap();
+    fs::write(&ignored_path, "a 4, 5, 6\n").unwrap();
+    fs::write(dir.path().join(".gitignore"), ".hidden/ignored.rb\n").unwrap();
+
+    Command::cargo_bin("rubyfmt-main")
+        .unwrap()
+        .current_dir(dir.path())
+        .arg("-i")
+        .arg("--include-hidden")
+        .arg(".")
+        .assert()
+        .stdout("")
+        .code(0)
+        .success();
+
+    assert_eq!("a(1, 2, 3)\n", read_to_string(&formatted_path).unwrap());
+    assert_eq!("a 4, 5, 6\n", read_to_string(&ignored_path).unwrap());
+}
+
+#[test]
 fn test_respects_rubyfmtignore() {
     let dir = tempdir().unwrap();
 
@@ -726,6 +867,32 @@ fn test_respects_rubyfmtignore() {
 
     assert_eq!("a(1, 2, 3)\n", read_to_string(file_one.path()).unwrap());
     assert_eq!("a 4, 5, 6\n", read_to_string(file_two.path()).unwrap());
+}
+
+#[test]
+fn test_include_hidden_respects_rubyfmtignore() {
+    let dir = tempdir().unwrap();
+    create_dir(dir.path().join(".hidden")).unwrap();
+
+    let formatted_path = dir.path().join(".hidden").join("formatted.rb");
+    let ignored_path = dir.path().join(".hidden").join("ignored.rb");
+    fs::write(&formatted_path, "a 1, 2, 3\n").unwrap();
+    fs::write(&ignored_path, "a 4, 5, 6\n").unwrap();
+    fs::write(dir.path().join(".rubyfmtignore"), ".hidden/ignored.rb\n").unwrap();
+
+    Command::cargo_bin("rubyfmt-main")
+        .unwrap()
+        .current_dir(dir.path())
+        .arg("-i")
+        .arg("--include-hidden")
+        .arg(".")
+        .assert()
+        .stdout("")
+        .code(0)
+        .success();
+
+    assert_eq!("a(1, 2, 3)\n", read_to_string(&formatted_path).unwrap());
+    assert_eq!("a 4, 5, 6\n", read_to_string(&ignored_path).unwrap());
 }
 
 #[test]
@@ -918,6 +1085,10 @@ fn test_help_uses_rubyfmt_name() {
     assert!(
         !stdout.contains("rubyfmt-main"),
         "Help output should not contain 'rubyfmt-main', got: {stdout}"
+    );
+    assert!(
+        stdout.contains("--include-hidden"),
+        "Help output should document --include-hidden, got: {stdout}"
     );
 }
 
