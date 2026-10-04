@@ -67,12 +67,6 @@ pub enum ConcreteLineToken<'src> {
     LTStringContent {
         content: Cow<'src, [u8]>,
     },
-    /// Interior of a quoted string literal. Distinguished from `LTStringContent`
-    /// so squiggly heredocs can avoid re-indenting nested string contents.
-    /// Rendered as a preserving `HeredocSegment::Raw`, not a separate segment type.
-    QuotedStringContent {
-        content: Cow<'src, [u8]>,
-    },
     SingleSlash,
     Comment {
         contents: Cow<'src, [u8]>,
@@ -93,8 +87,14 @@ pub enum ConcreteLineToken<'src> {
         kind: HeredocKind,
         symbol: &'src [u8],
     },
+    /// Content that must not receive squiggly indentation.
+    ///
+    /// `preserve` is for quoted-string interiors: those bytes are the literal's
+    /// value, so they must not be trimmed, and a newline inside them is not a
+    /// heredoc line boundary. Nested non-squiggly heredocs use `preserve: false`.
     RawHeredocContent {
         content: Vec<u8>,
+        preserve: bool,
     },
 }
 
@@ -125,14 +125,14 @@ impl<'src> ConcreteLineToken<'src> {
             Self::CloseParen => Cow::Borrowed(b")"),
             Self::Op { op } => Cow::Borrowed(op),
             Self::DoubleQuote => Cow::Borrowed(b"\""),
-            Self::LTStringContent { content } | Self::QuotedStringContent { content } => content,
+            Self::LTStringContent { content } => content,
             Self::SingleSlash => Cow::Borrowed(b"\\"),
             Self::Comment { contents } => contents,
             Self::Delim { contents } => Cow::Borrowed(contents),
             Self::End => Cow::Borrowed(b"end"),
             Self::HeredocClose { symbol } => Cow::Owned(symbol),
             Self::HeredocStart { symbol, .. } => Cow::Borrowed(symbol),
-            Self::RawHeredocContent { content } => Cow::Owned(content),
+            Self::RawHeredocContent { content, .. } => Cow::Owned(content),
             // no-op, this is purely semantic information
             // for the render queue
             Self::AfterCallChain | Self::BeginCallChainIndent | Self::EndCallChainIndent => {
@@ -156,11 +156,12 @@ impl<'src> ConcreteLineToken<'src> {
             Op { op } => op.len(),
             MethodName { name: op } => op.len(),
             DirectPart { part } => part.len(),
-            LTStringContent { content } | QuotedStringContent { content } => content.len(),
+            LTStringContent { content } => content.len(),
             Comment { contents } => contents.len(),
-            HeredocClose { symbol: contents } | RawHeredocContent { content: contents } => {
-                contents.len()
-            }
+            HeredocClose { symbol: contents }
+            | RawHeredocContent {
+                content: contents, ..
+            } => contents.len(),
 
             HardNewLine | Comma | Space | Dot | OpenSquareBracket | CloseSquareBracket
             | OpenCurlyBracket | CloseCurlyBracket | OpenParen | CloseParen | SingleSlash

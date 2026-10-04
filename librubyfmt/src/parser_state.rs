@@ -402,12 +402,16 @@ impl<'src> ParserState<'src> {
         self.push_concrete_token(ConcreteLineToken::LTStringContent { content });
     }
 
-    /// Emit the interior of a quoted string literal. Distinguished from
-    /// `emit_string_content` so squiggly heredocs do not re-indent these
-    /// newlines as if they were heredoc body text.
+    /// Emit a quoted-string interior as raw heredoc content.
+    ///
+    /// `preserve` keeps the bytes out of squiggly indent and trailing-whitespace
+    /// trimming: a newline here is string content, not a heredoc line boundary.
     pub(crate) fn emit_quoted_string_content(&mut self, s: impl Into<Cow<'src, [u8]>>) {
-        let content = self.track_string_content(s);
-        self.push_concrete_token(ConcreteLineToken::QuotedStringContent { content });
+        let content = self.track_string_content(s).into_owned();
+        self.push_concrete_token(ConcreteLineToken::RawHeredocContent {
+            content,
+            preserve: true,
+        });
     }
 
     fn track_string_content(&mut self, s: impl Into<Cow<'src, [u8]>>) -> Cow<'src, [u8]> {
@@ -674,6 +678,7 @@ impl<'src> ParserState<'src> {
                 if emit_as_raw {
                     self.push_concrete_token(ConcreteLineToken::RawHeredocContent {
                         content: string_contents,
+                        preserve: false,
                     });
                 } else {
                     self.push_concrete_token(ConcreteLineToken::DirectPart {
@@ -696,6 +701,7 @@ impl<'src> ParserState<'src> {
                 };
                 self.push_concrete_token(ConcreteLineToken::RawHeredocContent {
                     content: close_content,
+                    preserve: false,
                 });
             } else {
                 if !kind.is_bare() {
@@ -856,23 +862,12 @@ impl<'src> ParserState<'src> {
 
         for token in final_tokens {
             match token {
-                ConcreteLineToken::RawHeredocContent { content } => {
+                ConcreteLineToken::RawHeredocContent { content, preserve } => {
                     // Flush accumulated normal content, then add raw segment.
-                    // Nested non-squiggly heredocs still have trailing whitespace trimmed.
+                    // `preserve` is quoted-string interiors; nested non-squiggly
+                    // heredocs pass false and still have trailing whitespace trimmed.
                     flush_normal(&mut current_normal, &mut segments);
-                    segments.push(HeredocSegment::Raw {
-                        content,
-                        preserve: false,
-                    });
-                }
-                ConcreteLineToken::QuotedStringContent { content } => {
-                    // Same Raw path as nested heredocs, but these bytes are a
-                    // string value and must not be trimmed or re-indented.
-                    flush_normal(&mut current_normal, &mut segments);
-                    segments.push(HeredocSegment::Raw {
-                        content: content.into_owned(),
-                        preserve: true,
-                    });
+                    segments.push(HeredocSegment::Raw { content, preserve });
                 }
                 token => {
                     // Accumulate into normal content
