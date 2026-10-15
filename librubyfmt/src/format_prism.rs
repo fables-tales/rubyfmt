@@ -318,8 +318,8 @@ pub fn format_node<'src>(ps: &mut ParserState<'src>, node: prism::Node<'src>) {
         Node::MatchWriteNode { .. } => {
             format_match_write_node(ps, node.as_match_write_node().unwrap())
         }
-        Node::MissingNode { .. } => unreachable!(
-            "MissingNode should only occur in files with syntax errors, which cannot be formatted"
+        Node::ErrorRecoveryNode { .. } => unreachable!(
+            "ErrorRecoveryNode should only occur in files with syntax errors, which cannot be formatted"
         ),
         Node::ModuleNode { .. } => format_module_node(ps, node.as_module_node().unwrap()),
         Node::MultiTargetNode { .. } => {
