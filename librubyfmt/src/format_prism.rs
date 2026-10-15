@@ -1272,7 +1272,7 @@ fn format_find_pattern_node<'src>(
                 ps.emit_soft_newline();
                 ps.emit_soft_indent();
                 ps.with_start_of_line(false, |ps| {
-                    format_node(ps, find_pattern_node.right());
+                    format_splat_node(ps, find_pattern_node.right());
                 });
             });
         });
@@ -1639,9 +1639,8 @@ fn format_parameters_node<'src>(ps: &mut ParserState<'src>, params: prism::Param
         }
     }
     fn fmt_block<'a>(ps: &mut ParserState<'a>, params: prism::ParametersNode<'a>) {
-        let block = params.block();
-        if let Some(block) = block {
-            format_block_parameter_node(ps, block);
+        if let Some(block) = params.block() {
+            format_node(ps, block);
         }
     }
 }
@@ -2701,14 +2700,12 @@ fn format_symbol_node<'src>(ps: &mut ParserState<'src>, symbol_node: prism::Symb
         ps.emit_ident(b":");
         ps.emit_double_quote();
 
-        if let Some(value_loc) = symbol_node.value_loc() {
-            let escaped = crate::string_escape::single_to_double_quoted(
-                value_loc.as_slice(),
-                opener.expect("We must have an opener to know we're single-quoted"),
-                closer.expect("We must have a closer when wrapped in single quotes"),
-            );
-            ps.emit_string_content(escaped);
-        }
+        let escaped = crate::string_escape::single_to_double_quoted(
+            symbol_node.content_loc().as_slice(),
+            opener.expect("We must have an opener to know we're single-quoted"),
+            closer.expect("We must have a closer when wrapped in single quotes"),
+        );
+        ps.emit_string_content(escaped);
 
         ps.emit_double_quote();
     } else {
@@ -2718,9 +2715,7 @@ fn format_symbol_node<'src>(ps: &mut ParserState<'src>, symbol_node: prism::Symb
         if let Some(opening) = opener {
             ps.emit_ident(opening);
         }
-        if let Some(value_loc) = symbol_node.value_loc() {
-            ps.emit_ident(value_loc.as_slice());
-        }
+        ps.emit_ident(symbol_node.content_loc().as_slice());
         if let Some(closing_str) = closer {
             emit_symbol_key_closer(ps, closing_str);
         }
@@ -3049,15 +3044,13 @@ fn format_word_array_elements<'src>(
                 } else if let Some(symbol_node) = expr.as_symbol_node() {
                     ps.at_offset(symbol_node.location().start_offset());
 
-                    if let Some(value_loc) = symbol_node.value_loc() {
-                        let escaped = crate::string_escape::escape_word_array_content(
-                            value_loc.as_slice(),
-                            orig_open_delim,
-                            orig_close_delim,
-                            is_interpolating,
-                        );
-                        ps.emit_string_content(escaped);
-                    }
+                    let escaped = crate::string_escape::escape_word_array_content(
+                        symbol_node.content_loc().as_slice(),
+                        orig_open_delim,
+                        orig_close_delim,
+                        is_interpolating,
+                    );
+                    ps.emit_string_content(escaped);
                 } else if let Some(interpolated_symbol_node) = expr.as_interpolated_symbol_node() {
                     ps.at_offset(interpolated_symbol_node.location().start_offset());
                     format_word_array_interpolated_parts(
@@ -3203,11 +3196,11 @@ fn is_multilinable_node(node: &prism::Node) -> bool {
         // While/until are multiline only if they have an `end` keyword (not modifier form)
         Node::WhileNode { .. } => {
             let while_node = node.as_while_node().unwrap();
-            while_node.closing_loc().is_some()
+            while_node.end_keyword_loc().is_some()
         }
         Node::UntilNode { .. } => {
             let until_node = node.as_until_node().unwrap();
-            until_node.closing_loc().is_some()
+            until_node.end_keyword_loc().is_some()
         }
         // These are always multiline
         Node::ForNode { .. }
@@ -3873,9 +3866,9 @@ impl<'pr> Conditional<'pr> {
             Conditional::If(node) => node
                 .if_keyword_loc()
                 .map_or(node.location().start_offset(), |loc| loc.start_offset()),
-            Conditional::Unless(node) => node.keyword_loc().start_offset(),
-            Conditional::While(node) => node.keyword_loc().start_offset(),
-            Conditional::Until(node) => node.keyword_loc().start_offset(),
+            Conditional::Unless(node) => node.unless_keyword_loc().start_offset(),
+            Conditional::While(node) => node.while_keyword_loc().start_offset(),
+            Conditional::Until(node) => node.until_keyword_loc().start_offset(),
         }
     }
 }
@@ -4465,7 +4458,7 @@ fn format_match_predicate_node<'src>(
     ps.with_start_of_line(false, |ps| {
         format_node(ps, match_predicate_node.value());
         ps.emit_space();
-        ps.emit_ident(match_predicate_node.operator_loc().as_slice());
+        ps.emit_ident(match_predicate_node.keyword_loc().as_slice());
         ps.emit_space();
         format_node(ps, match_predicate_node.pattern());
     });
