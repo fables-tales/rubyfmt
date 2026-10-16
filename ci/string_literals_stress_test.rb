@@ -90,6 +90,14 @@ puts %q(\\"\\")
 puts %q(\))
 puts %Q(\))
 puts %<foo\>>
+puts %q{\'}
+puts %q(\')
+puts %q[\']
+puts %q|\'|
+puts %Q{\'}
+puts %Q(\')
+puts %q{it\'s}
+puts %q(it\'s)
 
 puts(
   1,
