@@ -12,7 +12,7 @@ use crate::{
 pub fn format_node<'src>(ps: &mut ParserState<'src>, node: prism::Node<'src>) {
     use prism::Node;
 
-    ps.at_offset(node.location().start_offset());
+    ps.at_offset(node.location().start());
 
     // StatementsNode is a "wrapper" node, meaning it purely contains other statements
     // which themselves would be at the start of a line.  We just ignore it here -- the
@@ -318,8 +318,8 @@ pub fn format_node<'src>(ps: &mut ParserState<'src>, node: prism::Node<'src>) {
         Node::MatchWriteNode { .. } => {
             format_match_write_node(ps, node.as_match_write_node().unwrap())
         }
-        Node::MissingNode { .. } => unreachable!(
-            "MissingNode should only occur in files with syntax errors, which cannot be formatted"
+        Node::ErrorRecoveryNode { .. } => unreachable!(
+            "ErrorRecoveryNode should only occur in files with syntax errors, which cannot be formatted"
         ),
         Node::ModuleNode { .. } => format_module_node(ps, node.as_module_node().unwrap()),
         Node::MultiTargetNode { .. } => {
@@ -330,6 +330,9 @@ pub fn format_node<'src>(ps: &mut ParserState<'src>, node: prism::Node<'src>) {
         }
         Node::NextNode { .. } => format_next_node(ps, node.as_next_node().unwrap()),
         Node::NilNode { .. } => format_nil_node(ps),
+        Node::NoBlockParameterNode { .. } => {
+            format_no_block_parameter_node(ps, node.as_no_block_parameter_node().unwrap())
+        }
         Node::NoKeywordsParameterNode { .. } => {
             format_no_keywords_parameter_node(ps, node.as_no_keywords_parameter_node().unwrap())
         }
@@ -417,7 +420,7 @@ pub fn format_node<'src>(ps: &mut ParserState<'src>, node: prism::Node<'src>) {
         Node::YieldNode { .. } => format_yield_node(ps, node.as_yield_node().unwrap()),
     }
 
-    ps.at_offset(node.location().end_offset());
+    ps.at_offset(node.location().end());
     if needs_handling {
         ps.emit_newline();
     }
@@ -481,7 +484,7 @@ fn format_back_reference_read_node<'src>(
     back_reference_read_node: prism::BackReferenceReadNode<'src>,
 ) {
     let back_reference_loc = back_reference_read_node.location();
-    let end_offset = back_reference_loc.end_offset();
+    let end_offset = back_reference_loc.end();
 
     handle_string_at_offset(ps, back_reference_loc.as_slice(), end_offset);
 }
@@ -499,7 +502,7 @@ fn format_begin_node<'src>(ps: &mut ParserState<'src>, begin_node: prism::BeginN
 
     // Double check that these offsets are correct, since begin/rescue/ensure/else
     // aren't always handled with `format_node`, which usually handles this
-    ps.at_offset(begin_node.location().start_offset());
+    ps.at_offset(begin_node.location().start());
 
     if is_implicit_begin_node {
         // We assume we're in a context that's already been indented, e.g.
@@ -543,7 +546,7 @@ fn format_begin_node<'src>(ps: &mut ParserState<'src>, begin_node: prism::BeginN
         ps.start_indent();
     }
 
-    ps.at_offset(begin_node.location().end_offset());
+    ps.at_offset(begin_node.location().end());
 }
 
 fn format_break_node<'src>(ps: &mut ParserState<'src>, break_node: prism::BreakNode<'src>) {
@@ -551,7 +554,7 @@ fn format_break_node<'src>(ps: &mut ParserState<'src>, break_node: prism::BreakN
     if let Some(arguments_node) = break_node.arguments() {
         ps.with_start_of_line(false, |ps| {
             let arguments = arguments_node.arguments();
-            let end_offset = arguments.last().unwrap().location().end_offset();
+            let end_offset = arguments.last().unwrap().location().end();
 
             ps.emit_space();
             format_list_like_thing(ps, arguments, end_offset, true);
@@ -591,7 +594,7 @@ fn format_case_match_node<'src>(
             // We keep start_of_line false and handle indentation here
             // so that format_node's trailing emit_newline doesn't insert
             // a blank line between consecutive `in` clauses.
-            ps.at_offset(condition.location().start_offset());
+            ps.at_offset(condition.location().start());
             ps.emit_indent();
             ps.with_start_of_line(false, |ps| format_node(ps, condition));
         }
@@ -659,7 +662,7 @@ fn format_statements<'src>(
 }
 
 fn format_string_node<'src>(ps: &mut ParserState<'src>, string_node: prism::StringNode<'src>) {
-    ps.at_offset(string_node.location().start_offset());
+    ps.at_offset(string_node.location().start());
 
     // `opening_loc()` is only `None` in the case of the inner parts of multiline strings
     // (e.g. the inner contents of a heredoc)
@@ -705,14 +708,14 @@ fn format_string_node<'src>(ps: &mut ParserState<'src>, string_node: prism::Stri
         };
 
         ps.emit_quoted_string_content(string_content);
-        ps.wind_dumping_comments_until_offset(string_node.content_loc().end_offset());
+        ps.wind_dumping_comments_until_offset(string_node.content_loc().end());
 
         if opener.is_some() {
             ps.emit_double_quote();
         }
     });
 
-    ps.wind_dumping_comments_until_offset(string_node.location().end_offset());
+    ps.wind_dumping_comments_until_offset(string_node.location().end());
 }
 
 fn format_interpolated_string_node<'src>(
@@ -750,7 +753,7 @@ fn format_interpolated_string_node<'src>(
                     .is_some_and(|node| node.opening_loc().is_some())
         });
 
-    ps.at_offset(interpolated_string_node.location().start_offset());
+    ps.at_offset(interpolated_string_node.location().start());
 
     if is_heredoc {
         format_heredoc(
@@ -774,8 +777,8 @@ fn format_interpolated_string_node<'src>(
     ps.with_start_of_line(false, |ps| {
         let string_parts_count = interpolated_string_node.parts().len();
         for (i, part) in interpolated_string_node.parts().iter().enumerate() {
-            let start_offset = part.location().start_offset();
-            let end_offset = part.location().end_offset();
+            let start_offset = part.location().start();
+            let end_offset = part.location().end();
 
             ps.at_offset(start_offset);
             let indent_for_consecutive_strings = is_backslash_string_interpolation && i > 0;
@@ -866,13 +869,13 @@ fn format_heredoc<'src>(
     ps.push_heredoc_content(
         heredoc.closing_loc().as_slice().trim_ascii(),
         heredoc_kind,
-        ps.get_line_number_for_offset(heredoc.closing_loc().start_offset()),
+        ps.get_line_number_for_offset(heredoc.closing_loc().start()),
         |n: &mut ParserState<'src>| {
             n.disable_user_newlines();
             format_inner_string(n, parts, heredoc_kind);
         },
     );
-    ps.wind_dumping_comments_until_offset(heredoc.closing_loc().start_offset());
+    ps.wind_dumping_comments_until_offset(heredoc.closing_loc().start());
 }
 
 fn maybe_render_heredocs_in_string<'src: 'a, 'a>(
@@ -1023,13 +1026,13 @@ fn format_inner_string<'src>(
                     contents.pop();
                 }
 
-                ps.at_offset(part.location().end_offset());
+                ps.at_offset(part.location().end());
                 if !contents.is_empty() {
                     ps.emit_string_content(contents);
                 }
             }
             prism::Node::InterpolatedStringNode { .. } => {
-                ps.at_offset(part.location().start_offset());
+                ps.at_offset(part.location().start());
                 format_interpolated_string_node(ps, part.as_interpolated_string_node().unwrap());
                 maybe_render_heredocs_in_string(ps, &mut peekable);
                 prev_ended_with_newline = false;
@@ -1069,8 +1072,8 @@ fn format_interpolated_symbol_node<'src>(
 
     ps.with_start_of_line(false, |ps| {
         for part in interpolated_symbol_node.parts().iter() {
-            let start_offset = part.location().start_offset();
-            let end_offset = part.location().end_offset();
+            let start_offset = part.location().start();
+            let end_offset = part.location().end();
 
             ps.at_offset(start_offset);
 
@@ -1093,8 +1096,8 @@ fn format_interpolated_x_string_node<'src>(
 
     ps.with_start_of_line(false, |ps| {
         for part in interpolated_x_string_node.parts().iter() {
-            let start_offset = part.location().start_offset();
-            let end_offset = part.location().end_offset();
+            let start_offset = part.location().start();
+            let end_offset = part.location().end();
 
             ps.at_offset(start_offset);
             format_node(ps, part);
@@ -1112,7 +1115,7 @@ fn format_it_local_variable_read_node<'src>(
     handle_string_at_offset(
         ps,
         it_local_variable_read_node.location().as_slice(),
-        it_local_variable_read_node.location().start_offset(),
+        it_local_variable_read_node.location().start(),
     );
 }
 
@@ -1129,8 +1132,8 @@ fn format_interpolated_last_line_node<'src>(
 
     ps.with_start_of_line(false, |ps| {
         for part in interpolated_match_last_line_node.parts().iter() {
-            let start_offset = part.location().start_offset();
-            let end_offset = part.location().end_offset();
+            let start_offset = part.location().start();
+            let end_offset = part.location().end();
 
             ps.at_offset(start_offset);
             format_node(ps, part);
@@ -1153,8 +1156,8 @@ fn format_interpolated_regular_expression_node<'src>(
 
     ps.with_start_of_line(false, |ps| {
         for part in interpolated_regular_expression_node.parts().iter() {
-            let start_offset = part.location().start_offset();
-            let end_offset = part.location().end_offset();
+            let start_offset = part.location().start();
+            let end_offset = part.location().end();
 
             ps.at_offset(start_offset);
             format_node(ps, part);
@@ -1203,7 +1206,7 @@ fn format_embedded_variable_node<'src>(
 fn format_ensure_node<'src>(ps: &mut ParserState<'src>, ensure_node: prism::EnsureNode<'src>) {
     // Double check that these offsets are correct, since begin/rescue/ensure/else
     // aren't always handled with `format_node`, which usually handles this
-    ps.at_offset(ensure_node.location().start_offset());
+    ps.at_offset(ensure_node.location().start());
 
     ps.emit_keyword(b"ensure");
     ps.new_block(|ps| {
@@ -1213,11 +1216,11 @@ fn format_ensure_node<'src>(ps: &mut ParserState<'src>, ensure_node: prism::Ensu
         }
     });
 
-    ps.at_offset(ensure_node.location().end_offset());
+    ps.at_offset(ensure_node.location().end());
 }
 
 fn format_false_node<'src>(ps: &mut ParserState<'src>, false_node: prism::FalseNode<'src>) {
-    handle_string_at_offset(ps, b"false", false_node.location().start_offset());
+    handle_string_at_offset(ps, b"false", false_node.location().start());
 }
 
 fn format_find_pattern_node<'src>(
@@ -1239,7 +1242,7 @@ fn format_find_pattern_node<'src>(
                 });
 
                 let requireds = find_pattern_node.requireds();
-                let requireds_end_offset = requireds.last().unwrap().location().end_offset();
+                let requireds_end_offset = requireds.last().unwrap().location().end();
                 if !requireds.is_empty() {
                     ps.emit_comma();
                     ps.emit_soft_newline();
@@ -1251,7 +1254,7 @@ fn format_find_pattern_node<'src>(
                 ps.emit_soft_newline();
                 ps.emit_soft_indent();
                 ps.with_start_of_line(false, |ps| {
-                    format_node(ps, find_pattern_node.right());
+                    format_splat_node(ps, find_pattern_node.right());
                 });
             });
         });
@@ -1355,7 +1358,7 @@ fn format_class_variable_write_node<'src>(
     ps: &mut ParserState<'src>,
     class_variable_write_node: prism::ClassVariableWriteNode<'src>,
 ) {
-    ps.at_offset(class_variable_write_node.location().start_offset());
+    ps.at_offset(class_variable_write_node.location().start());
     format_write_node(
         ps,
         class_variable_write_node.name().as_slice(),
@@ -1395,11 +1398,7 @@ fn format_def_node<'src>(ps: &mut ParserState<'src>, def_node: prism::DefNode<'s
             ps.emit_dot();
         }
 
-        handle_string_at_offset(
-            ps,
-            def_node.name().as_slice(),
-            def_node.name_loc().end_offset(),
-        );
+        handle_string_at_offset(ps, def_node.name().as_slice(), def_node.name_loc().end());
     });
 
     format_def_body(ps, def_node);
@@ -1418,7 +1417,7 @@ fn format_def_body<'src>(ps: &mut ParserState<'src>, def_node: prism::DefNode<'s
                             // If the parameters have parens, wind to the closing paren, since it may
                             // be on its own line past the end of the params
                             if let Some(rparen_loc) = def_node.rparen_loc() {
-                                ps.at_offset(rparen_loc.end_offset());
+                                ps.at_offset(rparen_loc.end());
                             }
                         },
                     );
@@ -1478,7 +1477,7 @@ fn format_def_body<'src>(ps: &mut ParserState<'src>, def_node: prism::DefNode<'s
 
     if let Some(end_keyword_loc) = def_node.end_keyword_loc() {
         ps.with_start_of_line(true, |ps| {
-            ps.wind_dumping_comments_until_offset(end_keyword_loc.end_offset());
+            ps.wind_dumping_comments_until_offset(end_keyword_loc.end());
             ps.emit_end();
         });
     }
@@ -1495,13 +1494,13 @@ fn format_defined_node<'src>(ps: &mut ParserState<'src>, defined_node: prism::De
 fn format_else_node<'src>(ps: &mut ParserState<'src>, else_node: prism::ElseNode<'src>) {
     // Double check that these offsets are correct, since begin/rescue/ensure/else
     // aren't always handled with `format_node`, which usually handles this
-    ps.at_offset(else_node.location().start_offset());
+    ps.at_offset(else_node.location().start());
 
     // `else_keyword_loc` is somewhat misleading, since this can be either the `else`
     // keyword or the `:` separator in a ternary
     // Given those two options, we can check the length to avoid copying the loc.
     let else_keyword_loc = else_node.else_keyword_loc();
-    let keyword_len = else_keyword_loc.end_offset() - else_keyword_loc.start_offset();
+    let keyword_len = else_keyword_loc.end() - else_keyword_loc.start();
     if keyword_len == 4 {
         ps.emit_else();
 
@@ -1529,7 +1528,7 @@ fn format_else_node<'src>(ps: &mut ParserState<'src>, else_node: prism::ElseNode
         });
     }
 
-    ps.at_offset(else_node.location().end_offset());
+    ps.at_offset(else_node.location().end());
 }
 
 fn format_parameters_node<'src>(ps: &mut ParserState<'src>, params: prism::ParametersNode<'src>) {
@@ -1578,7 +1577,7 @@ fn format_parameters_node<'src>(ps: &mut ParserState<'src>, params: prism::Param
         if requireds.is_empty() {
             return;
         }
-        let end_offset = requireds.last().unwrap().location().end_offset();
+        let end_offset = requireds.last().unwrap().location().end();
         format_list_like_thing(ps, requireds, end_offset, false);
     }
     fn fmt_optionals<'a>(ps: &mut ParserState<'a>, params: prism::ParametersNode<'a>) {
@@ -1586,7 +1585,7 @@ fn format_parameters_node<'src>(ps: &mut ParserState<'src>, params: prism::Param
         if optionals.is_empty() {
             return;
         }
-        let end_offset = optionals.last().unwrap().location().end_offset();
+        let end_offset = optionals.last().unwrap().location().end();
         format_list_like_thing(ps, optionals, end_offset, false);
     }
     fn fmt_rest<'a>(ps: &mut ParserState<'a>, params: prism::ParametersNode<'a>) {
@@ -1600,7 +1599,7 @@ fn format_parameters_node<'src>(ps: &mut ParserState<'src>, params: prism::Param
         if posts.is_empty() {
             return;
         }
-        let end_offset = posts.last().unwrap().location().end_offset();
+        let end_offset = posts.last().unwrap().location().end();
         format_list_like_thing(ps, posts, end_offset, false);
     }
     fn fmt_keywords<'a>(ps: &mut ParserState<'a>, params: prism::ParametersNode<'a>) {
@@ -1608,7 +1607,7 @@ fn format_parameters_node<'src>(ps: &mut ParserState<'src>, params: prism::Param
         if keywords.is_empty() {
             return;
         }
-        let end_offset = keywords.last().unwrap().location().end_offset();
+        let end_offset = keywords.last().unwrap().location().end();
         format_list_like_thing(ps, keywords, end_offset, false);
     }
     fn fmt_keyword_rest<'a>(ps: &mut ParserState<'a>, params: prism::ParametersNode<'a>) {
@@ -1618,9 +1617,8 @@ fn format_parameters_node<'src>(ps: &mut ParserState<'src>, params: prism::Param
         }
     }
     fn fmt_block<'a>(ps: &mut ParserState<'a>, params: prism::ParametersNode<'a>) {
-        let block = params.block();
-        if let Some(block) = block {
-            format_block_parameter_node(ps, block);
+        if let Some(block) = params.block() {
+            format_node(ps, block);
         }
     }
 }
@@ -1635,9 +1633,9 @@ fn format_block_parameter_node<'src>(
         if let Some(ident) = block_arg.name() {
             let ident_str = ident.as_slice();
             ps.bind_variable(ident_str);
-            handle_string_at_offset(ps, ident_str, block_arg.name_loc().unwrap().end_offset());
+            handle_string_at_offset(ps, ident_str, block_arg.name_loc().unwrap().end());
         } else {
-            ps.at_offset(block_arg.location().start_offset());
+            ps.at_offset(block_arg.location().start());
         }
     });
 }
@@ -1819,9 +1817,9 @@ fn format_call_node<'src>(
         call_node
             .message_loc()
             .expect("Attribute writes must have a message")
-            .end_offset()
+            .end()
     } else {
-        call_node.location().end_offset()
+        call_node.location().end()
     };
     let is_dot_call = method_name == b"call" && call_node.message_loc().is_none(); // e.g. `a.()`
 
@@ -1938,7 +1936,7 @@ fn format_call_node<'src>(
 
                 let maybe_closing_line = call_node
                     .closing_loc()
-                    .map(|closing_loc| ps.get_line_number_for_offset(closing_loc.start_offset()));
+                    .map(|closing_loc| ps.get_line_number_for_offset(closing_loc.start()));
 
                 ps.with_start_of_line(false, |ps| {
                     ps.breakable_of(delims, |ps| {
@@ -2477,7 +2475,7 @@ fn call_chain_should_be_multilined(ps: &ParserState, call_chain_elements: &[pris
                 start_loc_for_call_node_in_chain(&call_chain_elements[1].as_call_node().unwrap()),
             );
             let leading_expr_end_line =
-                ps.get_line_number_for_offset(call_chain_elements[0].location().end_offset());
+                ps.get_line_number_for_offset(call_chain_elements[0].location().end());
 
             // Note: We check from `leading_expr_end_line + 1` because comments on the same line as
             // the closing brace will be rendered into the breakable during formatting, so they don't
@@ -2523,7 +2521,7 @@ fn call_chain_should_be_multilined(ps: &ParserState, call_chain_elements: &[pris
         if let Some(call_node) = start_node.as_call_node() {
             ps.get_line_number_for_offset(start_loc_for_call_node_in_chain(&call_node))
         } else {
-            ps.get_line_number_for_offset(start_node.location().start_offset())
+            ps.get_line_number_for_offset(start_node.location().start())
         }
     };
 
@@ -2533,9 +2531,7 @@ fn call_chain_should_be_multilined(ps: &ParserState, call_chain_elements: &[pris
                 .as_call_node()
                 .unwrap()
                 .call_operator_loc()
-                .map_or(start_line, |loc| {
-                    ps.get_line_number_for_offset(loc.start_offset())
-                });
+                .map_or(start_line, |loc| ps.get_line_number_for_offset(loc.start()));
         if operator_on_new_line {
             return true;
         }
@@ -2584,12 +2580,12 @@ fn statements_force_multiline(node: &prism::Node) -> bool {
 }
 
 /// Finds an appropriate starting loc for a call node inside a call chain.
-/// In the middle of a chain, the node's `location().start_offset()` is always the
+/// In the middle of a chain, the node's `location().start()` is always the
 /// beginning of the chain, since `receiver()` is the entirety of the chain so far.
 /// To find the loc in the middle of the chain, we need to use something else to approximate that,
 /// which in this case is either the name of the method or, in the case of method calls without
 /// names (e.g. `.()`), we use the call operator loc.
-fn start_loc_for_call_node_in_chain(call_chain_element: &prism::CallNode<'_>) -> usize {
+fn start_loc_for_call_node_in_chain(call_chain_element: &prism::CallNode<'_>) -> SourceOffset {
     call_chain_element
         .message_loc()
         .unwrap_or_else(|| {
@@ -2597,7 +2593,7 @@ fn start_loc_for_call_node_in_chain(call_chain_element: &prism::CallNode<'_>) ->
                 "If we're in a call chain and there's no message loc, we must be in a dot-call (`.()`), so there must be a call operator loc",
             )
         })
-        .start_offset()
+        .start()
 }
 
 fn format_call_and_write_node<'src>(
@@ -2692,14 +2688,12 @@ fn format_symbol_node<'src>(ps: &mut ParserState<'src>, symbol_node: prism::Symb
         ps.emit_ident(b":");
         ps.emit_double_quote();
 
-        if let Some(value_loc) = symbol_node.value_loc() {
-            let escaped = crate::string_escape::single_to_double_quoted(
-                value_loc.as_slice(),
-                opener.expect("We must have an opener to know we're single-quoted"),
-                closer.expect("We must have a closer when wrapped in single quotes"),
-            );
-            ps.emit_string_content(escaped);
-        }
+        let escaped = crate::string_escape::single_to_double_quoted(
+            symbol_node.content_loc().as_slice(),
+            opener.expect("We must have an opener to know we're single-quoted"),
+            closer.expect("We must have a closer when wrapped in single quotes"),
+        );
+        ps.emit_string_content(escaped);
 
         ps.emit_double_quote();
     } else {
@@ -2709,9 +2703,7 @@ fn format_symbol_node<'src>(ps: &mut ParserState<'src>, symbol_node: prism::Symb
         if let Some(opening) = opener {
             ps.emit_ident(opening);
         }
-        if let Some(value_loc) = symbol_node.value_loc() {
-            ps.emit_ident(value_loc.as_slice());
-        }
+        ps.emit_ident(symbol_node.content_loc().as_slice());
         if let Some(closing_str) = closer {
             emit_symbol_key_closer(ps, closing_str);
         }
@@ -2789,9 +2781,9 @@ fn format_assoc_splat_node<'src>(
 fn format_brace_block_body<'src>(
     ps: &mut ParserState<'src>,
     body: Option<prism::Node<'src>>,
-    opening_start_offset: usize,
-    closing_end_offset: usize,
-    end_offset: usize,
+    opening_start_offset: SourceOffset,
+    closing_end_offset: SourceOffset,
+    end_offset: SourceOffset,
 ) {
     if let Some(body) = body {
         if let Some(statements_node) = body.as_statements_node() {
@@ -2858,7 +2850,7 @@ fn format_block_node<'src>(ps: &mut ParserState<'src>, block_node: prism::BlockN
         });
 
         ps.with_start_of_line(true, |ps| {
-            ps.wind_dumping_comments_until_offset(block_node.location().end_offset());
+            ps.wind_dumping_comments_until_offset(block_node.location().end());
             ps.emit_end();
             ps.shift_comments();
         });
@@ -2876,9 +2868,9 @@ fn format_block_node<'src>(ps: &mut ParserState<'src>, block_node: prism::BlockN
             format_brace_block_body(
                 ps,
                 block_node.body(),
-                block_node.opening_loc().start_offset(),
-                block_node.closing_loc().end_offset(),
-                block_node.location().end_offset(),
+                block_node.opening_loc().start(),
+                block_node.closing_loc().end(),
+                block_node.location().end(),
             );
         });
     }
@@ -2898,7 +2890,7 @@ fn format_block_parameters_node<'src>(
             ps,
             block_parameters_node.locals(),
             block_parameters_node.parameters(),
-            block_parameters_node.location().end_offset(),
+            block_parameters_node.location().end(),
         );
     });
 }
@@ -2907,7 +2899,7 @@ fn format_block_parameters_names<'src>(
     ps: &mut ParserState<'src>,
     locals: prism::NodeList<'src>,
     parameters: Option<prism::ParametersNode<'src>>,
-    end_offset: usize,
+    end_offset: SourceOffset,
 ) {
     let has_locals = !locals.is_empty();
 
@@ -2930,7 +2922,7 @@ fn format_block_local_variable_node<'src>(
     handle_string_at_offset(
         ps,
         block_local_variable_node.name().as_slice(),
-        block_local_variable_node.location().start_offset(),
+        block_local_variable_node.location().start(),
     );
 }
 
@@ -2947,13 +2939,11 @@ fn format_array_node<'src>(ps: &mut ParserState<'src>, array_node: prism::ArrayN
     }
 
     if array_node.elements().is_empty() {
-        if ps.has_comment_in_offset_span(
-            array_node.location().start_offset(),
-            array_node.location().end_offset(),
-        ) {
+        if ps.has_comment_in_offset_span(array_node.location().start(), array_node.location().end())
+        {
             ps.with_start_of_line(false, |ps| {
                 ps.breakable_of(BreakableDelims::for_array(), |ps| {
-                    ps.wind_dumping_comments_until_offset(array_node.location().end_offset());
+                    ps.wind_dumping_comments_until_offset(array_node.location().end());
                 })
             })
         } else {
@@ -2967,14 +2957,14 @@ fn format_array_node<'src>(ps: &mut ParserState<'src>, array_node: prism::ArrayN
                 format_word_array_elements(
                     ps,
                     array_node.elements(),
-                    array_node.location().end_offset(),
+                    array_node.location().end(),
                     orig_delim,
                 );
             });
         });
         // Wind outside the breakable so that a comment on the same line as the
         // closing bracket shifts above the array instead of being absorbed into its body.
-        ps.wind_dumping_comments_until_offset(array_node.location().end_offset());
+        ps.wind_dumping_comments_until_offset(array_node.location().end());
     } else {
         ps.with_start_of_line(false, |ps| {
             if array_node.opening_loc().is_none() {
@@ -2982,7 +2972,7 @@ fn format_array_node<'src>(ps: &mut ParserState<'src>, array_node: prism::ArrayN
                 format_list_like_thing(
                     ps,
                     array_node.elements(),
-                    array_node.location().end_offset(),
+                    array_node.location().end(),
                     true,
                 );
             } else {
@@ -2990,10 +2980,10 @@ fn format_array_node<'src>(ps: &mut ParserState<'src>, array_node: prism::ArrayN
                     format_list_like_thing(
                         ps,
                         array_node.elements(),
-                        array_node.location().end_offset(),
+                        array_node.location().end(),
                         false,
                     );
-                    ps.wind_dumping_comments_until_offset(array_node.location().end_offset());
+                    ps.wind_dumping_comments_until_offset(array_node.location().end());
                 });
             }
         });
@@ -3016,7 +3006,7 @@ fn format_word_array_elements<'src>(
                 ps.emit_soft_indent();
 
                 if let Some(string_node) = expr.as_string_node() {
-                    ps.at_offset(string_node.location().start_offset());
+                    ps.at_offset(string_node.location().start());
 
                     let escaped = crate::string_escape::escape_word_array_content(
                         string_node.content_loc().as_slice(),
@@ -3025,18 +3015,16 @@ fn format_word_array_elements<'src>(
                     );
                     ps.emit_string_content(escaped);
                 } else if let Some(symbol_node) = expr.as_symbol_node() {
-                    ps.at_offset(symbol_node.location().start_offset());
+                    ps.at_offset(symbol_node.location().start());
 
-                    if let Some(value_loc) = symbol_node.value_loc() {
-                        let escaped = crate::string_escape::escape_word_array_content(
-                            value_loc.as_slice(),
-                            orig_open_delim,
-                            orig_close_delim,
-                        );
-                        ps.emit_string_content(escaped);
-                    }
+                    let escaped = crate::string_escape::escape_word_array_content(
+                        symbol_node.content_loc().as_slice(),
+                        orig_open_delim,
+                        orig_close_delim,
+                    );
+                    ps.emit_string_content(escaped);
                 } else if let Some(interpolated_symbol_node) = expr.as_interpolated_symbol_node() {
-                    ps.at_offset(interpolated_symbol_node.location().start_offset());
+                    ps.at_offset(interpolated_symbol_node.location().start());
                     format_word_array_interpolated_parts(
                         ps,
                         interpolated_symbol_node.parts(),
@@ -3044,7 +3032,7 @@ fn format_word_array_elements<'src>(
                         orig_close_delim,
                     );
                 } else if let Some(interpolated_string_node) = expr.as_interpolated_string_node() {
-                    ps.at_offset(interpolated_string_node.location().start_offset());
+                    ps.at_offset(interpolated_string_node.location().start());
                     format_word_array_interpolated_parts(
                         ps,
                         interpolated_string_node.parts(),
@@ -3085,8 +3073,8 @@ fn format_word_array_interpolated_parts<'src>(
     orig_close_delim: u8,
 ) {
     for part in parts.iter() {
-        let start_offset = part.location().start_offset();
-        let end_offset = part.location().end_offset();
+        let start_offset = part.location().start();
+        let end_offset = part.location().end();
 
         ps.at_offset(start_offset);
 
@@ -3176,11 +3164,11 @@ fn is_multilinable_node(node: &prism::Node) -> bool {
         // While/until are multiline only if they have an `end` keyword (not modifier form)
         Node::WhileNode { .. } => {
             let while_node = node.as_while_node().unwrap();
-            while_node.closing_loc().is_some()
+            while_node.end_keyword_loc().is_some()
         }
         Node::UntilNode { .. } => {
             let until_node = node.as_until_node().unwrap();
-            until_node.closing_loc().is_some()
+            until_node.end_keyword_loc().is_some()
         }
         // These are always multiline
         Node::ForNode { .. }
@@ -3345,7 +3333,7 @@ fn format_rest_parameter_node<'src>(
             if let Some(name) = rest_param.name() {
                 let name_str = name.as_slice();
                 ps.bind_variable(name_str);
-                handle_string_at_offset(ps, name_str, rest_param.name_loc().unwrap().end_offset());
+                handle_string_at_offset(ps, name_str, rest_param.name_loc().unwrap().end());
             }
         });
     });
@@ -3359,7 +3347,7 @@ fn format_arguments_node<'src>(
         format_list_like_thing(
             ps,
             arguments_node.arguments(),
-            arguments_node.location().end_offset(),
+            arguments_node.location().end(),
             false,
         );
     });
@@ -3386,7 +3374,7 @@ fn format_keyword_hash_node<'src>(
             format_list_like_thing(
                 ps,
                 keyword_hash_node.elements(),
-                keyword_hash_node.location().end_offset(),
+                keyword_hash_node.location().end(),
                 false,
             );
         });
@@ -3508,7 +3496,7 @@ fn format_instance_variable_write_node<'src>(
     ps: &mut ParserState<'src>,
     instance_variable_write_node: prism::InstanceVariableWriteNode<'src>,
 ) {
-    ps.at_offset(instance_variable_write_node.location().start_offset());
+    ps.at_offset(instance_variable_write_node.location().start());
     format_write_node(
         ps,
         instance_variable_write_node.name().as_slice(),
@@ -3521,7 +3509,7 @@ fn format_integer_node<'src>(ps: &mut ParserState<'src>, integer_node: prism::In
     handle_string_at_offset(
         ps,
         integer_node.location().as_slice(),
-        integer_node.location().start_offset(),
+        integer_node.location().start(),
     );
 }
 
@@ -3529,7 +3517,7 @@ fn format_float_node<'src>(ps: &mut ParserState<'src>, float_node: prism::FloatN
     handle_string_at_offset(
         ps,
         float_node.location().as_slice(),
-        float_node.location().start_offset(),
+        float_node.location().start(),
     );
 }
 
@@ -3561,22 +3549,14 @@ fn format_forwarding_arguments_node<'src>(
     ps: &mut ParserState<'src>,
     forwarding_arguments_node: prism::ForwardingArgumentsNode<'src>,
 ) {
-    handle_string_at_offset(
-        ps,
-        b"...",
-        forwarding_arguments_node.location().start_offset(),
-    );
+    handle_string_at_offset(ps, b"...", forwarding_arguments_node.location().start());
 }
 
 fn format_forwarding_parameter_node<'src>(
     ps: &mut ParserState<'src>,
     forwarding_parameter_node: prism::ForwardingParameterNode<'src>,
 ) {
-    handle_string_at_offset(
-        ps,
-        b"...",
-        forwarding_parameter_node.location().start_offset(),
-    );
+    handle_string_at_offset(ps, b"...", forwarding_parameter_node.location().start());
 }
 
 fn format_forwarding_super_node<'src>(
@@ -3686,8 +3666,8 @@ fn format_global_variable_write_node<'src>(
 fn format_hash_node<'src>(ps: &mut ParserState<'src>, hash_node: prism::HashNode<'src>) {
     ps.with_start_of_line(false, |ps| {
         if hash_node.elements().is_empty() {
-            let start_offset = hash_node.location().start_offset();
-            let end_offset = hash_node.location().end_offset();
+            let start_offset = hash_node.location().start();
+            let end_offset = hash_node.location().end();
             let is_multiline = ps.get_line_number_for_offset(start_offset)
                 != ps.get_line_number_for_offset(end_offset);
 
@@ -3724,10 +3704,10 @@ fn format_hash_node<'src>(ps: &mut ParserState<'src>, hash_node: prism::HashNode
                     format_list_like_thing(
                         ps,
                         hash_node.elements(),
-                        hash_node.closing_loc().end_offset(),
+                        hash_node.closing_loc().end(),
                         false,
                     );
-                    ps.wind_dumping_comments_until_offset(hash_node.closing_loc().end_offset());
+                    ps.wind_dumping_comments_until_offset(hash_node.closing_loc().end());
                 });
             });
         }
@@ -3842,14 +3822,14 @@ impl<'pr> Conditional<'pr> {
         }
     }
 
-    fn keyword_start_offset(&self) -> usize {
+    fn keyword_start_offset(&self) -> SourceOffset {
         match self {
             Conditional::If(node) => node
                 .if_keyword_loc()
-                .map_or(node.location().start_offset(), |loc| loc.start_offset()),
-            Conditional::Unless(node) => node.keyword_loc().start_offset(),
-            Conditional::While(node) => node.keyword_loc().start_offset(),
-            Conditional::Until(node) => node.keyword_loc().start_offset(),
+                .map_or(node.location().start(), |loc| loc.start()),
+            Conditional::Unless(node) => node.unless_keyword_loc().start(),
+            Conditional::While(node) => node.while_keyword_loc().start(),
+            Conditional::Until(node) => node.until_keyword_loc().start(),
         }
     }
 }
@@ -3883,7 +3863,7 @@ fn format_conditional_node<'src>(
     }
 
     let is_modifier = if let Some(statements) = conditional.statements() {
-        statements.location().start_offset() < conditional.keyword_start_offset()
+        statements.location().start() < conditional.keyword_start_offset()
     } else {
         false
     };
@@ -3968,7 +3948,7 @@ fn format_if_node<'src>(ps: &mut ParserState<'src>, if_node: prism::IfNode<'src>
     // If it's not there, this is actually a ternary, which is sufficiently
     // different that we handle it in its own branch
     if let Some(if_loc) = if_node.if_keyword_loc() {
-        let is_if_keyword = (if_loc.end_offset() - if_loc.start_offset()) == 2;
+        let is_if_keyword = (if_loc.end() - if_loc.start()) == 2;
         let conditional_keyword = if is_if_keyword {
             b"if" as &[u8]
         } else {
@@ -4017,7 +3997,7 @@ fn format_imaginary_node<'src>(
     handle_string_at_offset(
         ps,
         imaginary_node.location().as_slice(),
-        imaginary_node.location().start_offset(),
+        imaginary_node.location().start(),
     );
 }
 
@@ -4192,7 +4172,7 @@ fn format_constant_read_node<'src>(
     handle_string_at_offset(
         ps,
         constant_read_node.name().as_slice(),
-        constant_read_node.location().start_offset(),
+        constant_read_node.location().start(),
     );
 }
 
@@ -4211,7 +4191,7 @@ fn format_constant_path_node<'src>(
         handle_string_at_offset(
             ps,
             constant_path_node.name().unwrap().as_slice(),
-            constant_path_node.name_loc().start_offset(),
+            constant_path_node.name_loc().start(),
         );
     });
 }
@@ -4307,7 +4287,7 @@ fn format_constant_path_target_node<'src>(
         handle_string_at_offset(
             ps,
             constant_path_target_node.name().unwrap().as_slice(),
-            constant_path_target_node.name_loc().start_offset(),
+            constant_path_target_node.name_loc().start(),
         );
     });
 }
@@ -4331,7 +4311,7 @@ fn format_constant_target_node<'src>(
     handle_string_at_offset(
         ps,
         constant_target_node.name().as_slice(),
-        constant_target_node.location().start_offset(),
+        constant_target_node.location().start(),
     );
 }
 
@@ -4378,7 +4358,7 @@ fn format_lambda_node<'src>(ps: &mut ParserState<'src>, lambda_node: prism::Lamb
                             ps,
                             block_parameters.locals(),
                             block_parameters.parameters(),
-                            block_parameters.location().end_offset(),
+                            block_parameters.location().end(),
                         );
                     });
                 }
@@ -4404,7 +4384,7 @@ fn format_lambda_node<'src>(ps: &mut ParserState<'src>, lambda_node: prism::Lamb
             });
 
             ps.with_start_of_line(true, |ps| {
-                ps.wind_dumping_comments_until_offset(lambda_node.location().end_offset());
+                ps.wind_dumping_comments_until_offset(lambda_node.location().end());
                 ps.emit_end();
                 ps.shift_comments();
             });
@@ -4414,9 +4394,9 @@ fn format_lambda_node<'src>(ps: &mut ParserState<'src>, lambda_node: prism::Lamb
                 format_brace_block_body(
                     ps,
                     lambda_node.body(),
-                    lambda_node.opening_loc().start_offset(),
-                    lambda_node.closing_loc().end_offset(),
-                    lambda_node.location().end_offset(),
+                    lambda_node.opening_loc().start(),
+                    lambda_node.closing_loc().end(),
+                    lambda_node.location().end(),
                 );
             });
         }
@@ -4439,7 +4419,7 @@ fn format_match_predicate_node<'src>(
     ps.with_start_of_line(false, |ps| {
         format_node(ps, match_predicate_node.value());
         ps.emit_space();
-        ps.emit_ident(match_predicate_node.operator_loc().as_slice());
+        ps.emit_ident(match_predicate_node.keyword_loc().as_slice());
         ps.emit_space();
         format_node(ps, match_predicate_node.pattern());
     });
@@ -4497,7 +4477,7 @@ fn format_multi_targets<'src>(
 
     ps.with_start_of_line(false, |ps| {
         if has_lefts {
-            let lefts_offset = lefts.last().unwrap().location().end_offset();
+            let lefts_offset = lefts.last().unwrap().location().end();
             format_list_like_thing(ps, lefts, lefts_offset, true);
         }
 
@@ -4516,7 +4496,7 @@ fn format_multi_targets<'src>(
             if has_lefts || has_rest {
                 ps.emit_comma_space();
             }
-            let rights_offset = rights.last().unwrap().location().end_offset();
+            let rights_offset = rights.last().unwrap().location().end();
             format_list_like_thing(ps, rights, rights_offset, true);
         }
     });
@@ -4554,7 +4534,7 @@ fn format_next_node<'src>(ps: &mut ParserState<'src>, next_node: prism::NextNode
                 format_list_like_thing(
                     ps,
                     arguments_node.arguments(),
-                    arguments_node.location().end_offset(),
+                    arguments_node.location().end(),
                     true,
                 );
             });
@@ -4566,16 +4546,22 @@ fn format_nil_node(ps: &mut ParserState) {
     ps.emit_ident(b"nil");
 }
 
+fn format_no_block_parameter_node<'src>(
+    ps: &mut ParserState<'src>,
+    no_block_parameter_node: prism::NoBlockParameterNode<'src>,
+) {
+    ps.with_start_of_line(false, |ps| {
+        ps.emit_soft_indent();
+        handle_string_at_offset(ps, b"&nil", no_block_parameter_node.location().start());
+    });
+}
+
 fn format_no_keywords_parameter_node<'src>(
     ps: &mut ParserState<'src>,
     no_keywords_parameter_node: prism::NoKeywordsParameterNode<'src>,
 ) {
     ps.emit_soft_indent();
-    handle_string_at_offset(
-        ps,
-        b"**nil",
-        no_keywords_parameter_node.location().start_offset(),
-    );
+    handle_string_at_offset(ps, b"**nil", no_keywords_parameter_node.location().start());
 }
 
 fn format_numbered_parameters_node() {
@@ -4717,7 +4703,7 @@ fn format_rational_node<'src>(
     handle_string_at_offset(
         ps,
         rational_node.location().as_slice(),
-        rational_node.location().start_offset(),
+        rational_node.location().start(),
     );
 }
 
@@ -4750,14 +4736,14 @@ fn format_rescue_modifier_node<'src>(
 fn format_rescue_node<'src>(ps: &mut ParserState<'src>, rescue_node: prism::RescueNode<'src>) {
     // Double check that these offsets are correct, since begin/rescue/ensure/else
     // aren't always handled with `format_node`, which usually handles this
-    ps.at_offset(rescue_node.location().start_offset());
+    ps.at_offset(rescue_node.location().start());
 
     ps.emit_keyword(b"rescue");
     let exceptions = rescue_node.exceptions();
     let reference = rescue_node.reference();
     if !exceptions.is_empty() {
         // Preemptively extract inline comments so they land before rescue, not inside the breakable.
-        ps.at_offset(exceptions.first().unwrap().location().start_offset());
+        ps.at_offset(exceptions.first().unwrap().location().start());
         ps.with_start_of_line(false, |ps| {
             ps.inline_breakable_of(BreakableDelims::for_binary_op(), |ps| {
                 let exceptions_count = exceptions.len();
@@ -4807,7 +4793,7 @@ fn format_rescue_node<'src>(ps: &mut ParserState<'src>, rescue_node: prism::Resc
         ps.with_start_of_line(false, |ps| format_node(ps, subsequent.as_node()));
     }
 
-    ps.at_offset(rescue_node.location().end_offset());
+    ps.at_offset(rescue_node.location().end());
 }
 
 fn format_retry_node(ps: &mut ParserState) {
@@ -4828,7 +4814,7 @@ fn format_return_node<'src>(ps: &mut ParserState<'src>, return_node: prism::Retu
                         format_list_like_thing(
                             ps,
                             arguments_list,
-                            arguments.location().end_offset(),
+                            arguments.location().end(),
                             false,
                         );
                     });
@@ -4875,25 +4861,21 @@ fn format_source_encoding_node<'src>(
     ps: &mut ParserState<'src>,
     source_encoding_node: prism::SourceEncodingNode<'src>,
 ) {
-    handle_string_at_offset(
-        ps,
-        b"__ENCODING__",
-        source_encoding_node.location().start_offset(),
-    );
+    handle_string_at_offset(ps, b"__ENCODING__", source_encoding_node.location().start());
 }
 
 fn format_source_file_node<'src>(
     ps: &mut ParserState<'src>,
     source_file_node: prism::SourceFileNode<'src>,
 ) {
-    handle_string_at_offset(ps, b"__FILE__", source_file_node.location().start_offset());
+    handle_string_at_offset(ps, b"__FILE__", source_file_node.location().start());
 }
 
 fn format_source_line_node<'src>(
     ps: &mut ParserState<'src>,
     source_line_node: prism::SourceLineNode<'src>,
 ) {
-    handle_string_at_offset(ps, b"__LINE__", source_line_node.location().start_offset());
+    handle_string_at_offset(ps, b"__LINE__", source_line_node.location().start());
 }
 
 fn format_self_node(ps: &mut ParserState) {
@@ -4901,7 +4883,7 @@ fn format_self_node(ps: &mut ParserState) {
 }
 
 fn format_true_node<'src>(ps: &mut ParserState<'src>, true_node: prism::TrueNode<'src>) {
-    handle_string_at_offset(ps, b"true", true_node.location().start_offset());
+    handle_string_at_offset(ps, b"true", true_node.location().start());
 }
 
 fn format_undef_node<'src>(ps: &mut ParserState<'src>, undef_node: prism::UndefNode<'src>) {
@@ -4910,7 +4892,7 @@ fn format_undef_node<'src>(ps: &mut ParserState<'src>, undef_node: prism::UndefN
         .last()
         .expect("`undef` must have at least one argument")
         .location()
-        .end_offset();
+        .end();
 
     ps.emit_ident(b"undef ");
     ps.with_start_of_line(false, |ps| {
@@ -4927,7 +4909,7 @@ fn format_until_node<'src>(ps: &mut ParserState<'src>, until_node: prism::UntilN
 }
 
 fn format_when_node<'src>(ps: &mut ParserState<'src>, when_node: prism::WhenNode<'src>) {
-    ps.at_offset(when_node.location().start_offset());
+    ps.at_offset(when_node.location().start());
     ps.emit_indent();
     ps.emit_when_keyword();
 
@@ -4938,12 +4920,7 @@ fn format_when_node<'src>(ps: &mut ParserState<'src>, when_node: prism::WhenNode
                 format_list_like_thing(
                     ps,
                     when_node.conditions(),
-                    when_node
-                        .conditions()
-                        .last()
-                        .unwrap()
-                        .location()
-                        .end_offset(),
+                    when_node.conditions().last().unwrap().location().end(),
                     false,
                 );
             });
@@ -5018,7 +4995,11 @@ fn format_yield_node<'src>(ps: &mut ParserState<'src>, yield_node: prism::YieldN
     }
 }
 
-fn handle_string_at_offset<'src>(ps: &mut ParserState<'src>, ident: &'src [u8], offset: usize) {
+fn handle_string_at_offset<'src>(
+    ps: &mut ParserState<'src>,
+    ident: &'src [u8],
+    offset: SourceOffset,
+) {
     ps.at_offset(offset);
     ps.emit_ident(ident);
 }
