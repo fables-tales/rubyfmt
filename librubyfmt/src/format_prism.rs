@@ -6,7 +6,7 @@ use crate::{
     delimiters::BreakableDelims,
     heredoc_string::HeredocKind,
     parser_state::{FormattingContext, HashType, ParserState},
-    types::SourceOffset,
+    types::{LineNumber, SourceOffset},
 };
 
 pub fn format_node<'src>(ps: &mut ParserState<'src>, node: prism::Node<'src>) {
@@ -642,7 +642,7 @@ pub fn format_program<'src>(
         format_statements(ps, program_node.statements());
     });
     ps.emit_newline();
-    ps.on_line(10000000000);
+    ps.on_line(LineNumber::MAX - 1);
     ps.shift_comments();
 
     if let Some(data) = data_loc {
