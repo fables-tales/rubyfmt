@@ -27,6 +27,8 @@ use parser_state::ParserState;
 #[cfg(debug_assertions)]
 use simplelog::{ColorChoice, ConfigBuilder, LevelFilter, TermLogger, TerminalMode};
 
+use crate::util::BOM;
+
 #[derive(Debug)]
 pub enum RichFormatError {
     SyntaxError,
@@ -60,6 +62,12 @@ pub enum FormatError {
 pub fn format_buffer(buf: &[u8]) -> Result<Vec<u8>, RichFormatError> {
     let out_data = vec![];
     let mut output = Cursor::new(out_data);
+
+    if buf.starts_with(BOM) {
+        output
+            .write_all(BOM)
+            .expect("writing to a vec should never fail");
+    }
 
     let parse_result = ruby_prism::parse(buf);
     if parse_result.errors().next().is_some() {
