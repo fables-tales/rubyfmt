@@ -762,7 +762,7 @@ impl<'src> ParserState<'src> {
         if self.heredoc_strings.is_empty() {
             None
         } else {
-            Some(self.heredoc_strings.drain(..).rev().collect())
+            Some(std::mem::take(&mut self.heredoc_strings))
         }
     }
 
