@@ -1,5 +1,6 @@
 use std::borrow::Cow;
 
+pub const BOM: &[u8] = b"\xEF\xBB\xBF";
 /// Maximum indent depth we cache without allocation.
 const MAX_CACHED_INDENT: usize = 128;
 /// A pre-allocated array of spaces for efficient indentation
