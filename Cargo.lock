@@ -686,7 +686,6 @@ name = "rubyfmt"
 version = "0.14.1"
 dependencies = [
  "log",
- "memchr",
  "ruby-prism",
  "simplelog",
  "tikv-jemallocator",

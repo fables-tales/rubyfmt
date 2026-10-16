@@ -59,7 +59,7 @@ pub struct ParserState<'src> {
     suppress_comments_stack: Vec<bool>,
     render_queue: BaseQueue<'src>,
     current_orig_line_number: LineNumber,
-    comments_hash: FileComments,
+    comments_hash: FileComments<'src>,
     heredoc_strings: Vec<HeredocString<'src>>,
     comments_to_insert: Option<CommentBlock>,
     breakable_entry_stack: Vec<Breakable<'src>>,
@@ -420,7 +420,7 @@ impl<'src> ParserState<'src> {
         s: impl Into<Cow<'src, [u8]>>,
     ) -> Cow<'src, [u8]> {
         let content = s.into();
-        let newline_count = content.iter().filter(|&&b| b == b'\n').count() as u64;
+        let newline_count = content.iter().filter(|&&b| b == b'\n').count() as LineNumber;
         self.current_orig_line_number += newline_count;
         for be in self.breakable_entry_stack.iter_mut().rev() {
             be.push_line_number(self.current_orig_line_number);
@@ -734,7 +734,7 @@ impl<'src> ParserState<'src> {
 }
 
 impl<'src> ParserState<'src> {
-    pub(crate) fn new(fc: FileComments) -> Self {
+    pub(crate) fn new(fc: FileComments<'src>) -> Self {
         ParserState {
             indent_depth: IndentDepth::new(),
             start_of_line: vec![true],
@@ -776,7 +776,7 @@ impl<'src> ParserState<'src> {
             let trailing_comment = comments.is_trailing();
             self.insert_comment_collection(comments);
             if !trailing_comment {
-                self.current_orig_line_number += line_count as u64;
+                self.current_orig_line_number += line_count as LineNumber;
             }
         }
     }
