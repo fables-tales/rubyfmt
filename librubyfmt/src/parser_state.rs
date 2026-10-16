@@ -59,7 +59,7 @@ pub struct ParserState<'src> {
     suppress_comments_stack: Vec<bool>,
     render_queue: BaseQueue<'src>,
     current_orig_line_number: LineNumber,
-    comments_hash: FileComments,
+    comments_hash: FileComments<'src>,
     heredoc_strings: Vec<HeredocString<'src>>,
     comments_to_insert: Option<CommentBlock>,
     breakable_entry_stack: Vec<Breakable<'src>>,
@@ -754,7 +754,7 @@ impl<'src> ParserState<'src> {
 }
 
 impl<'src> ParserState<'src> {
-    pub(crate) fn new(fc: FileComments) -> Self {
+    pub(crate) fn new(fc: FileComments<'src>) -> Self {
         ParserState {
             indent_depth: IndentDepth::new(),
             start_of_line: vec![true],

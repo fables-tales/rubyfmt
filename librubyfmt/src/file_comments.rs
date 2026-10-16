@@ -1,8 +1,6 @@
 use std::borrow::Cow;
 use std::io::BufRead;
 
-use memchr::memchr_iter;
-
 use crate::comment_block::CommentBlock;
 use crate::parser_state::line_difference_requires_newline;
 use crate::types::{LineNumber, SourceOffset};
@@ -15,13 +13,13 @@ use crate::util::BOM;
 /// by the Rust crate, so this is our alternative while we're building Prism support
 /// and can always clean it up later.
 #[derive(Debug, Clone, Default)]
-pub struct LineIndex {
+pub struct LineIndex<'src> {
     // Stores the byte offset of each line's start position
-    line_starts: Vec<SourceOffset>,
+    line_starts: &'src [SourceOffset],
 }
 
-impl LineIndex {
-    fn from_vec(line_starts: Vec<SourceOffset>) -> Self {
+impl<'src> LineIndex<'src> {
+    fn from_vec(line_starts: &'src [SourceOffset]) -> Self {
         LineIndex { line_starts }
     }
 
@@ -51,53 +49,53 @@ impl LineIndex {
 }
 
 #[derive(Clone, Debug, Default)]
-pub struct FileComments {
+pub struct FileComments<'src> {
     start_of_file_contiguous_comment_lines: Option<CommentBlock>,
     /// A list of comments, sorted in order by `LineNumber`
     other_comments: Vec<(LineNumber, Vec<u8>)>,
     /// Sorted list of line numbers that contain Ruby code (not comments/blank)
     lines_with_ruby: Vec<LineNumber>,
     last_lineno: LineNumber,
-    line_index: LineIndex,
+    line_index: LineIndex<'src>,
     /// Sorted list of byte offsets where comments start
     comment_start_offsets: Vec<SourceOffset>,
 }
 
-impl FileComments {
-    pub fn from_prism_comments(comments: ruby_prism::Comments, source: &[u8]) -> FileComments {
-        let mut line_starts = Vec::new();
+impl<'src> FileComments<'src> {
+    pub fn from_prism_comments(
+        comments: ruby_prism::Comments,
+        source: &[u8],
+        line_offsets: &'src [u32],
+    ) -> FileComments<'src> {
         let mut lines_with_ruby = Vec::new();
-
-        line_starts.push(0); // First line always starts at position 0
-
         let bom_len = if source.starts_with(BOM) { 3 } else { 0 };
-
-        let mut line_start = 0;
-        let mut lineno = 1;
         let mut inside_embdoc = false;
 
-        for i in memchr_iter(b'\n', source) {
-            line_starts.push((i as SourceOffset) + 1);
-
-            let bom_skip = if line_start == 0 { bom_len } else { 0 };
-            if Self::line_has_ruby(&source[line_start + bom_skip..i], &mut inside_embdoc) {
-                lines_with_ruby.push(lineno);
+        for (i, window) in line_offsets.windows(2).enumerate() {
+            let start_index = window[0] as usize;
+            let next_index = window[1] as usize;
+            let bom_skip = if start_index == 0 { bom_len } else { 0 };
+            if Self::line_has_ruby(
+                &source[start_index + bom_skip..next_index],
+                &mut inside_embdoc,
+            ) {
+                lines_with_ruby.push((i + 1) as LineNumber)
             }
-
-            line_start = i + 1;
-            lineno += 1;
         }
 
         // Handle last line if no trailing newline
-        if line_start < source.len() {
+        if let Some(last_line_offset) = line_offsets.last()
+            && (*last_line_offset as usize) < source.len()
+        {
+            let line_start = *last_line_offset as usize;
             let bom_skip = if line_start == 0 { bom_len } else { 0 };
             let line = &source[line_start + bom_skip..];
             if Self::line_has_ruby(line, &mut inside_embdoc) {
-                lines_with_ruby.push(lineno);
+                lines_with_ruby.push(line_offsets.len() as LineNumber);
             }
         }
 
-        let line_index = LineIndex::from_vec(line_starts);
+        let line_index = LineIndex::from_vec(line_offsets);
 
         let mut file_comments = FileComments {
             lines_with_ruby,
