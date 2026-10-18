@@ -26,11 +26,26 @@ fn convert_percent_literal_escapes(
     start_delim: u8,
     end_delim: u8,
 ) -> Cow<'_, [u8]> {
+    convert_interpolating_literal_escapes(content, start_delim, end_delim, b'"')
+}
+
+pub fn convert_x_string_escapes(content: &[u8], start_delim: u8, end_delim: u8) -> Cow<'_, [u8]> {
+    convert_interpolating_literal_escapes(content, start_delim, end_delim, b'`')
+}
+
+/// Converts escape sequences in a double-quote-style (interpolating)
+/// percent-literal's content so they are valid when re-delimited with `target_quote`
+fn convert_interpolating_literal_escapes(
+    content: &[u8],
+    start_delim: u8,
+    end_delim: u8,
+    target_quote: u8,
+) -> Cow<'_, [u8]> {
     let first_change_pos = {
         let mut pos = None;
         let mut bytes = content.iter().copied().enumerate().peekable();
         while let Some((i, c)) = bytes.next() {
-            if c == b'"' {
+            if c == target_quote {
                 pos = Some(i);
                 break;
             } else if c == b'\\'
@@ -58,6 +73,13 @@ fn convert_percent_literal_escapes(
             if let Some(&next) = bytes.peek() {
                 if next == start_delim || next == end_delim {
                     // Drop the delimiter escape: \( → (
+                    //
+                    // If the delimiter itself is the same character
+                    // as our target quote the escape must be kept,
+                    // since that character also needs to stay escaped
+                    if next == target_quote {
+                        output.push(b'\\');
+                    }
                     output.push(next);
                     bytes.next();
                 } else {
@@ -69,8 +91,9 @@ fn convert_percent_literal_escapes(
             } else {
                 output.push(b'\\');
             }
-        } else if c == b'"' {
-            output.extend_from_slice(b"\\\"");
+        } else if c == target_quote {
+            output.push(b'\\');
+            output.push(c);
         } else {
             output.push(c);
         }
@@ -85,6 +108,7 @@ pub fn escape_word_array_content(
     content: &[u8],
     orig_open_delim: u8,
     orig_close_delim: u8,
+    is_interpolating: bool,
 ) -> Vec<u8> {
     // Output is always [] delimited
     const TARGET_OPEN: u8 = b'[';
@@ -107,8 +131,11 @@ pub fn escape_word_array_content(
                     }
                     output.push(next);
                 } else if next == TARGET_OPEN || next == TARGET_CLOSE {
-                    // Already escaped target delimiter, keep it
                     output.push(b'\\');
+                    if !is_interpolating {
+                        output.push(b'\\');
+                        output.push(b'\\');
+                    }
                     output.push(next);
                 } else {
                     output.push(b'\\');
@@ -146,7 +173,7 @@ fn escape_string(content: &[u8], opening_delim: u8, closing_delim: u8) -> Vec<u8
             b'\\' => {
                 if let Some(&next_char) = bytes.peek() {
                     match next_char {
-                        b'\'' => {
+                        b'\'' if opening_delim == b'\'' => {
                             // String#inspect strips the leading backslash from \', despite it being a valid
                             // escape character in double-quoted strings as well. Leaving the behavior the same
                             // for consistency with the previous behavior.
@@ -394,6 +421,24 @@ mod tests {
         );
     }
 
+    #[test]
+    fn percent_q_brace_preserves_backslash_before_quote() {
+        // Unlike true single-quoted strings, `\'` is not a recognized escape
+        // sequence in %q{...}, so the backslash stays.
+        assert_eq!(
+            single_to_double_quoted(b"\\'", b"%q{", b"}").as_ref(),
+            b"\\\\'"
+        );
+    }
+
+    #[test]
+    fn percent_q_paren_preserves_backslash_before_quote() {
+        assert_eq!(
+            single_to_double_quoted(b"\\'", b"%q(", b")").as_ref(),
+            b"\\\\'"
+        );
+    }
+
     // --- convert_percent_literal_escapes with %Q(...) strings ---
 
     #[test]
@@ -442,58 +487,158 @@ mod tests {
         assert_eq!(result.as_ref(), b"foo\\");
     }
 
+    #[test]
+    fn percent_q_upper_double_quote_delimiter_keeps_escape() {
+        assert_eq!(
+            single_to_double_quoted(b"a\\\"b", b"%Q\"", b"\"").as_ref(),
+            b"a\\\"b"
+        );
+    }
+
+    #[test]
+    fn bare_percent_double_quote_delimiter_keeps_escape() {
+        // Bare `%"..."` is equivalent to `%Q"..."`.
+        assert_eq!(
+            single_to_double_quoted(b"a\\\"b", b"%\"", b"\"").as_ref(),
+            b"a\\\"b"
+        );
+    }
+
+    #[test]
+    fn percent_q_upper_double_quote_delimiter_unescaped_quote_still_escaped() {
+        assert_eq!(
+            single_to_double_quoted(b"a\\\"b\\\"c", b"%Q\"", b"\"").as_ref(),
+            b"a\\\"b\\\"c"
+        );
+    }
+
+    #[test]
+    fn x_string_no_changes_returns_borrowed() {
+        let result = convert_x_string_escapes(b"echo hello", b'(', b')');
+        assert_matches!(result, Cow::Borrowed(_));
+        assert_eq!(result.as_ref(), b"echo hello");
+    }
+
+    #[test]
+    fn x_string_unescapes_open_delimiter() {
+        assert_eq!(convert_x_string_escapes(b"\\(", b'(', b')').as_ref(), b"(");
+    }
+
+    #[test]
+    fn x_string_unescapes_close_delimiter() {
+        assert_eq!(convert_x_string_escapes(b"\\)", b'(', b')').as_ref(), b")");
+    }
+
+    #[test]
+    fn x_string_escapes_unescaped_backtick() {
+        assert_eq!(
+            convert_x_string_escapes(b"echo `date`", b'(', b')').as_ref(),
+            b"echo \\`date\\`"
+        );
+    }
+
+    #[test]
+    fn x_string_backtick_delimiter_keeps_escape() {
+        assert_eq!(
+            convert_x_string_escapes(b"a\\`b", b'`', b'`').as_ref(),
+            b"a\\`b"
+        );
+    }
+
+    #[test]
+    fn x_string_preserves_other_backslash_sequences() {
+        let result = convert_x_string_escapes(b"foo\\tbar", b'(', b')');
+        assert_matches!(result, Cow::Borrowed(_));
+        assert_eq!(result.as_ref(), b"foo\\tbar");
+    }
+
+    #[test]
+    fn x_string_preserves_escaped_backslash() {
+        let result = convert_x_string_escapes(b"\\\\", b'(', b')');
+        assert_matches!(result, Cow::Borrowed(_));
+        assert_eq!(result.as_ref(), b"\\\\");
+    }
+
+    #[test]
+    fn x_string_trailing_backslash_preserved() {
+        let result = convert_x_string_escapes(b"foo\\", b'(', b')');
+        assert_matches!(result, Cow::Borrowed(_));
+        assert_eq!(result.as_ref(), b"foo\\");
+    }
+
     // --- escape_word_array_content ---
 
     #[test]
     fn word_array_plain_content() {
-        assert_eq!(escape_word_array_content(b"hello", b'(', b')'), b"hello");
+        assert_eq!(
+            escape_word_array_content(b"hello", b'(', b')', false),
+            b"hello"
+        );
     }
 
     #[test]
     fn word_array_escapes_open_bracket() {
-        assert_eq!(escape_word_array_content(b"[", b'(', b')'), b"\\[");
+        assert_eq!(escape_word_array_content(b"[", b'(', b')', false), b"\\[");
     }
 
     #[test]
     fn word_array_escapes_close_bracket() {
-        assert_eq!(escape_word_array_content(b"]", b'(', b')'), b"\\]");
+        assert_eq!(escape_word_array_content(b"]", b'(', b')', false), b"\\]");
     }
 
     #[test]
     fn word_array_unescapes_original_open_delim() {
         // \( was needed to escape the %w( delimiter; in %w[...] it's just (
-        assert_eq!(escape_word_array_content(b"\\(", b'(', b')'), b"(");
+        assert_eq!(escape_word_array_content(b"\\(", b'(', b')', false), b"(");
     }
 
     #[test]
     fn word_array_unescapes_original_close_delim() {
-        assert_eq!(escape_word_array_content(b"\\)", b'(', b')'), b")");
+        assert_eq!(escape_word_array_content(b"\\)", b'(', b')', false), b")");
     }
 
     #[test]
     fn word_array_preserves_escaped_backslash() {
-        assert_eq!(escape_word_array_content(b"\\\\", b'(', b')'), b"\\\\");
+        assert_eq!(
+            escape_word_array_content(b"\\\\", b'(', b')', false),
+            b"\\\\"
+        );
     }
 
     #[test]
-    fn word_array_keeps_already_escaped_open_bracket() {
-        assert_eq!(escape_word_array_content(b"\\[", b'(', b')'), b"\\[");
+    fn word_array_literal_backslash_bracket_with_paren_delim() {
+        // `\[` with a `(`/`)` delimiter is not an escape
+        assert_eq!(
+            escape_word_array_content(b"\\[", b'(', b')', false),
+            b"\\\\\\["
+        );
     }
 
     #[test]
-    fn word_array_keeps_already_escaped_close_bracket() {
-        assert_eq!(escape_word_array_content(b"\\]", b'(', b')'), b"\\]");
+    fn word_array_literal_backslash_bracket_with_pipe_delim() {
+        assert_eq!(
+            escape_word_array_content(b"\\[", b'|', b'|', false),
+            b"\\\\\\["
+        );
+    }
+
+    #[test]
+    fn word_array_literal_backslash_close_bracket_with_paren_delim() {
+        assert_eq!(
+            escape_word_array_content(b"\\]", b'(', b')', false),
+            b"\\\\\\]"
+        );
     }
 
     #[test]
     fn word_array_preserves_other_backslash_sequences() {
-        assert_eq!(escape_word_array_content(b"\\n", b'(', b')'), b"\\n");
+        assert_eq!(escape_word_array_content(b"\\n", b'(', b')', false), b"\\n");
     }
 
     #[test]
     fn word_array_orig_delim_is_target_stays_escaped() {
         // When orig delim is [ (same as the target), \[ must remain \[ rather than being unescaped
-        assert_eq!(escape_word_array_content(b"\\[", b'[', b']'), b"\\[");
+        assert_eq!(escape_word_array_content(b"\\[", b'[', b']', false), b"\\[");
     }
 
     #[test]
@@ -501,6 +646,46 @@ mod tests {
         // Technically this probably isn't reachable in valid Ruby code,
         // e.g. `%w(foo\)` is not valid, but we have it here defensively to
         // prevent accidentally dropping a slash in an edge case
-        assert_eq!(escape_word_array_content(b"foo\\", b'(', b')'), b"foo\\");
+        assert_eq!(
+            escape_word_array_content(b"foo\\", b'(', b')', false),
+            b"foo\\"
+        );
+    }
+
+    #[test]
+    fn interpolating_word_array_literal_backslash_bracket_with_caret_delim() {
+        // %W/%I drop the backslash from unrecognized escape sequences at parse
+        // time, so `\[` with a non-bracket delimiter (e.g. `^`) already parses
+        // to a literal `[`. Re-emitting it unchanged still parses correctly  - unlike
+        // %w/%i, no extra backslash should be added
+        assert_eq!(escape_word_array_content(b"\\[", b'^', b'^', true), b"\\[");
+    }
+
+    #[test]
+    fn interpolating_word_array_literal_backslash_close_bracket_with_caret_delim() {
+        assert_eq!(escape_word_array_content(b"\\]", b'^', b'^', true), b"\\]");
+    }
+
+    #[test]
+    fn interpolating_word_array_unescapes_original_open_delim() {
+        assert_eq!(escape_word_array_content(b"\\(", b'(', b')', true), b"(");
+    }
+
+    #[test]
+    fn interpolating_word_array_orig_delim_is_target_stays_escaped() {
+        assert_eq!(escape_word_array_content(b"\\[", b'[', b']', true), b"\\[");
+    }
+
+    #[test]
+    fn interpolating_word_array_preserves_escaped_backslash() {
+        assert_eq!(
+            escape_word_array_content(b"\\\\", b'(', b')', true),
+            b"\\\\"
+        );
+    }
+
+    #[test]
+    fn interpolating_word_array_preserves_recognized_escape_sequences() {
+        assert_eq!(escape_word_array_content(b"\\n", b'(', b')', true), b"\\n");
     }
 }
