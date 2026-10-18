@@ -457,6 +457,17 @@ impl<'src> ParserState<'src> {
         self.wind_dumping_comments_until_line(self.get_line_number_for_offset(source_offset))
     }
 
+    /// Advances `current_orig_line_number` to (at least) the line containing
+    /// `source_offset`, without winding/extracting comments and without
+    /// pushing the new line number into any active breakable entries.
+    pub(crate) fn advance_line_number_for_offset_without_marking_multiline(
+        &mut self,
+        source_offset: SourceOffset,
+    ) {
+        let line_number = self.get_line_number_for_offset(source_offset);
+        self.current_orig_line_number = line_number.max(self.current_orig_line_number);
+    }
+
     pub(crate) fn wind_dumping_comments(&mut self, maybe_max_line_number: Option<LineNumber>) {
         // Return early if we're already at/past
         // the max line number

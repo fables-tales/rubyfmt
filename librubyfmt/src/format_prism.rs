@@ -2774,6 +2774,8 @@ fn format_brace_block_body<'src>(
     closing_end_offset: usize,
     end_offset: usize,
 ) {
+    let has_body = body.is_some();
+
     if let Some(body) = body {
         if let Some(statements_node) = body.as_statements_node() {
             let statements = statements_node.body();
@@ -2807,7 +2809,13 @@ fn format_brace_block_body<'src>(
     }
 
     ps.dedent(|ps| ps.emit_soft_indent());
-    ps.wind_dumping_comments_until_offset(end_offset);
+
+    if has_body || ps.has_comment_in_offset_span(opening_start_offset, end_offset) {
+        ps.wind_dumping_comments_until_offset(end_offset);
+    } else {
+        // If this block has no body and no comments, render single-line regardless of the original
+        ps.advance_line_number_for_offset_without_marking_multiline(end_offset);
+    }
     ps.shift_comments();
 }
 
