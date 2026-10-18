@@ -333,7 +333,7 @@ impl<'src> AbstractTokenTarget<'src> for BreakableCallChainEntry<'src> {
     }
 
     fn is_multiline(&self) -> bool {
-        if self.begins_with_heredoc() {
+        if self.heredoc_in_receiver() {
             return true;
         }
 
@@ -348,12 +348,7 @@ impl<'src> AbstractTokenTarget<'src> for BreakableCallChainEntry<'src> {
                 be.any_collapsing_newline_has_heredoc_content()
             }
             _ => false,
-        }) || matches!(
-            self.tokens.first(),
-            Some(AbstractLineToken::ConcreteLineToken(
-                ConcreteLineToken::HeredocStart { .. }
-            ))
-        )
+        }) || self.heredoc_in_receiver()
     }
 }
 
@@ -395,13 +390,25 @@ impl<'src> BreakableCallChainEntry<'src> {
         self.in_string_embexpr
     }
 
-    fn begins_with_heredoc(&self) -> bool {
-        matches!(
-            self.tokens.first(),
-            Some(AbstractLineToken::ConcreteLineToken(
-                ConcreteLineToken::HeredocStart { .. }
-            ))
-        )
+    fn heredoc_in_receiver(&self) -> bool {
+        let mut seen_heredoc = false;
+        for t in &self.tokens {
+            match t {
+                AbstractLineToken::ConcreteLineToken(
+                    ConcreteLineToken::HeredocStart { .. } | ConcreteLineToken::HeredocClose { .. },
+                ) => seen_heredoc = true,
+                AbstractLineToken::ConcreteLineToken(
+                    ConcreteLineToken::Dot
+                    | ConcreteLineToken::LonelyOperator
+                    | ConcreteLineToken::ColonColon,
+                ) => return seen_heredoc,
+                _ => {}
+            }
+        }
+
+        // If we've made it to here, that means this is a caller with no dot,
+        // so it cannot possibly have had a heredoc anywhere in
+        false
     }
 
     pub fn single_line_len(&self) -> usize {
