@@ -2134,21 +2134,15 @@ fn format_unary_operator<'src>(
 
     ps.with_start_of_line(false, |ps| {
         ps.emit_ident(operator_symbol);
-        // +/- with numerals lex differently with and without spaces, e.g.
-        // `+ 1` is not equivalent to `+1`, see https://github.com/ruby/prism/blob/7e8c702c33cd6188a9a34bb2f87d6841862b29b9/src/prism.c#L11145
-        // `+1` will be an `IntegerNode`, so here we'll always render with a space.
-        if matches!(method_name, b"-@" | b"+@")
-            && leftmost_receiver_is_numeric_literal(
-                call_node
-                    .receiver()
-                    .expect("Unary operators must have a receiver"),
-            )
-        {
-            ps.emit_space();
-        }
         let receiver = call_node
             .receiver()
             .expect("Unary operators must have a receiver");
+        // +/- with numerals lex differently with and without spaces, e.g.
+        // `+ 1` is not equivalent to `+1`, see https://github.com/ruby/prism/blob/7e8c702c33cd6188a9a34bb2f87d6841862b29b9/src/prism.c#L11145
+        // `+1` will be an `IntegerNode`, so here we'll always render with a space.
+        if matches!(method_name, b"-@" | b"+@") && leftmost_receiver_is_numeric_literal(&receiver) {
+            ps.emit_space();
+        }
         if is_not_with_parens {
             ps.breakable_of(BreakableDelims::for_method_call(), |ps| {
                 ps.emit_soft_indent();
@@ -2160,25 +2154,22 @@ fn format_unary_operator<'src>(
     });
 }
 
-fn leftmost_receiver_is_numeric_literal(node: prism::Node) -> bool {
+fn leftmost_receiver_is_numeric_literal(node: &prism::Node) -> bool {
     use prism::Node;
 
-    let mut current = node;
-    loop {
-        if matches!(
-            current,
-            Node::IntegerNode { .. }
-                | Node::FloatNode { .. }
-                | Node::RationalNode { .. }
-                | Node::ImaginaryNode { .. }
-        ) {
-            return true;
-        }
+    if matches!(
+        node,
+        Node::IntegerNode { .. }
+            | Node::FloatNode { .. }
+            | Node::RationalNode { .. }
+            | Node::ImaginaryNode { .. }
+    ) {
+        return true;
+    }
 
-        match current.as_call_node().and_then(|call| call.receiver()) {
-            Some(receiver) => current = receiver,
-            None => return false,
-        }
+    match node.as_call_node().and_then(|call| call.receiver()) {
+        Some(receiver) => leftmost_receiver_is_numeric_literal(&receiver),
+        None => false,
     }
 }
 
