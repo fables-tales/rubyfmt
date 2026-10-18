@@ -2186,10 +2186,23 @@ fn format_infix_operator<'src>(
             }
             ps.reset_space_count();
 
-            if let Some((inner_left, inner_op, inner_right)) = as_binary_op(&right) {
-                format_infix_operator(ps, inner_left, inner_op, inner_right);
+            let format_right = |ps: &mut ParserState<'src>| {
+                if let Some((inner_left, inner_op, inner_right)) = as_binary_op(&right) {
+                    format_infix_operator(ps, inner_left, inner_op, inner_right);
+                } else {
+                    format_node(ps, right);
+                }
+            };
+
+            if is_comparison {
+                // Since comparison operators always keep the right-hand side on the
+                // same output line as the left-hand side, there's no natural place to
+                // render a blank line between the two operands. Without this, a blank line here gets
+                // hoisted to the nearest preceding hard newline in the render queue,
+                // which can land far away with the wrong indentation, producing non-idempotent output.
+                ps.with_user_newlines_disabled(format_right);
             } else {
-                format_node(ps, right);
+                format_right(ps);
             }
         });
     });
