@@ -352,9 +352,14 @@ impl<'src> AbstractLineToken<'src> {
                 let kind = hds.kind;
                 let symbol = hds.closing_symbol();
 
+                let stripped_final_newline = hds.stripped_final_newline;
                 let s = hds.render_as_bytes();
                 if !s.is_empty() {
                     out.push(clats_direct_part(s));
+                    out.push(cltats_hard_newline());
+                } else if stripped_final_newline {
+                    // The body is a single blank line, which is stripped during
+                    // rendering, so re-emit it here to preserve the blank line.
                     out.push(cltats_hard_newline());
                 }
                 if !kind.is_bare() {

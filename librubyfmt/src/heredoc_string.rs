@@ -100,6 +100,7 @@ pub struct HeredocString<'src> {
     pub kind: HeredocKind,
     pub segments: Vec<HeredocSegment>,
     pub indent: ColNumber,
+    pub stripped_final_newline: bool,
 }
 
 impl<'src> HeredocString<'src> {
@@ -108,12 +109,14 @@ impl<'src> HeredocString<'src> {
         kind: HeredocKind,
         segments: Vec<HeredocSegment>,
         indent: ColNumber,
+        stripped_final_newline: bool,
     ) -> Self {
         HeredocString {
             symbol,
             kind,
             segments,
             indent,
+            stripped_final_newline,
         }
     }
 
