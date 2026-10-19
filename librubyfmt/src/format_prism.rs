@@ -752,6 +752,21 @@ fn format_interpolated_string_node<'src>(
 
     ps.at_offset(interpolated_string_node.location().start_offset());
 
+    if is_backslash_string_interpolation
+        && ps.has_comment_in_offset_span(
+            interpolated_string_node.location().start_offset(),
+            interpolated_string_node.location().end_offset(),
+        )
+    {
+        // Comments anwhere inside a backslash-concatenated string cannot be
+        // rendered between the parts without terminating the expression, so
+        // we eagerly hoist them above the whole expression instead
+        ps.hoist_comments_in_span(
+            interpolated_string_node.location().start_offset(),
+            interpolated_string_node.location().end_offset(),
+        );
+    }
+
     if is_heredoc {
         format_heredoc(
             ps,

@@ -184,6 +184,19 @@ impl<'src> ParserState<'src> {
             .has_comment_in_offsets(start_offset, end_offset)
     }
 
+    pub(crate) fn hoist_comments_in_span(
+        &mut self,
+        start_offset: SourceOffset,
+        end_offset: SourceOffset,
+    ) {
+        if let Some(comments) = self
+            .comments_hash
+            .take_comments_in_offsets(start_offset, end_offset)
+        {
+            self.insert_comment_collection(comments);
+        }
+    }
+
     pub(crate) fn reset_space_count(&mut self) {
         self.spaces_after_last_newline = self.current_spaces();
     }

@@ -225,6 +225,38 @@ impl FileComments {
             .is_some_and(|&offset| offset < end_offset)
     }
 
+    pub fn take_comments_in_offsets(
+        &mut self,
+        start_offset: SourceOffset,
+        end_offset: SourceOffset,
+    ) -> Option<CommentBlock> {
+        let first = self
+            .comment_start_offsets
+            .partition_point(|&offset| offset < start_offset);
+        let mut last = first;
+        while last < self.comment_start_offsets.len()
+            && self.comment_start_offsets[last] < end_offset
+        {
+            last += 1;
+        }
+
+        if first == last {
+            return None;
+        }
+
+        let first_line = self.other_comments[first].0;
+        let last_line = self.other_comments[last - 1].0;
+        let comments: Vec<Cow<'static, [u8]>> = self.other_comments[first..last]
+            .iter()
+            .map(|(_, comment)| Cow::Owned(comment.clone()))
+            .collect();
+
+        self.other_comments.drain(first..last);
+        self.comment_start_offsets.drain(first..last);
+
+        Some(CommentBlock::new(first_line..last_line + 1, comments))
+    }
+
     pub fn extract_comments_to_line(
         &mut self,
         starting_line_number: LineNumber,
@@ -263,6 +295,9 @@ impl FileComments {
             last_line = Some(index + line_count - 1);
             comment_block_with_spaces.push(comment_contents);
         }
+
+        // Keep the offset list in sync with `other_comments`.
+        self.comment_start_offsets.drain(..split_point);
 
         if line_number > last_line.unwrap() + 1 {
             last_line = Some(line_number);
