@@ -1,3 +1,6 @@
+# Override backtick execution for the `%x`/backtick literal cases
+def `(cmd); cmd; end
+
 puts ''
 puts ""
 puts %Q("")
@@ -90,6 +93,47 @@ puts %q(\\"\\")
 puts %q(\))
 puts %Q(\))
 puts %<foo\>>
+puts %q{\'}
+puts %q(\')
+puts %q[\']
+puts %q|\'|
+puts %Q{\'}
+puts %Q(\')
+puts %q{it\'s}
+puts %q(it\'s)
+
+puts %Q"a\"b"
+puts %"a\"b"
+puts %Q"a\"b\"c"
+local_q = 4
+puts %Q"a\"#{local_q}b"
+
+puts %x(echo hello)
+puts %x(echo `date`)
+puts %x(foo\tbar)
+puts %x{foo\{bar}
+puts %x{foo\}bar}
+puts %x[foo\[bar]
+puts %x[foo\]bar]
+puts %x|foo\|bar|
+puts %x(foo#{1}bar)
+puts %x{foo#{1}\{bar}
+puts %x(foo\\bar)
+puts `echo hello`
+puts `foo\`bar`
+
+puts %r{foo}.source
+puts %r{foo\{bar}.source
+puts %r{foo\}bar}.source
+puts %r(foo\(bar\)).source
+puts %r[foo\[bar\]].source
+puts %r|foo\|bar|.source
+puts /foo\/bar/.source
+puts %r{foo#{1}bar}.source
+
+puts %s(foo).inspect
+puts %s[foo].inspect
+puts %s{foo}.inspect
 
 puts(
   1,

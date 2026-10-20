@@ -1089,6 +1089,17 @@ fn format_interpolated_x_string_node<'src>(
     ps: &mut ParserState<'src>,
     interpolated_x_string_node: prism::InterpolatedXStringNode<'src>,
 ) {
+    let start_delim = *interpolated_x_string_node
+        .opening_loc()
+        .as_slice()
+        .last()
+        .unwrap();
+    let end_delim = *interpolated_x_string_node
+        .closing_loc()
+        .as_slice()
+        .last()
+        .unwrap();
+
     ps.emit_ident(b"`");
 
     ps.with_start_of_line(false, |ps| {
@@ -1097,7 +1108,16 @@ fn format_interpolated_x_string_node<'src>(
             let end_offset = part.location().end_offset();
 
             ps.at_offset(start_offset);
-            format_node(ps, part);
+            if let Some(string_node) = part.as_string_node() {
+                let escaped = crate::string_escape::convert_x_string_escapes(
+                    string_node.content_loc().as_slice(),
+                    start_delim,
+                    end_delim,
+                );
+                ps.emit_quoted_string_content(escaped);
+            } else {
+                format_node(ps, part);
+            }
             ps.at_offset(end_offset);
         }
     });
@@ -2942,6 +2962,8 @@ fn format_array_node<'src>(ps: &mut ParserState<'src>, array_node: prism::ArrayN
 
     let orig_delim = opening.and_then(|s| s.get(2).copied()).unwrap_or(b'[');
 
+    let is_interpolating = opening.is_some_and(|s| s.get(1).is_some_and(u8::is_ascii_uppercase));
+
     if is_word_array {
         ps.emit_ident(&opening.unwrap()[..2]);
     }
@@ -2969,6 +2991,7 @@ fn format_array_node<'src>(ps: &mut ParserState<'src>, array_node: prism::ArrayN
                     array_node.elements(),
                     array_node.location().end_offset(),
                     orig_delim,
+                    is_interpolating,
                 );
             });
         });
@@ -3005,6 +3028,7 @@ fn format_word_array_elements<'src>(
     node_list: prism::NodeList<'src>,
     end_offset: SourceOffset,
     orig_open_delim: u8,
+    is_interpolating: bool,
 ) {
     let args_count = node_list.len();
     let orig_close_delim = matching_delimiter(orig_open_delim);
@@ -3022,6 +3046,7 @@ fn format_word_array_elements<'src>(
                         string_node.content_loc().as_slice(),
                         orig_open_delim,
                         orig_close_delim,
+                        is_interpolating,
                     );
                     ps.emit_string_content(escaped);
                 } else if let Some(symbol_node) = expr.as_symbol_node() {
@@ -3032,6 +3057,7 @@ fn format_word_array_elements<'src>(
                             value_loc.as_slice(),
                             orig_open_delim,
                             orig_close_delim,
+                            is_interpolating,
                         );
                         ps.emit_string_content(escaped);
                     }
@@ -3042,6 +3068,7 @@ fn format_word_array_elements<'src>(
                         interpolated_symbol_node.parts(),
                         orig_open_delim,
                         orig_close_delim,
+                        is_interpolating,
                     );
                 } else if let Some(interpolated_string_node) = expr.as_interpolated_string_node() {
                     ps.at_offset(interpolated_string_node.location().start_offset());
@@ -3050,6 +3077,7 @@ fn format_word_array_elements<'src>(
                         interpolated_string_node.parts(),
                         orig_open_delim,
                         orig_close_delim,
+                        is_interpolating,
                     );
                 } else {
                     // This branch shouldn't happen, but we'll have a fallback just in case
@@ -3083,6 +3111,7 @@ fn format_word_array_interpolated_parts<'src>(
     parts: prism::NodeList<'src>,
     orig_open_delim: u8,
     orig_close_delim: u8,
+    is_interpolating: bool,
 ) {
     for part in parts.iter() {
         let start_offset = part.location().start_offset();
@@ -3095,6 +3124,7 @@ fn format_word_array_interpolated_parts<'src>(
                 string_node.content_loc().as_slice(),
                 orig_open_delim,
                 orig_close_delim,
+                is_interpolating,
             );
             ps.emit_string_content(escaped);
         } else if let Some(embedded_statements_node) = part.as_embedded_statements_node() {
@@ -4981,10 +5011,18 @@ fn format_while_node<'src>(ps: &mut ParserState<'src>, while_node: prism::WhileN
 }
 
 fn format_x_string_node<'src>(ps: &mut ParserState<'src>, x_string_node: prism::XStringNode<'src>) {
+    let start_delim = *x_string_node.opening_loc().as_slice().last().unwrap();
+    let end_delim = *x_string_node.closing_loc().as_slice().last().unwrap();
+
     ps.emit_ident(b"`");
     // Same as quoted strings: a newline here is command-string content, not a
     // heredoc line, so squiggly indent must not land inside the backticks.
-    ps.emit_quoted_string_content(x_string_node.content_loc().as_slice());
+    let escaped = crate::string_escape::convert_x_string_escapes(
+        x_string_node.content_loc().as_slice(),
+        start_delim,
+        end_delim,
+    );
+    ps.emit_quoted_string_content(escaped);
     ps.emit_ident(b"`");
 }
 
