@@ -3,4 +3,9 @@ def test
 "b") ==
 
 "d"
+
+  @y.bar(
+"c") ==
+# Some comment about why this is formatted funkily
+"e"
 end
