@@ -6,6 +6,7 @@ use memchr::memchr_iter;
 use crate::comment_block::CommentBlock;
 use crate::parser_state::line_difference_requires_newline;
 use crate::types::{LineNumber, SourceOffset};
+use crate::util::BOM;
 
 /// A vector of offsets in the source code where lines start, which
 /// we use to detect what line a given offset is one.
@@ -69,6 +70,8 @@ impl FileComments {
 
         line_starts.push(0); // First line always starts at position 0
 
+        let bom_len = if source.starts_with(BOM) { 3 } else { 0 };
+
         let mut line_start = 0;
         let mut lineno = 1;
         let mut inside_embdoc = false;
@@ -76,7 +79,8 @@ impl FileComments {
         for i in memchr_iter(b'\n', source) {
             line_starts.push(i + 1);
 
-            if Self::line_has_ruby(&source[line_start..i], &mut inside_embdoc) {
+            let bom_skip = if line_start == 0 { bom_len } else { 0 };
+            if Self::line_has_ruby(&source[line_start + bom_skip..i], &mut inside_embdoc) {
                 lines_with_ruby.push(lineno);
             }
 
@@ -86,7 +90,8 @@ impl FileComments {
 
         // Handle last line if no trailing newline
         if line_start < source.len() {
-            let line = &source[line_start..];
+            let bom_skip = if line_start == 0 { bom_len } else { 0 };
+            let line = &source[line_start + bom_skip..];
             if Self::line_has_ruby(line, &mut inside_embdoc) {
                 lines_with_ruby.push(lineno);
             }
