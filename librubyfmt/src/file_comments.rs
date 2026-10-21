@@ -17,16 +17,16 @@ use crate::util::BOM;
 #[derive(Debug, Clone, Default)]
 pub struct LineIndex {
     // Stores the byte offset of each line's start position
-    line_starts: Vec<usize>,
+    line_starts: Vec<SourceOffset>,
 }
 
 impl LineIndex {
-    fn from_vec(line_starts: Vec<usize>) -> Self {
+    fn from_vec(line_starts: Vec<SourceOffset>) -> Self {
         LineIndex { line_starts }
     }
 
     // Get the line number (1-based) for a given byte offset
-    pub fn get_line_number(&self, offset: usize) -> usize {
+    pub fn get_line_number(&self, offset: SourceOffset) -> usize {
         let line = match self.line_starts.binary_search(&offset) {
             // Exact match means we're at the start of a line
             Ok(line) => line,
@@ -60,7 +60,7 @@ pub struct FileComments {
     last_lineno: LineNumber,
     line_index: LineIndex,
     /// Sorted list of byte offsets where comments start
-    comment_start_offsets: Vec<usize>,
+    comment_start_offsets: Vec<SourceOffset>,
 }
 
 impl FileComments {
@@ -77,7 +77,7 @@ impl FileComments {
         let mut inside_embdoc = false;
 
         for i in memchr_iter(b'\n', source) {
-            line_starts.push(i + 1);
+            line_starts.push((i as SourceOffset) + 1);
 
             let bom_skip = if line_start == 0 { bom_len } else { 0 };
             if Self::line_has_ruby(&source[line_start + bom_skip..i], &mut inside_embdoc) {
@@ -106,12 +106,12 @@ impl FileComments {
 
         for comment in comments {
             file_comments.push_comment(
-                line_index.get_line_number(comment.location().start_offset()) as u64,
+                line_index.get_line_number(comment.location().start()) as u64,
                 comment.text().trim_ascii_end().to_vec(),
             );
             file_comments
                 .comment_start_offsets
-                .push(comment.location().start_offset());
+                .push(comment.location().start());
         }
 
         file_comments.last_lineno = line_index.line_starts.len() as u64;
@@ -282,7 +282,7 @@ impl FileComments {
 
     // Note: this is currently only used for Prism support, see the details
     // on the `LineIndex` struct for context
-    pub fn get_line_number_for_offset(&self, source_offset: usize) -> u64 {
+    pub fn get_line_number_for_offset(&self, source_offset: SourceOffset) -> u64 {
         self.line_index.get_line_number(source_offset) as u64
     }
 }
