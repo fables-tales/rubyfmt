@@ -1021,6 +1021,7 @@ fn format_inner_string<'src>(
 
                 if peekable.peek().is_none() && contents.ends_with(b"\n") {
                     contents.pop();
+                    ps.mark_heredoc_final_newline_popped();
                 }
 
                 ps.at_offset(part.location().end_offset());

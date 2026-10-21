@@ -74,6 +74,7 @@ pub struct ParserState<'src> {
     /// block. Used during call-chain element offset jumps, where a trailing-dot blank line in
     /// the source must not produce an invalid blank line before a leading-dot comment.
     suppress_blank_before_comment: bool,
+    popped_heredoc_final_newline: bool,
 }
 
 impl<'src> ParserState<'src> {
@@ -117,12 +118,14 @@ impl<'src> ParserState<'src> {
         );
         self.current_orig_line_number = end_line;
 
+        let stripped_final_newline = next_ps.popped_heredoc_final_newline;
         let segments = next_ps.render_to_segments();
         self.heredoc_strings.push(HeredocString::new(
             symbol.into(),
             kind,
             segments,
             self.current_spaces(),
+            stripped_final_newline,
         ));
     }
 
@@ -672,6 +675,7 @@ impl<'src> ParserState<'src> {
             let kind = next_heredoc.kind;
             let symbol = next_heredoc.closing_symbol();
             let space_count = next_heredoc.indent;
+            let stripped_final_newline = next_heredoc.stripped_final_newline;
             let string_contents = next_heredoc.render_as_bytes();
 
             // When inside a squiggly heredoc context and this is a non-squiggly heredoc,
@@ -689,6 +693,11 @@ impl<'src> ParserState<'src> {
                         part: Cow::Owned(string_contents),
                     });
                 }
+                self.emit_newline();
+            } else if stripped_final_newline {
+                // The body is a single blank line (e.g. `<<~RUBY\n\nRUBY`).
+                // Rendering strips the only newline, so re-emit it here to
+                // preserve the blank line.
                 self.emit_newline();
             }
 
@@ -751,6 +760,7 @@ impl<'src> ParserState<'src> {
             scopes: vec![vec![]],
             inside_squiggly_heredoc: false,
             suppress_blank_before_comment: false,
+            popped_heredoc_final_newline: false,
         }
     }
 
@@ -806,6 +816,10 @@ impl<'src> ParserState<'src> {
 
     pub(crate) fn disable_user_newlines(&mut self) {
         self.insert_user_newlines = false;
+    }
+
+    pub(crate) fn mark_heredoc_final_newline_popped(&mut self) {
+        self.popped_heredoc_final_newline = true;
     }
 
     pub(crate) fn with_user_newlines_disabled<F>(&mut self, f: F)
