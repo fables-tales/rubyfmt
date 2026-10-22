@@ -60,7 +60,7 @@ pub enum FormatError {
 }
 
 pub fn format_buffer(buf: &[u8]) -> Result<Vec<u8>, RichFormatError> {
-    let out_data = vec![];
+    let out_data = Vec::with_capacity(buf.len());
     let mut output = Cursor::new(out_data);
 
     if buf.starts_with(BOM) {
