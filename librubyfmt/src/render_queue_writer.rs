@@ -44,7 +44,7 @@ impl<'src> RenderQueueWriter<'src> {
     }
 
     pub fn write<W: Write>(self, writer: &mut W) -> io::Result<()> {
-        let mut accum = Intermediary::new();
+        let mut accum = Intermediary::with_capacity(self.tokens.len());
         let mut ctx = RenderContext::default();
         #[cfg(debug_assertions)]
         {
@@ -57,7 +57,7 @@ impl<'src> RenderQueueWriter<'src> {
     /// Convert the render queue to final tokens without writing them.
     /// This is used for extracting heredoc segments.
     pub fn into_tokens(self) -> Vec<ConcreteLineToken<'src>> {
-        let mut accum = Intermediary::new();
+        let mut accum = Intermediary::with_capacity(self.tokens.len());
         let mut ctx = RenderContext::default();
         Self::render_as(&mut accum, &mut ctx, self.tokens);
         accum.into_tokens()
@@ -69,25 +69,20 @@ impl<'src> RenderQueueWriter<'src> {
         mut tokens: Vec<ConcreteLineTokenAndTargets<'src>>,
     ) -> Vec<ConcreteLineTokenAndTargets<'src>> {
         use ConcreteLineToken::*;
-        let token_len = tokens.len();
         {
-            let mut peekable = tokens.drain(..).enumerate().peekable();
+            let mut peekable = tokens.drain(..).peekable();
             let mut current_heredoc_kind: Option<HeredocKind> = None;
 
-            while let Some((index, mut next_token)) = peekable.next() {
+            while let Some(mut next_token) = peekable.next() {
                 // Do any additional indentation changes caused by call chain rendering
                 match &next_token {
                     ConcreteLineTokenAndTargets::ConcreteLineToken(Indent { depth }) => {
-                        let is_ending_heredoc_token = token_len > index
-                            && matches!(
-                                peekable.peek(),
-                                Some((
-                                    _,
-                                    ConcreteLineTokenAndTargets::ConcreteLineToken(
-                                        HeredocClose { .. }
-                                    )
-                                ))
-                            );
+                        let is_ending_heredoc_token = matches!(
+                            peekable.peek(),
+                            Some(ConcreteLineTokenAndTargets::ConcreteLineToken(
+                                HeredocClose { .. }
+                            ))
+                        );
                         if !is_ending_heredoc_token {
                             next_token = clats_indent(depth + (accum.additional_indent * 2))
                         }
@@ -344,31 +339,19 @@ impl<'src> RenderQueueWriter<'src> {
         // `Cursor<Vec<u8>>`, because every write can re-check and grow the
         // underlying vector.
         const WRITE_BUFFER_SIZE: usize = 8 * 1024;
-        let mut buffer = [0u8; WRITE_BUFFER_SIZE];
-        let mut buffer_len = 0;
+        let mut buffer = Vec::with_capacity(WRITE_BUFFER_SIZE);
 
         for line_token in tokens {
             let s = line_token.into_ruby();
-            if s.len() > WRITE_BUFFER_SIZE {
-                if buffer_len > 0 {
-                    writer.write_all(&buffer[..buffer_len])?;
-                    buffer_len = 0;
-                }
-                writer.write_all(&s)?;
-                continue;
+            buffer.extend_from_slice(&s);
+            if buffer.len() >= WRITE_BUFFER_SIZE {
+                writer.write_all(&buffer)?;
+                buffer.clear();
             }
-
-            if buffer_len + s.len() > WRITE_BUFFER_SIZE {
-                writer.write_all(&buffer[..buffer_len])?;
-                buffer_len = 0;
-            }
-
-            buffer[buffer_len..buffer_len + s.len()].copy_from_slice(&s);
-            buffer_len += s.len();
         }
 
-        if buffer_len > 0 {
-            writer.write_all(&buffer[..buffer_len])?;
+        if !buffer.is_empty() {
+            writer.write_all(&buffer)?;
         }
 
         Ok(())

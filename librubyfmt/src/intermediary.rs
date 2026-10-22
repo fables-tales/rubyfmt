@@ -20,9 +20,9 @@ pub struct Intermediary<'src> {
 }
 
 impl<'src> Intermediary<'src> {
-    pub fn new() -> Self {
+    pub fn with_capacity(capacity: usize) -> Self {
         Intermediary {
-            tokens: vec![],
+            tokens: Vec::with_capacity(capacity),
             current_line_metadata: LineMetadata::new(),
             previous_line_metadata: None,
             index_of_last_hard_newline: 0,
