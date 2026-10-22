@@ -32,3 +32,6 @@ harness = false
 [[bench]]
 name = "formatting"
 harness = false
+
+[profile.release]
+debug = true
