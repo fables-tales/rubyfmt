@@ -7,24 +7,23 @@ use crate::types::{LineNumber, SourceOffset};
 use crate::util::BOM;
 
 #[derive(Clone, Debug, Default)]
-pub struct FileComments<'src> {
+pub struct FileComments {
     start_of_file_contiguous_comment_lines: Option<CommentBlock>,
     /// A list of comments, sorted in order by `LineNumber`
     other_comments: Vec<(LineNumber, Vec<u8>)>,
     /// Sorted list of line numbers that contain Ruby code (not comments/blank)
     lines_with_ruby: Vec<LineNumber>,
     last_lineno: LineNumber,
-    line_offsets: &'src [SourceOffset],
     /// Sorted list of byte offsets where comments start
     comment_start_offsets: Vec<SourceOffset>,
 }
 
-impl<'src> FileComments<'src> {
+impl FileComments {
     pub fn from_prism_comments(
         comments: ruby_prism::Comments,
         source: &[u8],
-        line_offsets: &'src [SourceOffset],
-    ) -> FileComments<'src> {
+        line_offsets: &[SourceOffset],
+    ) -> FileComments {
         let mut lines_with_ruby = Vec::new();
         let bom_len = if source.starts_with(BOM) { 3 } else { 0 };
         let mut inside_embdoc = false;
@@ -69,7 +68,6 @@ impl<'src> FileComments<'src> {
         }
 
         file_comments.last_lineno = line_offsets.len() as LineNumber;
-        file_comments.line_offsets = line_offsets;
         file_comments
     }
 
@@ -232,28 +230,5 @@ impl<'src> FileComments<'src> {
             CommentBlock::new(lowest_line..line_number + 1, comment_block_with_spaces),
             last_line.unwrap(),
         ))
-    }
-
-    pub fn get_line_number_for_offset(&self, source_offset: SourceOffset) -> LineNumber {
-        let line = match self.line_offsets.binary_search(&source_offset) {
-            // Exact match means we're at the start of a line
-            Ok(line) => line,
-
-            // No exact match, so the insertion_point is the index of the next line.
-            // We want the current line, which is insertion_point - 1
-            Err(insertion_point) => {
-                // Should only happen if we're checking an offset
-                // in the middle of the first line
-                if insertion_point == 0 {
-                    0
-                } else {
-                    insertion_point - 1
-                }
-            }
-        };
-        // These are one-offset to be equivalent to Ripper's behavior.
-        // Once we remove the Ripper version, we can 0-index these,
-        // since they're not user-facing anywhere
-        (line + 1) as LineNumber
     }
 }

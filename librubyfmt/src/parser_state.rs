@@ -59,7 +59,7 @@ pub struct ParserState<'src> {
     suppress_comments_stack: Vec<bool>,
     render_queue: BaseQueue<'src>,
     current_orig_line_number: LineNumber,
-    comments_hash: FileComments<'src>,
+    comments_hash: FileComments,
     heredoc_strings: Vec<HeredocString<'src>>,
     comments_to_insert: Option<CommentBlock>,
     breakable_entry_stack: Vec<Breakable<'src>>,
@@ -358,10 +358,6 @@ impl<'src> ParserState<'src> {
         self.current_orig_line_number = line_number;
     }
 
-    pub(crate) fn at_offset(&mut self, source_offset: SourceOffset) {
-        self.on_line(self.get_line_number_for_offset(source_offset));
-    }
-
     pub(crate) fn emit_indent(&mut self) {
         self.push_concrete_token(ConcreteLineToken::Indent {
             depth: self.current_spaces(),
@@ -456,18 +452,13 @@ impl<'src> ParserState<'src> {
         self.wind_dumping_comments(Some(line_number))
     }
 
-    pub(crate) fn wind_dumping_comments_until_offset(&mut self, source_offset: SourceOffset) {
-        self.wind_dumping_comments_until_line(self.get_line_number_for_offset(source_offset))
-    }
-
-    /// Advances `current_orig_line_number` to (at least) the line containing
-    /// `source_offset`, without winding/extracting comments and without
+    /// Advances `current_orig_line_number` to (at least) the `line_number`
+    /// without winding/extracting comments and without
     /// pushing the new line number into any active breakable entries.
     pub(crate) fn advance_line_number_for_offset_without_marking_multiline(
         &mut self,
-        source_offset: SourceOffset,
+        line_number: LineNumber,
     ) {
-        let line_number = self.get_line_number_for_offset(source_offset);
         self.current_orig_line_number = line_number.max(self.current_orig_line_number);
     }
 
@@ -668,10 +659,6 @@ impl<'src> ParserState<'src> {
             .expect("formatting context is never empty")
     }
 
-    pub(crate) fn get_line_number_for_offset(&self, source_offset: SourceOffset) -> LineNumber {
-        self.comments_hash.get_line_number_for_offset(source_offset)
-    }
-
     pub(crate) fn render_heredocs(&mut self, skip: bool) {
         // Drain to process heredocs in declaration order (FIFO).
         // When multiple heredocs are declared on the same line (e.g., #{<<A} middle #{<<B}),
@@ -754,7 +741,7 @@ impl<'src> ParserState<'src> {
 }
 
 impl<'src> ParserState<'src> {
-    pub(crate) fn new(fc: FileComments<'src>) -> Self {
+    pub(crate) fn new(fc: FileComments) -> Self {
         ParserState {
             indent_depth: IndentDepth::new(),
             start_of_line: vec![true],
