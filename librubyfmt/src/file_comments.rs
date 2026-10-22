@@ -23,7 +23,7 @@ impl<'src> FileComments<'src> {
     pub fn from_prism_comments(
         comments: ruby_prism::Comments,
         source: &[u8],
-        line_offsets: &'src [u32],
+        line_offsets: &'src [SourceOffset],
     ) -> FileComments<'src> {
         let mut lines_with_ruby = Vec::new();
         let bom_len = if source.starts_with(BOM) { 3 } else { 0 };
@@ -42,10 +42,10 @@ impl<'src> FileComments<'src> {
         }
 
         // Handle last line if no trailing newline
-        if let Some(last_line_offset) = line_offsets.last()
-            && (*last_line_offset as usize) < source.len()
+        if let Some(&last_line_offset) = line_offsets.last()
+            && (last_line_offset as usize) < source.len()
         {
-            let line_start = *last_line_offset as usize;
+            let line_start = last_line_offset as usize;
             let bom_skip = if line_start == 0 { bom_len } else { 0 };
             let line = &source[line_start + bom_skip..];
             if Self::line_has_ruby(line, &mut inside_embdoc) {
