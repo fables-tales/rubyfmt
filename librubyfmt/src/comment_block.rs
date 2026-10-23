@@ -40,26 +40,17 @@ impl CommentBlock {
         let len = comments.len();
 
         comments.into_iter().enumerate().flat_map(move |(i, c)| {
-            if c.is_empty() {
-                // Empty vecs represent blank lines
-                // If this is a trailing empty comment (at the end), keep it as an empty Comment token
-                // to bypass the HardNewLine deduplication logic. Otherwise, convert to just HardNewLine.
-                if i == len - 1 {
-                    // Trailing empty - keep as empty comment to preserve blank lines
-                    vec![
-                        ConcreteLineToken::Comment { contents: c },
-                        ConcreteLineToken::HardNewLine,
-                    ]
-                } else {
-                    // Between comments - convert to just HardNewLine
-                    vec![ConcreteLineToken::HardNewLine]
-                }
+            // If this is a trailing empty comment (at the end), keep it as an empty Comment token
+            // to bypass the HardNewLine deduplication logic. Otherwise, convert to just HardNewLine.
+            let comment = if c.is_empty() && i != len - 1 {
+                // Between comments - convert to just HardNewLine
+                None
             } else {
-                vec![
-                    ConcreteLineToken::Comment { contents: c },
-                    ConcreteLineToken::HardNewLine,
-                ]
-            }
+                Some(ConcreteLineToken::Comment { contents: c })
+            };
+            comment
+                .into_iter()
+                .chain(std::iter::once(ConcreteLineToken::HardNewLine))
         })
     }
 
