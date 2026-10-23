@@ -111,6 +111,7 @@ impl<'src> AbstractTokenTarget<'src> for BreakableEntry<'src> {
     }
 
     fn write_tokens(self, ct: ConvertType, out: &mut Vec<ConcreteLineTokenAndTargets<'src>>) {
+        out.reserve(self.tokens.len() + 2);
         match ct {
             ConvertType::MultiLine => {
                 out.push(self.delims.multi_line_open().into());
@@ -226,6 +227,7 @@ impl<'src> AbstractTokenTarget<'src> for BreakableCallChainEntry<'src> {
     }
 
     fn write_tokens(self, ct: ConvertType, out: &mut Vec<ConcreteLineTokenAndTargets<'src>>) {
+        out.reserve(self.tokens.len());
         match ct {
             ConvertType::MultiLine => {
                 for t in self.tokens {
@@ -660,11 +662,11 @@ impl<'src> ConditionalLayoutEntry<'src> {
                 > crate::render_queue_writer::MAX_LINE_LENGTH
     }
 
-    pub fn into_inline_tokens(self) -> Vec<ConcreteLineTokenAndTargets<'src>> {
-        let mut result = Vec::new();
+    pub fn write_inline_tokens(self, result: &mut Vec<ConcreteLineTokenAndTargets<'src>>) {
+        result.reserve(self.statement_tokens.len() + self.predicate_tokens.len() + 3);
 
         for token in self.statement_tokens {
-            token.write_single_line(&mut result);
+            token.write_single_line(result);
         }
 
         result.push(ConcreteLineToken::Space.into());
@@ -677,14 +679,12 @@ impl<'src> ConditionalLayoutEntry<'src> {
         result.push(ConcreteLineToken::Space.into());
 
         for token in self.predicate_tokens {
-            token.write_single_line(&mut result);
+            token.write_single_line(result);
         }
-
-        result
     }
 
-    pub fn into_block_tokens(self) -> Vec<ConcreteLineTokenAndTargets<'src>> {
-        let mut result = Vec::new();
+    pub fn write_block_tokens(self, result: &mut Vec<ConcreteLineTokenAndTargets<'src>>) {
+        result.reserve(self.predicate_tokens.len() + self.statement_tokens.len() + 7);
 
         result.push(
             ConcreteLineToken::ConditionalKeyword {
@@ -695,7 +695,7 @@ impl<'src> ConditionalLayoutEntry<'src> {
         result.push(ConcreteLineToken::Space.into());
 
         for token in self.predicate_tokens {
-            token.write_multi_line(&mut result);
+            token.write_multi_line(result);
         }
 
         result.push(ConcreteLineToken::HardNewLine.into());
@@ -707,7 +707,7 @@ impl<'src> ConditionalLayoutEntry<'src> {
         );
 
         for token in self.statement_tokens {
-            token.write_multi_line(&mut result);
+            token.write_multi_line(result);
         }
 
         result.push(ConcreteLineToken::HardNewLine.into());
@@ -718,8 +718,6 @@ impl<'src> ConditionalLayoutEntry<'src> {
             .into(),
         );
         result.push(ConcreteLineToken::End.into());
-
-        result
     }
 }
 
