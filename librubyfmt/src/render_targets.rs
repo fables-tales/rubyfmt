@@ -799,3 +799,102 @@ impl MultilineTracker {
         self.is_multiline
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn ident(name: &'static [u8]) -> AbstractLineToken<'static> {
+        AbstractLineToken::ConcreteLineToken(ConcreteLineToken::MethodName { name })
+    }
+
+    fn names(tokens: &[AbstractLineToken<'static>]) -> Vec<&'static [u8]> {
+        tokens
+            .iter()
+            .filter_map(|token| match token {
+                AbstractLineToken::ConcreteLineToken(ConcreteLineToken::MethodName { name }) => {
+                    Some(*name)
+                }
+                _ => None,
+            })
+            .collect()
+    }
+
+    fn concrete_names(tokens: &[ConcreteLineTokenAndTargets<'static>]) -> Vec<&'static [u8]> {
+        tokens
+            .iter()
+            .filter_map(|token| match token {
+                ConcreteLineTokenAndTargets::ConcreteLineToken(ConcreteLineToken::MethodName {
+                    name,
+                }) => Some(*name),
+                _ => None,
+            })
+            .collect()
+    }
+
+    #[test]
+    fn conditional_layout_tracks_phase_boundary() {
+        let mut cle = ConditionalLayoutEntry::new(ConditionalKeyword::If, 0);
+
+        cle.push(ident(b"statement"));
+        assert_eq!(cle.len(), 1);
+        assert_eq!(names(cle.statement_tokens()), vec![&b"statement"[..]]);
+        assert!(cle.predicate_tokens().is_empty());
+
+        cle.switch_to_predicate();
+        assert_eq!(cle.len(), 0);
+
+        cle.push(ident(b"predicate"));
+        assert_eq!(cle.len(), 1);
+        assert_eq!(names(cle.statement_tokens()), vec![&b"statement"[..]]);
+        assert_eq!(names(cle.predicate_tokens()), vec![&b"predicate"[..]]);
+    }
+
+    #[test]
+    fn conditional_layout_insert_at_respects_phase() {
+        let mut cle = ConditionalLayoutEntry::new(ConditionalKeyword::If, 0);
+
+        cle.push(ident(b"statement_a"));
+        cle.insert_at(1, [ident(b"statement_b")]);
+        assert_eq!(
+            names(cle.statement_tokens()),
+            vec![&b"statement_a"[..], &b"statement_b"[..]]
+        );
+        assert!(cle.predicate_tokens().is_empty());
+
+        cle.switch_to_predicate();
+        cle.push(ident(b"predicate_a"));
+        cle.insert_at(0, [ident(b"predicate_b")]);
+        assert_eq!(cle.len(), 2);
+        assert_eq!(
+            names(cle.predicate_tokens()),
+            vec![&b"predicate_b"[..], &b"predicate_a"[..]]
+        );
+        assert_eq!(
+            names(cle.statement_tokens()),
+            vec![&b"statement_a"[..], &b"statement_b"[..]]
+        );
+    }
+
+    #[test]
+    fn conditional_layout_renders_in_phase_order() {
+        let mut cle = ConditionalLayoutEntry::new(ConditionalKeyword::If, 0);
+        cle.push(ident(b"statement"));
+        cle.switch_to_predicate();
+        cle.push(ident(b"predicate"));
+
+        let mut inline = Vec::new();
+        cle.clone().write_inline_tokens(&mut inline);
+        assert_eq!(
+            concrete_names(&inline),
+            vec![&b"statement"[..], &b"predicate"[..]]
+        );
+
+        let mut block = Vec::new();
+        cle.write_block_tokens(&mut block);
+        assert_eq!(
+            concrete_names(&block),
+            vec![&b"predicate"[..], &b"statement"[..]]
+        );
+    }
+}
