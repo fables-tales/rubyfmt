@@ -472,7 +472,7 @@ fn format_and_node<'src>(ps: &mut ParserState<'src>, and_node: prism::AndNode<'s
             format_infix_operator(
                 ps,
                 and_node.left(),
-                and_node.operator_loc().as_slice(),
+                and_node.operator_loc(),
                 and_node.right(),
             );
         });
@@ -2088,7 +2088,9 @@ fn format_call_node<'src>(
                     format_infix_operator(
                         ps,
                         call_node.receiver().unwrap(),
-                        method_name,
+                        call_node
+                            .message_loc()
+                            .expect("infix operator should have a message loc"),
                         // For infix operators, we still get an ArgumentsNode, but it will
                         // always be an argument list of a single node.
                         call_node.arguments().unwrap().arguments().first().unwrap(),
@@ -2170,9 +2172,10 @@ fn format_unary_operator<'src>(
 fn format_infix_operator<'src>(
     ps: &mut ParserState<'src>,
     left: prism::Node<'src>,
-    operator: &'src [u8],
+    operator_loc: prism::Location<'src>,
     right: prism::Node<'src>,
 ) {
+    let operator = operator_loc.as_slice();
     ps.with_formatting_context(FormattingContext::Binary, |ps| {
         ps.with_start_of_line(false, |ps| {
             // Check if left and right are also binary operators so we recurse back and handle it here.
@@ -2182,31 +2185,40 @@ fn format_infix_operator<'src>(
             //   bar &&
             //   baz
             // ```
-            if let Some((inner_left, inner_op, inner_right)) = as_binary_op(&left) {
-                format_infix_operator(ps, inner_left, inner_op, inner_right);
+            if let Some((inner_left, inner_op_loc, inner_right)) = as_binary_op(&left) {
+                format_infix_operator(ps, inner_left, inner_op_loc, inner_right);
             } else {
                 ps.dedent(|ps| format_node(ps, left));
             }
 
-            let comparison_operators: &[&[u8]] =
+            const COMPARISON_OPERATORS: &[&[u8]] =
                 &[b">", b">=", b"===", b"==", b"<", b"<=", b"<=>", b"!="];
-            let is_comparison = comparison_operators.contains(&operator);
+            let is_comparison = COMPARISON_OPERATORS.contains(&operator);
+
+            // Comments between the operands need their own line, otherwise
+            // they get hoisted to the nearest preceding newline, which can be far
+            // away and at the wrong indentation.
+            let keep_rhs_on_same_line = is_comparison
+                && !ps.has_comments_in_line(
+                    ps.get_line_number_for_offset(operator_loc.start_offset()),
+                    ps.get_line_number_for_offset(right.location().start_offset()),
+                );
 
             ps.emit_space();
             ps.emit_ident(operator);
 
-            if is_comparison {
-                // For comparison operators, we always put the right-hand side
-                // on the same line as the left-hand side.
+            if keep_rhs_on_same_line {
                 ps.emit_space();
+                ps.reset_space_count();
+                ps.with_user_newlines_disabled(|ps| ps.at_offset(right.location().start_offset()));
             } else {
                 ps.emit_soft_newline();
                 ps.emit_soft_indent();
+                ps.reset_space_count();
             }
-            ps.reset_space_count();
 
-            if let Some((inner_left, inner_op, inner_right)) = as_binary_op(&right) {
-                format_infix_operator(ps, inner_left, inner_op, inner_right);
+            if let Some((inner_left, inner_op_loc, inner_right)) = as_binary_op(&right) {
+                format_infix_operator(ps, inner_left, inner_op_loc, inner_right);
             } else {
                 format_node(ps, right);
             }
@@ -2218,21 +2230,13 @@ fn format_infix_operator<'src>(
 /// and return its components (left, operator, right) if so.
 fn as_binary_op<'src>(
     node: &prism::Node<'src>,
-) -> Option<(prism::Node<'src>, &'src [u8], prism::Node<'src>)> {
+) -> Option<(prism::Node<'src>, prism::Location<'src>, prism::Node<'src>)> {
     if let Some(and_node) = node.as_and_node() {
-        return Some((
-            and_node.left(),
-            and_node.operator_loc().as_slice(),
-            and_node.right(),
-        ));
+        return Some((and_node.left(), and_node.operator_loc(), and_node.right()));
     }
 
     if let Some(or_node) = node.as_or_node() {
-        return Some((
-            or_node.left(),
-            or_node.operator_loc().as_slice(),
-            or_node.right(),
-        ));
+        return Some((or_node.left(), or_node.operator_loc(), or_node.right()));
     }
 
     let call_node = node.as_call_node()?;
@@ -2255,7 +2259,11 @@ fn as_binary_op<'src>(
         return None;
     }
 
-    Some((left, method_name, right))
+    let operator_loc = call_node
+        .message_loc()
+        .expect("infix operator should have a message loc");
+
+    Some((left, operator_loc, right))
 }
 
 fn format_call_chain<'src>(ps: &mut ParserState<'src>, call_node: ruby_prism::CallNode<'src>) {
@@ -4632,12 +4640,7 @@ fn format_optional_parameter_node<'src>(
 fn format_or_node<'src>(ps: &mut ParserState<'src>, or_node: prism::OrNode<'src>) {
     ps.inline_breakable_of(BreakableDelims::for_binary_op(), |ps| {
         ps.with_start_of_line(false, |ps| {
-            format_infix_operator(
-                ps,
-                or_node.left(),
-                or_node.operator_loc().as_slice(),
-                or_node.right(),
-            );
+            format_infix_operator(ps, or_node.left(), or_node.operator_loc(), or_node.right());
         });
     });
 }
