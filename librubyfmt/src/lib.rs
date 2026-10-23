@@ -27,7 +27,7 @@ use parser_state::ParserState;
 #[cfg(debug_assertions)]
 use simplelog::{ColorChoice, ConfigBuilder, LevelFilter, TermLogger, TerminalMode};
 
-use crate::util::BOM;
+use crate::{types::SourceOffset, util::BOM};
 
 #[derive(Debug)]
 pub enum RichFormatError {
@@ -80,6 +80,7 @@ pub fn format_buffer(buf: &[u8]) -> Result<Vec<u8>, RichFormatError> {
         parse_result.node(),
         parse_result.comments(),
         buf,
+        parse_result.line_offsets(),
         end_data,
     )?;
 
@@ -92,9 +93,14 @@ pub fn toplevel_format_program_with_prism<W: Write>(
     tree: ruby_prism::Node,
     comments: ruby_prism::Comments,
     source: &[u8],
+    line_offsets: &[SourceOffset],
     data: Option<ruby_prism::Location>,
 ) -> Result<(), RichFormatError> {
-    let mut ps = ParserState::new(FileComments::from_prism_comments(comments, source));
+    let mut ps = ParserState::new(FileComments::from_prism_comments(
+        comments,
+        source,
+        line_offsets,
+    ));
     ps.flush_start_of_file_comments();
 
     format_prism::format_program(&mut ps, tree.as_program_node().unwrap(), data);
