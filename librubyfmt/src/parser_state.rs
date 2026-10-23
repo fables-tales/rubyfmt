@@ -423,7 +423,7 @@ impl<'src> ParserState<'src> {
         s: impl Into<Cow<'src, [u8]>>,
     ) -> Cow<'src, [u8]> {
         let content = s.into();
-        let newline_count = content.iter().filter(|&&b| b == b'\n').count() as u64;
+        let newline_count = content.iter().filter(|&&b| b == b'\n').count() as LineNumber;
         self.current_orig_line_number += newline_count;
         for be in self.breakable_entry_stack.iter_mut().rev() {
             be.push_line_number(self.current_orig_line_number);
@@ -797,7 +797,7 @@ impl<'src> ParserState<'src> {
             let trailing_comment = comments.is_trailing();
             self.insert_comment_collection(comments);
             if !trailing_comment {
-                self.current_orig_line_number += line_count as u64;
+                self.current_orig_line_number += line_count as LineNumber;
             }
         }
     }

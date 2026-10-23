@@ -96,7 +96,7 @@ impl<'src> FileComments<'src> {
 
         for comment in comments {
             file_comments.push_comment(
-                line_index.get_line_number(comment.location().start()) as u64,
+                line_index.get_line_number(comment.location().start()) as LineNumber,
                 comment.text().trim_ascii_end().to_vec(),
             );
             file_comments
@@ -104,7 +104,7 @@ impl<'src> FileComments<'src> {
                 .push(comment.location().start());
         }
 
-        file_comments.last_lineno = line_index.line_starts.len() as u64;
+        file_comments.last_lineno = line_index.line_starts.len() as LineNumber;
         file_comments.line_index = line_index;
         file_comments
     }
@@ -158,7 +158,7 @@ impl<'src> FileComments<'src> {
     /// Add a new comment. If the beginning of this file is a comment block,
     /// each of those comment lines must be pushed before any other line, or
     /// the end of the block from the start of the file will be incorrectly calculated.
-    fn push_comment(&mut self, line_number: u64, l: Vec<u8>) {
+    fn push_comment(&mut self, line_number: LineNumber, l: Vec<u8>) {
         // Only comment-only lines may seed or extend the start-of-file header sled
         let is_empty_line = self.is_empty_line(line_number);
 
@@ -254,7 +254,7 @@ impl<'src> FileComments<'src> {
             {
                 comment_block_with_spaces.push(b"".into());
             }
-            let line_count = comment_contents.lines().count() as u64;
+            let line_count = comment_contents.lines().count() as LineNumber;
             last_line = Some(index + line_count - 1);
             comment_block_with_spaces.push(comment_contents);
         }
@@ -272,7 +272,7 @@ impl<'src> FileComments<'src> {
 
     // Note: this is currently only used for Prism support, see the details
     // on the `LineIndex` struct for context
-    pub fn get_line_number_for_offset(&self, source_offset: SourceOffset) -> u64 {
-        self.line_index.get_line_number(source_offset) as u64
+    pub fn get_line_number_for_offset(&self, source_offset: SourceOffset) -> LineNumber {
+        self.line_index.get_line_number(source_offset) as LineNumber
     }
 }
