@@ -866,10 +866,11 @@ fn format_heredoc<'src>(
     ps.emit_heredoc_start(heredoc_symbol, heredoc_kind);
 
     let parts = heredoc.parts();
+    let closing_line = ps.get_line_number_for_offset(heredoc.closing_loc().start());
     ps.push_heredoc_content(
         heredoc.closing_loc().as_slice().trim_ascii(),
         heredoc_kind,
-        ps.get_line_number_for_offset(heredoc.closing_loc().start()),
+        closing_line,
         |n: &mut ParserState<'src>| {
             n.disable_user_newlines();
             format_inner_string(n, parts, heredoc_kind);
@@ -2484,7 +2485,10 @@ fn format_call_body<'src>(
     }
 }
 
-fn call_chain_should_be_multilined(ps: &ParserState, call_chain_elements: &[prism::Node]) -> bool {
+fn call_chain_should_be_multilined(
+    ps: &mut ParserState,
+    call_chain_elements: &[prism::Node],
+) -> bool {
     // Making a mutable copy since we may pop some items off later
     let mut call_chain_elements = call_chain_elements;
 
@@ -3044,65 +3048,63 @@ fn format_word_array_elements<'src>(
 ) {
     let args_count = node_list.len();
     let orig_close_delim = matching_delimiter(orig_open_delim);
+    let end_line = ps.get_line_number_for_offset(end_offset);
 
-    ps.magic_handle_comments_for_multiline_arrays(
-        Some(ps.get_line_number_for_offset(end_offset)),
-        |ps| {
-            for (idx, expr) in node_list.iter().enumerate() {
-                ps.emit_soft_indent();
+    ps.magic_handle_comments_for_multiline_arrays(Some(end_line), |ps| {
+        for (idx, expr) in node_list.iter().enumerate() {
+            ps.emit_soft_indent();
 
-                if let Some(string_node) = expr.as_string_node() {
-                    ps.at_offset(string_node.location().start());
+            if let Some(string_node) = expr.as_string_node() {
+                ps.at_offset(string_node.location().start());
 
-                    let escaped = crate::string_escape::escape_word_array_content(
-                        string_node.content_loc().as_slice(),
-                        orig_open_delim,
-                        orig_close_delim,
-                        is_interpolating,
-                    );
-                    ps.emit_string_content(escaped);
-                } else if let Some(symbol_node) = expr.as_symbol_node() {
-                    ps.at_offset(symbol_node.location().start());
+                let escaped = crate::string_escape::escape_word_array_content(
+                    string_node.content_loc().as_slice(),
+                    orig_open_delim,
+                    orig_close_delim,
+                    is_interpolating,
+                );
+                ps.emit_string_content(escaped);
+            } else if let Some(symbol_node) = expr.as_symbol_node() {
+                ps.at_offset(symbol_node.location().start());
 
-                    let escaped = crate::string_escape::escape_word_array_content(
-                        symbol_node.content_loc().as_slice(),
-                        orig_open_delim,
-                        orig_close_delim,
-                        is_interpolating,
-                    );
-                    ps.emit_string_content(escaped);
-                } else if let Some(interpolated_symbol_node) = expr.as_interpolated_symbol_node() {
-                    ps.at_offset(interpolated_symbol_node.location().start());
-                    format_word_array_interpolated_parts(
-                        ps,
-                        interpolated_symbol_node.parts(),
-                        orig_open_delim,
-                        orig_close_delim,
-                        is_interpolating,
-                    );
-                } else if let Some(interpolated_string_node) = expr.as_interpolated_string_node() {
-                    ps.at_offset(interpolated_string_node.location().start());
-                    format_word_array_interpolated_parts(
-                        ps,
-                        interpolated_string_node.parts(),
-                        orig_open_delim,
-                        orig_close_delim,
-                        is_interpolating,
-                    );
-                } else {
-                    // This branch shouldn't happen, but we'll have a fallback just in case
-                    if cfg!(debug_assertions) {
-                        unreachable!("Received unexpected node in word array: {:?}", expr);
-                    }
-                    format_node(ps, expr);
+                let escaped = crate::string_escape::escape_word_array_content(
+                    symbol_node.content_loc().as_slice(),
+                    orig_open_delim,
+                    orig_close_delim,
+                    is_interpolating,
+                );
+                ps.emit_string_content(escaped);
+            } else if let Some(interpolated_symbol_node) = expr.as_interpolated_symbol_node() {
+                ps.at_offset(interpolated_symbol_node.location().start());
+                format_word_array_interpolated_parts(
+                    ps,
+                    interpolated_symbol_node.parts(),
+                    orig_open_delim,
+                    orig_close_delim,
+                    is_interpolating,
+                );
+            } else if let Some(interpolated_string_node) = expr.as_interpolated_string_node() {
+                ps.at_offset(interpolated_string_node.location().start());
+                format_word_array_interpolated_parts(
+                    ps,
+                    interpolated_string_node.parts(),
+                    orig_open_delim,
+                    orig_close_delim,
+                    is_interpolating,
+                );
+            } else {
+                // This branch shouldn't happen, but we'll have a fallback just in case
+                if cfg!(debug_assertions) {
+                    unreachable!("Received unexpected node in word array: {:?}", expr);
                 }
-
-                if idx != args_count - 1 {
-                    ps.emit_soft_newline();
-                }
+                format_node(ps, expr);
             }
-        },
-    );
+
+            if idx != args_count - 1 {
+                ps.emit_soft_newline();
+            }
+        }
+    });
 }
 
 fn matching_delimiter(open: u8) -> u8 {
@@ -5184,45 +5186,43 @@ fn format_list_like_thing<'src>(
 ) -> bool {
     let mut emitted_args = false;
     let args_count = node_list.len();
+    let end_line = ps.get_line_number_for_offset(end_offset);
 
-    ps.magic_handle_comments_for_multiline_arrays(
-        Some(ps.get_line_number_for_offset(end_offset)),
-        |ps| {
-            for (idx, expr) in node_list.iter().enumerate() {
-                if single_line {
-                    format_node(ps, expr);
-                    if idx != args_count - 1 {
-                        ps.emit_comma_space();
-                    }
-                } else {
-                    ps.with_start_of_line(false, |ps| {
-                        if let Some(assoc_node) = expr.as_assoc_node() {
-                            if idx > 0 {
-                                ps.emit_soft_indent();
-                            }
-                            format_assoc_node(ps, assoc_node)
-                        } else if let Some(splat_node) = expr.as_assoc_splat_node() {
-                            if idx > 0 {
-                                ps.emit_soft_indent();
-                            }
-                            format_assoc_splat_node(ps, splat_node)
-                        } else {
+    ps.magic_handle_comments_for_multiline_arrays(Some(end_line), |ps| {
+        for (idx, expr) in node_list.iter().enumerate() {
+            if single_line {
+                format_node(ps, expr);
+                if idx != args_count - 1 {
+                    ps.emit_comma_space();
+                }
+            } else {
+                ps.with_start_of_line(false, |ps| {
+                    if let Some(assoc_node) = expr.as_assoc_node() {
+                        if idx > 0 {
                             ps.emit_soft_indent();
-                            format_node(ps, expr);
                         }
+                        format_assoc_node(ps, assoc_node)
+                    } else if let Some(splat_node) = expr.as_assoc_splat_node() {
+                        if idx > 0 {
+                            ps.emit_soft_indent();
+                        }
+                        format_assoc_splat_node(ps, splat_node)
+                    } else {
+                        ps.emit_soft_indent();
+                        format_node(ps, expr);
+                    }
 
-                        if idx != args_count - 1 {
-                            ps.emit_comma();
-                            ps.emit_soft_newline();
-                        } else {
-                            ps.shift_comments();
-                        }
-                    });
-                };
-                emitted_args = true;
-            }
-        },
-    );
+                    if idx != args_count - 1 {
+                        ps.emit_comma();
+                        ps.emit_soft_newline();
+                    } else {
+                        ps.shift_comments();
+                    }
+                });
+            };
+            emitted_args = true;
+        }
+    });
     emitted_args
 }
 
