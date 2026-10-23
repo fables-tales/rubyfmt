@@ -6,6 +6,7 @@ use crate::{
     delimiters::BreakableDelims,
     heredoc_string::HeredocKind,
     parser_state::{FormattingContext, HashType, ParserState},
+    render_targets::ConditionalKeyword,
     types::{LineNumber, SourceOffset},
 };
 
@@ -3816,7 +3817,7 @@ fn format_inline_conditional<'src>(
     ps: &mut ParserState<'src>,
     predicate: prism::Node<'src>,
     statements: Option<prism::StatementsNode<'src>>,
-    keyword: &'static [u8],
+    keyword: ConditionalKeyword,
 ) {
     if let Some(statements) = statements {
         // There can only be a single statement in modifier form.
@@ -3826,7 +3827,7 @@ fn format_inline_conditional<'src>(
         }
         ps.emit_space();
     }
-    ps.emit_conditional_keyword(keyword);
+    ps.emit_conditional_keyword(keyword.as_bytes());
     ps.emit_space();
     ps.with_start_of_line(false, |ps| format_node(ps, predicate));
 }
@@ -3887,7 +3888,7 @@ impl<'pr> Conditional<'pr> {
 
 fn format_conditional_node<'src>(
     ps: &mut ParserState<'src>,
-    conditional_keyword: &'static [u8],
+    conditional_keyword: ConditionalKeyword,
     requires_end_keyword: bool,
     conditional: &Conditional<'src>,
 ) {
@@ -3906,7 +3907,7 @@ fn format_conditional_node<'src>(
         ps.with_start_of_line(false, |ps| {
             format_begin_node(ps, begin_node);
             ps.emit_space();
-            ps.emit_keyword(conditional_keyword);
+            ps.emit_keyword(conditional_keyword.as_bytes());
             ps.emit_space();
             format_node(ps, conditional.predicate());
         });
@@ -3950,7 +3951,7 @@ fn format_conditional_node<'src>(
     } else {
         format_conditional_block_form(
             ps,
-            conditional_keyword,
+            conditional_keyword.as_bytes(),
             conditional.predicate(),
             conditional.statements(),
             conditional.subsequent_or_else(),
@@ -4001,9 +4002,9 @@ fn format_if_node<'src>(ps: &mut ParserState<'src>, if_node: prism::IfNode<'src>
     if let Some(if_loc) = if_node.if_keyword_loc() {
         let is_if_keyword = (if_loc.end() - if_loc.start()) == 2;
         let conditional_keyword = if is_if_keyword {
-            b"if" as &[u8]
+            ConditionalKeyword::If
         } else {
-            b"elsif"
+            ConditionalKeyword::Elsif
         };
 
         format_conditional_node(
@@ -4952,11 +4953,21 @@ fn format_undef_node<'src>(ps: &mut ParserState<'src>, undef_node: prism::UndefN
 }
 
 fn format_unless_node<'src>(ps: &mut ParserState<'src>, unless_node: prism::UnlessNode<'src>) {
-    format_conditional_node(ps, b"unless", true, &Conditional::Unless(unless_node));
+    format_conditional_node(
+        ps,
+        ConditionalKeyword::Unless,
+        true,
+        &Conditional::Unless(unless_node),
+    );
 }
 
 fn format_until_node<'src>(ps: &mut ParserState<'src>, until_node: prism::UntilNode<'src>) {
-    format_conditional_node(ps, b"until", true, &Conditional::Until(until_node));
+    format_conditional_node(
+        ps,
+        ConditionalKeyword::Until,
+        true,
+        &Conditional::Until(until_node),
+    );
 }
 
 fn format_when_node<'src>(ps: &mut ParserState<'src>, when_node: prism::WhenNode<'src>) {
@@ -5005,7 +5016,12 @@ fn when_conditions_end_with_endless_range(when_node: &prism::WhenNode) -> bool {
 }
 
 fn format_while_node<'src>(ps: &mut ParserState<'src>, while_node: prism::WhileNode<'src>) {
-    format_conditional_node(ps, b"while", true, &Conditional::While(while_node));
+    format_conditional_node(
+        ps,
+        ConditionalKeyword::While,
+        true,
+        &Conditional::While(while_node),
+    );
 }
 
 fn format_x_string_node<'src>(ps: &mut ParserState<'src>, x_string_node: prism::XStringNode<'src>) {
