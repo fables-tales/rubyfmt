@@ -14,6 +14,7 @@ mod heredoc_string;
 mod intermediary;
 mod line_metadata;
 mod line_tokens;
+mod line_tracker;
 mod parser_state;
 mod render_queue_writer;
 mod render_targets;
@@ -22,6 +23,7 @@ mod types;
 mod util;
 
 use file_comments::FileComments;
+use line_tracker::LineTracker;
 use parser_state::ParserState;
 
 #[cfg(debug_assertions)]
@@ -96,11 +98,10 @@ pub fn toplevel_format_program_with_prism<W: Write>(
     line_offsets: &[SourceOffset],
     data: Option<ruby_prism::Location>,
 ) -> Result<(), RichFormatError> {
-    let mut ps = ParserState::new(FileComments::from_prism_comments(
-        comments,
-        source,
-        line_offsets,
-    ));
+    let mut ps = ParserState::new(
+        FileComments::from_prism_comments(comments, source, line_offsets),
+        LineTracker::new(line_offsets),
+    );
     ps.flush_start_of_file_comments();
 
     format_prism::format_program(&mut ps, tree.as_program_node().unwrap(), data);

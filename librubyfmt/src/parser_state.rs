@@ -3,6 +3,7 @@ use crate::delimiters::BreakableDelims;
 use crate::file_comments::FileComments;
 use crate::heredoc_string::{HeredocKind, HeredocSegment, HeredocString};
 use crate::line_tokens::*;
+use crate::line_tracker::LineTracker;
 use crate::render_queue_writer::RenderQueueWriter;
 use crate::render_targets::{
     BaseQueue, Breakable, BreakableCallChainEntry, BreakableEntry, ConditionalLayoutEntry,
@@ -58,8 +59,8 @@ pub struct ParserState<'src> {
     start_of_line: Vec<bool>,
     suppress_comments_stack: Vec<bool>,
     render_queue: BaseQueue<'src>,
-    current_orig_line_number: LineNumber,
-    comments_hash: FileComments<'src>,
+    lines: LineTracker<'src>,
+    comments_hash: FileComments,
     heredoc_strings: Vec<HeredocString<'src>>,
     comments_to_insert: Option<CommentBlock>,
     breakable_entry_stack: Vec<Breakable<'src>>,
@@ -111,12 +112,10 @@ impl<'src> ParserState<'src> {
         // Update line number and clear out any comments we might have rendered in e.g. an embexpr
         //
         // (Ignore this comment extraction, we've already rendered them elsewhere)
-        let _ = self.comments_hash.extract_comments_to_line(
-            self.current_orig_line_number,
-            end_line,
-            false,
-        );
-        self.current_orig_line_number = end_line;
+        let _ =
+            self.comments_hash
+                .extract_comments_to_line(self.lines.current_line(), end_line, false);
+        self.lines.set_current_line(end_line);
 
         let stripped_final_newline = next_ps.popped_heredoc_final_newline;
         let segments = next_ps.render_to_segments();
@@ -144,7 +143,7 @@ impl<'src> ParserState<'src> {
     ) where
         F: FnOnce(&mut ParserState<'src>),
     {
-        let current_line_number = self.current_orig_line_number;
+        let current_line_number = self.lines.current_line();
         self.new_block(|ps| {
             ps.shift_comments();
         });
@@ -152,7 +151,7 @@ impl<'src> ParserState<'src> {
         // Reset here -- this resets when we emit newlines, but this may be out of date
         // if the most recent array didn't emit a newline
         self.reset_space_count();
-        let new_line_number = self.current_orig_line_number;
+        let new_line_number = self.lines.current_line();
         if new_line_number > current_line_number {
             // Only wind forward if the next line is empty or a comment
             if self.comments_hash.is_empty_line(new_line_number + 1) {
@@ -231,7 +230,7 @@ impl<'src> ParserState<'src> {
     {
         self.shift_comments();
         let mut be = BreakableEntry::new(delims, &self.formatting_context);
-        be.push_line_number(self.current_orig_line_number);
+        be.push_line_number(self.lines.current_line());
         self.breakable_entry_stack
             .push(Breakable::DelimiterExpr(be));
 
@@ -268,7 +267,7 @@ impl<'src> ParserState<'src> {
     {
         self.shift_comments();
         let mut be = BreakableEntry::new(delims, &self.formatting_context);
-        be.push_line_number(self.current_orig_line_number);
+        be.push_line_number(self.lines.current_line());
         self.breakable_entry_stack
             .push(Breakable::DelimiterExpr(be));
 
@@ -329,7 +328,7 @@ impl<'src> ParserState<'src> {
     }
 
     pub(crate) fn on_line(&mut self, line_number: LineNumber) {
-        if line_number < self.current_orig_line_number {
+        if line_number < self.lines.current_line() {
             return;
         }
         debug!("on_line called: {}", line_number);
@@ -339,27 +338,38 @@ impl<'src> ParserState<'src> {
         }
 
         if let Some((comments, last_comment_line)) = self.comments_hash.extract_comments_to_line(
-            self.current_orig_line_number,
+            self.lines.current_line(),
             line_number,
             self.suppress_blank_before_comment,
         ) {
             self.push_comments(comments);
-            self.current_orig_line_number =
-                std::cmp::max(self.current_orig_line_number, last_comment_line);
+            self.lines
+                .set_current_line(self.lines.current_line().max(last_comment_line));
         }
 
-        debug!("lns: {} {}", line_number, self.current_orig_line_number);
-        if line_difference_requires_newline(line_number, self.current_orig_line_number)
+        debug!("lns: {} {}", line_number, self.lines.current_line());
+        if line_difference_requires_newline(line_number, self.lines.current_line())
             && self.insert_user_newlines
         {
             self.insert_extra_newline_at_last_newline();
         }
 
-        self.current_orig_line_number = line_number;
+        self.lines.set_current_line(line_number);
     }
 
     pub(crate) fn at_offset(&mut self, source_offset: SourceOffset) {
-        self.on_line(self.get_line_number_for_offset(source_offset));
+        // If we're already past this offset and there's no comments to render, skip
+        if source_offset < self.lines.current_line_end_offset()
+            && self
+                .comments_hash
+                .first_comment_line()
+                .is_none_or(|line| line > self.lines.current_line())
+        {
+            return;
+        }
+
+        let line_number = self.get_line_number_for_offset(source_offset);
+        self.on_line(line_number);
     }
 
     pub(crate) fn emit_indent(&mut self) {
@@ -424,9 +434,10 @@ impl<'src> ParserState<'src> {
     ) -> Cow<'src, [u8]> {
         let content = s.into();
         let newline_count = content.iter().filter(|&&b| b == b'\n').count() as LineNumber;
-        self.current_orig_line_number += newline_count;
+        self.lines.advance_line_by(newline_count);
+        let line_number = self.lines.current_line();
         for be in self.breakable_entry_stack.iter_mut().rev() {
-            be.push_line_number(self.current_orig_line_number);
+            be.push_line_number(line_number);
         }
         content
     }
@@ -457,10 +468,11 @@ impl<'src> ParserState<'src> {
     }
 
     pub(crate) fn wind_dumping_comments_until_offset(&mut self, source_offset: SourceOffset) {
-        self.wind_dumping_comments_until_line(self.get_line_number_for_offset(source_offset))
+        let line_number = self.get_line_number_for_offset(source_offset);
+        self.wind_dumping_comments_until_line(line_number)
     }
 
-    /// Advances `current_orig_line_number` to (at least) the line containing
+    /// Advances the current source line to (at least) the line containing
     /// `source_offset`, without winding/extracting comments and without
     /// pushing the new line number into any active breakable entries.
     pub(crate) fn advance_line_number_for_offset_without_marking_multiline(
@@ -468,17 +480,18 @@ impl<'src> ParserState<'src> {
         source_offset: SourceOffset,
     ) {
         let line_number = self.get_line_number_for_offset(source_offset);
-        self.current_orig_line_number = line_number.max(self.current_orig_line_number);
+        self.lines
+            .set_current_line(line_number.max(self.lines.current_line()));
     }
 
     pub(crate) fn wind_dumping_comments(&mut self, maybe_max_line_number: Option<LineNumber>) {
         // Return early if we're already at/past
         // the max line number
-        if maybe_max_line_number.is_some_and(|ln| ln <= self.current_orig_line_number) {
+        if maybe_max_line_number.is_some_and(|ln| ln <= self.lines.current_line()) {
             return;
         }
 
-        self.on_line(self.current_orig_line_number + 1);
+        self.on_line(self.lines.current_line() + 1);
         let should_iter = |ps: &ParserState, ln| {
             // If we have a max line number, it will be the last token
             // of an expression (e.g. the `end` of a `do`/`end` block), so it's
@@ -491,22 +504,20 @@ impl<'src> ParserState<'src> {
                 && (ps.comments_hash.has_line(ln + 1) || ps.comments_hash.is_empty_line(ln + 1))
                 && maybe_max_line_number.is_none_or(|max_line| ln + 1 < max_line)
         };
-        while should_iter(self, self.current_orig_line_number) {
+        while should_iter(self, self.lines.current_line()) {
             // If the next line is empty (no comment, no Ruby code), and we have
             // actual comment content accumulated, add a blank line to preserve
             // the visual gap between comment groups.
-            if !self
-                .comments_hash
-                .has_line(self.current_orig_line_number + 1)
+            if !self.comments_hash.has_line(self.lines.current_line() + 1)
                 && self
                     .comments_hash
-                    .is_empty_line(self.current_orig_line_number + 1)
+                    .is_empty_line(self.lines.current_line() + 1)
                 && let Some(comments) = self.comments_to_insert.as_mut()
                 && comments.line_count() > 0
             {
                 comments.add_line(b"".into());
             }
-            self.on_line(self.current_orig_line_number + 1);
+            self.on_line(self.lines.current_line() + 1);
         }
     }
 
@@ -668,8 +679,8 @@ impl<'src> ParserState<'src> {
             .expect("formatting context is never empty")
     }
 
-    pub(crate) fn get_line_number_for_offset(&self, source_offset: SourceOffset) -> LineNumber {
-        self.comments_hash.get_line_number_for_offset(source_offset)
+    pub(crate) fn get_line_number_for_offset(&mut self, source_offset: SourceOffset) -> LineNumber {
+        self.lines.line_number_for_offset(source_offset)
     }
 
     pub(crate) fn render_heredocs(&mut self, skip: bool) {
@@ -754,13 +765,13 @@ impl<'src> ParserState<'src> {
 }
 
 impl<'src> ParserState<'src> {
-    pub(crate) fn new(fc: FileComments<'src>) -> Self {
+    pub(crate) fn new(fc: FileComments, lines: LineTracker<'src>) -> Self {
         ParserState {
             indent_depth: IndentDepth::new(),
             start_of_line: vec![true],
             suppress_comments_stack: vec![false],
             render_queue: BaseQueue::default(),
-            current_orig_line_number: 0,
+            lines,
             comments_hash: fc,
             heredoc_strings: vec![],
             comments_to_insert: None,
@@ -797,7 +808,7 @@ impl<'src> ParserState<'src> {
             let trailing_comment = comments.is_trailing();
             self.insert_comment_collection(comments);
             if !trailing_comment {
-                self.current_orig_line_number += line_count as LineNumber;
+                self.lines.advance_line_by(line_count as LineNumber);
             }
         }
     }
@@ -865,10 +876,9 @@ impl<'src> ParserState<'src> {
     // Creates a copy of the parser state *with the indent_depth reset*.
     // This is used for heredocs, where we explicitly want to ignore current indentation.
     pub(crate) fn new_with_reset_indentation(ps: &ParserState<'src>) -> Self {
-        let mut next_ps = ParserState::new(FileComments::default());
+        let mut next_ps = ParserState::new(FileComments::default(), ps.lines.clone());
         next_ps.comments_hash = ps.comments_hash.clone();
         next_ps.start_of_line = ps.start_of_line.clone();
-        next_ps.current_orig_line_number = ps.current_orig_line_number;
         next_ps
     }
 
@@ -945,10 +955,11 @@ impl<'src> ParserState<'src> {
             .take_start_of_file_contiguous_comment_lines()
         {
             None => {
-                // Seed `current_orig_line_number` to one less than the line of the first real content
+                // Seed the current line to one less than the line of the first real content
                 // in the file so that the very first `on_line` call won't produce leading blank lines
                 let first_content_line = self.comments_hash.first_content_line().unwrap_or(1);
-                self.current_orig_line_number = first_content_line.saturating_sub(1);
+                self.lines
+                    .set_current_line(first_content_line.saturating_sub(1));
             }
             Some(comments) => {
                 let comments = comments.enforce_at_least_one_space_after_comment_symbol();
@@ -956,7 +967,7 @@ impl<'src> ParserState<'src> {
                 for token in comments.into_line_tokens() {
                     self.push_concrete_token(token);
                 }
-                self.current_orig_line_number = line_count as LineNumber;
+                self.lines.set_current_line(line_count as LineNumber);
             }
         }
     }
