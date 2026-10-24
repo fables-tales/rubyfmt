@@ -515,10 +515,31 @@ struct MultilineTracker {
     is_multiline: bool,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ConditionalLayoutPhase {
     Predicate,
     Statement,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ConditionalKeyword {
+    If,
+    Elsif,
+    Unless,
+    While,
+    Until,
+}
+
+impl ConditionalKeyword {
+    pub fn as_bytes(self) -> &'static [u8] {
+        match self {
+            Self::If => b"if",
+            Self::Elsif => b"elsif",
+            Self::Unless => b"unless",
+            Self::While => b"while",
+            Self::Until => b"until",
+        }
+    }
 }
 
 /// An entry that holds predicate and statement tokens for a conditional modifier.
@@ -528,28 +549,45 @@ pub enum ConditionalLayoutPhase {
 /// - Block:  `if predicate\n  statement\nend`
 #[derive(Debug, Clone)]
 pub struct ConditionalLayoutEntry<'src> {
-    predicate_tokens: Vec<AbstractLineToken<'src>>,
-    statement_tokens: Vec<AbstractLineToken<'src>>,
-    keyword: &'static [u8],
+    /// Use [`Self::statement_tokens`] and [`Self::predicate_tokens`] instead of indexing this directly
+    tokens: Vec<AbstractLineToken<'src>>,
+    /// Index of the boundary between the two phases in `tokens`
+    predicate_start: usize,
+    keyword: ConditionalKeyword,
     indent_depth: u32,
     phase: ConditionalLayoutPhase,
 }
 
 impl<'src> ConditionalLayoutEntry<'src> {
-    pub fn new(keyword: &'static [u8], indent_depth: u32) -> Self {
+    pub fn new(keyword: ConditionalKeyword, indent_depth: u32) -> Self {
         ConditionalLayoutEntry {
-            predicate_tokens: Vec::new(),
-            statement_tokens: Vec::new(),
+            tokens: Vec::new(),
+            predicate_start: 0,
             keyword,
             indent_depth,
             phase: ConditionalLayoutPhase::Statement,
         }
     }
 
-    pub fn push(&mut self, token: AbstractLineToken<'src>) {
+    fn statement_tokens(&self) -> &[AbstractLineToken<'src>] {
+        &self.tokens[..self.predicate_start]
+    }
+
+    fn predicate_tokens(&self) -> &[AbstractLineToken<'src>] {
+        &self.tokens[self.predicate_start..]
+    }
+
+    fn phase_tokens(&self) -> &[AbstractLineToken<'src>] {
         match self.phase {
-            ConditionalLayoutPhase::Predicate => self.predicate_tokens.push(token),
-            ConditionalLayoutPhase::Statement => self.statement_tokens.push(token),
+            ConditionalLayoutPhase::Predicate => self.predicate_tokens(),
+            ConditionalLayoutPhase::Statement => self.statement_tokens(),
+        }
+    }
+
+    pub fn push(&mut self, token: AbstractLineToken<'src>) {
+        self.tokens.push(token);
+        if self.phase == ConditionalLayoutPhase::Statement {
+            self.predicate_start = self.tokens.len();
         }
     }
 
@@ -559,6 +597,11 @@ impl<'src> ConditionalLayoutEntry<'src> {
             ConditionalLayoutPhase::Statement,
             "switch_to_predicate called when not in Statement phase"
         );
+        debug_assert_eq!(
+            self.predicate_start,
+            self.tokens.len(),
+            "all statement tokens should have been collected before switching phases"
+        );
         self.phase = ConditionalLayoutPhase::Predicate;
     }
 
@@ -566,13 +609,10 @@ impl<'src> ConditionalLayoutEntry<'src> {
     ///
     /// This returns only the current phase's count (not the combined total) because
     /// `len()` is used by `shift_comments_at_index` to determine where to insert
-    /// comments. Since we collect into separate token lists per phase, the index
-    /// needs to be relative to whichever list we're currently building.
+    /// comments. Since we divide the token list at `predicate_start`, the
+    /// index needs to be relative to whichever phase we're currently building.
     pub fn len(&self) -> usize {
-        match self.phase {
-            ConditionalLayoutPhase::Predicate => self.predicate_tokens.len(),
-            ConditionalLayoutPhase::Statement => self.statement_tokens.len(),
-        }
+        self.phase_tokens().len()
     }
 
     pub fn insert_at(
@@ -581,24 +621,22 @@ impl<'src> ConditionalLayoutEntry<'src> {
         tokens: impl IntoIterator<Item = AbstractLineToken<'src>>,
     ) {
         match self.phase {
-            ConditionalLayoutPhase::Predicate => insert_at(idx, &mut self.predicate_tokens, tokens),
-            ConditionalLayoutPhase::Statement => insert_at(idx, &mut self.statement_tokens, tokens),
+            ConditionalLayoutPhase::Predicate => {
+                insert_at(self.predicate_start + idx, &mut self.tokens, tokens);
+            }
+            ConditionalLayoutPhase::Statement => {
+                insert_at(idx, &mut self.tokens, tokens);
+                self.predicate_start = self.tokens.len();
+            }
         }
     }
 
     pub fn last_token_is_a_newline(&self) -> bool {
-        let tokens = match self.phase {
-            ConditionalLayoutPhase::Predicate => &self.predicate_tokens,
-            ConditionalLayoutPhase::Statement => &self.statement_tokens,
-        };
-        tokens.last().is_some_and(|x| x.is_newline())
+        self.phase_tokens().last().is_some_and(|x| x.is_newline())
     }
 
     pub fn index_of_prev_newline(&self) -> Option<usize> {
-        let tokens = match self.phase {
-            ConditionalLayoutPhase::Predicate => &self.predicate_tokens,
-            ConditionalLayoutPhase::Statement => &self.statement_tokens,
-        };
+        let tokens = self.phase_tokens();
         tokens
             .iter()
             .rposition(|v| v.is_newline() || v.is_indent())
@@ -616,30 +654,30 @@ impl<'src> ConditionalLayoutEntry<'src> {
 
     pub fn inline_single_line_len(&self) -> usize {
         let statement_len: usize = self
-            .statement_tokens
+            .statement_tokens()
             .iter()
             .map(|t| t.single_line_len())
             .sum();
         let predicate_len: usize = self
-            .predicate_tokens
+            .predicate_tokens()
             .iter()
             .map(|t| t.single_line_len())
             .sum();
         // statement + space + keyword + space + predicate
-        statement_len + 1 + self.keyword.len() + 1 + predicate_len
+        statement_len + 1 + self.keyword.as_bytes().len() + 1 + predicate_len
     }
 
     fn is_multiline(&self) -> bool {
-        self.statement_tokens.iter().any(Self::token_is_multiline)
-            || self.predicate_tokens.iter().any(Self::token_is_multiline)
+        self.statement_tokens().iter().any(Self::token_is_multiline)
+            || self.predicate_tokens().iter().any(Self::token_is_multiline)
     }
 
     pub fn contains_hard_newline(&self) -> bool {
-        self.statement_tokens
+        self.statement_tokens()
             .iter()
             .any(tokens_contain_hard_newline)
             || self
-                .predicate_tokens
+                .predicate_tokens()
                 .iter()
                 .any(tokens_contain_hard_newline)
     }
@@ -663,57 +701,77 @@ impl<'src> ConditionalLayoutEntry<'src> {
     }
 
     pub fn write_inline_tokens(self, result: &mut Vec<ConcreteLineTokenAndTargets<'src>>) {
-        result.reserve(self.statement_tokens.len() + self.predicate_tokens.len() + 3);
+        let ConditionalLayoutEntry {
+            tokens,
+            predicate_start,
+            keyword,
+            ..
+        } = self;
+        result.reserve(tokens.len() + 3);
+        let mut tokens = tokens.into_iter();
 
-        for token in self.statement_tokens {
+        for token in tokens.by_ref().take(predicate_start) {
             token.write_single_line(result);
         }
 
         result.push(ConcreteLineToken::Space.into());
         result.push(
             ConcreteLineToken::ConditionalKeyword {
-                contents: self.keyword,
+                contents: keyword.as_bytes(),
             }
             .into(),
         );
         result.push(ConcreteLineToken::Space.into());
 
-        for token in self.predicate_tokens {
+        for token in tokens {
             token.write_single_line(result);
         }
     }
 
     pub fn write_block_tokens(self, result: &mut Vec<ConcreteLineTokenAndTargets<'src>>) {
-        result.reserve(self.predicate_tokens.len() + self.statement_tokens.len() + 7);
+        let ConditionalLayoutEntry {
+            tokens,
+            predicate_start,
+            keyword,
+            indent_depth,
+            ..
+        } = self;
+        result.reserve(tokens.len() + 7);
+        let mut tokens = tokens;
+
+        // Predicate-first so can can consume the tokens sequentially without allocating a second Vec
+        tokens.rotate_left(predicate_start);
+        let predicate_len = tokens.len() - predicate_start;
+        let mut tokens = tokens.into_iter();
 
         result.push(
             ConcreteLineToken::ConditionalKeyword {
-                contents: self.keyword,
+                contents: keyword.as_bytes(),
             }
             .into(),
         );
         result.push(ConcreteLineToken::Space.into());
 
-        for token in self.predicate_tokens {
+        for token in tokens.by_ref().take(predicate_len) {
             token.write_multi_line(result);
         }
 
         result.push(ConcreteLineToken::HardNewLine.into());
         result.push(
             ConcreteLineToken::Indent {
-                depth: self.indent_depth + 2,
+                depth: indent_depth + 2,
             }
             .into(),
         );
 
-        for token in self.statement_tokens {
+        for token in tokens {
             token.write_multi_line(result);
         }
 
         result.push(ConcreteLineToken::HardNewLine.into());
         result.push(
             ConcreteLineToken::Indent {
-                depth: self.indent_depth,
+                depth: indent_depth,
             }
             .into(),
         );
@@ -739,5 +797,104 @@ impl MultilineTracker {
 
     fn is_multiline(&self) -> bool {
         self.is_multiline
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn ident(name: &'static [u8]) -> AbstractLineToken<'static> {
+        AbstractLineToken::ConcreteLineToken(ConcreteLineToken::MethodName { name })
+    }
+
+    fn names(tokens: &[AbstractLineToken<'static>]) -> Vec<&'static [u8]> {
+        tokens
+            .iter()
+            .filter_map(|token| match token {
+                AbstractLineToken::ConcreteLineToken(ConcreteLineToken::MethodName { name }) => {
+                    Some(*name)
+                }
+                _ => None,
+            })
+            .collect()
+    }
+
+    fn concrete_names(tokens: &[ConcreteLineTokenAndTargets<'static>]) -> Vec<&'static [u8]> {
+        tokens
+            .iter()
+            .filter_map(|token| match token {
+                ConcreteLineTokenAndTargets::ConcreteLineToken(ConcreteLineToken::MethodName {
+                    name,
+                }) => Some(*name),
+                _ => None,
+            })
+            .collect()
+    }
+
+    #[test]
+    fn conditional_layout_tracks_phase_boundary() {
+        let mut cle = ConditionalLayoutEntry::new(ConditionalKeyword::If, 0);
+
+        cle.push(ident(b"statement"));
+        assert_eq!(cle.len(), 1);
+        assert_eq!(names(cle.statement_tokens()), vec![&b"statement"[..]]);
+        assert!(cle.predicate_tokens().is_empty());
+
+        cle.switch_to_predicate();
+        assert_eq!(cle.len(), 0);
+
+        cle.push(ident(b"predicate"));
+        assert_eq!(cle.len(), 1);
+        assert_eq!(names(cle.statement_tokens()), vec![&b"statement"[..]]);
+        assert_eq!(names(cle.predicate_tokens()), vec![&b"predicate"[..]]);
+    }
+
+    #[test]
+    fn conditional_layout_insert_at_respects_phase() {
+        let mut cle = ConditionalLayoutEntry::new(ConditionalKeyword::If, 0);
+
+        cle.push(ident(b"statement_a"));
+        cle.insert_at(1, [ident(b"statement_b")]);
+        assert_eq!(
+            names(cle.statement_tokens()),
+            vec![&b"statement_a"[..], &b"statement_b"[..]]
+        );
+        assert!(cle.predicate_tokens().is_empty());
+
+        cle.switch_to_predicate();
+        cle.push(ident(b"predicate_a"));
+        cle.insert_at(0, [ident(b"predicate_b")]);
+        assert_eq!(cle.len(), 2);
+        assert_eq!(
+            names(cle.predicate_tokens()),
+            vec![&b"predicate_b"[..], &b"predicate_a"[..]]
+        );
+        assert_eq!(
+            names(cle.statement_tokens()),
+            vec![&b"statement_a"[..], &b"statement_b"[..]]
+        );
+    }
+
+    #[test]
+    fn conditional_layout_renders_in_phase_order() {
+        let mut cle = ConditionalLayoutEntry::new(ConditionalKeyword::If, 0);
+        cle.push(ident(b"statement"));
+        cle.switch_to_predicate();
+        cle.push(ident(b"predicate"));
+
+        let mut inline = Vec::new();
+        cle.clone().write_inline_tokens(&mut inline);
+        assert_eq!(
+            concrete_names(&inline),
+            vec![&b"statement"[..], &b"predicate"[..]]
+        );
+
+        let mut block = Vec::new();
+        cle.write_block_tokens(&mut block);
+        assert_eq!(
+            concrete_names(&block),
+            vec![&b"predicate"[..], &b"statement"[..]]
+        );
     }
 }
