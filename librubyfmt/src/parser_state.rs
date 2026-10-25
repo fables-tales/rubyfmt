@@ -5,7 +5,8 @@ use crate::heredoc_string::{HeredocKind, HeredocSegment, HeredocString};
 use crate::line_tokens::*;
 use crate::render_queue_writer::RenderQueueWriter;
 use crate::render_targets::{
-    BaseQueue, Breakable, BreakableCallChainEntry, BreakableEntry, ConditionalLayoutEntry,
+    BaseQueue, Breakable, BreakableCallChainEntry, BreakableEntry, ConditionalKeyword,
+    ConditionalLayoutEntry,
 };
 use crate::types::{ColNumber, LineNumber, SourceOffset};
 use log::debug;
@@ -1005,7 +1006,7 @@ impl<'src> ParserState<'src> {
     /// Format a conditional modifier expression (e.g., `x if y` or `x unless y`).
     pub(crate) fn conditional_layout_of<FP, FS>(
         &mut self,
-        keyword: &'static [u8],
+        keyword: ConditionalKeyword,
         format_predicate: FP,
         format_statement: FS,
     ) where
