@@ -1766,6 +1766,19 @@ fn use_parens_for_call_node<'src>(
             return true;
         }
 
+        // Without parens, an omitted value at the end of the arguments
+        // (`raise Foo, cause:`) would take whatever comes next as its value
+        if call_node
+            .arguments()
+            .and_then(|arguments| arguments.arguments().last())
+            .and_then(|arg| arg.as_keyword_hash_node())
+            .and_then(|hash| hash.elements().last())
+            .and_then(|element| element.as_assoc_node())
+            .is_some_and(|assoc| assoc.value().as_implicit_node().is_some())
+        {
+            return true;
+        }
+
         if let Some(arguments) = call_node.arguments()
             && arguments.arguments().iter().any(|arg| {
                 arg.as_splat_node().is_some() || arg.as_forwarding_arguments_node().is_some()
