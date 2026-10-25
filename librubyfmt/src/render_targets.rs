@@ -577,6 +577,16 @@ impl<'src> ConditionalLayoutEntry<'src> {
         &self.tokens[self.predicate_start..]
     }
 
+    fn drain_statement_tokens(&mut self) -> impl Iterator<Item = AbstractLineToken<'src>> + '_ {
+        let end = self.predicate_start;
+        self.predicate_start = 0;
+        self.tokens.drain(..end)
+    }
+
+    fn drain_predicate_tokens(&mut self) -> impl Iterator<Item = AbstractLineToken<'src>> + '_ {
+        self.tokens.drain(self.predicate_start..)
+    }
+
     fn phase_tokens(&self) -> &[AbstractLineToken<'src>] {
         match self.phase {
             ConditionalLayoutPhase::Predicate => self.predicate_tokens(),
@@ -700,78 +710,58 @@ impl<'src> ConditionalLayoutEntry<'src> {
                 > crate::render_queue_writer::MAX_LINE_LENGTH
     }
 
-    pub fn write_inline_tokens(self, result: &mut Vec<ConcreteLineTokenAndTargets<'src>>) {
-        let ConditionalLayoutEntry {
-            tokens,
-            predicate_start,
-            keyword,
-            ..
-        } = self;
-        result.reserve(tokens.len() + 3);
-        let mut tokens = tokens.into_iter();
+    pub fn write_inline_tokens(mut self, result: &mut Vec<ConcreteLineTokenAndTargets<'src>>) {
+        result.reserve(self.tokens.len() + 3);
 
-        for token in tokens.by_ref().take(predicate_start) {
+        for token in self.drain_statement_tokens() {
             token.write_single_line(result);
         }
 
         result.push(ConcreteLineToken::Space.into());
         result.push(
             ConcreteLineToken::ConditionalKeyword {
-                contents: keyword.as_bytes(),
+                contents: self.keyword.as_bytes(),
             }
             .into(),
         );
         result.push(ConcreteLineToken::Space.into());
 
-        for token in tokens {
+        for token in self.drain_predicate_tokens() {
             token.write_single_line(result);
         }
     }
 
-    pub fn write_block_tokens(self, result: &mut Vec<ConcreteLineTokenAndTargets<'src>>) {
-        let ConditionalLayoutEntry {
-            tokens,
-            predicate_start,
-            keyword,
-            indent_depth,
-            ..
-        } = self;
-        result.reserve(tokens.len() + 7);
-        let mut tokens = tokens;
-
-        // Predicate-first so can can consume the tokens sequentially without allocating a second Vec
-        tokens.rotate_left(predicate_start);
-        let predicate_len = tokens.len() - predicate_start;
-        let mut tokens = tokens.into_iter();
+    pub fn write_block_tokens(mut self, result: &mut Vec<ConcreteLineTokenAndTargets<'src>>) {
+        result.reserve(self.tokens.len() + 7);
 
         result.push(
             ConcreteLineToken::ConditionalKeyword {
-                contents: keyword.as_bytes(),
+                contents: self.keyword.as_bytes(),
             }
             .into(),
         );
         result.push(ConcreteLineToken::Space.into());
 
-        for token in tokens.by_ref().take(predicate_len) {
+        for token in self.drain_predicate_tokens() {
             token.write_multi_line(result);
         }
 
         result.push(ConcreteLineToken::HardNewLine.into());
         result.push(
             ConcreteLineToken::Indent {
-                depth: indent_depth + 2,
+                depth: self.indent_depth + 2,
             }
             .into(),
         );
 
-        for token in tokens {
+        for token in self.drain_statement_tokens() {
             token.write_multi_line(result);
         }
 
         result.push(ConcreteLineToken::HardNewLine.into());
         result.push(
             ConcreteLineToken::Indent {
-                depth: indent_depth,
+                depth: self.indent_depth,
             }
             .into(),
         );
