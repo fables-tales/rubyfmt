@@ -2003,9 +2003,20 @@ fn format_call_node<'src>(
                 }
             };
         } else if is_aref {
-            // For a[] or a[]= with no arguments, we still need to emit the brackets
-            ps.emit_open_square_bracket();
-            ps.emit_close_square_bracket();
+            if let Some(block_argument_node) = call_node
+                .block()
+                .and_then(|block| block.as_block_argument_node())
+            {
+                // A lone block argument goes inside the brackets, e.g. `a[&blk]`
+                ps.breakable_of(BreakableDelims::for_array(), |ps| {
+                    ps.emit_soft_indent();
+                    format_block_argument_node(ps, block_argument_node);
+                });
+            } else {
+                // For a[] or a[]= with no arguments, we still need to emit the brackets
+                ps.emit_open_square_bracket();
+                ps.emit_close_square_bracket();
+            }
         } else if !has_only_empty_paren_arg
             && (!skip_receiver
                 || call_node
@@ -2063,8 +2074,11 @@ fn format_call_node<'src>(
             // If there's an arguments node, we've handled this block arg with
             // the rest of the args (since it's included in the comma-separated
             // args list), otherwise the only argument is the &blk node, so we
-            // have to handle that here separately
-            } else if call_node.arguments().is_none() && block.as_block_argument_node().is_some() {
+            // have to handle that here separately (arefs render it inside their brackets)
+            } else if !is_aref
+                && call_node.arguments().is_none()
+                && block.as_block_argument_node().is_some()
+            {
                 ps.breakable_of(BreakableDelims::for_method_call(), |ps| {
                     ps.emit_soft_indent();
                     format_block_argument_node(ps, block.as_block_argument_node().unwrap());
