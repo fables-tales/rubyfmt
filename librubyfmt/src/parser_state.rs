@@ -918,10 +918,6 @@ impl<'src> ParserState<'src> {
         !self.heredoc_strings.is_empty()
     }
 
-    /// Run `f` with the current pending heredocs hidden, then restore them
-    /// (followed by any heredocs `f` itself queued). This prevents a
-    /// `render_heredocs` call inside `f` from accidentally draining heredocs
-    /// that belong to an earlier formatting phase.
     pub(crate) fn with_preserved_pending_heredocs<F>(&mut self, f: F)
     where
         F: FnOnce(&mut ParserState<'src>),
@@ -1042,10 +1038,6 @@ impl<'src> ParserState<'src> {
             ps.new_block(format_statement);
         });
 
-        // Pull any heredocs the statement queued onto the entry. Otherwise a
-        // downstream `render_heredocs` call during predicate formatting
-        // (e.g. the eager one in `format_call_body` for `Method.call`)
-        // would splice the body into the predicate phase's token bucket.
         let statement_heredocs = std::mem::take(&mut self.heredoc_strings);
         let entry = self
             .breakable_entry_stack
@@ -1060,9 +1052,6 @@ impl<'src> ParserState<'src> {
             ps.new_block(format_predicate);
         });
 
-        // Any heredocs left after predicate formatting belong to the
-        // predicate phase (most predicate-side heredocs get rendered
-        // eagerly by call-chain formatting, so this is usually empty).
         let predicate_heredocs = std::mem::take(&mut self.heredoc_strings);
         self.breakable_entry_stack
             .last_mut()

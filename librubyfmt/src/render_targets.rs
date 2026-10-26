@@ -754,9 +754,7 @@ impl<'src> ConditionalLayoutEntry<'src> {
     }
 
     pub fn should_use_block_form(&self, current_line_length: usize) -> bool {
-        // A statement-side heredoc body makes the conditional inherently
-        // multi-line, so promote to `if … end` block form. (Predicate-side
-        // heredocs alone don't force this — the predicate is just longer.)
+        // If there's a heredoc in the body, it's multi-line
         if self
             .heredocs
             .as_deref()
@@ -789,12 +787,10 @@ impl<'src> ConditionalLayoutEntry<'src> {
             token.write_single_line(result);
         }
 
-        // Heredocs gathered during either phase render after the inline
-        // line — statement heredocs first, then predicate heredocs (source
-        // order). We don't expect to reach inline form when there are
-        // statement heredocs (`should_use_block_form` forces block) but
-        // handle it defensively.
         if let Some(heredocs) = self.heredocs {
+            // If we get here, there are no heredocs in the statement (since we checked in `should_use_block_form`)
+            // so here we're in the predicate and render all stored heredocs
+            debug_assert!(!heredocs.has_statement_heredocs());
             let heredocs = heredocs.into_all();
             if !heredocs.is_empty() {
                 result.push(ConcreteLineToken::HardNewLine.into());
