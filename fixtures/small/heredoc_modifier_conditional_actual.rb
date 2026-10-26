@@ -45,3 +45,13 @@ puts(<<~OUT) if <<~PRED.include?("yes")
 OUT
   is this enabled?
 PRED
+
+puts(<<A, <<B) if [<<~C.shout!, <<~D]
+  a
+A
+  b
+B
+  c
+C
+  d
+D

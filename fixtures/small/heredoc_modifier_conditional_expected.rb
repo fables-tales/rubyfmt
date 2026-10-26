@@ -68,3 +68,22 @@ if <<~PRED
     OUT
   )
 end
+
+if [
+    <<~C
+      c
+    C
+      .shout!,
+    <<~D
+      d
+    D
+  ]
+  puts(
+    <<A,
+  a
+A
+    <<B
+  b
+B
+  )
+end
