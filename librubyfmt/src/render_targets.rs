@@ -543,6 +543,42 @@ impl ConditionalKeyword {
     }
 }
 
+#[derive(Debug, Clone)]
+struct ConditionalHeredocs<'src> {
+    /// Use [`Self::into_phase_heredocs`] instead of indexing this directly
+    heredocs: Vec<HeredocString<'src>>,
+    predicate_start: usize,
+}
+
+impl<'src> ConditionalHeredocs<'src> {
+    fn new() -> Self {
+        Self {
+            heredocs: Vec::new(),
+            predicate_start: 0,
+        }
+    }
+
+    fn has_statement_heredocs(&self) -> bool {
+        self.predicate_start != 0
+    }
+
+    fn gather(&mut self, phase: ConditionalLayoutPhase, heredocs: Vec<HeredocString<'src>>) {
+        self.heredocs.extend(heredocs);
+        if phase == ConditionalLayoutPhase::Statement {
+            self.predicate_start = self.heredocs.len();
+        }
+    }
+
+    fn into_phase_heredocs(mut self) -> (Vec<HeredocString<'src>>, Vec<HeredocString<'src>>) {
+        let predicate = self.heredocs.split_off(self.predicate_start);
+        (predicate, self.heredocs)
+    }
+
+    fn into_all(self) -> Vec<HeredocString<'src>> {
+        self.heredocs
+    }
+}
+
 /// An entry that holds predicate and statement tokens for a conditional modifier.
 ///
 /// This is used for conditionals like:
@@ -554,8 +590,8 @@ pub struct ConditionalLayoutEntry<'src> {
     tokens: Vec<AbstractLineToken<'src>>,
     /// Index of the boundary between the two phases in `tokens`
     predicate_start: usize,
-    statement_heredocs: Vec<HeredocString<'src>>,
-    predicate_heredocs: Vec<HeredocString<'src>>,
+    /// Boxed to keep `AbstractLineToken` small, since this is rarely used
+    heredocs: Option<Box<ConditionalHeredocs<'src>>>,
     keyword: ConditionalKeyword,
     indent_depth: u32,
     phase: ConditionalLayoutPhase,
@@ -566,8 +602,7 @@ impl<'src> ConditionalLayoutEntry<'src> {
         ConditionalLayoutEntry {
             tokens: Vec::new(),
             predicate_start: 0,
-            statement_heredocs: Vec::new(),
-            predicate_heredocs: Vec::new(),
+            heredocs: None,
             keyword,
             indent_depth,
             phase: ConditionalLayoutPhase::Statement,
@@ -575,10 +610,12 @@ impl<'src> ConditionalLayoutEntry<'src> {
     }
 
     pub fn gather_heredocs(&mut self, heredocs: Vec<HeredocString<'src>>) {
-        match self.phase {
-            ConditionalLayoutPhase::Statement => self.statement_heredocs.extend(heredocs),
-            ConditionalLayoutPhase::Predicate => self.predicate_heredocs.extend(heredocs),
+        if heredocs.is_empty() {
+            return;
         }
+        self.heredocs
+            .get_or_insert_with(|| Box::new(ConditionalHeredocs::new()))
+            .gather(self.phase, heredocs);
     }
 
     fn statement_tokens(&self) -> &[AbstractLineToken<'src>] {
@@ -720,7 +757,11 @@ impl<'src> ConditionalLayoutEntry<'src> {
         // A statement-side heredoc body makes the conditional inherently
         // multi-line, so promote to `if … end` block form. (Predicate-side
         // heredocs alone don't force this — the predicate is just longer.)
-        if !self.statement_heredocs.is_empty() {
+        if self
+            .heredocs
+            .as_deref()
+            .is_some_and(|heredocs| heredocs.has_statement_heredocs())
+        {
             return true;
         }
         self.is_multiline()
@@ -753,16 +794,23 @@ impl<'src> ConditionalLayoutEntry<'src> {
         // order). We don't expect to reach inline form when there are
         // statement heredocs (`should_use_block_form` forces block) but
         // handle it defensively.
-        if !self.statement_heredocs.is_empty() || !self.predicate_heredocs.is_empty() {
-            result.push(ConcreteLineToken::HardNewLine.into());
-            let mut combined = self.statement_heredocs;
-            combined.extend(self.predicate_heredocs);
-            AbstractLineToken::write_heredocs(Some(combined), result);
+        if let Some(heredocs) = self.heredocs {
+            let heredocs = heredocs.into_all();
+            if !heredocs.is_empty() {
+                result.push(ConcreteLineToken::HardNewLine.into());
+                AbstractLineToken::write_heredocs(Some(heredocs), result);
+            }
         }
     }
 
     pub fn write_block_tokens(mut self, result: &mut Vec<ConcreteLineTokenAndTargets<'src>>) {
         result.reserve(self.tokens.len() + 7);
+
+        let (predicate_heredocs, statement_heredocs) = self
+            .heredocs
+            .take()
+            .map(|heredocs| heredocs.into_phase_heredocs())
+            .unwrap_or_default();
 
         result.push(
             ConcreteLineToken::ConditionalKeyword {
@@ -777,8 +825,7 @@ impl<'src> ConditionalLayoutEntry<'src> {
         }
 
         result.push(ConcreteLineToken::HardNewLine.into());
-        if !self.predicate_heredocs.is_empty() {
-            let predicate_heredocs = std::mem::take(&mut self.predicate_heredocs);
+        if !predicate_heredocs.is_empty() {
             AbstractLineToken::write_heredocs(Some(predicate_heredocs), result);
         }
         result.push(
@@ -793,8 +840,8 @@ impl<'src> ConditionalLayoutEntry<'src> {
         }
 
         result.push(ConcreteLineToken::HardNewLine.into());
-        if !self.statement_heredocs.is_empty() {
-            AbstractLineToken::write_heredocs(Some(self.statement_heredocs), result);
+        if !statement_heredocs.is_empty() {
+            AbstractLineToken::write_heredocs(Some(statement_heredocs), result);
         }
         result.push(
             ConcreteLineToken::Indent {
