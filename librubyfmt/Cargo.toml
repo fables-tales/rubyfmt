@@ -9,7 +9,7 @@ edition = "2024"
 [dependencies]
 log = { version = "0.4.8", features = ["max_level_debug", "release_max_level_warn"] }
 simplelog = "0.12"
-ruby-prism="2.0.0"
+ruby-prism="2.1.0"
 
 [target.'cfg(not(target_env = "msvc"))'.dependencies]
 tikv-jemallocator = { version = "0.6.1", features = ["disable_initial_exec_tls"], optional=true }

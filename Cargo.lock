@@ -662,9 +662,9 @@ checksum = "2b15c43186be67a4fd63bee50d0303afffcef381492ebe2c5d87f324e1b8815c"
 
 [[package]]
 name = "ruby-prism"
-version = "2.0.0"
+version = "2.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e292a6139b28657899a18778d281cd4829d5e46ccc060edc1d0cdcd6b1fae774"
+checksum = "ef9dd23fe10d6335d390c9fd23cf7dac83f594be5676ad28de58d6f2bac65f4c"
 dependencies = [
  "ruby-prism-sys",
  "serde",
@@ -673,9 +673,9 @@ dependencies = [
 
 [[package]]
 name = "ruby-prism-sys"
-version = "2.0.0"
+version = "2.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0080aa6a022c43438c9f33533e2da926407776e96583be67d7864c4037fb84b3"
+checksum = "f3e6b1801eb164c6b2c6c6cd42e55bf61d73f973719f675370769ce0295ba7f1"
 dependencies = [
  "cc",
  "shlex",
