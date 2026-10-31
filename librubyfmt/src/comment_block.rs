@@ -1,5 +1,4 @@
 use std::borrow::Cow;
-use std::io::BufRead;
 use std::ops::Range;
 
 use crate::line_tokens::ConcreteLineToken;
@@ -119,10 +118,7 @@ impl CommentBlock {
     }
 
     pub fn line_count(&self) -> usize {
-        self.comments
-            .iter()
-            .map(|comment| comment.lines().count())
-            .sum()
+        self.span.len()
     }
 
     pub fn is_trailing(&self) -> bool {
