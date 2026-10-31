@@ -918,6 +918,17 @@ impl<'src> ParserState<'src> {
         !self.heredoc_strings.is_empty()
     }
 
+    pub(crate) fn with_preserved_pending_heredocs<F>(&mut self, f: F)
+    where
+        F: FnOnce(&mut ParserState<'src>),
+    {
+        let saved = std::mem::take(&mut self.heredoc_strings);
+        f(self);
+        let from_f = std::mem::take(&mut self.heredoc_strings);
+        self.heredoc_strings = saved;
+        self.heredoc_strings.extend(from_f);
+    }
+
     pub(crate) fn write<W: Write>(self, writer: &mut W) -> io::Result<()> {
         let rqw = RenderQueueWriter::new(self.consume_to_render_queue());
         rqw.write(writer)
@@ -1027,16 +1038,27 @@ impl<'src> ParserState<'src> {
             ps.new_block(format_statement);
         });
 
+        let statement_heredocs = std::mem::take(&mut self.heredoc_strings);
+        let entry = self
+            .breakable_entry_stack
+            .last_mut()
+            .expect("just pushed InlineConditional")
+            .as_conditional_layout_mut()
+            .expect("just pushed InlineConditional");
+        entry.gather_heredocs(statement_heredocs);
+        entry.switch_to_predicate();
+
+        self.with_start_of_line(false, |ps| {
+            ps.new_block(format_predicate);
+        });
+
+        let predicate_heredocs = std::mem::take(&mut self.heredoc_strings);
         self.breakable_entry_stack
             .last_mut()
             .expect("just pushed InlineConditional")
             .as_conditional_layout_mut()
             .expect("just pushed InlineConditional")
-            .switch_to_predicate();
-
-        self.with_start_of_line(false, |ps| {
-            ps.new_block(format_predicate);
-        });
+            .gather_heredocs(predicate_heredocs);
 
         let cle = self
             .breakable_entry_stack
