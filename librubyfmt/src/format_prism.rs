@@ -5,7 +5,7 @@ use ruby_prism as prism;
 use crate::{
     delimiters::BreakableDelims,
     heredoc_string::HeredocKind,
-    parser_state::{FormattingContext, HashType, ParserState},
+    parser_state::{FormattingContext, HashType, ListElementPolicy, ParserState},
     render_targets::ConditionalKeyword,
     types::{LineNumber, SourceOffset},
 };
@@ -558,7 +558,7 @@ fn format_break_node<'src>(ps: &mut ParserState<'src>, break_node: prism::BreakN
             let end_offset = arguments.last().unwrap().location().end();
 
             ps.emit_space();
-            format_list_like_thing(ps, arguments, end_offset, true);
+            format_argument_list(ps, arguments, end_offset, true);
         });
     }
 }
@@ -655,10 +655,12 @@ fn format_statements<'src>(
     ps: &mut ParserState<'src>,
     statements_node: prism::StatementsNode<'src>,
 ) {
-    ps.with_start_of_line(true, |ps| {
-        for node in statements_node.body().iter() {
-            format_node(ps, node);
-        }
+    ps.with_statement_context(|ps| {
+        ps.with_start_of_line(true, |ps| {
+            for node in statements_node.body().iter() {
+                format_node(ps, node);
+            }
+        });
     });
 }
 
@@ -1669,7 +1671,9 @@ fn format_block_argument_node<'src>(
     ps.emit_ident(b"&");
     if let Some(expression_node) = block_argument_node.expression() {
         ps.with_start_of_line(false, |ps| {
-            format_node(ps, expression_node);
+            ps.with_formatting_context(FormattingContext::BlockArgument, |ps| {
+                format_node(ps, expression_node);
+            });
         });
     }
 }
@@ -1695,6 +1699,45 @@ fn is_def_modifier_node(node: &prism::Node) -> bool {
         && let Some(argument) = args.arguments().first()
     {
         return is_def_modifier_node(&argument);
+    }
+
+    false
+}
+
+fn command_call_requires_parens<'src>(
+    ps: &ParserState<'src>,
+    call_node: &prism::CallNode<'src>,
+    has_arguments: bool,
+    is_terminal_call: bool,
+) -> bool {
+    if ps.current_formatting_context_requires_parens() {
+        return true;
+    }
+    if !has_arguments {
+        return false;
+    }
+
+    if ps.current_formatting_context_forbids_command_calls() {
+        return true;
+    }
+
+    // There is something after the call that requires parens (e.g. `Foo.raise(bar).baz`)
+    if !is_terminal_call {
+        return true;
+    }
+
+    if let Some(block) = call_node.block().and_then(|b| b.as_block_node()) {
+        if block.opening_loc().as_slice() != b"do" {
+            return true;
+        }
+
+        // A `do` block is only safe to elide at statement level
+        if matches!(
+            ps.current_formatting_context(),
+            FormattingContext::ListElement(_)
+        ) {
+            return true;
+        }
     }
 
     false
@@ -1762,7 +1805,7 @@ fn use_parens_for_call_node<'src>(
     }
 
     if method_name == b"raise" {
-        if ps.current_formatting_context_requires_parens() {
+        if command_call_requires_parens(ps, call_node, has_arguments, is_terminal_call) {
             return true;
         }
 
@@ -1786,6 +1829,7 @@ fn use_parens_for_call_node<'src>(
         {
             return true;
         }
+
         return false;
     }
 
@@ -1817,7 +1861,7 @@ fn use_parens_for_call_node<'src>(
             .and_then(|blk| blk.as_block_node())
             .is_some()
     {
-        return false;
+        return command_call_requires_parens(ps, call_node, has_arguments, is_terminal_call);
     }
 
     // Check for `RSpec.describe`
@@ -1826,7 +1870,7 @@ fn use_parens_for_call_node<'src>(
     {
         let const_name = const_read.name().as_slice();
         if const_name == b"RSpec" && method_name == b"describe" {
-            return false;
+            return command_call_requires_parens(ps, call_node, has_arguments, is_terminal_call);
         }
     }
 
@@ -2855,25 +2899,29 @@ fn format_brace_block_body<'src>(
             if statements.len() > 1 {
                 ps.emit_newline();
                 ps.emit_indent();
-                ps.with_start_of_line(false, |ps| {
-                    let mut peekable = statements.iter().peekable();
-                    while let Some(node) = peekable.next() {
-                        format_node(ps, node);
-                        ps.emit_soft_newline();
-                        if peekable.peek().is_some() {
-                            ps.emit_soft_indent();
+                ps.with_statement_context(|ps| {
+                    ps.with_start_of_line(false, |ps| {
+                        let mut peekable = statements.iter().peekable();
+                        while let Some(node) = peekable.next() {
+                            format_node(ps, node);
+                            ps.emit_soft_newline();
+                            if peekable.peek().is_some() {
+                                ps.emit_soft_indent();
+                            }
                         }
-                    }
-                    ps.shift_comments();
+                        ps.shift_comments();
+                    });
                 });
             } else {
-                ps.with_start_of_line(false, |ps| {
-                    if let Some(node) = statements.first() {
-                        ps.emit_soft_newline();
-                        ps.emit_soft_indent();
-                        format_node(ps, node);
-                        ps.emit_soft_newline();
-                    }
+                ps.with_statement_context(|ps| {
+                    ps.with_start_of_line(false, |ps| {
+                        if let Some(node) = statements.first() {
+                            ps.emit_soft_newline();
+                            ps.emit_soft_indent();
+                            format_node(ps, node);
+                            ps.emit_soft_newline();
+                        }
+                    });
                 });
             }
         }
@@ -3423,7 +3471,7 @@ fn format_arguments_node<'src>(
     arguments_node: prism::ArgumentsNode<'src>,
 ) {
     ps.with_start_of_line(false, |ps| {
-        format_list_like_thing(
+        format_argument_list(
             ps,
             arguments_node.arguments(),
             arguments_node.location().end(),
@@ -3566,7 +3614,9 @@ fn format_splat_node<'src>(ps: &mut ParserState<'src>, splat_node: prism::SplatN
     ps.emit_ident(b"*");
     if let Some(node) = splat_node.expression() {
         ps.with_start_of_line(false, |ps| {
-            format_node(ps, node);
+            ps.with_formatting_context(FormattingContext::Splat, |ps| {
+                format_node(ps, node);
+            });
         });
     }
 }
@@ -4610,7 +4660,7 @@ fn format_next_node<'src>(ps: &mut ParserState<'src>, next_node: prism::NextNode
         ps.with_start_of_line(false, |ps| {
             ps.emit_space();
             ps.with_start_of_line(false, |ps| {
-                format_list_like_thing(
+                format_argument_list(
                     ps,
                     arguments_node.arguments(),
                     arguments_node.location().end(),
@@ -5219,49 +5269,90 @@ fn unwrap_single_arg_paren<'src>(node: &prism::Node<'src>) -> Option<prism::Node
     Some(inner)
 }
 
+/// Formats a list of elements that must be primary expressions, e.g. the
+/// elements of an array or hash, or a parameter list.
 fn format_list_like_thing<'src>(
     ps: &mut ParserState<'src>,
     node_list: prism::NodeList<'src>,
     end_offset: SourceOffset,
     single_line: bool,
 ) -> bool {
+    format_list_like_thing_with_policy(
+        ps,
+        node_list,
+        end_offset,
+        single_line,
+        ListElementPolicy::PrimaryOnly,
+    )
+}
+
+/// Formats a call-style argument list (for a method call, `super`, `yield`, `break`, `next`, ...)
+fn format_argument_list<'src>(
+    ps: &mut ParserState<'src>,
+    node_list: prism::NodeList<'src>,
+    end_offset: SourceOffset,
+    single_line: bool,
+) -> bool {
+    format_list_like_thing_with_policy(
+        ps,
+        node_list,
+        end_offset,
+        single_line,
+        ListElementPolicy::AllowSoleCommandCall,
+    )
+}
+
+fn format_list_like_thing_with_policy<'src>(
+    ps: &mut ParserState<'src>,
+    node_list: prism::NodeList<'src>,
+    end_offset: SourceOffset,
+    single_line: bool,
+    policy: ListElementPolicy,
+) -> bool {
     let mut emitted_args = false;
     let args_count = node_list.len();
+    let element_policy = if policy == ListElementPolicy::AllowSoleCommandCall && args_count == 1 {
+        ListElementPolicy::AllowSoleCommandCall
+    } else {
+        ListElementPolicy::PrimaryOnly
+    };
 
     ps.magic_handle_comments_for_multiline_arrays(
         Some(ps.get_line_number_for_offset(end_offset)),
         |ps| {
             for (idx, expr) in node_list.iter().enumerate() {
-                if single_line {
-                    format_node(ps, expr);
-                    if idx != args_count - 1 {
-                        ps.emit_comma_space();
-                    }
-                } else {
-                    ps.with_start_of_line(false, |ps| {
-                        if let Some(assoc_node) = expr.as_assoc_node() {
-                            if idx > 0 {
-                                ps.emit_soft_indent();
-                            }
-                            format_assoc_node(ps, assoc_node)
-                        } else if let Some(splat_node) = expr.as_assoc_splat_node() {
-                            if idx > 0 {
-                                ps.emit_soft_indent();
-                            }
-                            format_assoc_splat_node(ps, splat_node)
-                        } else {
-                            ps.emit_soft_indent();
-                            format_node(ps, expr);
-                        }
-
+                ps.with_formatting_context(FormattingContext::ListElement(element_policy), |ps| {
+                    if single_line {
+                        format_node(ps, expr);
                         if idx != args_count - 1 {
-                            ps.emit_comma();
-                            ps.emit_soft_newline();
-                        } else {
-                            ps.shift_comments();
+                            ps.emit_comma_space();
                         }
-                    });
-                };
+                    } else {
+                        ps.with_start_of_line(false, |ps| {
+                            if let Some(assoc_node) = expr.as_assoc_node() {
+                                if idx > 0 {
+                                    ps.emit_soft_indent();
+                                }
+                                format_assoc_node(ps, assoc_node)
+                            } else if let Some(splat_node) = expr.as_assoc_splat_node() {
+                                if idx > 0 {
+                                    ps.emit_soft_indent();
+                                }
+                                format_assoc_splat_node(ps, splat_node)
+                            } else {
+                                ps.emit_soft_indent();
+                                format_node(ps, expr);
+                            }
+
+                            if idx != args_count - 1 {
+                                ps.emit_comma();
+                                ps.emit_soft_newline();
+                            } else {
+                                ps.shift_comments();
+                            }
+                        });
+                    };
+                });
                 emitted_args = true;
             }
         },
