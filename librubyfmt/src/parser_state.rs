@@ -22,6 +22,17 @@ pub enum FormattingContext {
     IfOp,
     StringEmbexpr,
     HashType(HashType),
+    ListElement(ListElementPolicy),
+    Splat,
+    BlockArgument,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum ListElementPolicy {
+    /// The element must be a primary expression, so a command-style call is never valid
+    PrimaryOnly,
+    /// The element is the sole argument of a call-like construct, where a command-style call is valid
+    AllowSoleCommandCall,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -327,6 +338,17 @@ impl<'src> ParserState<'src> {
         self.formatting_context.push(fc);
         f(self);
         self.formatting_context.pop();
+    }
+
+    pub(crate) fn with_statement_context<F>(&mut self, f: F)
+    where
+        F: FnOnce(&mut ParserState<'src>),
+    {
+        if self.current_formatting_context_forbids_command_calls() {
+            self.with_formatting_context(FormattingContext::Main, f);
+        } else {
+            f(self);
+        }
     }
 
     pub(crate) fn on_line(&mut self, line_number: LineNumber) {
@@ -638,6 +660,16 @@ impl<'src> ParserState<'src> {
     pub(crate) fn current_formatting_context_requires_parens(&self) -> bool {
         self.current_formatting_context() == FormattingContext::Binary
             || self.current_formatting_context() == FormattingContext::IfOp
+    }
+
+    pub(crate) fn current_formatting_context_forbids_command_calls(&self) -> bool {
+        matches!(
+            self.current_formatting_context(),
+            FormattingContext::ListElement(ListElementPolicy::PrimaryOnly)
+                | FormattingContext::HashType(_)
+                | FormattingContext::Splat
+                | FormattingContext::BlockArgument
+        )
     }
 
     pub(crate) fn hash_type_from_formatting_context(&self) -> Option<&HashType> {
