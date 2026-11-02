@@ -208,7 +208,8 @@ impl<'src> RenderQueueWriter<'src> {
                         ConcreteLineToken::Delim { .. }
                         | ConcreteLineToken::Dot
                         | ConcreteLineToken::DirectPart { .. }
-                        | ConcreteLineToken::MethodName { .. },
+                        | ConcreteLineToken::MethodName { .. }
+                        | ConcreteLineToken::HeredocStart { .. },
                     ],
                 ) = accum.last::<5>()
                 {

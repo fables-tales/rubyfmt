@@ -342,7 +342,7 @@ impl<'src> AbstractLineToken<'src> {
         }
     }
 
-    fn write_heredocs(
+    pub(crate) fn write_heredocs(
         heredoc_strings: Option<Vec<HeredocString>>,
         out: &mut Vec<ConcreteLineTokenAndTargets<'src>>,
     ) {

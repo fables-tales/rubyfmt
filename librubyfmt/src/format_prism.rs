@@ -3856,7 +3856,9 @@ fn format_inline_conditional<'src>(
     }
     ps.emit_conditional_keyword(keyword.as_bytes());
     ps.emit_space();
-    ps.with_start_of_line(false, |ps| format_node(ps, predicate));
+    ps.with_preserved_pending_heredocs(|ps| {
+        ps.with_start_of_line(false, |ps| format_node(ps, predicate));
+    });
 }
 
 enum Conditional<'pr> {
