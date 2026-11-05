@@ -34,11 +34,6 @@ impl<'src> Intermediary<'src> {
         self.tokens.len()
     }
 
-    pub fn fix_heredoc_duplicate_indent_mistake(&mut self) {
-        // Remove duplicate indent
-        self.tokens.remove(self.tokens.len() - 3);
-    }
-
     pub fn last<const N: usize>(&self) -> Option<&[ConcreteLineToken<'src>; N]> {
         self.tokens.last_chunk::<N>()
     }
