@@ -1830,11 +1830,7 @@ fn use_parens_for_call_node<'src>(
         }
     }
 
-    if context == FormattingContext::ClassOrModule && !original_used_parens {
-        return false;
-    }
-
-    true
+    context != FormattingContext::ClassOrModule || original_used_parens
 }
 
 fn format_call_node<'src>(
