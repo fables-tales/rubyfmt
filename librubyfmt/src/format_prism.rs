@@ -367,7 +367,9 @@ pub fn format_node<'src>(ps: &mut ParserState<'src>, node: prism::Node<'src>) {
         Node::PreExecutionNode { .. } => {
             format_pre_execution_node(ps, node.as_pre_execution_node().unwrap())
         }
-        Node::ProgramNode { .. } => format_program(ps, node.as_program_node().unwrap(), None),
+        Node::ProgramNode { .. } => {
+            format_program(ps, node.as_program_node().unwrap(), false, None)
+        }
         Node::RangeNode { .. } => format_range_node(ps, node.as_range_node().unwrap()),
         Node::RationalNode { .. } => format_rational_node(ps, node.as_rational_node().unwrap()),
         Node::RedoNode { .. } => format_redo_node(ps),
@@ -637,10 +639,22 @@ fn format_case_node<'src>(ps: &mut ParserState<'src>, case_node: prism::CaseNode
 pub fn format_program<'src>(
     ps: &mut ParserState<'src>,
     program_node: prism::ProgramNode<'src>,
+    shebang_loop: bool,
     data_loc: Option<prism::Location<'src>>,
 ) {
     ps.with_start_of_line(true, |ps| {
-        format_statements(ps, program_node.statements());
+        if shebang_loop {
+            if let Some(statements) = program_node
+                .statements()
+                .body()
+                .first()
+                .and_then(|node| node.as_while_node()?.statements())
+            {
+                format_statements(ps, statements);
+            }
+        } else {
+            format_statements(ps, program_node.statements());
+        }
     });
     ps.emit_newline();
     ps.on_line(LineNumber::MAX - 1);

@@ -1,6 +1,8 @@
 #![deny(warnings, missing_copy_implementations)]
 
+use std::cell::Cell;
 use std::io::{Cursor, Write};
+use std::rc::Rc;
 
 #[cfg(all(feature = "use_jemalloc", not(target_env = "msvc")))]
 #[global_allocator]
@@ -69,7 +71,20 @@ pub fn format_buffer(buf: &[u8]) -> Result<Vec<u8>, RichFormatError> {
             .expect("writing to a vec should never fail");
     }
 
-    let parse_result = ruby_prism::parse(buf);
+    let shebang_loop = Rc::new(Cell::new(false));
+    let shebang_loop_flag = Rc::clone(&shebang_loop);
+
+    let options = ruby_prism::Options::default()
+        .main_script(true)
+        .shebang_callback(move |switches, options| {
+            if shebang_needs_loop(switches) {
+                shebang_loop_flag.set(true);
+                options.command_line(&[ruby_prism::CommandLineFlag::N]);
+            }
+        })
+        .build();
+
+    let parse_result = ruby_prism::parse_with_options(buf, &options);
     if parse_result.errors().next().is_some() {
         return Err(RichFormatError::SyntaxError);
     }
@@ -81,11 +96,51 @@ pub fn format_buffer(buf: &[u8]) -> Result<Vec<u8>, RichFormatError> {
         parse_result.comments(),
         buf,
         parse_result.line_offsets(),
+        shebang_loop.get(),
         end_data,
     )?;
 
     output.flush().expect("flushing to a vec should never fail");
     Ok(output.into_inner())
+}
+
+/// Returns true when the switches from a ruby shebang would make Ruby wrap the
+/// script in a `while gets` loop (`-n` or `-p`).
+fn shebang_needs_loop(switches: &[u8]) -> bool {
+    let mut tokens = switches
+        .split(|byte| byte.is_ascii_whitespace())
+        .filter(|token| !token.is_empty())
+        .peekable();
+
+    'tokens: while let Some(token) = tokens.next() {
+        if token == b"--" {
+            break;
+        }
+
+        if !token.starts_with(b"-") || token.starts_with(b"--") {
+            continue;
+        }
+
+        let mut flags = token[1..].iter().copied();
+        while let Some(flag) = flags.next() {
+            match flag {
+                b'n' | b'p' => return true,
+                // `-e` consumes the script, so there are no more ruby options.
+                b'e' => break 'tokens,
+                // These options consume the rest of the token or the next
+                // token as an argument, so stop looking for flags in them.
+                b'I' | b'r' | b'F' | b'T' | b'K' | b'E' | b'C' | b'i' => {
+                    if flags.next().is_none() {
+                        let _ = tokens.next();
+                    }
+                    break;
+                }
+                _ => {}
+            }
+        }
+    }
+
+    false
 }
 
 pub fn toplevel_format_program_with_prism<W: Write>(
@@ -94,6 +149,7 @@ pub fn toplevel_format_program_with_prism<W: Write>(
     comments: ruby_prism::Comments,
     source: &[u8],
     line_offsets: &[SourceOffset],
+    shebang_loop: bool,
     data: Option<ruby_prism::Location>,
 ) -> Result<(), RichFormatError> {
     let mut ps = ParserState::new(FileComments::from_prism_comments(
@@ -103,7 +159,7 @@ pub fn toplevel_format_program_with_prism<W: Write>(
     ));
     ps.flush_start_of_file_comments();
 
-    format_prism::format_program(&mut ps, tree.as_program_node().unwrap(), data);
+    format_prism::format_program(&mut ps, tree.as_program_node().unwrap(), shebang_loop, data);
 
     ps.write(writer).map_err(RichFormatError::IOError)?;
     writer.flush().map_err(RichFormatError::IOError)?;
