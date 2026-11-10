@@ -683,7 +683,7 @@ dependencies = [
 
 [[package]]
 name = "rubyfmt"
-version = "0.14.1"
+version = "1.0.0"
 dependencies = [
  "log",
  "ruby-prism",
@@ -693,7 +693,7 @@ dependencies = [
 
 [[package]]
 name = "rubyfmt-main"
-version = "0.14.1"
+version = "1.0.0"
 dependencies = [
  "assert_cmd",
  "clap",
