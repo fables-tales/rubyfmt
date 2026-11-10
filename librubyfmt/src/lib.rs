@@ -69,7 +69,11 @@ pub fn format_buffer(buf: &[u8]) -> Result<Vec<u8>, RichFormatError> {
             .expect("writing to a vec should never fail");
     }
 
-    let parse_result = ruby_prism::parse(buf);
+    let options = ruby_prism::Options::default()
+        // `partial_script` means Prism does not check jumps (next/break/etc.) for validity
+        .partial_script(true)
+        .build();
+    let parse_result = ruby_prism::parse_with_options(buf, &options);
     if parse_result.errors().next().is_some() {
         return Err(RichFormatError::SyntaxError);
     }
