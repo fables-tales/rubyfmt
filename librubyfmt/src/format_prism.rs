@@ -1739,7 +1739,13 @@ fn use_parens_for_call_node<'src>(
         return false;
     }
 
-    if is_terminal_call && method_name.first().is_some_and(|c| c.is_ascii_uppercase()) {
+    let is_colon_colon_call = call_node
+        .call_operator_loc()
+        .is_some_and(|loc| loc.as_slice() == b"::");
+
+    if (is_terminal_call || is_colon_colon_call)
+        && method_name.first().is_some_and(|c| c.is_ascii_uppercase())
+    {
         if !has_arguments && call_node.block().is_some() && call_node.receiver().is_none() {
             return false;
         }
