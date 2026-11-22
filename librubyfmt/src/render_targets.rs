@@ -1,4 +1,5 @@
 use crate::delimiters::BreakableDelims;
+use crate::heredoc_string::HeredocString;
 use crate::line_tokens::{AbstractLineToken, ConcreteLineToken, ConcreteLineTokenAndTargets};
 use crate::parser_state::FormattingContext;
 use crate::types::LineNumber;
@@ -542,6 +543,42 @@ impl ConditionalKeyword {
     }
 }
 
+#[derive(Debug, Clone)]
+struct ConditionalHeredocs<'src> {
+    /// Use [`Self::into_phase_heredocs`] instead of indexing this directly
+    heredocs: Vec<HeredocString<'src>>,
+    predicate_start: usize,
+}
+
+impl<'src> ConditionalHeredocs<'src> {
+    fn new() -> Self {
+        Self {
+            heredocs: Vec::new(),
+            predicate_start: 0,
+        }
+    }
+
+    fn has_statement_heredocs(&self) -> bool {
+        self.predicate_start != 0
+    }
+
+    fn gather(&mut self, phase: ConditionalLayoutPhase, heredocs: Vec<HeredocString<'src>>) {
+        self.heredocs.extend(heredocs);
+        if phase == ConditionalLayoutPhase::Statement {
+            self.predicate_start = self.heredocs.len();
+        }
+    }
+
+    fn into_phase_heredocs(mut self) -> (Vec<HeredocString<'src>>, Vec<HeredocString<'src>>) {
+        let predicate = self.heredocs.split_off(self.predicate_start);
+        (predicate, self.heredocs)
+    }
+
+    fn into_all(self) -> Vec<HeredocString<'src>> {
+        self.heredocs
+    }
+}
+
 /// An entry that holds predicate and statement tokens for a conditional modifier.
 ///
 /// This is used for conditionals like:
@@ -553,6 +590,8 @@ pub struct ConditionalLayoutEntry<'src> {
     tokens: Vec<AbstractLineToken<'src>>,
     /// Index of the boundary between the two phases in `tokens`
     predicate_start: usize,
+    /// Boxed to keep `AbstractLineToken` small, since this is rarely used
+    heredocs: Option<Box<ConditionalHeredocs<'src>>>,
     keyword: ConditionalKeyword,
     indent_depth: u32,
     phase: ConditionalLayoutPhase,
@@ -563,10 +602,20 @@ impl<'src> ConditionalLayoutEntry<'src> {
         ConditionalLayoutEntry {
             tokens: Vec::new(),
             predicate_start: 0,
+            heredocs: None,
             keyword,
             indent_depth,
             phase: ConditionalLayoutPhase::Statement,
         }
+    }
+
+    pub fn gather_heredocs(&mut self, heredocs: Vec<HeredocString<'src>>) {
+        if heredocs.is_empty() {
+            return;
+        }
+        self.heredocs
+            .get_or_insert_with(|| Box::new(ConditionalHeredocs::new()))
+            .gather(self.phase, heredocs);
     }
 
     fn statement_tokens(&self) -> &[AbstractLineToken<'src>] {
@@ -705,6 +754,14 @@ impl<'src> ConditionalLayoutEntry<'src> {
     }
 
     pub fn should_use_block_form(&self, current_line_length: usize) -> bool {
+        // If there's a heredoc in the body, it's multi-line
+        if self
+            .heredocs
+            .as_deref()
+            .is_some_and(|heredocs| heredocs.has_statement_heredocs())
+        {
+            return true;
+        }
         self.is_multiline()
             || current_line_length + self.inline_single_line_len()
                 > crate::render_queue_writer::MAX_LINE_LENGTH
@@ -729,10 +786,27 @@ impl<'src> ConditionalLayoutEntry<'src> {
         for token in self.drain_predicate_tokens() {
             token.write_single_line(result);
         }
+
+        if let Some(heredocs) = self.heredocs {
+            // If we get here, there are no heredocs in the statement (since we checked in `should_use_block_form`)
+            // so here we're in the predicate and render all stored heredocs
+            debug_assert!(!heredocs.has_statement_heredocs());
+            let heredocs = heredocs.into_all();
+            if !heredocs.is_empty() {
+                result.push(ConcreteLineToken::HardNewLine.into());
+                AbstractLineToken::write_heredocs(Some(heredocs), result);
+            }
+        }
     }
 
     pub fn write_block_tokens(mut self, result: &mut Vec<ConcreteLineTokenAndTargets<'src>>) {
         result.reserve(self.tokens.len() + 7);
+
+        let (predicate_heredocs, statement_heredocs) = self
+            .heredocs
+            .take()
+            .map(|heredocs| heredocs.into_phase_heredocs())
+            .unwrap_or_default();
 
         result.push(
             ConcreteLineToken::ConditionalKeyword {
@@ -747,6 +821,9 @@ impl<'src> ConditionalLayoutEntry<'src> {
         }
 
         result.push(ConcreteLineToken::HardNewLine.into());
+        if !predicate_heredocs.is_empty() {
+            AbstractLineToken::write_heredocs(Some(predicate_heredocs), result);
+        }
         result.push(
             ConcreteLineToken::Indent {
                 depth: self.indent_depth + 2,
@@ -759,6 +836,9 @@ impl<'src> ConditionalLayoutEntry<'src> {
         }
 
         result.push(ConcreteLineToken::HardNewLine.into());
+        if !statement_heredocs.is_empty() {
+            AbstractLineToken::write_heredocs(Some(statement_heredocs), result);
+        }
         result.push(
             ConcreteLineToken::Indent {
                 depth: self.indent_depth,
