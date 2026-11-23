@@ -198,22 +198,6 @@ impl<'src> RenderQueueWriter<'src> {
                         }
                     }
                 }
-
-                if let Some(
-                    [
-                        ConcreteLineToken::HeredocClose { .. },
-                        ConcreteLineToken::HardNewLine,
-                        ConcreteLineToken::Indent { .. },
-                        ConcreteLineToken::Indent { .. },
-                        ConcreteLineToken::Delim { .. }
-                        | ConcreteLineToken::Dot
-                        | ConcreteLineToken::DirectPart { .. }
-                        | ConcreteLineToken::MethodName { .. },
-                    ],
-                ) = accum.last::<5>()
-                {
-                    accum.fix_heredoc_duplicate_indent_mistake();
-                }
             }
         }
 

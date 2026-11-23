@@ -367,8 +367,6 @@ impl<'src> AbstractLineToken<'src> {
                 }
                 out.push(clats_heredoc_close(symbol));
                 out.push(cltats_hard_newline());
-                let indent_depth = if indent != 0 { indent - 2 } else { indent };
-                out.push(clats_indent(indent_depth));
             }
         }
     }
