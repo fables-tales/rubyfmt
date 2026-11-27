@@ -78,6 +78,12 @@ pub struct ParserState<'src> {
     popped_heredoc_final_newline: bool,
 }
 
+struct RenderedHeredocBody<'src> {
+    segments: Vec<HeredocSegment>,
+    pending_heredocs: Vec<HeredocString<'src>>,
+    stripped_final_newline: bool,
+}
+
 impl<'src> ParserState<'src> {
     pub(crate) fn scope_has_variable(&self, s: &[u8]) -> bool {
         self.scopes.last().expect("it's never empty").contains(&s)
@@ -102,12 +108,7 @@ impl<'src> ParserState<'src> {
     ) where
         F: FnOnce(&mut ParserState<'src>),
     {
-        let mut next_ps = ParserState::new_with_reset_indentation(self);
-        next_ps.inside_squiggly_heredoc = kind.is_squiggly() || self.inside_squiggly_heredoc;
-        formatting_func(&mut next_ps);
-
-        self.heredoc_strings
-            .extend(next_ps.heredoc_strings.drain(0..));
+        let body = self.render_heredoc_body(kind, formatting_func);
 
         // Update line number and clear out any comments we might have rendered in e.g. an embexpr
         //
@@ -119,15 +120,48 @@ impl<'src> ParserState<'src> {
         );
         self.current_orig_line_number = end_line;
 
-        let stripped_final_newline = next_ps.popped_heredoc_final_newline;
-        let segments = next_ps.render_to_segments();
+        self.heredoc_strings.extend(body.pending_heredocs);
         self.heredoc_strings.push(HeredocString::new(
             symbol.into(),
             kind,
-            segments,
+            body.segments,
             self.current_spaces(),
-            stripped_final_newline,
+            body.stripped_final_newline,
         ));
+    }
+
+    /// Formats a heredoc body in a fresh, zero-indentation render state.
+    fn render_heredoc_body<F>(
+        &mut self,
+        kind: HeredocKind,
+        formatting_func: F,
+    ) -> RenderedHeredocBody<'src>
+    where
+        F: FnOnce(&mut ParserState<'src>),
+    {
+        let current_line = self.current_orig_line_number;
+
+        let mut outer = std::mem::replace(self, ParserState::new(FileComments::default()));
+        self.comments_hash = std::mem::take(&mut outer.comments_hash);
+        self.start_of_line = std::mem::take(&mut outer.start_of_line);
+        self.current_orig_line_number = current_line;
+        self.inside_squiggly_heredoc = kind.is_squiggly() || outer.inside_squiggly_heredoc;
+
+        formatting_func(self);
+
+        let body = RenderedHeredocBody {
+            segments: self.render_to_segments(),
+            pending_heredocs: std::mem::take(&mut self.heredoc_strings),
+            stripped_final_newline: self.popped_heredoc_final_newline,
+        };
+
+        // Give the inherited state back to the outer parser state. Any
+        // heredoc-local formatting state is discarded with `self`.
+        outer.comments_hash = std::mem::take(&mut self.comments_hash);
+        outer.start_of_line = std::mem::take(&mut self.start_of_line);
+        *self = outer;
+
+        body
     }
 
     pub(crate) fn emit_heredoc_start(&mut self, symbol: &'src [u8], kind: HeredocKind) {
@@ -863,22 +897,12 @@ impl<'src> ParserState<'src> {
         }
     }
 
-    // Creates a copy of the parser state *with the indent_depth reset*.
-    // This is used for heredocs, where we explicitly want to ignore current indentation.
-    pub(crate) fn new_with_reset_indentation(ps: &ParserState<'src>) -> Self {
-        let mut next_ps = ParserState::new(FileComments::default());
-        next_ps.comments_hash = ps.comments_hash.clone();
-        next_ps.start_of_line = ps.start_of_line.clone();
-        next_ps.current_orig_line_number = ps.current_orig_line_number;
-        next_ps
-    }
-
     /// Convert the render queue to heredoc segments. This separates content into
     /// Normal segments (which should receive squiggly indentation) and Raw segments
     /// (content from nested non-squiggly heredocs that should not be indented).
-    pub(crate) fn render_to_segments(self) -> Vec<HeredocSegment> {
+    pub(crate) fn render_to_segments(&mut self) -> Vec<HeredocSegment> {
         // First, render to get the final token stream (resolving breakable entries)
-        let rqw = RenderQueueWriter::new(self.consume_to_render_queue());
+        let rqw = RenderQueueWriter::new(std::mem::take(&mut self.render_queue).into_tokens());
         let final_tokens = rqw.into_tokens();
 
         let mut segments = Vec::new();
