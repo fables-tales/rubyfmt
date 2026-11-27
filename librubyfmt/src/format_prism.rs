@@ -7,6 +7,7 @@ use crate::{
     heredoc_string::HeredocKind,
     parser_state::{FormattingContext, HashType, ParserState},
     render_targets::ConditionalKeyword,
+    statement_spacing,
     types::{LineNumber, SourceOffset},
 };
 
@@ -656,10 +657,60 @@ fn format_statements<'src>(
     statements_node: prism::StatementsNode<'src>,
 ) {
     ps.with_start_of_line(true, |ps| {
-        for node in statements_node.body().iter() {
-            format_node(ps, node);
-        }
+        format_statement_sequence(ps, statements_node.body(), |ps, node, _| {
+            format_node(ps, node)
+        });
     });
+}
+
+fn format_statement_sequence<'src>(
+    ps: &mut ParserState<'src>,
+    statements: prism::NodeList<'src>,
+    mut format_statement: impl FnMut(&mut ParserState<'src>, prism::Node<'src>, bool),
+) {
+    let len = statements.len();
+    let mut previous: Option<PreviousStatement> = None;
+    for (idx, node) in statements.iter().enumerate() {
+        if let Some(previous) = previous
+            && previous.should_insert_blank_line_before(ps, &node)
+        {
+            ps.insert_extra_newline_at_last_newline();
+        }
+        let current = PreviousStatement::new(&node);
+        format_statement(ps, node, idx + 1 == len);
+        previous = Some(current.finish_after_formatting(ps));
+    }
+}
+
+#[derive(Clone, Copy)]
+struct PreviousStatement {
+    ends_with_end: bool,
+    is_annotation: bool,
+    end_offset: SourceOffset,
+}
+
+impl PreviousStatement {
+    fn new(node: &prism::Node<'_>) -> Self {
+        Self {
+            ends_with_end: false,
+            is_annotation: statement_spacing::is_annotation(node),
+            end_offset: node.location().end(),
+        }
+    }
+
+    fn finish_after_formatting(mut self, ps: &ParserState<'_>) -> Self {
+        self.ends_with_end = ps.last_token_is_end();
+        self
+    }
+
+    fn should_insert_blank_line_before(self, ps: &ParserState<'_>, next: &prism::Node<'_>) -> bool {
+        statement_spacing::blank_line_between(
+            self.ends_with_end,
+            self.is_annotation,
+            || ps.has_comment_in_offset_span(self.end_offset, next.location().start()),
+            || statement_spacing::starts_with_def(next),
+        )
+    }
 }
 
 fn format_string_node<'src>(ps: &mut ParserState<'src>, string_node: prism::StringNode<'src>) {
@@ -2075,11 +2126,6 @@ fn format_call_node<'src>(
                 ps.with_start_of_line(false, |ps| {
                     format_node(ps, block);
                 });
-                // Only emit this when we're not inside a call chain (`skip_receiver` is false),
-                // since call chains emit AfterCallChain after the entire chain is done.
-                if !skip_receiver {
-                    ps.emit_after_call_chain();
-                }
             // If there's an arguments node, we've handled this block arg with
             // the rest of the args (since it's included in the comma-separated
             // args list), otherwise the only argument is the &blk node, so we
@@ -2121,7 +2167,6 @@ fn format_call_node<'src>(
             } else {
                 format_call_chain(ps, call_node);
             }
-            ps.emit_after_call_chain();
         }
     }
     // We've been manually handling line winding while rendering the chain,
@@ -2852,14 +2897,13 @@ fn format_brace_block_body<'src>(
                 ps.emit_newline();
                 ps.emit_indent();
                 ps.with_start_of_line(false, |ps| {
-                    let mut peekable = statements.iter().peekable();
-                    while let Some(node) = peekable.next() {
+                    format_statement_sequence(ps, statements, |ps, node, is_last| {
                         format_node(ps, node);
                         ps.emit_soft_newline();
-                        if peekable.peek().is_some() {
+                        if !is_last {
                             ps.emit_soft_indent();
                         }
-                    }
+                    });
                     ps.shift_comments();
                 });
             } else {
@@ -3278,16 +3322,19 @@ fn format_parentheses_node<'src>(
             ps.breakable_of(BreakableDelims::for_parens(), |ps| {
                 if let Some(body) = parentheses_node.body() {
                     if let Some(statements_node) = body.as_statements_node() {
-                        let statements = statements_node.body();
-                        for (idx, stmt) in statements.iter().enumerate() {
-                            ps.emit_soft_indent();
-                            ps.with_start_of_line(false, |ps| {
-                                format_node(ps, stmt);
-                            });
-                            if idx < statements.len() - 1 {
-                                ps.emit_newline();
-                            }
-                        }
+                        format_statement_sequence(
+                            ps,
+                            statements_node.body(),
+                            |ps, stmt, is_last| {
+                                ps.emit_soft_indent();
+                                ps.with_start_of_line(false, |ps| {
+                                    format_node(ps, stmt);
+                                });
+                                if !is_last {
+                                    ps.emit_newline();
+                                }
+                            },
+                        );
                     } else {
                         // I'm *pretty* sure this should always be a StatementsNode, but this is here
                         // just to be defensive

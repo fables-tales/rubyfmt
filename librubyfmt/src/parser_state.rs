@@ -557,10 +557,6 @@ impl<'src> ParserState<'src> {
         self.spaces_after_last_newline = self.current_spaces();
     }
 
-    pub(crate) fn emit_after_call_chain(&mut self) {
-        self.push_concrete_token(ConcreteLineToken::AfterCallChain)
-    }
-
     pub(crate) fn emit_space(&mut self) {
         self.push_concrete_token(ConcreteLineToken::Space);
     }
@@ -853,6 +849,13 @@ impl<'src> ParserState<'src> {
         match self.breakable_entry_stack.last() {
             Some(be) => be.last_token_is_a_newline(),
             None => self.render_queue.last_token_is_a_newline(),
+        }
+    }
+
+    pub(crate) fn last_token_is_end(&self) -> bool {
+        match self.breakable_entry_stack.last() {
+            Some(be) => be.ends_with_end(),
+            None => self.render_queue.ends_with_end(),
         }
     }
 

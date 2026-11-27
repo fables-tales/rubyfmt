@@ -6,7 +6,6 @@ use std::mem;
 
 #[derive(Debug)]
 pub enum BlanklineReason {
-    ComesAfterEnd,
     ClassOrModule,
     EndOfRequireBlock,
 }
@@ -32,10 +31,6 @@ impl<'src> Intermediary<'src> {
 
     pub fn len(&self) -> usize {
         self.tokens.len()
-    }
-
-    pub fn last<const N: usize>(&self) -> Option<&[ConcreteLineToken<'src>; N]> {
-        self.tokens.last_chunk::<N>()
     }
 
     pub fn into_tokens(self) -> Vec<ConcreteLineToken<'src>> {
@@ -131,20 +126,6 @@ impl<'src> Intermediary<'src> {
         {
             self.tokens.remove(self.len() - 2);
         }
-    }
-
-    pub fn insert_blankline_from_end(&mut self, index_from_end: usize) {
-        let insert_position = self.tokens.len() - index_from_end;
-        self.tokens
-            .insert(insert_position, ConcreteLineToken::HardNewLine);
-
-        // If the insertion was at or before it, we'll have moved the last
-        // hard newline up by one place
-        if insert_position <= self.index_of_last_hard_newline {
-            self.index_of_last_hard_newline += 1;
-        }
-
-        self.debug_assert_newlines();
     }
 
     pub fn insert_trailing_blankline(&mut self, _bl: BlanklineReason) {

@@ -17,6 +17,7 @@ mod line_tokens;
 mod parser_state;
 mod render_queue_writer;
 mod render_targets;
+mod statement_spacing;
 mod string_escape;
 mod types;
 mod util;
