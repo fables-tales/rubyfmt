@@ -3332,8 +3332,9 @@ fn split_node_into_call_chains<'src>(node: prism::Node<'src>) -> Vec<Vec<prism::
 
             call_node.receiver()
         });
-        elements.insert(0, receiver);
+        elements.push(receiver);
     }
+    elements.reverse();
 
     // Precompute which elements have dots anywhere in the chain after them.
     // Later, when we see an aref, we'll use this to decide whether to cut a new segment
@@ -3390,9 +3391,10 @@ fn split_node_into_call_chains<'src>(node: prism::Node<'src>) -> Vec<Vec<prism::
 
     for split_idx in split_before.into_iter().rev() {
         let after = remaining.split_off(split_idx);
-        segments.insert(0, after);
+        segments.push(after);
     }
-    segments.insert(0, remaining);
+    segments.push(remaining);
+    segments.reverse();
 
     segments
 }
