@@ -1,5 +1,7 @@
 use std::borrow::Cow;
+use std::collections::VecDeque;
 use std::io::BufRead;
+use std::ops::Range;
 
 use crate::comment_block::CommentBlock;
 use crate::parser_state::line_difference_requires_newline;
@@ -41,10 +43,58 @@ impl<'src> LineIndex<'src> {
 }
 
 #[derive(Clone, Debug, Default)]
+struct CommentQueue {
+    comments: VecDeque<(LineNumber, Vec<u8>)>,
+}
+
+impl CommentQueue {
+    fn push(&mut self, line_number: LineNumber, comment: Vec<u8>) {
+        debug_assert!(
+            self.comments
+                .back()
+                .is_none_or(|(last_line_number, _)| *last_line_number < line_number),
+            "Expected comments to be inserted in order"
+        );
+        self.comments.push_back((line_number, comment));
+    }
+
+    fn is_empty(&self) -> bool {
+        self.comments.is_empty()
+    }
+
+    fn first(&self) -> Option<&(LineNumber, Vec<u8>)> {
+        self.comments.front()
+    }
+
+    fn has_line(&self, line_number: LineNumber) -> bool {
+        self.comments
+            .binary_search_by_key(&line_number, |(ln, _)| *ln)
+            .is_ok()
+    }
+
+    fn has_comment_in_lines(&self, lines: Range<LineNumber>) -> bool {
+        self.comments.iter().any(|(ln, _)| lines.contains(ln))
+    }
+
+    /// Consume every remaining comment up to and including `line_number`,
+    /// in order.
+    fn take_through(
+        &mut self,
+        line_number: LineNumber,
+    ) -> impl Iterator<Item = (LineNumber, Vec<u8>)> + '_ {
+        std::iter::from_fn(move || {
+            self.comments
+                .front()
+                .is_some_and(|(ln, _)| *ln <= line_number)
+                .then(|| self.comments.pop_front().unwrap())
+        })
+    }
+}
+
+#[derive(Clone, Debug, Default)]
 pub struct FileComments<'src> {
     start_of_file_contiguous_comment_lines: Option<CommentBlock>,
-    /// A list of comments, sorted in order by `LineNumber`
-    other_comments: Vec<(LineNumber, Vec<u8>)>,
+    other_comments: CommentQueue,
     /// Sorted list of line numbers that contain Ruby code (not comments/blank)
     lines_with_ruby: Vec<LineNumber>,
     last_lineno: LineNumber,
@@ -150,9 +200,7 @@ impl<'src> FileComments<'src> {
     }
 
     pub fn has_line(&self, line_number: LineNumber) -> bool {
-        self.other_comments
-            .binary_search_by_key(&line_number, |(ln, _)| *ln)
-            .is_ok()
+        self.other_comments.has_line(line_number)
     }
 
     /// Add a new comment. If the beginning of this file is a comment block,
@@ -179,14 +227,7 @@ impl<'src> FileComments<'src> {
                 sled.add_line(l.into());
             }
             _ => {
-                debug_assert!(
-                    self.other_comments
-                        .last()
-                        .is_none_or(|(last_line_number, _)| *last_line_number < line_number),
-                    "Expected comments to be inserted in order"
-                );
-
-                self.other_comments.push((line_number, l));
+                self.other_comments.push(line_number, l);
             }
         }
     }
@@ -200,10 +241,8 @@ impl<'src> FileComments<'src> {
     }
 
     pub fn has_comments_in_lines(&self, start_line: LineNumber, end_line: LineNumber) -> bool {
-        let line_range = start_line..end_line;
         self.other_comments
-            .iter()
-            .any(|(ln, _)| line_range.contains(ln))
+            .has_comment_in_lines(start_line..end_line)
     }
 
     pub fn has_comment_in_offsets(
@@ -231,23 +270,16 @@ impl<'src> FileComments<'src> {
             return None;
         }
 
-        let split_point = self
-            .other_comments
-            .partition_point(|(ln, _)| *ln <= line_number);
-
         let mut comment_block_with_spaces = Vec::new();
         let mut last_line = None;
 
         if !suppress_leading_blank
-            && line_difference_requires_newline(
-                self.other_comments.first().unwrap().0,
-                starting_line_number,
-            )
+            && line_difference_requires_newline(lowest_line, starting_line_number)
         {
             comment_block_with_spaces.push(b"".into());
         }
 
-        for (index, comment_contents) in self.other_comments.drain(..split_point) {
+        for (index, comment_contents) in self.other_comments.take_through(line_number) {
             let comment_contents: Cow<'_, [u8]> = Cow::Owned(comment_contents);
             if let Some(last_line) = last_line
                 && line_difference_requires_newline(index, last_line)
