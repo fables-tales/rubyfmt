@@ -1,5 +1,5 @@
 use crate::heredoc_string::HeredocKind;
-use crate::intermediary::{BlanklineReason, Intermediary};
+use crate::intermediary::Intermediary;
 use crate::line_tokens::*;
 use crate::render_targets::{
     AbstractTokenTarget, BreakableCallChainEntry, BreakableEntry, ConditionalLayoutEntry,
@@ -147,56 +147,6 @@ impl<'src> RenderQueueWriter<'src> {
                         EndCallChainIndent => accum.additional_indent -= 1,
                         _ => accum.push(x),
                     },
-                }
-
-                if let Some(
-                    [
-                        ConcreteLineToken::End,
-                        ConcreteLineToken::HardNewLine,
-                        ConcreteLineToken::Indent { .. },
-                        x,
-                    ],
-                ) = accum.last::<4>()
-                    && x.is_in_need_of_a_trailing_blankline()
-                {
-                    accum.insert_trailing_blankline(BlanklineReason::ComesAfterEnd);
-                }
-
-                if let Some(
-                    [
-                        ConcreteLineToken::End,
-                        ConcreteLineToken::AfterCallChain,
-                        ConcreteLineToken::HardNewLine,
-                        ConcreteLineToken::Indent { .. },
-                        x,
-                        maybe_space,
-                        maybe_def,
-                    ],
-                ) = accum.last::<7>()
-                {
-                    match x {
-                        ConcreteLineToken::DefKeyword => {}
-                        _ => {
-                            if x.is_in_need_of_a_trailing_blankline()
-                                && !matches!(
-                                    (maybe_space, maybe_def),
-                                    (ConcreteLineToken::Space, ConcreteLineToken::DefKeyword)
-                                )
-                            {
-                                // If we're here, the last few tokens must look like this:
-                                // | token             | index_from_end |
-                                // |  End              | 6              |
-                                // |. AfterCallChain   | 5              |
-                                // |  HardNewline      | 4              | <-- insert after this token
-                                // |. Indent           | 3 .            |
-                                // |  (ArbitraryToken) | 2              |
-                                // |  (ArbitraryToken) | 1              |
-                                // |  (ArbitraryToken) | 0              |
-                                const LAST_NEWLINE_INDEX_FROM_END: usize = 4;
-                                accum.insert_blankline_from_end(LAST_NEWLINE_INDEX_FROM_END);
-                            }
-                        }
-                    }
                 }
             }
         }

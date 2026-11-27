@@ -80,7 +80,6 @@ pub enum ConcreteLineToken<'src> {
     },
     // These are "magic" tokens. They have no concrete representation,
     // but they're meaningful inside of the render queue
-    AfterCallChain,
     BeginCallChainIndent,
     EndCallChainIndent,
     HeredocStart {
@@ -135,9 +134,7 @@ impl<'src> ConcreteLineToken<'src> {
             Self::RawHeredocContent { content, .. } => Cow::Owned(content),
             // no-op, this is purely semantic information
             // for the render queue
-            Self::AfterCallChain | Self::BeginCallChainIndent | Self::EndCallChainIndent => {
-                Cow::Borrowed(b"")
-            }
+            Self::BeginCallChainIndent | Self::EndCallChainIndent => Cow::Borrowed(b""),
         }
     }
 
@@ -148,7 +145,7 @@ impl<'src> ConcreteLineToken<'src> {
         // each individual string token, which would increase the allocations of rubyfmt
         // by an order of magnitude
         match self {
-            AfterCallChain | BeginCallChainIndent | EndCallChainIndent => 0, // purely semantic tokens, don't render
+            BeginCallChainIndent | EndCallChainIndent => 0, // purely semantic tokens, don't render
             HeredocStart { symbol, .. } => symbol.len(),
             Delim { contents } => contents.len(),
             Indent { depth } => *depth as usize,
@@ -173,28 +170,6 @@ impl<'src> ConcreteLineToken<'src> {
         }
     }
 
-    fn is_block_closing_token(&self) -> bool {
-        match self {
-            Self::End => true,
-            Self::DirectPart { part } => {
-                part.as_ref() == b"}" || part.as_ref() == b"]" || part.as_ref() == b")"
-            }
-            Self::Delim { contents } => *contents == b"}" || *contents == b"]" || *contents == b")",
-            _ => false,
-        }
-    }
-
-    fn is_conditional_spaced_token(&self) -> bool {
-        match self {
-            Self::ConditionalKeyword { contents } => {
-                !(*contents == b"else" || *contents == b"elsif")
-            }
-            Self::Dot | Self::LonelyOperator => false,
-            Self::DirectPart { part } => part.as_ref() != b"&.",
-            _ => true,
-        }
-    }
-
     pub fn is_single_line_breakable_garbage(&self) -> bool {
         match self {
             Self::DirectPart { part } => part.is_empty(),
@@ -213,10 +188,6 @@ impl<'src> ConcreteLineToken<'src> {
 
     pub fn is_indent(&self) -> bool {
         matches!(self, ConcreteLineToken::Indent { .. })
-    }
-
-    pub fn is_in_need_of_a_trailing_blankline(&self) -> bool {
-        self.is_conditional_spaced_token() && !self.is_block_closing_token()
     }
 }
 

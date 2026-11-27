@@ -7,6 +7,25 @@ fn insert_at<T>(idx: usize, target: &mut Vec<T>, input: impl IntoIterator<Item =
     target.splice(idx..idx, input);
 }
 
+fn ends_with_end(tokens: &[AbstractLineToken<'_>]) -> bool {
+    tokens.iter().rev().find_map(|token| match token {
+        AbstractLineToken::ConcreteLineToken(ConcreteLineToken::End) => Some(true),
+        AbstractLineToken::ConcreteLineToken(
+            ConcreteLineToken::BeginCallChainIndent | ConcreteLineToken::EndCallChainIndent,
+        ) => None,
+        AbstractLineToken::ConcreteLineToken(clt) if !clt.is_newline() && !clt.is_indent() => {
+            Some(false)
+        }
+        AbstractLineToken::ConcreteLineToken(_) => None,
+        AbstractLineToken::BreakableEntry(be) => Some(be.ends_with_end()),
+        AbstractLineToken::BreakableCallChainEntry(bcce) => Some(bcce.ends_with_end()),
+        AbstractLineToken::ConditionalLayoutEntry(cle) => Some(cle.ends_with_end()),
+        AbstractLineToken::CollapsingNewLine(_)
+        | AbstractLineToken::SoftNewline(_)
+        | AbstractLineToken::SoftIndent { .. } => None,
+    }) == Some(true)
+}
+
 /// Recursively checks if a token tree contains any `HardNewLine`
 fn tokens_contain_hard_newline(token: &AbstractLineToken<'_>) -> bool {
     match token {
@@ -59,6 +78,23 @@ impl<'src> BaseQueue<'src> {
             .iter()
             .rposition(|v| v.is_newline() || v.is_indent())
     }
+
+    pub fn ends_with_end(&self) -> bool {
+        self.tokens.iter().rev().find_map(|token| match token {
+            ConcreteLineTokenAndTargets::ConcreteLineToken(ConcreteLineToken::End) => Some(true),
+            ConcreteLineTokenAndTargets::ConcreteLineToken(clt)
+                if !clt.is_newline() && !clt.is_indent() =>
+            {
+                Some(false)
+            }
+            ConcreteLineTokenAndTargets::ConcreteLineToken(_) => None,
+            ConcreteLineTokenAndTargets::BreakableEntry(be) => Some(be.ends_with_end()),
+            ConcreteLineTokenAndTargets::BreakableCallChainEntry(bcce) => {
+                Some(bcce.ends_with_end())
+            }
+            ConcreteLineTokenAndTargets::ConditionalLayoutEntry(cle) => Some(cle.ends_with_end()),
+        }) == Some(true)
+    }
 }
 
 pub trait AbstractTokenTarget<'src>: std::fmt::Debug {
@@ -94,6 +130,11 @@ pub trait AbstractTokenTarget<'src>: std::fmt::Debug {
             Some(x) => x.is_newline(),
             _ => false,
         }
+    }
+
+    /// Whether the last token that will produce output is `end`.
+    fn ends_with_end(&self) -> bool {
+        ends_with_end(self.tokens())
     }
 }
 
@@ -138,6 +179,15 @@ impl<'src> AbstractTokenTarget<'src> for BreakableEntry<'src> {
         self.multiline_tracker.is_multiline()
             || self.any_collapsing_newline_has_heredoc_content()
             || self.contains_hard_newline()
+    }
+
+    fn ends_with_end(&self) -> bool {
+        // A non-empty closing delimiter is the last rendered token, regardless
+        // of what the breakable's contents end with.
+        if self.delims.multi_line_close().len() > 0 {
+            return false;
+        }
+        ends_with_end(self.tokens())
     }
 
     fn tokens(&self) -> &Vec<AbstractLineToken<'src>> {
@@ -479,6 +529,14 @@ impl<'src> Breakable<'src> {
         }
     }
 
+    pub fn ends_with_end(&self) -> bool {
+        match self {
+            Breakable::DelimiterExpr(be) => be.ends_with_end(),
+            Breakable::CallChain(bcce) => bcce.ends_with_end(),
+            Breakable::InlineConditional(cle) => cle.ends_with_end(),
+        }
+    }
+
     pub fn into_breakable_entry(self) -> Option<BreakableEntry<'src>> {
         match self {
             Breakable::DelimiterExpr(be) => Some(be),
@@ -643,6 +701,10 @@ impl<'src> ConditionalLayoutEntry<'src> {
 
     pub fn last_token_is_a_newline(&self) -> bool {
         self.phase_tokens().last().is_some_and(|x| x.is_newline())
+    }
+
+    pub fn ends_with_end(&self) -> bool {
+        ends_with_end(self.phase_tokens())
     }
 
     pub fn index_of_prev_newline(&self) -> Option<usize> {
