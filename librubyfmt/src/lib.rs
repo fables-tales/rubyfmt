@@ -12,7 +12,6 @@ mod file_comments;
 mod format_prism;
 mod heredoc_string;
 mod intermediary;
-mod line_metadata;
 mod line_tokens;
 mod parser_state;
 mod render_queue_writer;

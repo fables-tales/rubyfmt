@@ -18,6 +18,19 @@ pub(crate) fn is_annotation(node: &prism::Node<'_>) -> bool {
     })
 }
 
+/// Whether a statement is a bare `require` call.
+pub(crate) fn is_require(node: &prism::Node<'_>) -> bool {
+    node.as_call_node()
+        .is_some_and(|call| call.receiver().is_none() && call.name().as_slice() == b"require")
+}
+
+/// Whether a statement opens a class or module scope.
+pub(crate) fn is_class_or_module(node: &prism::Node<'_>) -> bool {
+    node.as_class_node().is_some()
+        || node.as_module_node().is_some()
+        || node.as_singleton_class_node().is_some()
+}
+
 /// Whether a statement begins with a method definition, possibly behind
 /// visibility/modifier calls such as `private def` or `memoize public def`.
 pub(crate) fn starts_with_def(node: &prism::Node<'_>) -> bool {
@@ -46,7 +59,9 @@ pub(crate) fn starts_with_def(node: &prism::Node<'_>) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use super::{blank_line_between, is_annotation, starts_with_def};
+    use super::{
+        blank_line_between, is_annotation, is_class_or_module, is_require, starts_with_def,
+    };
 
     fn with_first_two_statements<R>(
         source: &str,
@@ -132,6 +147,38 @@ mod tests {
         });
         with_first_two_statements("a\nc", |_, call| {
             assert!(!starts_with_def(call));
+        });
+    }
+
+    #[test]
+    fn recognizes_require_calls() {
+        with_first_two_statements("require \"a\"\nb", |require, _| {
+            assert!(is_require(require));
+        });
+        with_first_two_statements("require_relative \"a\"\nb", |require, _| {
+            assert!(!is_require(require));
+        });
+        with_first_two_statements("Kernel.require \"a\"\nb", |require, _| {
+            assert!(!is_require(require));
+        });
+        with_first_two_statements("require = 1\nb", |require, _| {
+            assert!(!is_require(require));
+        });
+    }
+
+    #[test]
+    fn recognizes_class_and_module_statements() {
+        with_first_two_statements("a\nclass B\nend", |_, class| {
+            assert!(is_class_or_module(class));
+        });
+        with_first_two_statements("a\nmodule B\nend", |_, module| {
+            assert!(is_class_or_module(module));
+        });
+        with_first_two_statements("a\nclass << b\nend", |_, singleton| {
+            assert!(is_class_or_module(singleton));
+        });
+        with_first_two_statements("a\nb", |_, call| {
+            assert!(!is_class_or_module(call));
         });
     }
 }

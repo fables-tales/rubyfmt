@@ -686,6 +686,7 @@ fn format_statement_sequence<'src>(
 struct PreviousStatement {
     ends_with_end: bool,
     is_annotation: bool,
+    is_require: bool,
     end_offset: SourceOffset,
 }
 
@@ -694,6 +695,7 @@ impl PreviousStatement {
         Self {
             ends_with_end: false,
             is_annotation: statement_spacing::is_annotation(node),
+            is_require: statement_spacing::is_require(node),
             end_offset: node.location().end(),
         }
     }
@@ -704,12 +706,20 @@ impl PreviousStatement {
     }
 
     fn should_insert_blank_line_before(self, ps: &ParserState<'_>, next: &prism::Node<'_>) -> bool {
-        statement_spacing::blank_line_between(
+        let next_is_require = statement_spacing::is_require(next);
+        let next_is_class_or_module = statement_spacing::is_class_or_module(next);
+
+        let after_block = statement_spacing::blank_line_between(
             self.ends_with_end,
             self.is_annotation,
             || ps.has_comment_in_offset_span(self.end_offset, next.location().start()),
             || statement_spacing::starts_with_def(next),
-        )
+        );
+
+        after_block
+            || (self.is_require && !next_is_require)
+            || (next_is_class_or_module
+                && !ps.has_comment_in_offset_span(self.end_offset, next.location().start()))
     }
 }
 
